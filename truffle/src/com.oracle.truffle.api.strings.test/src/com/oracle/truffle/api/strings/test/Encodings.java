@@ -240,6 +240,18 @@ public final class Encodings {
                     buf[iBuf++] = 0x10ffff;
                 }
                 int[] codepoints = Arrays.copyOf(buf, iBuf);
+
+                byte[] encodedBroken = null;
+                int[] codepointsBroken = null;
+
+                if (e == TruffleString.Encoding.UTF_16BE) {
+                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1, ByteOrder.BIG_ENDIAN);
+                    codepointsBroken = new int[]{0xfffd};
+                } else if (e == TruffleString.Encoding.UTF_32BE) {
+                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2, ByteOrder.BIG_ENDIAN);
+                    codepointsBroken = new int[]{0xfffd};
+                }
+
                 testData[e.ordinal()] = new TestData(
                                 codepoints,
                                 codePointByteIndices(codepoints, jCoding),
@@ -247,8 +259,8 @@ public final class Encodings {
                                 null,
                                 null,
                                 encodeCodePoints(codepoints, jCoding),
-                                null,
-                                null);
+                                encodedBroken,
+                                codepointsBroken);
             }
         }
         // Checkstyle: stop
@@ -291,9 +303,13 @@ public final class Encodings {
     }
 
     private static byte[] asBytes(int[] values, int stride) {
+        return asBytes(values, stride, ByteOrder.nativeOrder());
+    }
+
+    private static byte[] asBytes(int[] values, int stride, ByteOrder byteOrder) {
         byte[] ret = new byte[values.length << stride];
         for (int i = 0; i < values.length; i++) {
-            TStringTestUtil.writeValue(ret, stride, i, values[i]);
+            TStringTestUtil.writeValue(ret, stride, i, values[i], byteOrder);
         }
         return ret;
     }
@@ -433,8 +449,10 @@ public final class Encodings {
 
     static TestData dataUTF32BE() {
         assert TruffleString.Encoding.UTF_32BE.ordinal() == 1;
-        return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                        (byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff}, null, null);
+        return new TestData(
+                        new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                                        (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
     }
 
     static TestData dataUTF16LE() {
@@ -450,7 +468,8 @@ public final class Encodings {
     static TestData dataUTF16BE() {
         assert TruffleString.Encoding.UTF_16BE.ordinal() == 3;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x2, 0x4, 0x6}, null, null, null,
-                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff}, null, null);
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff},
+                        new byte[]{(byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
     }
 
     static TestData dataISO88591() {

@@ -214,7 +214,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      * @deprecated use {@link #isCompatibleToUncached(Encoding)} instead.
      */
-    @Deprecated(since = "23.0", forRemoval = true)
+    @Deprecated(since = "23.0")
     public final boolean isCompatibleTo(TruffleString.Encoding expectedEncoding) {
         return isCompatibleToUncached(expectedEncoding);
     }

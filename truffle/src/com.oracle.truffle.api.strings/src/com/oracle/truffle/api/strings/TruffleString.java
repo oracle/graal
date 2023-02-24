@@ -1675,7 +1675,8 @@ public final class TruffleString extends AbstractTruffleString {
                 }
                 bytes = new byte[length];
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, bytes, 0);
-                if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, bytes, 0, length) != ret || JCodings.getInstance().readCodePoint(jCodingsEnc, bytes, 0, length) != c) {
+                if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, bytes, 0, length) != ret ||
+                                JCodings.getInstance().readCodePoint(jCodingsEnc, bytes, 0, length, ErrorHandling.RETURN_NEGATIVE) != c) {
                     invalidCodePoint.enter(this);
                     return null;
                 }

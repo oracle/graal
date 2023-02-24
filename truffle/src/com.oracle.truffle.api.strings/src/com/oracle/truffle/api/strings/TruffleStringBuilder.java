@@ -524,7 +524,7 @@ public final class TruffleStringBuilder {
             for (int i = 0; i < n; i++) {
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, sb.buf, sb.length);
                 if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||
-                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length) != c) {
+                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length, TruffleString.ErrorHandling.RETURN_NEGATIVE) != c) {
                     throw InternalErrors.invalidCodePoint(c);
                 }
                 sb.length += length;

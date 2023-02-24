@@ -100,7 +100,7 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd) {
+    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, TruffleString.ErrorHandling errorHandling) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 

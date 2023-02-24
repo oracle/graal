@@ -156,8 +156,13 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd) {
-        return unwrap(jCoding).mbcToCode(array, index, arrayEnd);
+    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, ErrorHandling errorHandling) {
+        org.graalvm.shadowed.org.jcodings.Encoding jc = unwrap(jCoding);
+        int codePoint = jc.mbcToCode(array, index, arrayEnd);
+        if (jc.isUnicode() && Encodings.isUTF16Surrogate(codePoint)) {
+            return Encodings.invalidCodepointReturnValue(errorHandling);
+        }
+        return codePoint;
     }
 
     @Override
@@ -190,7 +195,7 @@ final class JCodingsImpl implements JCodings {
                         throw InternalErrors.indexOutOfBounds();
                     }
                 } else {
-                    i++;
+                    i += unwrap(jCoding).minLength();
                 }
             } else {
                 i += length;
@@ -209,7 +214,7 @@ final class JCodingsImpl implements JCodings {
         if (length < 1) {
             return Encodings.invalidCodepointReturnValue(errorHandling);
         }
-        return readCodePoint(jCoding, arrayA, p, end);
+        return readCodePoint(jCoding, arrayA, p, end, errorHandling);
     }
 
     @Override
