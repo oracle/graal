@@ -144,7 +144,7 @@ public class ClassEntry extends StructureTypeEntry {
         } else {
             superName = "";
         }
-        debugContext.log("typename %s adding super %s\n", typeName, superName);
+        debugContext.log("typename %s adding super %s%n", typeName, superName);
         if (superType != null) {
             this.superClass = debugInfoBase.lookupClassEntry(superType);
         }
@@ -265,7 +265,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve a stream of all compiled method entries for this class, including both normal and
      * deopt fallback compiled methods.
-     * 
+     *
      * @return a stream of all compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> compiledEntries() {
@@ -279,7 +279,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve a stream of all normal compiled method entries for this class, excluding deopt
      * fallback compiled methods.
-     * 
+     *
      * @return a stream of all normal compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> normalCompiledEntries() {
@@ -288,7 +288,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     /**
      * Retrieve a stream of all deopt fallback compiled method entries for this class.
-     * 
+     *
      * @return a stream of all deopt fallback compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> deoptCompiledEntries() {
@@ -313,7 +313,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String interfaceName = interfaceType.toJavaName();
-        debugContext.log("typename %s adding interface %s\n", typeName, interfaceName);
+        debugContext.log("typename %s adding interface %s%n", typeName, interfaceName);
         ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
         assert entry instanceof InterfaceClassEntry;
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
@@ -330,7 +330,7 @@ public class ClassEntry extends StructureTypeEntry {
         DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
-        debugContext.log("typename %s adding %s method %s %s(%s)\n",
+        debugContext.log("typename %s adding %s method %s %s(%s)%n",
                         typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
@@ -412,7 +412,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve the lowest code section offset for compiled method code belonging to this class. It
      * is an error to call this for a class entry which has no compiled methods.
-     * 
+     *
      * @return the lowest code section offset for compiled method code belonging to this class
      */
     public int lowpc() {
@@ -424,7 +424,7 @@ public class ClassEntry extends StructureTypeEntry {
      * Retrieve the lowest code section offset for compiled method code belonging to this class that
      * belongs to a deoptimization fallback compiled method. It is an error to call this for a class
      * entry which has no deoptimization fallback compiled methods.
-     * 
+     *
      * @return the lowest code section offset for a deoptimization fallback compiled method
      *         belonging to this class.
      */
@@ -439,7 +439,7 @@ public class ClassEntry extends StructureTypeEntry {
      * that does not belong to a deoptimization fallback compiled method. The returned value is the
      * offset of the first byte that succeeds the code for that method. It is an error to call this
      * for a class entry which has no compiled methods.
-     * 
+     *
      * @return the highest code section offset for compiled method code belonging to this class
      */
     public int hipc() {
@@ -451,7 +451,7 @@ public class ClassEntry extends StructureTypeEntry {
      * Retrieve the highest code section offset for compiled method code belonging to this class
      * that belongs to a deoptimization fallback compiled method. It is an error to call this for a
      * class entry which has no deoptimization fallback compiled methods.
-     * 
+     *
      * @return the highest code section offset for a deoptimization fallback compiled method
      *         belonging to this class.
      */

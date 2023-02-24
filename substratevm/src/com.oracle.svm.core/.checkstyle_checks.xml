@@ -63,6 +63,15 @@
       <property name="ignoreComments" value="true"/>
     </module>
 
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="newLinesFormatStrings"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Proper new lines in format strings"/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="((err|out|String)\.format|printf)\(&quot;.*\\n"/>
+      <property name="message" value="Format strings must use %n instead of \n for new lines"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>

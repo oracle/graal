@@ -59,7 +59,7 @@ public class PrimitiveTypeEntry extends TypeEntry {
         flags = debugPrimitiveTypeInfo.flags();
         typeChar = debugPrimitiveTypeInfo.typeChar();
         bitCount = debugPrimitiveTypeInfo.bitCount();
-        debugContext.log("typename %s %s (%d bits)\n", typeName, decodeFlags(), bitCount);
+        debugContext.log("typename %s %s (%d bits)%n", typeName, decodeFlags(), bitCount);
     }
 
     private String decodeFlags() {

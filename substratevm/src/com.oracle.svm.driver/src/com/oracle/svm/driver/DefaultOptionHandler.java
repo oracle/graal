@@ -194,7 +194,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             readArgFile(argFile).forEach(processor::accept);
             List<String> leftoverArgs = processor.apply(false);
             if (leftoverArgs.size() > 0) {
-                NativeImage.showError("Found unrecognized options while parsing argument file '" + argFile + "':\n" + String.join("\n", leftoverArgs));
+                NativeImage.showError(String.format("Found unrecognized options while parsing argument file '%s':%n%s", argFile, String.join(System.lineSeparator(), leftoverArgs)));
             }
             return true;
         }
