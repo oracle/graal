@@ -168,7 +168,6 @@ ce_win_complete_components = ['bgu', 'bnative-image-configure', 'bpolyglot', 'cm
 ce_aarch64_complete_components = ce_win_complete_components + ['pyn', 'pynl', 'rby', 'rbyl', 'svml']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain']
 ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
-ce_darwin_aarch64_complete_components.remove('gwa')  # GR-39032
 ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'tfl', 'tflm']
 ce_python_components = llvm_components + ['bgu', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
