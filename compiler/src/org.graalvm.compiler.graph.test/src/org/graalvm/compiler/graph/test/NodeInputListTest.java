@@ -27,15 +27,14 @@ package org.graalvm.compiler.graph.test;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class NodeInputListTest extends GraphTest {
 
@@ -75,6 +74,20 @@ public class NodeInputListTest extends GraphTest {
 
         root.inputs.trim();
         assertContents(root.inputs, a, d);
+    }
+
+    @Test
+    public void testNodeListToString() {
+        OptionValues options = getOptions();
+        Graph graph = new Graph(options, getDebug(options));
+
+        TestNode a = graph.add(new TestNode());
+        TestNode b = graph.add(new TestNode());
+        TestNode c = graph.add(new TestNode());
+
+        TestNode root = graph.add(new TestNode(a, b, c));
+        Assert.assertEquals("[0|Test, 1|Test, 2|Test]", root.inputs.toString()); // NodeInputList
+        Assert.assertEquals("inputs=[0|Test, 1|Test, 2|Test]", root.inputs().toString()); // NodeIterable
     }
 
     private static void assertContents(NodeInputList<TestNode> actual, TestNode... expected) {
