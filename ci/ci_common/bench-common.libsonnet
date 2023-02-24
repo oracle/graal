@@ -20,6 +20,8 @@
       "mount_modules": true
     },
     should_use_hwloc:: std.objectHasAll(self, "is_numa") && self.is_numa && std.length(std.find("bench", self.targets)) > 0,
+    restricted_archs:: null,  # null means all architectures are supported, otherwise it must be a list of allowed archs as strings
+    is_arch_supported(arch):: if self.restricted_archs == null then true else std.member(self.restricted_archs, arch),
     min_jdk_version:: null,
     max_jdk_version:: null,
     is_jdk_supported(jdk_version)::
