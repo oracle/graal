@@ -50,6 +50,9 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.source.Source;
 import org.junit.Assume;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
+
 /**
  * NFI provides a native isolated namespace on Linux (via dlmopen); one per NFI context.
  *
@@ -101,6 +104,8 @@ public class IsolatedNamespaceTest extends NFITest {
 
     @Test
     public void testIsolatedNamespace() throws InteropException {
+        Assume.assumeThat("Isolated namespaces not yet implemented in panama backend", TEST_BACKEND, not(equalTo("panama")));
+
         Source signature = parseSource("(sint32) : sint32");
         Source library = parseSource(String.format("load(ISOLATED_NAMESPACE) '%s'", getLibPath("isolationtest")));
 
