@@ -54,8 +54,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 
-import java.lang.ref.WeakReference;
-
 @TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
@@ -68,9 +66,6 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     }
 
     static final class ErrorContext {
-        final PanamaNFIContext ctx;
-        final WeakReference<?> thread;
-
         private Throwable throwable = null;
 
         public void setThrowable(Throwable throwable) {
@@ -79,7 +74,9 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
         void handleThrowables() {
             if (throwable != null) {
-                throw silenceThrowable(RuntimeException.class, throwable);
+                Throwable temp = throwable;
+                throwable = null;
+                throw silenceThrowable(RuntimeException.class, temp);
             }
         }
 
@@ -89,8 +86,6 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
         }
 
         ErrorContext(PanamaNFIContext ctx, Thread thread) {
-            this.ctx = ctx;
-            this.thread = new WeakReference<>(thread);
         }
     }
 

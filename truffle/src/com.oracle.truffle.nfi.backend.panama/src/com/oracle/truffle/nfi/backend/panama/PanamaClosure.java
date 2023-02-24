@@ -200,13 +200,7 @@ final class PanamaClosure implements TruffleObject {
             try {
                 return interop.execute(receiver, args);
             } catch (InteropException ex) {
-                PanamaNFILanguage.get(this).errorContext.get().setThrowable(
-                        CompilerDirectives.shouldNotReachHere(ex)
-                );
-                return 0;
-            } catch (Throwable t) {
-                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
-                return 0;
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
     }
@@ -238,14 +232,19 @@ final class PanamaClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object ret = callClosure.execute(frame);
-            if (interopLibrary.isNull(ret)) {
-                return null;
-            }
             try {
+                Object ret = callClosure.execute(frame);
+                if (interopLibrary.isNull(ret)) {
+                    return null;
+                }
                 return toJavaRet.execute(ret);
-            } catch (UnsupportedTypeException e) {
-                throw CompilerDirectives.shouldNotReachHere();
+            } catch (Throwable t) {
+                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+                try {
+                    return toJavaRet.execute("");
+                } catch (UnsupportedTypeException ex) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
             }
         }
     }
@@ -273,7 +272,11 @@ final class PanamaClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            callClosure.execute(frame);
+            try {
+                callClosure.execute(frame);
+            } catch (Throwable t) {
+                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+            }
             return null;
         }
     }
@@ -306,14 +309,19 @@ final class PanamaClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object ret = callClosure.execute(frame);
-            if (interopLibrary.isNull(ret)) {
-                return NativePointer.NULL.asPointer();
-            }
             try {
+                Object ret = callClosure.execute(frame);
+                if (interopLibrary.isNull(ret)) {
+                    return NativePointer.NULL.asPointer();
+                }
                 return toJavaRet.execute(ret);
-            } catch (UnsupportedTypeException e) {
-                throw CompilerDirectives.shouldNotReachHere();
+            } catch (Throwable t) {
+                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+                try {
+                    return toJavaRet.execute(0);
+                } catch (UnsupportedTypeException e) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
             }
         }
     }
