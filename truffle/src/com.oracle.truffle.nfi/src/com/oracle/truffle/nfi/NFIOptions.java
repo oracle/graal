@@ -46,8 +46,5 @@ import org.graalvm.options.OptionKey;
 
 final class NFIOptions {
 
-    @Option(name = "DefaultBackend",
-            category = OptionCategory.EXPERT,
-            help = "")
-    static final OptionKey<String> DEFAULT_BACKEND = new OptionKey<>("native");
+    @Option(name = "DefaultBackend", category = OptionCategory.EXPERT, help = "") static final OptionKey<String> DEFAULT_BACKEND = new OptionKey<>("native");
 }

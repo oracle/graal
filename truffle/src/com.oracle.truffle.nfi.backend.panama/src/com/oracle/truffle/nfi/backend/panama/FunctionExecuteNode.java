@@ -122,7 +122,8 @@ abstract class FunctionExecuteNode extends Node {
         @Override
         public abstract Object execute(VirtualFrame frame);
 
-        @SuppressWarnings("preview") java.lang.foreign.MemorySegment getAddress(VirtualFrame frame) {
+        @SuppressWarnings("preview")
+        java.lang.foreign.MemorySegment getAddress(VirtualFrame frame) {
             return java.lang.foreign.MemorySegment.ofAddress((long) frame.getArguments()[0]);
         }
 
@@ -138,7 +139,8 @@ abstract class FunctionExecuteNode extends Node {
         @ExplodeLoop
         public Object doGeneric(VirtualFrame frame) {
             Object[] args = getArgs(frame);
-            @SuppressWarnings("preview") java.lang.foreign.MemorySegment address = getAddress(frame);
+            @SuppressWarnings("preview")
+            java.lang.foreign.MemorySegment address = getAddress(frame);
             PanamaSignature signature = getSig(frame);
 
             if (args.length != argNodes.length) {

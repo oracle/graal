@@ -151,18 +151,14 @@ final class PanamaClosure implements TruffleObject {
         MonomorphicClosureInfo createMonomorphicClosureInfo() {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
-            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget).
-                    asCollector(Object[].class, 2).
-                    asType(METHOD_TYPE).asVarargsCollector(Object[].class);
+            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget).asCollector(Object[].class, 2).asType(METHOD_TYPE).asVarargsCollector(Object[].class);
             return new MonomorphicClosureInfo(this, handle);
         }
 
         PolymorphicClosureInfo createPolymorphicClosureInfo() {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
-            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget).
-                    asCollector(Object[].class, 2).
-                    asType(METHOD_TYPE).asVarargsCollector(Object[].class);
+            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget).asCollector(Object[].class, 2).asType(METHOD_TYPE).asVarargsCollector(Object[].class);
             return new PolymorphicClosureInfo(this, handle);
         }
 
