@@ -51,14 +51,11 @@ import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
-import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -70,105 +67,91 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final OptionValues options;
     protected final SVMHost hostVM;
     protected final UniverseMetaAccess metaAccess;
-    protected RuntimeConfiguration runtimeConfig;
-    protected WordTypes wordTypes;
     protected final Function<Providers, SubstrateBackend> backendProvider;
-    protected final NativeLibraries nativeLibraries;
     protected final ClassInitializationSupport classInitializationSupport;
     protected final LoopsDataProvider originalLoopsDataProvider;
     protected final SubstratePlatformConfigurationProvider platformConfig;
 
     public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, UniverseMetaAccess metaAccess, Function<Providers, SubstrateBackend> backendProvider,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
                     SubstratePlatformConfigurationProvider platformConfig) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
         this.backendProvider = backendProvider;
-        this.nativeLibraries = nativeLibraries;
         this.classInitializationSupport = classInitializationSupport;
         this.originalLoopsDataProvider = originalLoopsDataProvider;
         this.platformConfig = platformConfig;
     }
 
-    public NativeLibraries getNativeLibraries() {
-        return nativeLibraries;
-    }
+    public final RuntimeConfiguration build() {
+        /*
+         * This code pattern is largely copied from HotSpotBackendFactory#createBackend.
+         */
 
-    public SharedRuntimeConfigurationBuilder build() {
         EnumMap<ConfigKind, RegisterConfig> registerConfigs = new EnumMap<>(ConfigKind.class);
+
+        ConstantReflectionProvider constantReflection = createConstantReflectionProvider();
+
+        ConstantFieldProvider constantFieldProvider = createConstantFieldProvider();
+
         for (ConfigKind config : ConfigKind.values()) {
             registerConfigs.put(config, ImageSingletons.lookup(SubstrateRegisterConfigFactory.class).newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
                             SubstrateOptions.PreserveFramePointer.getValue()));
         }
 
-        wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
-        Providers p = createProviders(null, null, null, null, null, null, null, null, null, null, null);
-        StampProvider stampProvider = createStampProvider(p);
-        p = createProviders(null, null, null, null, null, null, stampProvider, null, null, null, null);
-        ConstantReflectionProvider constantReflection = createConstantReflectionProvider(p);
-        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null, null, null);
-        ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(p);
-        SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
+        WordTypes wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
+
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
+
         MetaAccessExtensionProvider metaAccessExtensionProvider = HostedConfiguration.instance().createCompilationMetaAccessExtensionProvider(metaAccess);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
-        LoweringProvider lowerer = createLoweringProvider(p);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
-        Replacements replacements = createReplacements(p, snippetReflection);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
+
+        StampProvider stampProvider = createStampProvider();
+
+        LoweringProvider lowerer = createLoweringProvider(foreignCalls, metaAccessExtensionProvider);
+
         LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
-                        loopsDataProvider);
+
+        SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider(wordTypes);
+
+        Providers p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
+                        wordTypes, loopsDataProvider);
+
+        Replacements replacements = createReplacements(p, snippetReflection);
+        p = (Providers) replacements.getProviders();
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfigs.get(config));
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
-                            snippetReflection, platformConfig, metaAccessExtensionProvider, loopsDataProvider);
+                            snippetReflection, platformConfig, metaAccessExtensionProvider, wordTypes, loopsDataProvider);
             backends.put(config, GraalConfiguration.runtimeInstance().createBackend(newProviders));
         }
 
-        runtimeConfig = new RuntimeConfiguration(p, snippetReflection, backends, wordTypes);
-        return this;
+        return new RuntimeConfiguration(p, snippetReflection, backends, wordTypes);
     }
 
-    public WordTypes getWordTypes() {
-        return wordTypes;
-    }
+    protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                    ForeignCallsProvider foreignCalls,
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider);
 
-    protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection,
-                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes, loopsDataProvider);
-    }
+    protected abstract ConstantReflectionProvider createConstantReflectionProvider();
 
-    public RuntimeConfiguration getRuntimeConfig() {
-        return runtimeConfig;
-    }
+    protected abstract ConstantFieldProvider createConstantFieldProvider();
 
-    protected StampProvider createStampProvider(Providers p) {
-        return new SubstrateStampProvider(p.getMetaAccess());
-    }
-
-    protected abstract ConstantReflectionProvider createConstantReflectionProvider(Providers p);
-
-    protected abstract ConstantFieldProvider createConstantFieldProvider(Providers p);
-
-    protected SnippetReflectionProvider createSnippetReflectionProvider() {
-        return new SubstrateSnippetReflectionProvider(getWordTypes());
-    }
-
-    protected ForeignCallsProvider createForeignCallsProvider(RegisterConfig registerConfig) {
+    private ForeignCallsProvider createForeignCallsProvider(RegisterConfig registerConfig) {
         return new SubstrateForeignCallsProvider(metaAccess, registerConfig);
     }
 
-    protected LoweringProvider createLoweringProvider(Providers p) {
-        return SubstrateLoweringProvider.createForRuntime(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+    private StampProvider createStampProvider() {
+        return new SubstrateStampProvider(metaAccess);
     }
+
+    protected abstract LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider);
+
+    protected abstract SnippetReflectionProvider createSnippetReflectionProvider(WordTypes wordTypes);
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
 

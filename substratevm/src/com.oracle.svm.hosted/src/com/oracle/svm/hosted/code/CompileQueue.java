@@ -352,12 +352,12 @@ public class CompileQueue {
         }
     }
 
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, SharedRuntimeConfigurationBuilder runtimeConfigBuilder, Boolean deoptimizeAll,
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
                     SnippetReflectionProvider snippetReflection, ForkJoinPool executorService) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
-        this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
-        this.metaAccess = runtimeConfigBuilder.metaAccess;
+        this.runtimeConfig = runtimeConfiguration;
+        this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
