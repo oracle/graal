@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -89,10 +90,14 @@ public final class PythonFlavor extends RegexFlavor {
     @Override
     public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
-            return CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode.getEqualsPredicate();
+            return PythonFlavor::equalsIgnoreCaseUnicode;
         } else {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
             return CaseFoldTable.CaseFoldingAlgorithm.PythonAscii.getEqualsPredicate();
         }
+    }
+
+    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB) {
+        return UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
     }
 }

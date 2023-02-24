@@ -32,7 +32,6 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -43,6 +42,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
@@ -225,9 +225,9 @@ public class AArch64Call {
             masm.bind(label);
         }
         int after = masm.position();
-        crb.recordDirectCall(before, after, callTarget, info);
+        Call call = crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
+        masm.postCallNop(call);
         return before;
     }
 
@@ -238,37 +238,24 @@ public class AArch64Call {
         int before = masm.position();
         masm.blr(dst);
         int after = masm.position();
-        crb.recordIndirectCall(before, after, callTarget, info);
+        Call call = crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
+        masm.postCallNop(call);
         return before;
     }
 
-    public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {
+    public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, ForeignCallLinkage callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            masm.movNativeAddress(scratch.getRegister(), 0L, true);
-            masm.jmp(scratch.getRegister());
+            if (AArch64Call.isNearCall(callTarget)) {
+                masm.jmp();
+            } else {
+                masm.movNativeAddress(scratch.getRegister(), 0L, true);
+                masm.jmp(scratch.getRegister());
+            }
             int after = masm.position();
-            crb.recordDirectCall(before, after, callTarget, null);
-            masm.ensureUniquePC();
+            Call call = crb.recordDirectCall(before, after, callTarget, null);
+            masm.postCallNop(call);
         }
     }
-
-    public static void indirectJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register dst, InvokeTarget target) {
-        int before = masm.position();
-        masm.jmp(dst);
-        int after = masm.position();
-        crb.recordIndirectCall(before, after, target, null);
-        masm.ensureUniquePC();
-    }
-
-    public static void directConditionalJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget target, AArch64Assembler.ConditionFlag cond) {
-        int before = masm.position();
-        masm.branchConditionally(cond);
-        int after = masm.position();
-        crb.recordDirectCall(before, after, target, null);
-        masm.ensureUniquePC();
-    }
-
 }
