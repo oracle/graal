@@ -338,7 +338,7 @@ def truffle_unittest_task(extra_build_args=None):
 
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
-    native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args(extra_build_args))
+    truffle_context_pre_init_unittest_task(extra_build_args)
 
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
@@ -349,6 +349,10 @@ def truffle_unittest_task(extra_build_args=None):
 
     # White Box Truffle compilation tests that need access to compiler graphs.
     native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + ['-H:-SupportCompileInIsolates']))
+
+
+def truffle_context_pre_init_unittest_task(extra_build_args):
+    native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args(extra_build_args))
 
 
 def svm_gate_body(args, tasks):
