@@ -1215,35 +1215,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             if (graph == null) {
                 graph = parseGraph(context.highTierContext, context.graph, method);
 
-                if (isInInterpreterFastPath(method)) {
-                    /*
-                     * By force inlining the call from
-                     * HostCompilerDirectives.inInterpreterFastPath() to
-                     * CompilerDirectives.inInterpreter() here we ensure that the call to
-                     * inInterpreter() is later skipped by the host inlining phase.
-                     *
-                     * Alternatively we could just return true in
-                     * HostCompilerDirectives.inInterpreterFastPath() instead of calling
-                     * CompilerDirectives.inInterpreter() to achieve the same result, but that would
-                     * require us to introduce a new Truffle compiler graph builder plugin, that
-                     * intrinsifies inInterpreterFastPath() to be false during runtime compilation.
-                     *
-                     * By solving this with force inlining here we ensure that this behavior is
-                     * coupled with the TruffleHostInlining phase.
-                     */
-                    int foundCount = 0;
-                    for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                        if (isInInterpreter(target.targetMethod())) {
-                            InliningUtil.inline(target.invoke(), lookupGraph(context, target.invoke(), target.targetMethod()), false, target.targetMethod());
-                            foundCount++;
-                        }
-                    }
-                    if (foundCount != 1) {
-                        throw new AssertionError(
-                                        "Unexpected method body encountered. HostCompilerDirectives.inInterpreterFastPath() is expected to contain a call to CompilerDirectives.inInterpreter()");
-                    }
-                }
-
                 context.graphCache.put(method, graph);
             }
         }
@@ -1333,6 +1304,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         if (Options.TruffleHostInlining.getValue(options)) {
             plugins.prependInlineInvokePlugin(new BytecodeParserInlineInvokePlugin());
         }
+    }
+
+    public static boolean shouldDenyTrivialInliningInAllMethods(ResolvedJavaMethod callee) {
+        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        assert r != null;
+        return r.isInliningCutoff(callee);
     }
 
     public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {

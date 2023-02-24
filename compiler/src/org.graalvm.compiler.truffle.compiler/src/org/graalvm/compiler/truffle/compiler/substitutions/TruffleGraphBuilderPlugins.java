@@ -144,6 +144,7 @@ public class TruffleGraphBuilderPlugins {
         registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, providers.getReplacements(), providers.getLowerer(), metaAccess);
+        registerHostCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         EconomicSet<ResolvedJavaType> primitiveBoxTypes = EconomicSet.create();
@@ -273,6 +274,18 @@ public class TruffleGraphBuilderPlugins {
                 }
             });
         }
+    }
+
+    public static void registerHostCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        final ResolvedJavaType compilerDirectivesType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.HostCompilerDirectives");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerDirectivesType));
+        r.register(new RequiredInvocationPlugin("inInterpreterFastPath") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                return true;
+            }
+        });
     }
 
     public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
