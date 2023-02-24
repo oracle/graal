@@ -77,17 +77,8 @@ java HelloWorld
 Hello World!
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
-For more information on the GraalVM compiler, go to [Compiler](../../reference-manual/java/compiler.md).
-=======
-You can find a collection of larger Java examples on the [Examples Applications](https://github.com/graalvm/graalvm-demos) page.
-=======
 You can find many larger Java examples among [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
->>>>>>> 7dfa0a61ed6 (Change potential broken links)
 For more information on the GraalVM compiler, go to the [Graal compiler](../../reference-manual/java/compiler.md).
->>>>>>> ea028550568 (Delete examples folder from the graal repository)
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ### JavaScript and Node.js
