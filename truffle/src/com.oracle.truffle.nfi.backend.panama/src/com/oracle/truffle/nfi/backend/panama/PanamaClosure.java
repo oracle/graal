@@ -200,7 +200,7 @@ final class PanamaClosure implements TruffleObject {
             try {
                 return interop.execute(receiver, args);
             } catch (InteropException ex) {
-//                throw CompilerDirectives.shouldNotReachHere(ex);
+                // throw CompilerDirectives.shouldNotReachHere(ex);
                 return 0;
             } catch (Throwable t) {
                 // TODO: implement error propagation
