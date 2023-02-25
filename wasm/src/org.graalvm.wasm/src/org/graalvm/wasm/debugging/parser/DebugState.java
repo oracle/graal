@@ -193,7 +193,7 @@ public class DebugState {
     }
 
     private void advance(int operationAdvance) {
-        pc += (long) minInstrLength * Integer.divideUnsigned((opIndex + operationAdvance), maxOpsPerInstr);
+        pc += (int) ((long) minInstrLength * Integer.divideUnsigned((opIndex + operationAdvance), maxOpsPerInstr));
         opIndex = Integer.remainderUnsigned((opIndex + operationAdvance), maxOpsPerInstr);
     }
 

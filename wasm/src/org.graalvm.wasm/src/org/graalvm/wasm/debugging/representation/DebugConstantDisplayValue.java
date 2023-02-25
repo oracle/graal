@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.debugging.representation;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -54,8 +55,8 @@ public class DebugConstantDisplayValue implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings("unused")
-    Object toDisplayString(boolean allowSideEffects) {
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return value.toString();
     }
 }

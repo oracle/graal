@@ -80,8 +80,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     private final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
 
-    @Child WasmFunctionNode functionNode;
-    @Child WasmInstrumentationSupportNode instrumentation;
+    @Child private WasmFunctionNode functionNode;
+    @Child private WasmInstrumentationSupportNode instrumentation;
 
     public WasmInstrumentableFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, WasmFunctionNode functionNode, int functionSourceLocation) {
         this.instance = instance;
