@@ -38,17 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.debugging.data;
 
-public class DebugConstantValue {
-    private final Object value;
+package org.graalvm.wasm.debugging.languages.c;
 
-    public DebugConstantValue(String value) {
-        this.value = value;
+import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugContext;
+import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.debugging.data.DebugType;
+import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
+import org.graalvm.wasm.debugging.data.types.DebugPointerType;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
+
+public class CPointer extends DebugPointerType {
+    public CPointer(DebugType baseType) {
+        super(baseType);
     }
 
     @Override
-    public String toString() {
-        return value.toString();
+    public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
+        if (location.loadAsLocation().isZero()) {
+            final String name = context.elementName().orElse("");
+            return new DebugConstantObject("*" + name, new DebugConstantDisplayValue("null"));
+        }
+        return super.readMember(context, location, index);
     }
 }

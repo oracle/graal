@@ -38,38 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.debugging.representation;
 
-package org.graalvm.wasm.debugging.encoding;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-/**
- * Opcodes byte format as defined by the Dwarf Debugging Information Format version 4.
- */
-public final class Opcodes {
-    public static final int EXTENDED_OPCODE = 0x00;
-    public static final int LNS_COPY = 0x01;
-    public static final int LNS_ADVANCE_PC = 0x02;
-    public static final int LNS_ADVANCE_LINE = 0x03;
-    public static final int LNS_SET_FILE = 0x04;
-    public static final int LNS_SET_COLUMN = 0x05;
-    public static final int LNS_NEGATE_STMT = 0x06;
-    public static final int LNS_SET_BASIC_BLOCK = 0x07;
-    public static final int LNS_CONST_ADD_PC = 0x08;
-    public static final int LNS_FIXED_ADVANCE_PC = 0x09;
-    public static final int LNS_SET_PROLOGUE_END = 0x0a;
-    public static final int LNS_SET_EPILOGUE_BEGIN = 0x0b;
-    public static final int LNS_SET_ISA = 0x0c;
+@ExportLibrary(InteropLibrary.class)
+public class DebugConstantDisplayValue implements TruffleObject {
+    private final Object value;
 
-    public static final int LNE_END_SEQUENCE = 0x01;
-    public static final int LNE_SET_ADDRESS = 0x02;
-    public static final int LNE_DEFINE_FILE = 0x03;
-    public static final int LNE_SET_DISCRIMINATOR = 0x04;
+    public DebugConstantDisplayValue(String value) {
+        this.value = value;
+    }
 
-    public static final byte ADDR = (byte) 0x03;
-    public static final byte DEREF = (byte) 0x06;
-    public static final byte FBREG = (byte) 0x91;
-    public static final byte WASM_LOCATION = (byte) 0xED;
-    public static final byte STACK_VALUE = (byte) 0x9F;
-
-    private Opcodes() {
+    @ExportMessage
+    @SuppressWarnings("unused")
+    Object toDisplayString(boolean allowSideEffects) {
+        return value.toString();
     }
 }

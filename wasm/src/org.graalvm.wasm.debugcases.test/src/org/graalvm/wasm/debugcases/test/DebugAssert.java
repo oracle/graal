@@ -69,6 +69,12 @@ public final class DebugAssert {
     public static void assertValueEquals(DebugValue scope, String name, String expectedValue) {
         DebugValue val = scope.getProperty(name);
         Assert.assertNotNull(val);
+        Assert.assertEquals(expectedValue, val.toDisplayString());
+    }
+
+    public static void assertStringEquals(DebugValue scope, String name, String expectedValue) {
+        DebugValue val = scope.getProperty(name);
+        Assert.assertNotNull(val);
         Assert.assertTrue(val.isString());
         Assert.assertEquals(expectedValue, val.asString());
     }
@@ -115,6 +121,11 @@ public final class DebugAssert {
         Assert.assertEquals(expectedValue, val.asDouble(), 0.0001);
     }
 
+    public static void assertHidden(DebugValue scope, String name) {
+        DebugValue val = scope.getProperty(name);
+        Assert.assertNull(val);
+    }
+
     public static void assertPointersEquals(DebugValue scope, String... values) {
         DebugValue val = scope;
         for (int i = 0; i < values.length; i++) {
@@ -133,8 +144,7 @@ public final class DebugAssert {
     public static void assertArrayElementEquals(List<DebugValue> array, int index, String expectedValue) {
         DebugValue val = array.get(index);
         Assert.assertNotNull(val);
-        Assert.assertTrue(val.isString());
-        Assert.assertEquals(expectedValue, val.asString());
+        Assert.assertEquals(expectedValue, val.toDisplayString());
     }
 
     public static void assertArrayElementEquals(List<DebugValue> array, int index, short expectedValue) {

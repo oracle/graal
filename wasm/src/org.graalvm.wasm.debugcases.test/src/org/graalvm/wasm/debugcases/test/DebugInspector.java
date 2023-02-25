@@ -42,18 +42,16 @@
 package org.graalvm.wasm.debugcases.test;
 
 import java.util.ArrayList;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.utils.Assert;
 
-import com.oracle.truffle.api.debug.DebugScope;
-import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 
 public class DebugInspector {
     private final IntArrayList lines;
-    private final ArrayList<BiConsumer<DebugScope, Iterable<DebugStackFrame>>> inspectors;
+    private final ArrayList<DebugInspectFunction> inspectors;
     private final ArrayList<String> stack;
 
     private int index = 0;
@@ -68,7 +66,7 @@ public class DebugInspector {
         stack.add(name);
         lines.add(line);
         final String[] currentStack = stack.toArray(String[]::new);
-        inspectors.add((scope, stackFrames) -> DebugAssert.assertStackFramesEquals(stackFrames, currentStack));
+        inspectors.add((scope, stackFrames, fileName) -> DebugAssert.assertStackFramesEquals(stackFrames, currentStack));
     }
 
     void enterMethodUnchecked(String name) {
@@ -79,21 +77,26 @@ public class DebugInspector {
         stack.remove(stack.size() - 1);
     }
 
+    void enterFile(int line, String name) {
+        lines.add(line);
+        inspectors.add((scope, stackFrames, fileName) -> Assert.assertEquals("File name does not match", name, fileName));
+    }
+
     void checkLocals(int line, Consumer<DebugValue> inspector) {
         lines.add(line);
-        inspectors.add((scope, stackFrames) -> inspector.accept(scope.getDeclaredValue("locals")));
+        inspectors.add((scope, stackFrames, fileName) -> inspector.accept(scope.getDeclaredValue("locals")));
     }
 
     void checkGlobals(int line, Consumer<DebugValue> inspector) {
         lines.add(line);
-        inspectors.add((scope, stackFrames) -> inspector.accept(scope.getDeclaredValue("globals")));
+        inspectors.add((scope, stackFrames, fileName) -> inspector.accept(scope.getDeclaredValue("globals")));
     }
 
-    BiConsumer<DebugScope, Iterable<DebugStackFrame>> next(int line) {
+    DebugInspectFunction next(int line) {
         if (index < lines.size() && lines.get(index) == line) {
-            BiConsumer<DebugScope, Iterable<DebugStackFrame>> b = inspectors.get(index);
+            DebugInspectFunction f = inspectors.get(index);
             index++;
-            return b;
+            return f;
         }
         return null;
     }

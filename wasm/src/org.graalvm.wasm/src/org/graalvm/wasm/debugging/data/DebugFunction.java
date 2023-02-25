@@ -79,6 +79,10 @@ public class DebugFunction extends DebugType {
         return 0;
     }
 
+    public boolean hasGlobals() {
+        return globals.size() != 0;
+    }
+
     public DebugObject globals() {
         return new DebugScopeValue("globals", globals);
     }

@@ -48,7 +48,7 @@ import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.objects.DebugValue;
 
 public class DebugPointerType extends DebugType {
-    private final DebugType baseType;
+    protected final DebugType baseType;
 
     public DebugPointerType(DebugType baseType) {
         this.baseType = baseType;
@@ -56,7 +56,7 @@ public class DebugPointerType extends DebugType {
 
     @Override
     public String asTypeName() {
-        return "&" + baseType.asTypeName();
+        return baseType.asTypeName() + "*";
     }
 
     @Override

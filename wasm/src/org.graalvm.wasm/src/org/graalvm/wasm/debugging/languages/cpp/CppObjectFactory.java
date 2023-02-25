@@ -43,16 +43,9 @@ package org.graalvm.wasm.debugging.languages.cpp;
 
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugType;
+import org.graalvm.wasm.debugging.languages.c.CPointer;
 
 public class CppObjectFactory extends DebugObjectFactory {
-
-    @Override
-    protected DebugType createTypeDef(String name, DebugType baseType) {
-        if (CppConstants.STRING_TYPE.equals(name)) {
-            return new CppString();
-        }
-        return super.createTypeDef(name, baseType);
-    }
 
     @Override
     public String languageName() {
@@ -62,5 +55,18 @@ public class CppObjectFactory extends DebugObjectFactory {
     @Override
     protected String namespaceSeparator() {
         return "::";
+    }
+
+    @Override
+    protected DebugType createPointerType(DebugType baseType) {
+        return new CPointer(baseType);
+    }
+
+    @Override
+    protected DebugType createTypeDef(String name, DebugType baseType) {
+        if (CppConstants.STRING_TYPE.equals(name)) {
+            return new CppString();
+        }
+        return super.createTypeDef(name, baseType);
     }
 }

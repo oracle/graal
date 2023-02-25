@@ -49,14 +49,14 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 /**
  * Representation of a function scope during debug information parsing.
  */
-public class DebugScope {
+public final class DebugParserScope {
     private final int fileIndex;
     private final String name;
     private final int startLocation;
     private final int endLocation;
     private final List<DebugObject> variables;
 
-    private DebugScope(String name, int startLocation, int endLocation, int fileIndex, List<DebugObject> variables) {
+    private DebugParserScope(String name, int startLocation, int endLocation, int fileIndex, List<DebugObject> variables) {
         this.name = name;
         this.fileIndex = fileIndex;
         this.startLocation = startLocation;
@@ -64,12 +64,12 @@ public class DebugScope {
         this.variables = variables;
     }
 
-    public static DebugScope createFunctionScope(int startLocation, int endLocation, int fileIndex) {
-        return new DebugScope(null, startLocation, endLocation, fileIndex, new ArrayList<>());
+    public static DebugParserScope createFunctionScope(int startLocation, int endLocation, int fileIndex) {
+        return new DebugParserScope(null, startLocation, endLocation, fileIndex, new ArrayList<>());
     }
 
-    public static DebugScope createGlobalScope() {
-        return new DebugScope(null, -1, -1, -1, new ArrayList<>());
+    public static DebugParserScope createGlobalScope() {
+        return new DebugParserScope(null, -1, -1, -1, new ArrayList<>());
     }
 
     /**
@@ -77,10 +77,10 @@ public class DebugScope {
      * Uses the same references to variables as the outer scope. If a scope with a custom set of
      * variables should be created, see {@link #createFunctionScope(int, int, int)}.
      * 
-     * @param name the new name
+     * @param newName the new name
      */
-    public DebugScope with(String name) {
-        return new DebugScope(name, startLocation, endLocation, fileIndex, variables);
+    public DebugParserScope with(String newName) {
+        return new DebugParserScope(newName, startLocation, endLocation, fileIndex, variables);
     }
 
     /**
@@ -88,12 +88,12 @@ public class DebugScope {
      * block. Uses the same references to variables as the outer scope. If a scope with a custom set
      * of variables should be created, see {@link #createFunctionScope(int, int, int)}.
      * 
-     * @param name the new name
-     * @param startLocation the new scope start source code location
-     * @param endLocation the new scope end source code location
+     * @param newName the new name
+     * @param newStartLocation the new scope start source code location
+     * @param newEndLocation the new scope end source code location
      */
-    public DebugScope with(String name, int startLocation, int endLocation) {
-        return new DebugScope(name, startLocation, endLocation, fileIndex, variables);
+    public DebugParserScope with(String newName, int newStartLocation, int newEndLocation) {
+        return new DebugParserScope(newName, newStartLocation, newEndLocation, fileIndex, variables);
     }
 
     /**

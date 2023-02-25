@@ -72,7 +72,7 @@ public class CppString extends DebugType {
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
         final DebugLocation lengthLocation = location.addOffset(LENGTH_OFFSET);
-        int length = lengthLocation.loadUnsignedByte();
+        int length = lengthLocation.loadU8();
         final DebugLocation stringLocation;
         if (length == LONG_INDICATOR_VALUE) {
             stringLocation = location.loadAsLocation();
@@ -84,6 +84,6 @@ public class CppString extends DebugType {
         } else {
             stringLocation = location;
         }
-        return stringLocation.loadStringFromMemory(length);
+        return stringLocation.loadString(length);
     }
 }

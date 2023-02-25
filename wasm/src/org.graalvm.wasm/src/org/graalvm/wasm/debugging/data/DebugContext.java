@@ -64,12 +64,12 @@ public class DebugContext {
         this.sourceCodeLocation = sourceCodeLocation;
     }
 
-    public DebugContext with(String elementName) {
-        return new DebugContext(elementName, memberBitSize, memberBitOffset, sourceCodeLocation);
+    public DebugContext with(String newElementName) {
+        return new DebugContext(newElementName, memberBitSize, memberBitOffset, sourceCodeLocation);
     }
 
-    public DebugContext with(String elementName, int bitSize, int bitOffset) {
-        return new DebugContext(elementName, bitSize, bitOffset, sourceCodeLocation);
+    public DebugContext with(String newElementName, int newBitSize, int newBitOffset) {
+        return new DebugContext(newElementName, newBitSize, newBitOffset, sourceCodeLocation);
     }
 
     public int sourceCodeLocation() {

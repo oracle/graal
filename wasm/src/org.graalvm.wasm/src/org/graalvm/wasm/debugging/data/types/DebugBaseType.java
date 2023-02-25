@@ -42,7 +42,7 @@
 package org.graalvm.wasm.debugging.data.types;
 
 import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugConstantValue;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.encoding.AttributeEncodings;
@@ -66,7 +66,7 @@ public class DebugBaseType extends DebugType {
         final StringBuilder builder = new StringBuilder();
         DebugLocation l = location;
         for (int i = 0; i < 255; i++) {
-            final byte b = l.loadByte();
+            final byte b = l.loadI8();
             if (b == 0) {
                 break;
             }
@@ -99,7 +99,7 @@ public class DebugBaseType extends DebugType {
             return location.loadAsLocation();
         }
         if (encoding == AttributeEncodings.BOOLEAN) {
-            return location.loadByte(effectiveBitSize, effectiveBitOffset) != 0;
+            return location.loadI8(effectiveBitSize, effectiveBitOffset) != 0;
         }
         if (encoding == AttributeEncodings.FLOAT) {
             if (byteSize == 4) {
@@ -111,7 +111,7 @@ public class DebugBaseType extends DebugType {
         }
         if (encoding == AttributeEncodings.SIGNED) {
             if (byteSize == 1) {
-                return location.loadByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadI8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadI16(effectiveBitSize, effectiveBitOffset);
@@ -125,7 +125,7 @@ public class DebugBaseType extends DebugType {
         }
         if (encoding == AttributeEncodings.UNSIGNED) {
             if (byteSize == 1) {
-                return location.loadUnsignedByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadU8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadU16(effectiveBitSize, effectiveBitOffset);
@@ -134,21 +134,21 @@ public class DebugBaseType extends DebugType {
                 return location.loadU32(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 8) {
-                return new DebugConstantValue(location.loadU64(effectiveBitSize, effectiveBitOffset));
+                return new DebugConstantDisplayValue(location.loadU64(effectiveBitSize, effectiveBitOffset));
             }
         }
         if (encoding == AttributeEncodings.SIGNED_CHAR) {
-            final byte byteValue = location.loadByte(effectiveBitSize, effectiveBitOffset);
-            return new DebugConstantValue("'" + (char) byteValue + "' " + byteValue);
+            final byte byteValue = location.loadI8(effectiveBitSize, effectiveBitOffset);
+            return new DebugConstantDisplayValue("'" + (char) byteValue + "' " + byteValue);
         }
         if (encoding == AttributeEncodings.UNSIGNED_CHAR) {
-            final int byteValue = location.loadUnsignedByte(effectiveBitSize, effectiveBitOffset);
-            return new DebugConstantValue("'" + (char) byteValue + "' " + byteValue);
+            final int byteValue = location.loadU8(effectiveBitSize, effectiveBitOffset);
+            return new DebugConstantDisplayValue("'" + (char) byteValue + "' " + byteValue);
         }
         if (encoding == AttributeEncodings.UTF) {
             return toZeroTerminatedString(location);
         }
-        return new DebugConstantValue("unsupported base type");
+        return new DebugConstantDisplayValue("unsupported base type");
     }
 
     @Override
@@ -168,7 +168,7 @@ public class DebugBaseType extends DebugType {
         final int effectiveBitOffset = context.memberBitOffset().orElse(bitOffset);
         if (encoding == AttributeEncodings.SIGNED) {
             if (byteSize == 1) {
-                return location.loadByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadI8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadI16(effectiveBitSize, effectiveBitOffset);
@@ -179,7 +179,7 @@ public class DebugBaseType extends DebugType {
         }
         if (encoding == AttributeEncodings.UNSIGNED) {
             if (byteSize == 1) {
-                return location.loadUnsignedByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadU8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadU16(effectiveBitSize, effectiveBitOffset);
@@ -205,7 +205,7 @@ public class DebugBaseType extends DebugType {
         final int effectiveBitOffset = context.memberBitOffset().orElse(bitOffset);
         if (encoding == AttributeEncodings.SIGNED) {
             if (byteSize == 1) {
-                return location.loadByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadI8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadI16(effectiveBitSize, effectiveBitOffset);
@@ -219,7 +219,7 @@ public class DebugBaseType extends DebugType {
         }
         if (encoding == AttributeEncodings.UNSIGNED) {
             if (byteSize == 1) {
-                return location.loadUnsignedByte(effectiveBitSize, effectiveBitOffset);
+                return location.loadU8(effectiveBitSize, effectiveBitOffset);
             }
             if (byteSize == 2) {
                 return location.loadU16(effectiveBitSize, effectiveBitOffset);

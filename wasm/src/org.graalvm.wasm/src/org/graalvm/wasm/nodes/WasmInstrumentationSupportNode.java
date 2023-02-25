@@ -67,7 +67,7 @@ public final class WasmInstrumentationSupportNode extends Node {
     @Children private final WasmBaseStatementNode[] statementNodes;
 
     private final EconomicMap<Integer, Integer> lineToIndexMap;
-    private int currentSourceLocation;
+    private int sourceLocation;
 
     @TruffleBoundary
     public WasmInstrumentationSupportNode(DebugFunction debugFunction, WasmModule module, int functionIndex) {
@@ -111,7 +111,7 @@ public final class WasmInstrumentationSupportNode extends Node {
         if (currentLineIndex == nextLineIndex) {
             return;
         }
-        this.currentSourceLocation = currentSourceLocation;
+        this.sourceLocation = currentSourceLocation;
         exitAt(frame, currentLineIndex);
         enterAt(frame, nextLineIndex);
     }
@@ -175,6 +175,6 @@ public final class WasmInstrumentationSupportNode extends Node {
     }
 
     public int currentSourceLocation() {
-        return currentSourceLocation;
+        return sourceLocation;
     }
 }

@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.graalvm.wasm.debugcases.test.DebugAssert.assertArrayElementEquals;
+import static org.graalvm.wasm.debugcases.test.DebugAssert.assertStringEquals;
 import static org.graalvm.wasm.debugcases.test.DebugAssert.assertValueEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -66,8 +67,8 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testBitFields() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testBitFields() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 128, "main");
         checkLocals(i, 144, locals -> {
             DebugValue uiBool = locals.getProperty("uiBool");
@@ -141,8 +142,8 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testBooleans() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testBooleans() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 55, "main");
         checkLocals(i, 68, locals -> {
             assertValueEquals(locals, "a", true);
@@ -163,8 +164,8 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testClasses() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testClasses() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 188, "main");
 
         enterFunction(i, 54, "SimpleClass");
@@ -501,8 +502,56 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testObjectPointers() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testDefaultParameters() throws IOException {
+        final DebugInspector i = createInspector();
+        enterFunction(i, 53, "main");
+        enterFunction(i, 47, "printCity");
+        checkLocals(i, 47, locals -> {
+            assertValueEquals(locals, "name", "Berlin");
+            assertValueEquals(locals, "iterations", 1);
+        });
+        exitFunction(i);
+        moveTo(i, 54);
+        enterFunction(i, 47, "printCity");
+        checkLocals(i, 47, locals -> {
+            assertValueEquals(locals, "name", "Stockholm");
+            assertValueEquals(locals, "iterations", 2);
+        });
+        exitFunction(i);
+        moveTo(i, 55);
+        enterFunction(i, 47, "printCity");
+        checkLocals(i, 47, locals -> {
+            assertValueEquals(locals, "name", "Vienna");
+            assertValueEquals(locals, "iterations", 1);
+        });
+        exitFunction(i);
+        exitFunction(i);
+        runTest("default-parameters", i);
+    }
+
+    @Test
+    public void testMultiInheritance() throws IOException {
+        final DebugInspector i = createInspector();
+        enterFunction(i, 57, "main");
+        checkLocals(i, 57, locals -> {
+            DebugValue c = locals.getProperty("c");
+            assertNotNull(c);
+            assertValueEquals(c, "x", 0);
+            assertValueEquals(c, "y", 0);
+        });
+        checkLocals(i, 59, locals -> {
+            DebugValue c = locals.getProperty("c");
+            assertNotNull(c);
+            assertValueEquals(c, "x", 5);
+            assertValueEquals(c, "y", 10);
+        });
+        exitFunction(i);
+        runTest("multi-inheritance", i);
+    }
+
+    @Test
+    public void testObjectPointers() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 77, "main");
         checkLocals(i, 80, locals -> {
             DebugValue localObj = locals.getProperty("localObj");
@@ -511,7 +560,7 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(localObj, "b", 3.2f);
             assertValueEquals(localObj, "c", 4.657);
             assertValueEquals(localObj, "d", 125604585);
-            assertValueEquals(localObj, "e", "101 'e'");
+            assertValueEquals(localObj, "e", "'e' 101");
             DebugValue fPtr = localObj.getProperty("f");
             assertNotNull(fPtr);
             assertTrue(fPtr.isArray());
@@ -528,7 +577,7 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(l, "b", 3.2f);
             assertValueEquals(l, "c", 4.657);
             assertValueEquals(l, "d", 125604585);
-            assertValueEquals(l, "e", "101 'e'");
+            assertValueEquals(l, "e", "'e' 101");
             fPtr = l.getProperty("f");
             assertNotNull(fPtr);
             assertTrue(fPtr.isArray());
@@ -544,7 +593,7 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(globalObj, "b", 3.2f);
             assertValueEquals(globalObj, "c", 4.657);
             assertValueEquals(globalObj, "d", 125604585);
-            assertValueEquals(globalObj, "e", "101 'e'");
+            assertValueEquals(globalObj, "e", "'e' 101");
             DebugValue fPtr = globalObj.getProperty("f");
             assertNotNull(fPtr);
             assertTrue(fPtr.isArray());
@@ -561,7 +610,7 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(g, "b", 3.2f);
             assertValueEquals(g, "c", 4.657);
             assertValueEquals(g, "d", 125604585);
-            assertValueEquals(g, "e", "101 'e'");
+            assertValueEquals(g, "e", "'e' 101");
             fPtr = g.getProperty("f");
             assertNotNull(fPtr);
             assertTrue(fPtr.isArray());
@@ -586,8 +635,38 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testPointerToMember() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testPointers() throws IOException {
+        final DebugInspector i = createInspector();
+        enterFunction(i, 46, "main");
+        checkLocals(i, 48, locals -> {
+            DebugValue ptr = locals.getProperty("ptr");
+            assertNotNull(ptr);
+            assertValueEquals(ptr, "*ptr", "'a' 97");
+        });
+        moveTo(i, 50);
+        checkLocals(i, 48, locals -> {
+            DebugValue ptr = locals.getProperty("ptr");
+            assertNotNull(ptr);
+            assertValueEquals(ptr, "*ptr", "'b' 98");
+        });
+        moveTo(i, 50);
+        checkLocals(i, 48, locals -> {
+            DebugValue ptr = locals.getProperty("ptr");
+            assertNotNull(ptr);
+            assertValueEquals(ptr, "*ptr", "'c' 99");
+        });
+        checkLocals(i, 53, locals -> {
+            DebugValue ptr = locals.getProperty("ptr");
+            assertNotNull(ptr);
+            assertValueEquals(ptr, "*ptr", "null");
+        });
+        exitFunction(i);
+        runTest("pointers", i);
+    }
+
+    @Test
+    public void testPointerToMember() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 55, "main");
         checkLocals(i, 59, locals -> {
             DebugValue c = locals.getProperty("c");
@@ -603,8 +682,50 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testScopes() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testPolymorphism() throws IOException {
+        final DebugInspector i = createInspector();
+        enterFunction(i, 89, "main");
+        checkLocals(i, 89, locals -> {
+            assertValueEquals(locals, "a", "Animal*");
+            DebugValue a = locals.getProperty("a");
+            assertNotNull(a);
+            assertValueEquals(a, "*a", "Animal");
+            DebugValue aPtr = a.getProperty("*a");
+            assertNotNull(aPtr);
+            assertStringEquals(aPtr, "name", "B");
+        });
+        checkLocals(i, 90, locals -> {
+            assertValueEquals(locals, "a", "Animal*");
+            DebugValue a = locals.getProperty("a");
+            assertNotNull(a);
+            assertValueEquals(a, "*a", "Animal");
+            DebugValue aPtr = a.getProperty("*a");
+            assertNotNull(aPtr);
+            assertStringEquals(aPtr, "name", "A");
+        });
+        exitFunction(i);
+        runTest("polymorphism", i);
+    }
+
+    @Test
+    public void testPrimitives() throws IOException {
+        final DebugInspector i = createInspector();
+        enterFunction(i, 53, "main");
+        checkLocals(i, 53, locals -> {
+            assertValueEquals(locals, "i", 5);
+            assertValueEquals(locals, "f", 3.14f);
+            assertValueEquals(locals, "d", 9.1);
+            assertValueEquals(locals, "c", "'a' 97");
+            assertValueEquals(locals, "b", true);
+            assertStringEquals(locals, "s", "abc");
+        });
+        exitFunction(i);
+        runTest("primitives", i);
+    }
+
+    @Test
+    public void testScopes() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 83, "main");
         checkGlobals(i, 84, globals -> {
             assertValueEquals(globals, "MyNamespace::nextID", 72);
@@ -627,23 +748,23 @@ public class CppDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testStrings() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testStrings() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 47, "main");
         checkLocals(i, 50, locals -> {
-            assertValueEquals(locals, "str1", "\"Hello\"");
-            assertValueEquals(locals, "str2", "\"World\"");
+            assertStringEquals(locals, "str1", "Hello");
+            assertStringEquals(locals, "str2", "World, this is a large string.");
             DebugValue strPtr = locals.getProperty("strPtr");
             assertNotNull(strPtr);
-            assertValueEquals(strPtr, "*strPtr", "\"Hello\"");
+            assertStringEquals(strPtr, "*strPtr", "Hello");
         });
         exitFunction(i);
         runTest("strings", i);
     }
 
     @Test
-    public void testTemplates() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testTemplates() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 57, "main");
         enterFunction(i, 47, "C");
         checkLocals(i, 47, locals -> assertValueEquals(locals, "v", 5));

@@ -260,7 +260,7 @@ public final class DebugLocation {
     /**
      * Loads the signed byte value at this location.
      */
-    public byte loadByte() {
+    public byte loadI8() {
         if (isStack() && isIntAddress()) {
             return (byte) dataAccess.loadI32FromStack(frame, (int) address);
         }
@@ -282,11 +282,11 @@ public final class DebugLocation {
      * @param bitSize the bit size
      * @param bitOffset the bit offset
      */
-    public byte loadByte(int bitSize, int bitOffset) {
-        final byte value = loadByte();
+    public byte loadI8(int bitSize, int bitOffset) {
+        final byte value = loadI8();
         if (bitSize >= 0) {
             if (bitOffset < 0) {
-                final byte upper = nextByte().loadByte();
+                final byte upper = nextByte().loadI8();
                 final int upperValue = doubleShiftInt(upper, 32 + bitOffset, bitSize + bitOffset + 24);
                 final int lowerValue = value >>> (8 - (bitSize + bitOffset));
                 return (byte) (upperValue | lowerValue);
@@ -303,13 +303,13 @@ public final class DebugLocation {
      * @param bitSize the bit size
      * @param bitOffset the bit offset
      */
-    public int loadUnsignedByte(int bitSize, int bitOffset) {
-        final byte value = loadByte();
+    public int loadU8(int bitSize, int bitOffset) {
+        final byte value = loadI8();
         if (bitSize < 0) {
             return value & 0xff;
         }
         if (bitOffset < 0) {
-            final byte upper = nextByte().loadByte();
+            final byte upper = nextByte().loadI8();
             final int upperValue = doubleShiftUnsignedInt(upper, 32 + bitOffset, 32 - bitSize);
             final int lowerValue = (value & 0xff) >>> (8 - (bitSize + bitOffset));
             return (upperValue | lowerValue) & 0xff;
@@ -318,8 +318,8 @@ public final class DebugLocation {
         }
     }
 
-    public int loadUnsignedByte() {
-        return loadUnsignedByte(-1, 0);
+    public int loadU8() {
+        return loadU8(-1, 0);
     }
 
     public short loadI16() {
@@ -506,7 +506,12 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to load double value from " + this);
     }
 
-    public String loadStringFromMemory(int length) {
+    public String loadString(int length) {
+        // Make sure non memory locations are resolved.
+        return addOffset(0).loadStringFromMemory(length);
+    }
+
+    private String loadStringFromMemory(int length) {
         if (isMemory()) {
             return dataAccess.loadStringFromMemory(address, length);
         }

@@ -93,6 +93,6 @@ public class RustString extends DebugType {
             return new DebugConstantObject("Unsupported", "String format not supported");
         }
         final DebugLocation address = dataMember.asLocation(context, dataMember.getLocation(location));
-        return address.loadStringFromMemory((int) length);
+        return address.loadString((int) length);
     }
 }

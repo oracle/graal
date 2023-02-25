@@ -373,7 +373,10 @@ public class DebugParser {
                     exprOffset += 4;
                     valueStack.push(DebugLocation.createMemoryAccess(value, frame, dataAccess, frameBase, addressSize));
                     break;
-
+                case Opcodes.DEREF:
+                    final DebugLocation loc = valueStack.pop();
+                    valueStack.push(loc.loadAsLocation());
+                    break;
             }
         }
         return valueStack.pop();

@@ -225,7 +225,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         assert debugFunction != null;
         final DebugContext context = new DebugContext(instrumentation.currentSourceLocation());
         final MaterializedFrame materializedFrame = frame.materialize();
-        return DebugObjectDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this);
+        return DebugObjectDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this, !instance.context().getContextOptions().debugCompDirectory().equals(""));
     }
 
     @TruffleBoundary

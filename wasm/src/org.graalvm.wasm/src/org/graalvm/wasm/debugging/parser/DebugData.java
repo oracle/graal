@@ -75,12 +75,12 @@ public class DebugData {
         return children;
     }
 
-    private int attributeValue(long attributeInfo) {
-        return (int) attributeInfo;
+    private static int attributeValue(long a) {
+        return (int) a;
     }
 
-    private int attributeEncoding(long attributeInfo) {
-        return (int) (attributeInfo >> 32);
+    private static int attributeEncoding(long a) {
+        return (int) (a >> 32);
     }
 
     private int attributeIndex(int attribute) {
@@ -238,5 +238,9 @@ public class DebugData {
             return (boolean) attributes[index];
         }
         return false;
+    }
+
+    public boolean hasAttribute(int attribute) {
+        return attributeIndex(attribute) != -1;
     }
 }

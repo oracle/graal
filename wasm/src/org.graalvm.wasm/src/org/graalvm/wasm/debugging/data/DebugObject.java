@@ -47,7 +47,7 @@ public abstract class DebugObject extends DebugType {
 
     public abstract String toDisplayString();
 
-    public boolean isVisible(int sourceCodeLocation) {
+    public boolean isVisible(@SuppressWarnings("unused") int sourceCodeLocation) {
         return true;
     }
 

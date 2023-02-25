@@ -43,7 +43,7 @@ package org.graalvm.wasm.debugging.data.types;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugConstantValue;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 
@@ -76,12 +76,12 @@ public class DebugEnumType extends DebugType {
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
         if (!baseType.fitsIntoLong()) {
-            return new DebugConstantValue("unsupported enum type");
+            return new DebugConstantDisplayValue("unsupported enum type");
         }
         final long index = baseType.asLong(context, location);
         if (values.containsKey(index)) {
-            return new DebugConstantValue(values.get(index));
+            return new DebugConstantDisplayValue(values.get(index));
         }
-        return new DebugConstantValue("undefined(" + index + ")");
+        return new DebugConstantDisplayValue("undefined(" + index + ")");
     }
 }

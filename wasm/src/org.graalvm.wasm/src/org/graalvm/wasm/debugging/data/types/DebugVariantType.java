@@ -80,7 +80,8 @@ public class DebugVariantType extends DebugType {
         if (!discriminant.fitsIntoLong()) {
             return new DebugConstantObject("discriminant", "unsupported discriminant type");
         }
-        final long valueIndex = discriminant.asLong(context, location);
+        final DebugLocation discLocation = discriminant.getLocation(location);
+        final long valueIndex = discriminant.asLong(context, discLocation);
         if (!values.containsKey(valueIndex)) {
             return new DebugConstantObject("unsupported", "Value not found");
         }

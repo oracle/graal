@@ -71,8 +71,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testArrays() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testArrays() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 43, "main");
         checkLocals(i, 50, locals -> {
             DebugValue a = locals.getProperty("a");
@@ -110,22 +110,22 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertNotNull(c);
             assertTrue(c.isArray());
             List<DebugValue> cArray = c.getArray();
-            assertArrayElementEquals(cArray, 0, "72 'H'");
-            assertArrayElementEquals(cArray, 1, "101 'e'");
-            assertArrayElementEquals(cArray, 2, "108 'l'");
-            assertArrayElementEquals(cArray, 3, "108 'l'");
-            assertArrayElementEquals(cArray, 4, "111 'o'");
+            assertArrayElementEquals(cArray, 0, "'H' 72");
+            assertArrayElementEquals(cArray, 1, "'e' 101");
+            assertArrayElementEquals(cArray, 2, "'l' 108");
+            assertArrayElementEquals(cArray, 3, "'l' 108");
+            assertArrayElementEquals(cArray, 4, "'o' 111");
 
             DebugValue dPtr = locals.getProperty("d");
             assertNotNull(dPtr);
-            assertValueEquals(dPtr, "*d", "\"World\"");
+            assertValueEquals(dPtr, "*d", "'W' 87");
         });
         runTest("arrays", i);
     }
 
     @Test
-    public void testControlFlow() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testControlFlow() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 54, "main");
         enterFunction(i, 49, "foo");
         enterFunction(i, 45, "bar");
@@ -161,8 +161,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testDecorators() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testDecorators() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 45, "main");
         checkLocals(i, 49, locals -> {
             assertValueEquals(locals, "typedefedVal", Integer.toUnsignedLong(15));
@@ -175,31 +175,31 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testEnums() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testEnums() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 47, "main");
         checkLocals(i, 51, locals -> {
-            assertValueEquals(locals, "w", "5 'friday'");
-            assertValueEquals(locals, "w2", "10 'Fri'");
-            assertValueEquals(locals, "d", "11 'Satu'");
-            assertValueEquals(locals, "w3", "50 ''");
+            assertValueEquals(locals, "w", "friday");
+            assertValueEquals(locals, "w2", "Fri");
+            assertValueEquals(locals, "d", "Satu");
+            assertValueEquals(locals, "w3", "undefined(50)");
         });
         runTest("enums", i);
     }
 
     @Test
-    public void testFunctionPointers() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testFunctionPointers() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 77, "main");
         checkLocals(i, 86, locals -> {
             assertPointersEquals(locals, "voidFuncNoArgsPtr", null, "*voidFuncNoArgsPtr", "void function()");
             assertPointersEquals(locals, "voidFuncImplicitVarArgsPtr", null, "*voidFuncImplicitVarArgsPtr", "void function(...)");
             assertPointersEquals(locals, "voidFuncIntArgPtr", null, "*voidFuncIntArgPtr", "void function(int)");
-            assertPointersEquals(locals, "voidFuncIntVarArgsPtr", null, "*voidFuncIntVarArgsPtr", "void function(int,...)");
+            assertPointersEquals(locals, "voidFuncIntVarArgsPtr", null, "*voidFuncIntVarArgsPtr", "void function(int, ...)");
             assertPointersEquals(locals, "intFuncNoArgsPtr", null, "*intFuncNoArgsPtr", "int function()");
             assertPointersEquals(locals, "intFuncImplicitVarArgsPtr", null, "*intFuncImplicitVarArgsPtr", "int function(...)");
             assertPointersEquals(locals, "intFuncIntArgPtr", null, "*intFuncIntArgPtr", "int function(int)");
-            assertPointersEquals(locals, "intFuncIntVarArgsPtr", null, "*intFuncIntVarArgsPtr", "int function(int,...)");
+            assertPointersEquals(locals, "intFuncIntVarArgsPtr", null, "*intFuncIntVarArgsPtr", "int function(int, ...)");
         });
 
         enterFunction(i, 46, "voidFuncNoArgs");
@@ -241,8 +241,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testLoops() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testLoops() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 43, "main");
         checkLocals(i, 46, locals -> {
             assertValueEquals(locals, "i", 0);
@@ -290,14 +290,14 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testPrimitives() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testPrimitives() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 86, "main");
         checkLocals(i, 124, locals -> {
-            assertValueEquals(locals, "c1", "65 'A'");
-            assertValueEquals(locals, "c2", "97 'a'");
-            assertValueEquals(locals, "c3", "48 '0'");
-            assertValueEquals(locals, "c4", "43 '+'");
+            assertValueEquals(locals, "c1", "'A' 65");
+            assertValueEquals(locals, "c2", "'a' 97");
+            assertValueEquals(locals, "c3", "'0' 48");
+            assertValueEquals(locals, "c4", "'+' 43");
 
             assertValueEquals(locals, "s1", (short) SHORT_MSB_SET);
             assertValueEquals(locals, "s2", (short) SHORT_LSB_SET);
@@ -326,16 +326,16 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "d4", 1.25);
             assertValueEquals(locals, "d5", -1.25);
 
-            assertValueEquals(locals, "c1G", "65 'A'");
-            assertValueEquals(locals, "c2G", "97 'a'");
-            assertValueEquals(locals, "c3G", "48 '0'");
-            assertValueEquals(locals, "c4G", "43 '+'");
+            assertValueEquals(locals, "c1G", "'A' 65");
+            assertValueEquals(locals, "c2G", "'a' 97");
+            assertValueEquals(locals, "c3G", "'0' 48");
+            assertValueEquals(locals, "c4G", "'+' 43");
         });
         checkGlobals(i, 124, globals -> {
-            assertValueEquals(globals, "C1", "65 'A'");
-            assertValueEquals(globals, "C2", "97 'a'");
-            assertValueEquals(globals, "C3", "48 '0'");
-            assertValueEquals(globals, "C4", "43 '+'");
+            assertValueEquals(globals, "C1", "'A' 65");
+            assertValueEquals(globals, "C2", "'a' 97");
+            assertValueEquals(globals, "C3", "'0' 48");
+            assertValueEquals(globals, "C4", "'+' 43");
 
             assertValueEquals(globals, "S1", (short) SHORT_MSB_SET);
             assertValueEquals(globals, "S2", (short) SHORT_LSB_SET);
@@ -369,8 +369,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testRecursion() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testRecursion() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 50, "main");
         enterFunction(i, 43, "foo");
         checkLocals(i, 46, locals -> assertValueEquals(locals, "i", 5));
@@ -387,8 +387,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testStructs() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testStructs() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 56, "main");
         checkLocals(i, 58, locals -> {
             DebugValue a = locals.getProperty("a");
@@ -421,8 +421,8 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
     }
 
     @Test
-    public void testUnions() throws IOException, InterruptedException {
-        DebugInspector i = createInspector();
+    public void testUnions() throws IOException {
+        final DebugInspector i = createInspector();
         enterFunction(i, 74, "main");
         checkGlobals(i, 75, globals -> {
             DebugValue myGlobalSimpleUnion = globals.getProperty("myGlobalSimpleUnion");
@@ -517,38 +517,31 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertNotNull(myGlobalPointerUnion);
             assertValueEquals(myGlobalPointerUnion, "a", (short) 14);
             assertValueEquals(myGlobalPointerUnion, "b", 14);
-            assertPointersEquals(myGlobalPointerUnion, "c", "0xe", "*c", null);
+            assertPointersEquals(myGlobalPointerUnion, "c", "int*", "*c", null);
         });
-        checkGlobals(i, 90, globals -> {
+        checkGlobals(i, 92, globals -> {
             DebugValue myGlobalPointerUnion = globals.getProperty("myGlobalPointerUnion");
             assertNotNull(myGlobalPointerUnion);
             assertValueEquals(myGlobalPointerUnion, "a", (short) 23);
             assertValueEquals(myGlobalPointerUnion, "b", 23);
-            assertPointersEquals(myGlobalPointerUnion, "c", "0x17", "*c", null);
-        });
-        checkGlobals(i, 93, globals -> {
-            DebugValue myGlobalPointerUnion = globals.getProperty("myGlobalPointerUnion");
-            assertNotNull(myGlobalPointerUnion);
-            assertValueEquals(myGlobalPointerUnion, "a", (short) 0xcdef);
-            assertValueEquals(myGlobalPointerUnion, "b", 0xabcdef);
-            assertPointersEquals(myGlobalPointerUnion, "c", "0xabcdef", "*c", null);
+            assertPointersEquals(myGlobalPointerUnion, "c", "int*", "*c", null);
         });
 
-        checkLocals(i, 94, locals -> {
+        checkLocals(i, 93, locals -> {
             DebugValue mySimpleUnion = locals.getProperty("mySimpleUnion");
             assertNotNull(mySimpleUnion);
             assertValueEquals(mySimpleUnion, "a", 8);
             assertValueEquals(mySimpleUnion, "b", 8);
             assertValueEquals(mySimpleUnion, "c", 8);
         });
-        checkLocals(i, 95, locals -> {
+        checkLocals(i, 94, locals -> {
             DebugValue mySimpleUnion = locals.getProperty("mySimpleUnion");
             assertNotNull(mySimpleUnion);
             assertValueEquals(mySimpleUnion, "a", 64);
             assertValueEquals(mySimpleUnion, "b", 64);
             assertValueEquals(mySimpleUnion, "c", 64);
         });
-        checkLocals(i, 98, locals -> {
+        checkLocals(i, 97, locals -> {
             DebugValue mySimpleUnion = locals.getProperty("mySimpleUnion");
             assertNotNull(mySimpleUnion);
             assertValueEquals(mySimpleUnion, "a", 256);
@@ -556,7 +549,7 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(mySimpleUnion, "c", 256);
         });
 
-        checkLocals(i, 99, locals -> {
+        checkLocals(i, 98, locals -> {
             DebugValue myFloatUnion = locals.getProperty("myFloatUnion");
             assertNotNull(myFloatUnion);
             assertValueEquals(myFloatUnion, "a", 3.7f);
@@ -564,7 +557,7 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(myFloatUnion, "c", -13107);
             assertValueEquals(myFloatUnion, "d", 3.7f);
         });
-        checkLocals(i, 100, locals -> {
+        checkLocals(i, 99, locals -> {
             DebugValue myFloatUnion = locals.getProperty("myFloatUnion");
             assertNotNull(myFloatUnion);
             assertValueEquals(myFloatUnion, "a", 3.68750024f);
@@ -572,7 +565,7 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(myFloatUnion, "c", 1);
             assertValueEquals(myFloatUnion, "d", 3.68750024f);
         });
-        checkLocals(i, 101, locals -> {
+        checkLocals(i, 100, locals -> {
             DebugValue myFloatUnion = locals.getProperty("myFloatUnion");
             assertNotNull(myFloatUnion);
             assertValueEquals(myFloatUnion, "a", 3.69044328f);
@@ -580,7 +573,7 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(myFloatUnion, "c", 12345);
             assertValueEquals(myFloatUnion, "d", 3.69044328f);
         });
-        checkLocals(i, 104, locals -> {
+        checkLocals(i, 103, locals -> {
             DebugValue myFloatUnion = locals.getProperty("myFloatUnion");
             assertNotNull(myFloatUnion);
             assertValueEquals(myFloatUnion, "a", 0.0f);
@@ -588,7 +581,52 @@ public class CDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(myFloatUnion, "c", 0);
             assertValueEquals(myFloatUnion, "d", 0.0f);
         });
-
+        checkLocals(i, 104, locals -> {
+            DebugValue myDoubleUnion = locals.getProperty("myDoubleUnion");
+            assertNotNull(myDoubleUnion);
+            assertValueEquals(myDoubleUnion, "a", 0.3f);
+            assertValueEquals(myDoubleUnion, "b", 5.18894283457103004141078799899e-315);
+            assertValueEquals(myDoubleUnion, "c", 1050253722);
+            assertValueEquals(myDoubleUnion, "d", 5.18894283457103004141078799899e-315);
+        });
+        checkLocals(i, 105, locals -> {
+            DebugValue myDoubleUnion = locals.getProperty("myDoubleUnion");
+            assertNotNull(myDoubleUnion);
+            assertValueEquals(myDoubleUnion, "a", 2.72008302208e+23f);
+            assertValueEquals(myDoubleUnion, "b", 7.6);
+            assertValueEquals(myDoubleUnion, "c", 1717986918);
+            assertValueEquals(myDoubleUnion, "d", 7.6);
+        });
+        checkLocals(i, 106, locals -> {
+            DebugValue myDoubleUnion = locals.getProperty("myDoubleUnion");
+            assertNotNull(myDoubleUnion);
+            assertValueEquals(myDoubleUnion, "a", 8.40779078595e-45f);
+            assertValueEquals(myDoubleUnion, "b", 7.59999847412109819089209850063e0);
+            assertValueEquals(myDoubleUnion, "c", 5);
+            assertValueEquals(myDoubleUnion, "d", 7.59999847412109819089209850063e0);
+        });
+        checkLocals(i, 109, locals -> {
+            DebugValue myDoubleUnion = locals.getProperty("myDoubleUnion");
+            assertNotNull(myDoubleUnion);
+            assertValueEquals(myDoubleUnion, "a", 0.0f);
+            assertValueEquals(myDoubleUnion, "b", 0.0);
+            assertValueEquals(myDoubleUnion, "c", 0);
+            assertValueEquals(myDoubleUnion, "d", 0.0);
+        });
+        checkLocals(i, 110, locals -> {
+            DebugValue myPointerUnion = locals.getProperty("myPointerUnion");
+            assertNotNull(myPointerUnion);
+            assertValueEquals(myPointerUnion, "a", (short) 213);
+            assertValueEquals(myPointerUnion, "b", 213);
+            assertPointersEquals(myPointerUnion, "c", "int*", "*c", null);
+        });
+        checkLocals(i, 112, locals -> {
+            DebugValue myPointerUnion = locals.getProperty("myPointerUnion");
+            assertNotNull(myPointerUnion);
+            assertValueEquals(myPointerUnion, "a", (short) 3855);
+            assertValueEquals(myPointerUnion, "b", 252645135);
+            assertPointersEquals(myPointerUnion, "c", "int*", "*c", null);
+        });
         runTest("unions", i);
     }
 }

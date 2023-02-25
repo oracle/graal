@@ -135,7 +135,7 @@ public class DebugTranslator {
         final int[] pcs = DebugEntryUtil.readPcs(data, context);
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
-        final DebugScope scope = context.globalScope().with(null, scopeStart, scopeEnd);
+        final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);
         for (DebugData child : data.children()) {
             objectFactory.parse(context, scope, child);
         }

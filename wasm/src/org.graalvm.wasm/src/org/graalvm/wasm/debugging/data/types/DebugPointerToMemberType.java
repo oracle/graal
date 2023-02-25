@@ -42,7 +42,7 @@
 package org.graalvm.wasm.debugging.data.types;
 
 import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugConstantValue;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
@@ -89,6 +89,6 @@ public class DebugPointerToMemberType extends DebugType {
     @Override
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
         final String name = "*" + context.elementName().orElse("");
-        return new DebugConstantObject(name, new DebugConstantValue(asTypeName()));
+        return new DebugConstantObject(name, new DebugConstantDisplayValue(asTypeName()));
     }
 }

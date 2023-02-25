@@ -45,7 +45,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugConstantValue;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 
@@ -92,6 +92,6 @@ public class DebugSubroutineType extends DebugType {
 
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
-        return new DebugConstantValue(asTypeName());
+        return new DebugConstantDisplayValue(asTypeName());
     }
 }

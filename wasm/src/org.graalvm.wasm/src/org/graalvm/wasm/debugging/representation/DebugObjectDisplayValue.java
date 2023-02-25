@@ -67,7 +67,8 @@ import org.graalvm.wasm.nodes.WasmDataAccess;
  * Representation of an object scope in the debug environment.
  */
 @ExportLibrary(InteropLibrary.class)
-public class DebugObjectDisplayValue extends DebugDisplayValue implements TruffleObject {
+@SuppressWarnings("static-method")
+public final class DebugObjectDisplayValue extends DebugDisplayValue implements TruffleObject {
     private final DebugContext context;
     private final DebugLocation location;
     private final String name;
@@ -94,9 +95,13 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
     }
 
     @TruffleBoundary
-    public static Object fromDebugFunction(DebugFunction function, DebugContext context, MaterializedFrame frame, WasmDataAccess dataAccess) {
-        final EconomicMap<String, DebugObject> members = EconomicMap.of("globals", function.globals(), "locals", function.locals());
-        return new DebugObjectDisplayValue(context, function.frameBase(frame, dataAccess), "", members);
+    public static Object fromDebugFunction(DebugFunction function, DebugContext context, MaterializedFrame frame, WasmDataAccess dataAccess, boolean testMode) {
+        if (function.hasGlobals() || testMode) {
+            final EconomicMap<String, DebugObject> members = EconomicMap.of("globals", function.globals(), "locals", function.locals());
+            return new DebugObjectDisplayValue(context, function.frameBase(frame, dataAccess), "", members);
+        } else {
+            return fromDebugObject(function.locals(), context, function.frameBase(frame, dataAccess));
+        }
     }
 
     @ExportMessage
@@ -119,9 +124,8 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
         return WasmLanguage.class;
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
-    Object toDisplayString(boolean allowSideEffects) {
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return name != null ? name : "";
     }
 
@@ -138,10 +142,9 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
         return resolveDebugObject(memberObject, context, location);
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     @TruffleBoundary
-    Object getMembers(boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new WasmVariableNamesObject(members.getKeys());
     }
 
@@ -151,10 +154,9 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
         return members.containsKey(member);
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberModifiable(String member) {
+    boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
         return false;
     }
 
@@ -163,12 +165,12 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
     void writeMember(String member, Object value) {
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
-    boolean isMemberInsertable(String member) {
+    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
         return false;
     }
 
+    @SuppressWarnings("static-method")
     @ExportLibrary(InteropLibrary.class)
     static final class WasmVariableNamesObject implements TruffleObject {
         final List<String> names;
@@ -180,7 +182,6 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
             }
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasArrayElements() {
             return true;

@@ -60,7 +60,7 @@ public class DebugParserContext {
     private final int debugInfoOffset;
     private final EconomicMap<Integer, DebugData> entryData;
     private final EconomicMap<Integer, DebugFunction> functions;
-    private final DebugScope globalScope;
+    private final DebugParserScope globalScope;
     private final DebugLineMap[] fileLineMaps;
     private final Source[] fileSources;
 
@@ -69,7 +69,7 @@ public class DebugParserContext {
         this.debugInfoOffset = debugInfoOffset;
         this.entryData = entryData;
         this.functions = EconomicMap.create();
-        this.globalScope = DebugScope.createGlobalScope();
+        this.globalScope = DebugParserScope.createGlobalScope();
         this.fileLineMaps = fileLineMaps;
         this.fileSources = fileSources;
     }
@@ -190,7 +190,7 @@ public class DebugParserContext {
     /**
      * @return The global scope of the current context.
      */
-    public DebugScope globalScope() {
+    public DebugParserScope globalScope() {
         return globalScope;
     }
 }

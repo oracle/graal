@@ -47,6 +47,7 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.debugging.data.objects.DebugRelocatedMember;
 
 public class DebugStructType extends DebugType {
     private final String name;
@@ -61,6 +62,9 @@ public class DebugStructType extends DebugType {
 
     @Override
     public String asTypeName() {
+        if (name == null) {
+            return "";
+        }
         return name;
     }
 
@@ -101,6 +105,7 @@ public class DebugStructType extends DebugType {
                 return superType.readMember(context, location, i);
             }
         }
-        return members[i];
+        // The inheritance may have an offset location. Therefore, we encapsulate the member.
+        return new DebugRelocatedMember(location, members[i]);
     }
 }

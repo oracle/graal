@@ -69,5 +69,4 @@ public class DebugValue extends DebugBinding {
     public DebugContext getContext(DebugContext context) {
         return context.with(name);
     }
-
 }

@@ -51,20 +51,18 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 public class DebugParameter extends DebugBinding {
     private final String name;
     @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
-    private final int offset;
 
-    public DebugParameter(String name, DebugType type, byte[] locationExpression, int offset) {
+    public DebugParameter(String name, DebugType type, byte[] locationExpression) {
         super(type);
         this.name = name;
         this.locationExpression = locationExpression;
-        this.offset = offset;
     }
 
     private DebugLocation parameterLocation(DebugLocation baseLocation) {
         if (locationExpression != null) {
             return DebugParser.readExpression(locationExpression, baseLocation);
         }
-        return baseLocation.addOffset(offset);
+        return baseLocation.invalidate();
     }
 
     @Override

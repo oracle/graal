@@ -42,6 +42,7 @@
 package org.graalvm.wasm.debugging.languages.c;
 
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
+import org.graalvm.wasm.debugging.data.DebugType;
 
 public class CObjectFactory extends DebugObjectFactory {
     @Override
@@ -52,5 +53,10 @@ public class CObjectFactory extends DebugObjectFactory {
     @Override
     protected String namespaceSeparator() {
         return "::";
+    }
+
+    @Override
+    protected DebugType createPointerType(DebugType baseType) {
+        return new CPointer(baseType);
     }
 }

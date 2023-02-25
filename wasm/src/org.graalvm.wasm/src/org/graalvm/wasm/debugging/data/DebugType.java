@@ -44,6 +44,7 @@ package org.graalvm.wasm.debugging.data;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
 public abstract class DebugType {
 
@@ -55,6 +56,7 @@ public abstract class DebugType {
         return false;
     }
 
+    @SuppressWarnings("unused")
     public Object asValue(DebugContext context, DebugLocation location) {
         return WasmConstant.NULL;
     }
@@ -63,14 +65,16 @@ public abstract class DebugType {
         return false;
     }
 
+    @SuppressWarnings("unused")
     public DebugObject asDebugObject(DebugContext context, DebugLocation location) {
-        return new DebugConstantObject("undefined", new DebugConstantValue("undefined"));
+        return new DebugConstantObject("undefined", new DebugConstantDisplayValue("undefined"));
     }
 
     public boolean isLocation() {
         return false;
     }
 
+    @SuppressWarnings("unused")
     public DebugLocation asLocation(DebugContext context, DebugLocation location) {
         return location.invalidate();
     }
@@ -79,6 +83,7 @@ public abstract class DebugType {
         return false;
     }
 
+    @SuppressWarnings("unused")
     public int asInt(DebugContext context, DebugLocation location) {
         return 0;
     }
@@ -87,6 +92,7 @@ public abstract class DebugType {
         return false;
     }
 
+    @SuppressWarnings("unused")
     public long asLong(DebugContext context, DebugLocation location) {
         return 0L;
     }
@@ -99,6 +105,7 @@ public abstract class DebugType {
         return 0;
     }
 
+    @SuppressWarnings("unused")
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
         return null;
     }
@@ -111,10 +118,12 @@ public abstract class DebugType {
         return 0;
     }
 
+    @SuppressWarnings("unused")
     public int arrayDimensionSize(int dimension) {
         return 0;
     }
 
+    @SuppressWarnings("unused")
     public DebugObject readArrayElement(DebugContext context, DebugLocation location, int index) {
         return null;
     }

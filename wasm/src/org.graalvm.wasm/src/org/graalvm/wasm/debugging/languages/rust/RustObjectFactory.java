@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.debugging.languages.rust;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugType;
@@ -63,6 +65,21 @@ public class RustObjectFactory extends DebugObjectFactory {
     @Override
     protected DebugType createSubroutineType(String name, DebugType returnType, DebugType[] parameterTypes) {
         return new RustFunctionType(name, returnType, parameterTypes);
+    }
+
+    @Override
+    protected DebugType createEnumType(String name, DebugType baseType, EconomicMap<Long, String> values) {
+        final EconomicMap<Long, String> updatedValues = EconomicMap.create(values.size());
+        MapCursor<Long, String> cursor = values.getEntries();
+        while (cursor.advance()) {
+            updatedValues.put(cursor.getKey(), name + "::" + cursor.getValue());
+        }
+        return super.createEnumType(name, baseType, updatedValues);
+    }
+
+    @Override
+    protected DebugType createPointerType(DebugType baseType) {
+        return new RustPointer(baseType);
     }
 
     @Override

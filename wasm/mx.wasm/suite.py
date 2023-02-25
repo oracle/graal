@@ -174,7 +174,7 @@ suite = {
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
-      "hash": "be934c809a179603013a7ce90b695245a816f120",
+      "hash": "a9e85f1252111c40d14e8fe3dec926dbdde7fad6",
     },
 
     "org.graalvm.wasm.debugcases.test" : {

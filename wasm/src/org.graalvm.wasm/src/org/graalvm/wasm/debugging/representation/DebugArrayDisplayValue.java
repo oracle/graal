@@ -57,8 +57,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 /**
  * Representation of an array scope in the debug environment.
  */
+@SuppressWarnings("static-method")
 @ExportLibrary(InteropLibrary.class)
-public class DebugArrayDisplayValue extends DebugDisplayValue implements TruffleObject {
+public final class DebugArrayDisplayValue extends DebugDisplayValue implements TruffleObject {
     private final DebugContext context;
     private final DebugLocation location;
     private final DebugType array;
@@ -80,7 +81,6 @@ public class DebugArrayDisplayValue extends DebugDisplayValue implements Truffle
         return new DebugArrayDisplayValue(context, object.toString(), 0, 0, location, object);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     public boolean hasArrayElements() {
         return true;
@@ -98,15 +98,13 @@ public class DebugArrayDisplayValue extends DebugDisplayValue implements Truffle
         return index >= 0 && index < getArraySize();
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    public final boolean isArrayElementModifiable(long index) {
+    public boolean isArrayElementModifiable(@SuppressWarnings("unused") long index) {
         return false;
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    public final boolean isArrayElementInsertable(long index) {
+    public boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
         return false;
     }
 
@@ -125,16 +123,15 @@ public class DebugArrayDisplayValue extends DebugDisplayValue implements Truffle
         return resolveDebugObject(object, context, location);
     }
 
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings("unused")
     @ExportMessage
     @TruffleBoundary
-    public final void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
+    public void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    @SuppressWarnings("unused")
-    Object toDisplayString(boolean allowSideEffects) {
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return name != null ? name : "";
     }
 }

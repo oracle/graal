@@ -42,7 +42,6 @@ package org.graalvm.wasm.debugcases.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -57,7 +56,6 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.WasmResource;
 import org.junit.Assert;
 
-import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
@@ -135,22 +133,22 @@ public abstract class DebuggingSuiteBase {
      * @param testCaseName The name of the test file without the file extension
      * @param inspector The actions that should be performed in the debugging session
      * @throws IOException If the file does not exist
-     * @throws InterruptedException If the debugging session is interrupted
      */
-    protected void runTest(String path, String testCaseName, DebugInspector inspector) throws IOException, InterruptedException {
+    protected void runTest(String path, String testCaseName, DebugInspector inspector) throws IOException {
         runDebugTest(path, testCaseName, event -> {
             final int line = event.getSourceSection().getStartLine();
+            final String fileName = event.getSourceSection().getSource().getName();
             final DebugStackFrame topOfStack = event.getTopStackFrame();
-            BiConsumer<DebugScope, Iterable<DebugStackFrame>> action = inspector.next(line);
+            DebugInspectFunction action = inspector.next(line);
             while (action != null) {
-                action.accept(topOfStack.getScope(), event.getStackFrames());
+                action.accept(topOfStack.getScope(), event.getStackFrames(), fileName);
                 action = inspector.next(line);
             }
             event.prepareStepInto(1);
         }, () -> Assert.assertTrue("Not all actions have been executed", inspector.isEmpty()));
     }
 
-    protected void runTest(String testCaseName, DebugInspector inspector) throws IOException, InterruptedException {
+    protected void runTest(String testCaseName, DebugInspector inspector) throws IOException {
         runTest(null, testCaseName, inspector);
     }
 
@@ -222,5 +220,9 @@ public abstract class DebuggingSuiteBase {
     protected static void moveTo(DebugInspector inspector, int line) {
         inspector.checkLocals(line, locals -> {
         });
+    }
+
+    protected static void enterFile(DebugInspector inspector, int line, String fileName) {
+        inspector.enterFile(line, fileName);
     }
 }
