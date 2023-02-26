@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.interpreter.value;
 
+import sun.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -42,7 +43,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.InvocationTargetException;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import sun.misc.Unsafe;
 
 
 /**
@@ -65,7 +65,6 @@ public class InterpreterValueMutableObject extends InterpreterValueObject {
         try {
             // Load the class of the native object using the class loader of GraalInterpreterTest.
             Class<?> clazz = Class.forName(type.toJavaName(), true, jvmContext.getClassLoader());
-            // nativeObject = GraalUnsafeAccess.getUnsafe().allocateInstance(clazz);
             nativeObject = unsafe.allocateInstance(clazz);
         } catch (InstantiationException | ClassNotFoundException e) {
             throw new RuntimeException(e);

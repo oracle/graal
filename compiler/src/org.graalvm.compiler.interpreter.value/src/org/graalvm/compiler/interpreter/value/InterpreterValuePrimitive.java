@@ -168,7 +168,7 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
         return ofPrimitiveConstant(JavaConstant.forFloat(value));
     }
 
-    public static InterpreterValuePrimitive ofDouble(float value) {
+    public static InterpreterValuePrimitive ofDouble(double value) {
         return ofPrimitiveConstant(JavaConstant.forDouble(value));
     }
 
@@ -182,5 +182,41 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
         }
 
         return ofPrimitiveConstant(JavaConstant.defaultForKind(kind));
+    }
+
+    /**
+     * Coerces this primitive value to the requested size and type.
+     * @param expected
+     * @return
+     */
+    public InterpreterValue coerce(JavaKind expected) {
+        if (primitive.getJavaKind().equals(expected)) {
+            return this;
+        }
+        if (expected == JavaKind.Boolean) {
+            return ofBoolean(primitive.asBoolean());
+        }
+        if (expected == JavaKind.Byte) {
+            return ofInt((byte) primitive.asInt());
+        }
+        if (expected == JavaKind.Short) {
+            return ofInt((short) primitive.asInt());
+        }
+        if (expected == JavaKind.Char) {
+            return ofInt((char) primitive.asInt());
+        }
+        if (expected == JavaKind.Int) {
+            return ofInt(primitive.asInt());
+        }
+        if (expected == JavaKind.Long) {
+            return ofLong(primitive.asLong());
+        }
+        if (expected == JavaKind.Float) {
+            return ofFloat(primitive.asFloat());
+        }
+        if (expected == JavaKind.Double) {
+            return ofDouble(primitive.asDouble());
+        }
+        throw new IllegalArgumentException("Cannot coerce " + primitive + " to " + expected.toString());
     }
 }

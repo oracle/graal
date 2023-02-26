@@ -324,6 +324,9 @@ suite = {
         "JVMCI_API",
         "org.graalvm.compiler.serviceprovider"
       ],
+      "requires" : [
+        "jdk.unsupported" # sun.misc.Unsafe
+      ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "javaCompliance" : "17+",
       "workingSets" : "Graal,Debug",
