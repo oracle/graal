@@ -124,36 +124,6 @@ public class BridgeMethodUtils {
     }
 
     /**
-     * A helper for {@link ResolvedJavaMethod#getAnnotations()} that handles the absence of
-     * annotations on bridge methods where the bridged method has annotations.
-     */
-    public static Annotation[] getAnnotations(ResolvedJavaMethod method) {
-        Annotation[] a = method.getAnnotations();
-        if (a.length == 0 && method.isBridge()) {
-            ResolvedJavaMethod bridged = getBridgedMethod(method);
-            if (bridged != null) {
-                a = bridged.getAnnotations();
-            }
-        }
-        return a;
-    }
-
-    /**
-     * A helper for {@link ResolvedJavaMethod#getDeclaredAnnotations()} that handles the absence of
-     * annotations on bridge methods where the bridged method has annotations.
-     */
-    public static Annotation[] getDeclaredAnnotations(ResolvedJavaMethod method) {
-        Annotation[] a = method.getAnnotations();
-        if (a.length == 0 && method.isBridge()) {
-            ResolvedJavaMethod bridged = getBridgedMethod(method);
-            if (bridged != null) {
-                a = bridged.getDeclaredAnnotations();
-            }
-        }
-        return a;
-    }
-
-    /**
      * A helper for {@link ResolvedJavaMethod#getParameterAnnotations()} that handles the absence of
      * parameter annotations on bridge methods where the bridged method has parameter annotations.
      */

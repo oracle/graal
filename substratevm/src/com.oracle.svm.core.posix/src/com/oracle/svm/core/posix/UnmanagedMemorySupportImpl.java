@@ -24,17 +24,16 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 
+@AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
 class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -58,13 +57,5 @@ class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(PointerBase ptr) {
         LibC.free(ptr);
-    }
-}
-
-@AutomaticFeature
-class UnmanagedMemoryFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UnmanagedMemorySupport.class, new UnmanagedMemorySupportImpl());
     }
 }

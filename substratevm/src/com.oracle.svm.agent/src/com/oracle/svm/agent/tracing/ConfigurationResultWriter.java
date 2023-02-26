@@ -26,34 +26,39 @@ package com.oracle.svm.agent.tracing;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.configure.ConfigurationFile;
 
 public class ConfigurationResultWriter extends Tracer implements TracingResultWriter {
     private final TraceProcessor processor;
+    private final ConfigurationSet configuration;
+    private final ConfigurationSet omittedConfiguration;
 
-    public ConfigurationResultWriter(TraceProcessor processor) {
+    public ConfigurationResultWriter(TraceProcessor processor, ConfigurationSet configuration, ConfigurationSet omittedConfiguration) {
         this.processor = processor;
+        this.configuration = configuration;
+        this.omittedConfiguration = omittedConfiguration;
     }
 
     @Override
-    protected void traceEntry(Map<String, Object> entry) {
-        processor.processEntry(arraysToLists(entry));
+    protected void traceEntry(EconomicMap<String, Object> entry) {
+        processor.processEntry(arraysToLists(entry), configuration);
     }
 
     /** {@link TraceProcessor} expects {@link List} objects instead of plain arrays. */
-    public static Map<String, Object> arraysToLists(Map<String, Object> map) {
-        for (Map.Entry<String, Object> mapEntry : map.entrySet()) {
-            if (mapEntry.getValue() instanceof Object[]) {
-                mapEntry.setValue(arraysToLists((Object[]) mapEntry.getValue()));
+    public static EconomicMap<String, Object> arraysToLists(EconomicMap<String, Object> map) {
+        MapCursor<String, Object> cursor = map.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue() instanceof Object[]) {
+                cursor.setValue(arraysToLists((Object[]) cursor.getValue()));
             }
         }
         return map;
@@ -81,18 +86,7 @@ public class ConfigurationResultWriter extends Tracer implements TracingResultWr
 
     @Override
     public List<Path> writeToDirectory(Path directoryPath) throws IOException {
-        List<Path> writtenPaths = new ArrayList<>();
-        for (ConfigurationFile configFile : ConfigurationFile.values()) {
-            if (configFile.canBeGeneratedByAgent()) {
-                Path filePath = directoryPath.resolve(configFile.getFileName());
-                try (JsonWriter writer = new JsonWriter(filePath)) {
-                    processor.getConfiguration(configFile).printJson(writer);
-                    /* Add an extra EOF newline */
-                    writer.newline();
-                }
-                writtenPaths.add(filePath);
-            }
-        }
-        return writtenPaths;
+        ConfigurationSet finalConfiguration = configuration.copyAndSubtract(omittedConfiguration);
+        return finalConfiguration.writeConfiguration(configFile -> directoryPath.resolve(configFile.getFileName()));
     }
 }

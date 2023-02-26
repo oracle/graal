@@ -43,14 +43,18 @@ import org.junit.Before;
  * These tests will be run by the {@code mx unittest} command.
  */
 public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptions {
+    protected static final int SINGLE_TIER_THRESHOLD = 10;
+    protected static final int FIRST_TIER_THRESHOLD = 5;
+    protected static final int LAST_TIER_THRESHOLD = 10;
 
     private static final String[] DEFAULT_OPTIONS = {
                     "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
-                    "engine.SingleTierCompilationThreshold", "10", //
-                    "engine.LastTierCompilationThreshold", "10", //
-                    "engine.FirstTierCompilationThreshold", "5", //
+                    "engine.SingleTierCompilationThreshold", Integer.toString(SINGLE_TIER_THRESHOLD), //
+                    "engine.LastTierCompilationThreshold", Integer.toString(LAST_TIER_THRESHOLD), //
+                    "engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD), //
                     "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
-                    "engine.CompileImmediately", Boolean.FALSE.toString()
+                    "engine.CompileImmediately", Boolean.FALSE.toString(), //
+                    "engine.EncodedGraphCache", Boolean.FALSE.toString()
     };
 
     @Before

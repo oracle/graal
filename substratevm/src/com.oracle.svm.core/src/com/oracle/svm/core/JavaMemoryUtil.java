@@ -30,7 +30,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
@@ -268,17 +267,8 @@ public final class JavaMemoryUtil {
         copyUnalignedLower(from, to, offset);
     }
 
-    /** Implementation of {@code Unsafe.copyMemory}. */
-    public static void unsafeCopyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        if (srcBase != null || destBase != null) {
-            copyOnHeap(srcBase, WordFactory.unsigned(srcOffset), destBase, WordFactory.unsigned(destOffset), WordFactory.unsigned(bytes));
-        } else {
-            UnmanagedMemoryUtil.copy(WordFactory.pointer(srcOffset), WordFactory.pointer(destOffset), WordFactory.unsigned(bytes));
-        }
-    }
-
     @Uninterruptible(reason = "Memory is on the heap, copying must not be interrupted.")
-    private static void copyOnHeap(Object srcBase, UnsignedWord srcOffset, Object destBase, UnsignedWord destOffset, UnsignedWord size) {
+    static void copyOnHeap(Object srcBase, UnsignedWord srcOffset, Object destBase, UnsignedWord destOffset, UnsignedWord size) {
         Word fromPtr = Word.objectToUntrackedPointer(srcBase).add(srcOffset);
         Word toPtr = Word.objectToUntrackedPointer(destBase).add(destOffset);
         UnmanagedMemoryUtil.copy(fromPtr, toPtr, size);
@@ -356,18 +346,8 @@ public final class JavaMemoryUtil {
         }
     }
 
-    /** Implementation of {@code Unsafe.setMemory}. */
-    public static void unsafeSetMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        // Can't use UnmanagedMemoryUtil.fill as that method doesn't guarantee atomicity.
-        if (destBase != null) {
-            fillOnHeap(destBase, destOffset, bytes, bvalue);
-        } else {
-            fill(WordFactory.pointer(destOffset), WordFactory.unsigned(bytes), bvalue);
-        }
-    }
-
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
-    private static void fillOnHeap(Object destBase, long destOffset, long bytes, byte bvalue) {
+    static void fillOnHeap(Object destBase, long destOffset, long bytes, byte bvalue) {
         Word fromPtr = Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset));
         fill(fromPtr, WordFactory.unsigned(bytes), bvalue);
     }
@@ -398,19 +378,10 @@ public final class JavaMemoryUtil {
     }
 
     @Uninterruptible(reason = "Accessed memory is on the heap, code must not be interrupted.")
-    private static void copySwapOnHeap(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
+    static void copySwapOnHeap(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
         Word fromPtr = Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset));
         Word toPtr = Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset));
         copySwap(fromPtr, toPtr, WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
-    }
-
-    /** Implementation of {@code Unsafe.copySwapMemory}. */
-    public static void unsafeCopySwapMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        if (srcBase != null || destBase != null) {
-            copySwapOnHeap(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
-        } else {
-            copySwap(WordFactory.unsigned(srcOffset), WordFactory.unsigned(destOffset), WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -545,7 +516,7 @@ public final class JavaMemoryUtil {
 
     @IntrinsicCandidate
     @Uninterruptible(reason = "Arrays must not move")
-    private static void copyPrimitiveArrayForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
+    public static void copyPrimitiveArrayForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
         Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
         Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
         copyPrimitiveArrayForward(fromPtr, toPtr, size);

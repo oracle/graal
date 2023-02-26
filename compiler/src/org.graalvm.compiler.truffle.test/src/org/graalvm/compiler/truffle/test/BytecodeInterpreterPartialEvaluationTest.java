@@ -111,32 +111,30 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     public static class Program extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
-        public Program(String name, byte[] bytecodes, int maxLocals, int maxStack) {
-            super(null);
+        private final int stackOffset;
+
+        static Program create(String name, byte[] bytecodes, int maxStack) {
+            var builder = FrameDescriptor.newBuilder();
+            int stackOffset = builder.addSlots(maxStack, FrameSlotKind.Int);
+            return new Program(name, bytecodes, builder.build(), stackOffset);
+        }
+
+        @SuppressWarnings("unused")
+        public Program(String name, byte[] bytecodes, FrameDescriptor descriptor, int stackOffset) {
+            super(null, descriptor);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
-            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
-            for (int i = 0; i < maxLocals; ++i) {
-                locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
-                this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
-            }
-            for (int i = 0; i < maxStack; ++i) {
-                stack[i] = this.getFrameDescriptor().addFrameSlot("stack" + i);
-                this.getFrameDescriptor().setFrameSlotKind(stack[i], FrameSlotKind.Int);
-            }
+            this.stackOffset = stackOffset;
         }
 
         protected void setInt(VirtualFrame frame, int stackIndex, int value) {
-            frame.setInt(stack[stackIndex], value);
+            frame.setInt(stackOffset + stackIndex, value);
         }
 
         protected int getInt(VirtualFrame frame, int stackIndex) {
             try {
-                return frame.getInt(stack[stackIndex]);
+                return frame.getInt(stackOffset + stackIndex);
             } catch (FrameSlotTypeException e) {
                 throw new IllegalStateException("Error accessing stack slot " + stackIndex);
             }
@@ -270,7 +268,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 0: */Bytecode.CONST,
                         /* 1: */42,
                         /* 2: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("constReturnProgram", bytecodes, 0, 2));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("constReturnProgram", bytecodes, 2));
     }
 
     @Test
@@ -282,7 +280,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 3: */2,
                         /* 4: */Bytecode.ADD,
                         /* 5: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("constAddProgram", bytecodes, 0, 2));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("constAddProgram", bytecodes, 2));
     }
 
     @Test
@@ -297,7 +295,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 6: */Bytecode.CONST,
                         /* 7: */42,
                         /* 8: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("simpleIfProgram", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("simpleIfProgram", bytecodes, 3));
     }
 
     @Test
@@ -313,7 +311,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 7: */Bytecode.CONST,
                         /* 8: */42,
                         /* 9: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("ifAndPopProgram", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("ifAndPopProgram", bytecodes, 3));
     }
 
     @Test
@@ -333,7 +331,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 11: */4,
                         /* 12: */Bytecode.POP,
                         /* 13: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("simpleLoopProgram", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("simpleLoopProgram", bytecodes, 3));
     }
 
     @Test
@@ -364,7 +362,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 22: */4,
                         /* 23: */Bytecode.POP,
                         /* 24: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 6));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("nestedLoopsProgram", bytecodes, 6));
     }
 
     @Test
@@ -404,7 +402,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 29: */4,
                         /* 30: */Bytecode.POP,
                         /* 31: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram2", bytecodes, 0, 6));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("nestedLoopsProgram2", bytecodes, 6));
     }
 
     @Test
@@ -438,7 +436,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
                         /* 22: */Bytecode.POP,
                         /* 23: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("nestedLoopsProgram", bytecodes, 0, 8));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("nestedLoopsProgram", bytecodes, 8));
     }
 
     @Test
@@ -458,7 +456,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 11: */Bytecode.CONST,
                         /* 12: */42,
                         /* 13: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop01", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("irreducibleLoop01", bytecodes, 3));
     }
 
     @Test
@@ -482,7 +480,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 15: */Bytecode.CONST,
                         /* 16: */42,
                         /* 17: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop02", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("irreducibleLoop02", bytecodes, 3));
     }
 
     @Test
@@ -515,7 +513,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 22: */Bytecode.CONST,
                         /* 23: */42,
                         /* 24: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop03", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("irreducibleLoop03", bytecodes, 3));
     }
 
     @Test
@@ -547,7 +545,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 19: */Bytecode.CONST,
                         /* 20: */42,
                         /* 21: */Bytecode.RETURN};
-        assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop04", bytecodes, 0, 3));
+        assertPartialEvalEqualsAndRunsCorrect(Program.create("irreducibleLoop04", bytecodes, 3));
     }
 
     @Test
@@ -602,7 +600,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         String[] topPhases = new String[times.length];
         for (int i = 0; i < times.length; i++) {
             long start = System.currentTimeMillis();
-            assertPartialEvalEqualsAndRunsCorrect(new Program("manyIfsProgram", bytecodes, 0, 3));
+            assertPartialEvalEqualsAndRunsCorrect(Program.create("manyIfsProgram", bytecodes, 3));
             long duration = System.currentTimeMillis() - start;
             times[i] = duration;
             Map<MetricKey, Long> metrics = lastDebug.getMetricsSnapshot();
@@ -657,11 +655,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         public abstract int getFalseSucc();
 
         public static class Const extends Inst {
-            private final com.oracle.truffle.api.frame.FrameSlot slot;
+            private final int slot;
             private final int value;
             private final int next;
 
-            public Const(com.oracle.truffle.api.frame.FrameSlot slot, int value, int next) {
+            public Const(int slot, int value, int next) {
                 this.slot = slot;
                 this.value = value;
                 this.next = next;
@@ -705,11 +703,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         public static class IfZero extends Inst {
-            private final com.oracle.truffle.api.frame.FrameSlot slot;
+            private final int slot;
             private final int thenInst;
             private final int elseInst;
 
-            public IfZero(com.oracle.truffle.api.frame.FrameSlot slot, int thenInst, int elseInst) {
+            public IfZero(int slot, int thenInst, int elseInst) {
                 this.slot = slot;
                 this.thenInst = thenInst;
                 this.elseInst = elseInst;
@@ -732,12 +730,12 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         public static class IfLt extends Inst {
-            private final com.oracle.truffle.api.frame.FrameSlot slot1;
-            private final com.oracle.truffle.api.frame.FrameSlot slot2;
+            private final int slot1;
+            private final int slot2;
             private final int thenInst;
             private final int elseInst;
 
-            public IfLt(com.oracle.truffle.api.frame.FrameSlot slot1, com.oracle.truffle.api.frame.FrameSlot slot2, int thenInst, int elseInst) {
+            public IfLt(int slot1, int slot2, int thenInst, int elseInst) {
                 this.slot1 = slot1;
                 this.slot2 = slot2;
                 this.thenInst = thenInst;
@@ -764,9 +762,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     public static class InstArrayProgram extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) protected final Inst[] inst;
-        protected final com.oracle.truffle.api.frame.FrameSlot returnSlot;
+        protected final int returnSlot;
 
-        public InstArrayProgram(String name, Inst[] inst, com.oracle.truffle.api.frame.FrameSlot returnSlot, FrameDescriptor fd) {
+        public InstArrayProgram(String name, Inst[] inst, int returnSlot, FrameDescriptor fd) {
             super(null, fd);
             this.name = name;
             this.inst = inst;
@@ -796,9 +794,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     @Test
     public void instArraySimpleIfProgram() {
-        FrameDescriptor fd = new FrameDescriptor();
-        com.oracle.truffle.api.frame.FrameSlot valueSlot = fd.addFrameSlot("value", FrameSlotKind.Int);
-        com.oracle.truffle.api.frame.FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
+        var builder = FrameDescriptor.newBuilder();
+        int valueSlot = builder.addSlot(FrameSlotKind.Int, "value", null);
+        int returnSlot = builder.addSlot(FrameSlotKind.Int, "return", null);
         Inst[] inst = new Inst[]{
                         /* 0: */new Inst.Const(valueSlot, 1, 1),
                         /* 1: */new Inst.IfZero(valueSlot, 2, 4),
@@ -806,7 +804,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 3: */new Inst.Return(),
                         /* 4: */new Inst.Const(returnSlot, 42, 5),
                         /* 5: */new Inst.Return()};
-        assertPartialEvalEqualsAndRunsCorrect(new InstArrayProgram("instArraySimpleIfProgram", inst, returnSlot, fd));
+        assertPartialEvalEqualsAndRunsCorrect(new InstArrayProgram("instArraySimpleIfProgram", inst, returnSlot, builder.build()));
     }
 
     @Test
@@ -828,7 +826,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 12: */Bytecode.CONST,
                         /* 13: */42,
                         /* 14: */Bytecode.RETURN};
-        Program program = new Program("simpleSwitchProgram", bytecodes, 0, 3);
+        Program program = Program.create("simpleSwitchProgram", bytecodes, 3);
         assertPartialEvalEqualsAndRunsCorrect(program);
     }
 
@@ -848,7 +846,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 9: */Bytecode.CONST,
                         /* 10: */42,
                         /* 11: */Bytecode.RETURN};
-        Program program = new Program("loopSwitchProgram", bytecodes, 0, 3);
+        Program program = Program.create("loopSwitchProgram", bytecodes, 3);
         assertPartialEvalEqualsAndRunsCorrect(program);
     }
 }

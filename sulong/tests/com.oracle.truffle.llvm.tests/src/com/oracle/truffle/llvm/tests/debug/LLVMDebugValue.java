@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,7 @@ abstract class LLVMDebugValue {
 
     private LLVMDebugValue(String kind, String expectedType, boolean isBuggy) {
         this.kind = kind;
-        this.expectedType = expectedType;
+        this.expectedType = canonizeType(expectedType);
         this.isBuggy = isBuggy;
     }
 
@@ -73,9 +73,19 @@ abstract class LLVMDebugValue {
 
     void checkType(DebugValue value) {
         if (expectedType != null) {
-            final String actualType = getActualType(value);
+            final String actualType = canonizeType(getActualType(value));
             assertEquals("Unexpected type!", expectedType, actualType);
         }
+    }
+
+    private static String canonizeType(String type) {
+        if ("long".equals(type) || "int64_t".equals(type)) {
+            return "long int";
+        }
+        if ("unsigned long".equals(type) || "uint64_t".equals(type)) {
+            return "long unsigned int";
+        }
+        return type;
     }
 
     void check(DebugValue actualValue) {

@@ -70,7 +70,7 @@ public class ToJson {
     private int depth = 0;
     private String pref;
 
-    private final List<String> prepends = new ArrayList<String>() {
+    private final List<String> prepends = new ArrayList<>() {
         private static final long serialVersionUID = 1L;
 
         @Override

@@ -40,18 +40,40 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
 
     private JavaMethodProfile methodProfile;
 
+    /*
+     * Type profile inferred by the static analysis. We use static profiles to track information
+     * about virtual invokes and distinguish analysed and AOT collected profiles.
+     */
+    private JavaTypeProfile staticTypeProfile;
+
     public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile,
-                    JavaMethodProfile methodProfile) {
+                    JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
         super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
         this.methodProfile = methodProfile;
+        this.staticTypeProfile = staticTypeProfile;
     }
 
     public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
         this.typeProfile = typeProfile;
         this.methodProfile = methodProfile;
+        this.staticTypeProfile = typeProfile;
+    }
+
+    public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
+        this.typeProfile = typeProfile;
+        this.methodProfile = methodProfile;
+        this.staticTypeProfile = staticTypeProfile;
     }
 
     public JavaMethodProfile getMethodProfile() {
         return methodProfile;
+    }
+
+    public JavaTypeProfile getStaticTypeProfile() {
+        return staticTypeProfile;
+    }
+
+    public void setJavaMethodProfile(JavaMethodProfile profile) {
+        methodProfile = profile;
     }
 }

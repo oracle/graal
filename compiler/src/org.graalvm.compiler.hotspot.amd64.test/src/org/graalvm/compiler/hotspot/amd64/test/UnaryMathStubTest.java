@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.List;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,10 +49,13 @@ public class UnaryMathStubTest extends GraalCompilerTest {
         ArrayList<Object[]> ret = new ArrayList<>();
         ret.add(new Object[]{"sin"});
         ret.add(new Object[]{"cos"});
-        ret.add(new Object[]{"tan"});
         ret.add(new Object[]{"exp"});
         ret.add(new Object[]{"log"});
-        ret.add(new Object[]{"log10"});
+        if (JavaVersionUtil.JAVA_SPEC <= 19) {
+            // GR-42441
+            ret.add(new Object[]{"tan"});
+            ret.add(new Object[]{"log10"});
+        }
         return ret;
     }
 

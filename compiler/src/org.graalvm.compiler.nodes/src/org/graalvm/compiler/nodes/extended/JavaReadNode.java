@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,17 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -48,20 +52,27 @@ import jdk.vm.ci.meta.JavaKind;
  * barriers, implicit conversions and optionally oop uncompression.
  */
 @NodeInfo(nameTemplate = "JavaRead#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public final class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable {
+public class JavaReadNode extends FixedAccessNode implements Lowerable, GuardingNode, Canonicalizable, OrderedMemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<JavaReadNode> TYPE = NodeClass.create(JavaReadNode.class);
     protected final JavaKind readKind;
     protected final boolean compressible;
+    private final MemoryOrderMode memoryOrder;
 
-    public JavaReadNode(JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
-        this(StampFactory.forKind(readKind), readKind, address, location, barrierType, compressible);
+    public JavaReadNode(JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder, boolean compressible) {
+        this(StampFactory.forKind(readKind), readKind, address, location, barrierType, memoryOrder, compressible);
     }
 
-    public JavaReadNode(Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
-        super(TYPE, address, location, stamp, barrierType);
+    public JavaReadNode(Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder, boolean compressible) {
+        this(TYPE, stamp, readKind, address, location, barrierType, memoryOrder, compressible);
+    }
+
+    protected JavaReadNode(NodeClass<? extends JavaReadNode> c, Stamp stamp, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, MemoryOrderMode memoryOrder,
+                    boolean compressible) {
+        super(c, address, location, stamp, barrierType);
         this.readKind = readKind;
         this.compressible = compressible;
+        this.memoryOrder = memoryOrder;
     }
 
     @Override
@@ -84,5 +95,18 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
             return ReadNode.canonicalizeRead(this, tool, this.readKind, objAddress.getBase(), objAddress.getOffset(), getLocationIdentity());
         }
         return this;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
     }
 }

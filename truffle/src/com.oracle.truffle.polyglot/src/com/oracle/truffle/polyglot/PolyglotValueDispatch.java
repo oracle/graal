@@ -81,6 +81,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
@@ -1599,6 +1600,24 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
     }
 
+    @Override
+    public boolean hasMetaParents(Object languageContext, Object receiver) {
+        return false;
+    }
+
+    @Override
+    public Value getMetaParents(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            throw unsupported(context, receiver, "getMetaParents()", "hasMetaParents()");
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
     static CallTarget createTarget(InteropNode root) {
         CallTarget target = root.getCallTarget();
         Class<?>[] types = root.getArgumentTypes();
@@ -1616,16 +1635,17 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         return new HostNull(polyglot);
     }
 
-    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
-        addDefaultValue(polyglot, languageInsance, valueCache, false);
-        addDefaultValue(polyglot, languageInsance, valueCache, "");
-        addDefaultValue(polyglot, languageInsance, valueCache, 'a');
-        addDefaultValue(polyglot, languageInsance, valueCache, (byte) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, (short) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0L);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0F);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0D);
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
+        addDefaultValue(polyglot, languageInstance, valueCache, false);
+        addDefaultValue(polyglot, languageInstance, valueCache, "");
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
+        addDefaultValue(polyglot, languageInstance, valueCache, 'a');
+        addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0L);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0F);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0D);
     }
 
     static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Object primitive) {
@@ -1996,6 +2016,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget isMetaInstance;
         final CallTarget getMetaQualifiedName;
         final CallTarget getMetaSimpleName;
+        final CallTarget hasMetaParents;
+        final CallTarget getMetaParents;
         final CallTarget hasIterator;
         final CallTarget getIterator;
         final CallTarget isIterator;
@@ -2075,6 +2097,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             this.isMetaInstance = createTarget(IsMetaInstanceNodeGen.create(this));
             this.getMetaQualifiedName = createTarget(GetMetaQualifiedNameNodeGen.create(this));
             this.getMetaSimpleName = createTarget(GetMetaSimpleNameNodeGen.create(this));
+            this.hasMetaParents = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.HasMetaParentsNodeGen.create(this));
+            this.getMetaParents = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.GetMetaParentsNodeGen.create(this));
             this.hasIterator = createTarget(HasIteratorNodeGen.create(this));
             this.getIterator = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.GetIteratorNodeGen.create(this));
             this.isIterator = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.IsIteratorNodeGen.create(this));
@@ -2687,6 +2711,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public String getMetaSimpleName(Object languageContext, Object receiver) {
             return (String) RUNTIME.callProfiled(this.getMetaSimpleName, languageContext, receiver);
+        }
+
+        @Override
+        public boolean hasMetaParents(Object languageContext, Object receiver) {
+            return (boolean) RUNTIME.callProfiled(this.hasMetaParents, languageContext, receiver);
+        }
+
+        @Override
+        public Value getMetaParents(Object languageContext, Object receiver) {
+            return (Value) RUNTIME.callProfiled(this.getMetaParents, languageContext, receiver);
         }
 
         @Override
@@ -4578,7 +4612,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return toString.asString(objects.getMetaQualifiedName(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "getMetaQualifiedName()", "isMetaObject()");
                 }
             }
         }
@@ -4608,7 +4642,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return toString.asString(objects.getMetaSimpleName(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "getMetaSimpleName()", "isMetaObject()");
                 }
             }
         }
@@ -4638,7 +4672,61 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return objects.isMetaInstance(receiver, toGuest.execute(context, args[ARGUMENT_OFFSET]));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    throw unsupported(context, receiver, "throwException()", "isException()");
+                    throw unsupported(context, receiver, "isMetaInstance()", "isMetaObject()");
+                }
+            }
+        }
+
+        abstract static class HasMetaParentsNode extends InteropNode {
+
+            protected HasMetaParentsNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "hasMetaParents";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                return objects.hasMetaParents(receiver);
+            }
+        }
+
+        abstract static class GetMetaParentsNode extends InteropNode {
+
+            protected GetMetaParentsNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getMetaParents";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached("createToHost()") ToHostValueNode toHost,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return toHost.execute(context, objects.getMetaParents(receiver));
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "getMetaParents()", "hasMetaParents()");
                 }
             }
         }

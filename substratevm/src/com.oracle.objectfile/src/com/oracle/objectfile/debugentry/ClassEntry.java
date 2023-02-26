@@ -28,15 +28,18 @@ package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -59,26 +62,38 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private FileEntry fileEntry;
     /**
+     * Details of the associated loader.
+     */
+    private LoaderEntry loader;
+    /**
      * Details of methods located in this instance.
      */
     protected List<MethodEntry> methods;
     /**
-     * An index of all currently known methods keyed by the unique local symbol name of the method.
+     * An index of all currently known methods keyed by the unique, associated, identifying
+     * ResolvedJavaMethod.
      */
-    private Map<String, MethodEntry> methodsIndex;
+    private EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex;
     /**
-     * A list recording details of all primary ranges included in this class sorted by ascending
-     * address range.
+     * A list recording details of all normal compiled methods included in this class sorted by
+     * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private List<PrimaryEntry> primaryEntries;
+    private List<CompiledMethodEntry> normalCompiledEntries;
     /**
-     * An index identifying primary ranges which have already been encountered.
+     * A list recording details of all deopt fallback compiled methods included in this class sorted
+     * by ascending address range. Note that the associated address ranges are disjoint, contiguous
+     * and above all ranges for normal compiled methods.
      */
-    private Map<Range, PrimaryEntry> primaryIndex;
+    private List<CompiledMethodEntry> deoptCompiledEntries;
+    /**
+     * An index identifying ranges for compiled method which have already been encountered, whether
+     * normal or deopt fallback methods.
+     */
+    private EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex;
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
-    private Map<FileEntry, Integer> localFilesIndex;
+    private EconomicMap<FileEntry, Integer> localFilesIndex;
     /**
      * A list of the same files.
      */
@@ -86,28 +101,27 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
-    private HashMap<DirEntry, Integer> localDirsIndex;
+    private EconomicMap<DirEntry, Integer> localDirsIndex;
     /**
      * A list of the same dirs.
      */
     private List<DirEntry> localDirs;
-    /**
-     * This flag is true iff the entry includes methods that are deopt targets.
-     */
-    private boolean includesDeoptTarget;
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
         this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
+        this.loader = null;
         this.methods = new ArrayList<>();
-        this.methodsIndex = new HashMap<>();
-        this.primaryEntries = new ArrayList<>();
-        this.primaryIndex = new HashMap<>();
+        this.methodsIndex = EconomicMap.create();
+        this.normalCompiledEntries = new ArrayList<>();
+        // deopt methods list is created on demand
+        this.deoptCompiledEntries = null;
+        this.compiledMethodIndex = EconomicMap.create();
         this.localFiles = new ArrayList<>();
-        this.localFilesIndex = new HashMap<>();
+        this.localFilesIndex = EconomicMap.create();
         this.localDirs = new ArrayList<>();
-        this.localDirsIndex = new HashMap<>();
+        this.localDirsIndex = EconomicMap.create();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
             localFilesIndex.put(fileEntry, localFiles.size());
@@ -126,18 +140,26 @@ public class ClassEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+        assert debugTypeInfo.typeName().equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
-        String superName = debugInstanceTypeInfo.superName();
-        if (superName != null) {
-            superName = TypeEntry.canonicalize(superName);
+        ResolvedJavaType superType = debugInstanceTypeInfo.superClass();
+        String superName;
+        if (superType != null) {
+            superName = superType.toJavaName();
+        } else {
+            superName = "";
         }
         debugContext.log("typename %s adding super %s\n", typeName, superName);
-        if (superName != null) {
-            this.superClass = debugInfoBase.lookupClassEntry(superName);
+        if (superType != null) {
+            this.superClass = debugInfoBase.lookupClassEntry(superType);
         }
-        debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
+        String loaderName = debugInstanceTypeInfo.loaderName();
+        if (!loaderName.isEmpty()) {
+            this.loader = debugInfoBase.ensureLoaderEntry(loaderName);
+        }
+        debugInstanceTypeInfo.interfaces().forEach(interfaceType -> processInterface(interfaceType, debugInfoBase, debugContext));
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
@@ -145,15 +167,18 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
-        if (primaryIndex.get(primary) == null) {
-            PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
-            primaryEntries.add(primaryEntry);
-            primaryIndex.put(primary, primaryEntry);
+        if (compiledMethodIndex.get(primary) == null) {
+            CompiledMethodEntry compiledEntry = new CompiledMethodEntry(primary, frameSizeInfos, frameSize, this);
+            compiledMethodIndex.put(primary, compiledEntry);
             if (primary.isDeoptTarget()) {
-                includesDeoptTarget = true;
+                if (deoptCompiledEntries == null) {
+                    deoptCompiledEntries = new ArrayList<>();
+                }
+                deoptCompiledEntries.add(compiledEntry);
             } else {
+                normalCompiledEntries.add(compiledEntry);
                 /* deopt targets should all come after normal methods */
-                assert includesDeoptTarget == false;
+                assert deoptCompiledEntries == null;
             }
             FileEntry primaryFileEntry = primary.getFileEntry();
             if (primaryFileEntry != null) {
@@ -166,21 +191,20 @@ public class ClassEntry extends StructureTypeEntry {
         Range primary = subrange.getPrimary();
         /* The subrange should belong to a primary range. */
         assert primary != null;
-        PrimaryEntry primaryEntry = primaryIndex.get(primary);
+        CompiledMethodEntry compiledEntry = compiledMethodIndex.get(primary);
         /* We should already have seen the primary range. */
-        assert primaryEntry != null;
-        assert primaryEntry.getClassEntry() == this;
+        assert compiledEntry != null;
+        assert compiledEntry.getClassEntry() == this;
         FileEntry subFileEntry = subrange.getFileEntry();
         if (subFileEntry != null) {
             indexLocalFileEntry(subFileEntry);
         }
     }
 
-    private void indexMethodEntry(MethodEntry methodEntry) {
-        String methodName = methodEntry.getSymbolName();
-        assert methodsIndex.get(methodName) == null : methodName;
+    private void indexMethodEntry(MethodEntry methodEntry, ResolvedJavaMethod idMethod) {
+        assert methodsIndex.get(idMethod) == null : methodEntry.getSymbolName();
         methods.add(methodEntry);
-        methodsIndex.put(methodName, methodEntry);
+        methodsIndex.put(idMethod, methodEntry);
     }
 
     private void indexLocalFileEntry(FileEntry localFileEntry) {
@@ -220,7 +244,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @SuppressWarnings("unused")
-    String getFullFileName() {
+    public String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {
@@ -241,13 +265,45 @@ public class ClassEntry extends StructureTypeEntry {
         return fileEntry;
     }
 
-    public List<PrimaryEntry> getPrimaryEntries() {
-        return primaryEntries;
+    public String getLoaderId() {
+        return (loader != null ? loader.getLoaderId() : "");
     }
 
-    @SuppressWarnings("unused")
-    public Object primaryIndexFor(Range primaryRange) {
-        return primaryIndex.get(primaryRange);
+    /**
+     * Retrieve a stream of all compiled method entries for this class, including both normal and
+     * deopt fallback compiled methods.
+     * 
+     * @return a stream of all compiled method entries for this class.
+     */
+    public Stream<CompiledMethodEntry> compiledEntries() {
+        Stream<CompiledMethodEntry> stream = normalCompiledEntries.stream();
+        if (deoptCompiledEntries != null) {
+            stream = Stream.concat(stream, deoptCompiledEntries.stream());
+        }
+        return stream;
+    }
+
+    /**
+     * Retrieve a stream of all normal compiled method entries for this class, excluding deopt
+     * fallback compiled methods.
+     * 
+     * @return a stream of all normal compiled method entries for this class.
+     */
+    public Stream<CompiledMethodEntry> normalCompiledEntries() {
+        return normalCompiledEntries.stream();
+    }
+
+    /**
+     * Retrieve a stream of all deopt fallback compiled method entries for this class.
+     * 
+     * @return a stream of all deopt fallback compiled method entries for this class.
+     */
+    public Stream<CompiledMethodEntry> deoptCompiledEntries() {
+        if (hasDeoptCompiledEntries()) {
+            return deoptCompiledEntries.stream();
+        } else {
+            return Stream.empty();
+        }
     }
 
     public List<DirEntry> getLocalDirs() {
@@ -258,8 +314,8 @@ public class ClassEntry extends StructureTypeEntry {
         return localFiles;
     }
 
-    public boolean includesDeoptTarget() {
-        return includesDeoptTarget;
+    public boolean hasDeoptCompiledEntries() {
+        return deoptCompiledEntries != null;
     }
 
     public String getCachePath() {
@@ -272,9 +328,10 @@ public class ClassEntry extends StructureTypeEntry {
         return "";
     }
 
-    private void processInterface(String interfaceName, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String interfaceName = interfaceType.toJavaName();
         debugContext.log("typename %s adding interface %s\n", typeName, interfaceName);
-        ClassEntry entry = debugInfoBase.lookupClassEntry(TypeEntry.canonicalize(interfaceName));
+        ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
         assert entry instanceof InterfaceClassEntry;
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
         interfaces.add(interfaceClassEntry);
@@ -283,31 +340,28 @@ public class ClassEntry extends StructureTypeEntry {
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugMethodInfo.name();
-        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
+        int line = debugMethodInfo.line();
+        ResolvedJavaType resultType = debugMethodInfo.valueType();
+        String resultTypeName = resultType.toJavaName();
         int modifiers = debugMethodInfo.modifiers();
-        List<String> paramTypes = debugMethodInfo.paramTypes();
-        List<String> paramNames = debugMethodInfo.paramNames();
-        assert paramTypes.size() == paramNames.size();
-        int paramCount = paramTypes.size();
+        DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
+        DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
+        int paramCount = paramInfos.length;
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
-                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramTypes, paramNames));
-        TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
-        TypeEntry[] paramTypeArray = new TypeEntry[paramCount];
-        String[] paramNameArray = new String[paramCount];
-        int idx = 0;
-        for (String paramTypeName : paramTypes) {
-            TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
-            paramTypeArray[idx++] = paramType;
+                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+        TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
+        TypeEntry[] typeEntries = new TypeEntry[paramCount];
+        for (int i = 0; i < paramCount; i++) {
+            typeEntries[i] = debugInfoBase.lookupTypeEntry(paramInfos[i].valueType());
         }
-        paramNameArray = paramNames.toArray(paramNameArray);
         /*
          * n.b. the method file may differ from the owning class file when the method is a
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
-                        this, resultType, paramTypeArray, paramNameArray);
-        indexMethodEntry(methodEntry);
+        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, line, methodName,
+                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
+        indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
 
         return methodEntry;
     }
@@ -322,28 +376,25 @@ public class ClassEntry extends StructureTypeEntry {
         return fieldEntry;
     }
 
-    private static String formatParams(List<String> paramTypes, List<String> paramNames) {
-        if (paramNames.size() == 0) {
+    private static String formatParams(DebugLocalInfo[] paramInfo) {
+        if (paramInfo.length == 0) {
             return "";
         }
         StringBuilder builder = new StringBuilder();
-        String separator = "";
-        for (int i = 0; i < paramNames.size(); i++) {
-            builder.append(separator);
-            builder.append(paramTypes.get(i));
-            String paramName = paramNames.get(i);
-            if (paramName.length() > 0) {
-                builder.append(' ');
-                builder.append(paramName);
+        for (int i = 0; i < paramInfo.length; i++) {
+            if (i > 0) {
+                builder.append(", ");
             }
-            separator = ", ";
+            builder.append(paramInfo[i].typeName());
+            builder.append(' ');
+            builder.append(paramInfo[i].name());
         }
 
         return builder.toString();
     }
 
-    public boolean isPrimary() {
-        return primaryEntries.size() != 0;
+    public boolean hasCompiledEntries() {
+        return normalCompiledEntries.size() != 0;
     }
 
     public ClassEntry getSuperClass() {
@@ -352,7 +403,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
 
-        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.symbolNameForMethod());
+        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.idMethod());
         if (methodEntry == null) {
             methodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
         } else {
@@ -368,5 +419,62 @@ public class ClassEntry extends StructureTypeEntry {
 
     public List<MethodEntry> getMethods() {
         return methods;
+    }
+
+    /*
+     * Accessors for lo and hi bounds of this class's compiled method code ranges. See comments in
+     * class DebugInfoBase for an explanation of the layout of compiled method code.
+     */
+
+    /**
+     * Retrieve the lowest code section offset for compiled method code belonging to this class. It
+     * is an error to call this for a class entry which has no compiled methods.
+     * 
+     * @return the lowest code section offset for compiled method code belonging to this class
+     */
+    public int lowpc() {
+        assert hasCompiledEntries();
+        return normalCompiledEntries.get(0).getPrimary().getLo();
+    }
+
+    /**
+     * Retrieve the lowest code section offset for compiled method code belonging to this class that
+     * belongs to a deoptimization fallback compiled method. It is an error to call this for a class
+     * entry which has no deoptimization fallback compiled methods.
+     * 
+     * @return the lowest code section offset for a deoptimization fallback compiled method
+     *         belonging to this class.
+     */
+    public int lowpcDeopt() {
+        assert hasCompiledEntries();
+        assert hasDeoptCompiledEntries();
+        return deoptCompiledEntries.get(0).getPrimary().getLo();
+    }
+
+    /**
+     * Retrieve the highest code section offset for compiled method code belonging to this class
+     * that does not belong to a deoptimization fallback compiled method. The returned value is the
+     * offset of the first byte that succeeds the code for that method. It is an error to call this
+     * for a class entry which has no compiled methods.
+     * 
+     * @return the highest code section offset for compiled method code belonging to this class
+     */
+    public int hipc() {
+        assert hasCompiledEntries();
+        return normalCompiledEntries.get(normalCompiledEntries.size() - 1).getPrimary().getHi();
+    }
+
+    /**
+     * Retrieve the highest code section offset for compiled method code belonging to this class
+     * that belongs to a deoptimization fallback compiled method. It is an error to call this for a
+     * class entry which has no deoptimization fallback compiled methods.
+     * 
+     * @return the highest code section offset for a deoptimization fallback compiled method
+     *         belonging to this class.
+     */
+    public int hipcDeopt() {
+        assert hasCompiledEntries();
+        assert hasDeoptCompiledEntries();
+        return deoptCompiledEntries.get(deoptCompiledEntries.size() - 1).getPrimary().getHi();
     }
 }

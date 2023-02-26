@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -88,5 +88,35 @@ public final class CxxInheritedFieldsTest2_Helpers {
 
     public static Object getA4() {
         return new StructObject(createA4());
+    }
+
+    private static HashMap<String, Object> createB0() {
+        HashMap<String, Object> ret = new HashMap<>();
+        ret.put("b0", 0);
+        return ret;
+    }
+
+    public static Object getB0() {
+        return new StructObject(createB0());
+    }
+
+    private static HashMap<String, Object> createB1() {
+        HashMap<String, Object> ret = createB0();
+        ret.put("b1", 1);
+        return ret;
+    }
+
+    public static Object getB1() {
+        return new StructObject(createB1());
+    }
+
+    private static HashMap<String, Object> createB2() {
+        HashMap<String, Object> ret = createB1();
+        ret.put("b2", 2);
+        return ret;
+    }
+
+    public static Object getB2() {
+        return new StructObject(createB2());
     }
 }

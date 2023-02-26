@@ -1,0 +1,6 @@
+# The compiled LL code containing the va_arg instruction returns invalid values
+va_arg
+#
+# AMD64 specific, segfault on darwin-aarch64
+c/varargs/varStructStackOnlyAMD64Explicite.c.dir
+c/varargs/varStructBeforePrimitiveAMD64Explicite.c.dir

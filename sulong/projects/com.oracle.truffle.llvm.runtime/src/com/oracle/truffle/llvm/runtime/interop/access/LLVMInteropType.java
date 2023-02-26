@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,11 +42,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.Pair;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,7 +51,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -76,6 +71,11 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -161,6 +161,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         I64(ForeignToLLVMType.I64),
         FLOAT(ForeignToLLVMType.FLOAT),
         DOUBLE(ForeignToLLVMType.DOUBLE),
+        FP80(ForeignToLLVMType.FP80),
         POINTER(ForeignToLLVMType.POINTER);
 
         public final LLVMInteropType.Value type;
@@ -212,8 +213,19 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Buffer extends LLVMInteropType {
 
-        private Buffer() {
-            super(0);
+        private final boolean isWritable;
+
+        public Buffer() {
+            this(true, 0L);
+        }
+
+        public Buffer(boolean isWritable, long length) {
+            super(length);
+            this.isWritable = isWritable;
+        }
+
+        public boolean isWritable() {
+            return isWritable;
         }
 
         @Override
@@ -304,33 +316,133 @@ public abstract class LLVMInteropType implements TruffleObject {
         protected String toString(EconomicSet<LLVMInteropType> visited) {
             return name;
         }
+
+        /**
+         *
+         * @throws UnknownIdentifierException
+         */
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+            for (StructMember member : members) {
+                if (member.name.equals(ident)) {
+                    return Pair.create(new LinkedList<>(), this);
+                }
+            }
+            return null;
+        }
     }
 
-    public static final class ClazzInheritance implements Comparable<ClazzInheritance> {
-        public final Clazz superClass;
+    public abstract static class SpecialStruct extends Structured {
+        final Struct struct;
+        final String name;
+        final SpecialStructAccessor[] accessors;
+
+        protected SpecialStruct(String name, Struct struct, SpecialStructAccessor[] accessors) {
+            super(struct.getSize());
+            this.struct = struct;
+            this.name = name;
+            this.accessors = accessors;
+        }
+
+        public Struct getStruct() {
+            return struct;
+        }
+
+        SpecialStructAccessor findAccessor(long offset) {
+            for (SpecialStructAccessor accessor : accessors) {
+                if (accessor.contains(offset)) {
+                    return accessor;
+                }
+            }
+            return null;
+        }
+
+        protected static SpecialStructAccessor accessorForField(Struct struct, String memberName, SpecialStructGetter getter) {
+            StructMember field = struct.findMember(memberName);
+            return new SpecialStructAccessor(memberName, field.startOffset, field.endOffset, field.type, getter);
+        }
+
+        @Override
+        protected String toString(EconomicSet<LLVMInteropType> visited) {
+            return name;
+        }
+    }
+
+    public static class Instant extends SpecialStruct {
+        public Instant(Struct struct) {
+            super("Instant", struct, new SpecialStructAccessor[]{
+                            accessorForField(struct, "seconds", (foreign, interop) -> interop.asInstant(foreign).getEpochSecond())
+            });
+        }
+    }
+
+    public static class TimeInfo extends SpecialStruct {
+        public TimeInfo(Struct struct) {
+            super("TimeInfo", struct, new SpecialStructAccessor[]{
+                            accessorForField(struct, "tm_hour",
+                                            (foreign, interop) -> interop.asTime(foreign).getHour()),
+                            accessorForField(struct, "tm_min",
+                                            (foreign, interop) -> interop.asTime(foreign).getMinute()),
+                            accessorForField(struct, "tm_sec",
+                                            (foreign, interop) -> interop.asTime(foreign).getSecond()),
+                            accessorForField(struct, "tm_mday",
+                                            (foreign, interop) -> interop.asDate(foreign).getDayOfMonth()),
+                            accessorForField(struct, "tm_mon",
+                                            (foreign, interop) -> interop.asDate(foreign).getMonthValue() - 1),
+                            accessorForField(struct, "tm_year",
+                                            (foreign, interop) -> interop.asDate(foreign).getYear() - 1900),
+                            accessorForField(struct, "tm_wday",
+                                            (foreign, interop) -> getWDay(interop.asDate(foreign))),
+                            accessorForField(struct, "tm_yday",
+                                            (foreign, interop) -> getYDay(interop.asDate(foreign))),
+                            // accessorForField(struct, "tm_isdst", (foreign, interop) -> 0)
+            });
+        }
+
+        @TruffleBoundary
+        static int getWDay(LocalDate date) {
+            return date.getDayOfWeek().ordinal() % 7;
+        }
+
+        @TruffleBoundary
+        static int getYDay(LocalDate date) {
+            return date.getDayOfYear() - 1;
+        }
+    }
+
+    public static final class TypeInheritance implements Comparable<TypeInheritance> {
+        public final Struct superType;
         public final long offset;
         public final boolean virtual;
 
-        public ClazzInheritance(Clazz superClass, long offset, boolean virtual) {
-            this.superClass = superClass;
+        public TypeInheritance(Struct superType, long offset, boolean virtual) {
+            this.superType = superType;
             this.offset = offset;
             this.virtual = virtual;
         }
 
         @Override
-        public int compareTo(ClazzInheritance other) {
+        public int compareTo(TypeInheritance other) {
             if (this.virtual == other.virtual) {
                 return Long.compare(this.offset, other.offset);
             } else {
                 return this.virtual ? 1 : -1;
             }
         }
+
+        public boolean isClass() {
+            return superType instanceof Clazz;
+        }
+
+        Clazz getSuperClass() {
+            assert isClass();
+            return (Clazz) superType;
+        }
     }
 
     public static final class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
-        private SortedSet<ClazzInheritance> superclasses;
+        private SortedSet<TypeInheritance> superTypes;
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
@@ -340,11 +452,11 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.methods = methods;
             this.vtable = null;
             this.virtualMethodsInitialized = false;
-            this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
+            this.superTypes = new TreeSet<>((a, b) -> a.compareTo(b));
         }
 
-        public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
-            superclasses.add(new ClazzInheritance(superclass, offset, virtual));
+        public void addSuperType(Struct superclass, long offset, boolean virtual) {
+            superTypes.add(new TypeInheritance(superclass, offset, virtual));
         }
 
         public Method getMethod(int i) {
@@ -364,10 +476,12 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Method method = ci.superClass.findMethod(memberName);
-                if (method != null) {
-                    return method;
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass()) {
+                    Method method = ci.getSuperClass().findMethod(memberName);
+                    if (method != null) {
+                        return method;
+                    }
                 }
             }
             return null;
@@ -395,18 +509,19 @@ public abstract class LLVMInteropType implements TruffleObject {
             return Pair.create(arr, pair.getRight());
         }
 
+        @Override
         @TruffleBoundary
-        private Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
+        protected Pair<LinkedList<Long>, Struct> getMemberAccessList(String ident) throws UnknownIdentifierException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
                     return Pair.create(new LinkedList<>(), this);
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Pair<LinkedList<Long>, Struct> pair = ci.superClass.getMemberAccessList(ident);
+            for (TypeInheritance ci : superTypes) {
+                Pair<LinkedList<Long>, Struct> pair = ci.superType.getMemberAccessList(ident);
                 if (pair != null) {
                     for (StructMember member : members) {
-                        if (member.type.equals(ci.superClass)) {
+                        if (member.type.equals(ci.superType)) {
                             long offset = ci.virtual ? ci.offset : member.startOffset;
                             offset <<= 1;
                             offset |= ci.virtual ? 1 : 0;
@@ -427,8 +542,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return member;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                StructMember member = ci.superClass.findMember(memberName);
+            for (TypeInheritance ci : superTypes) {
+                StructMember member = ci.superType.findMember(memberName);
                 if (member != null) {
                     return member;
                 }
@@ -456,8 +571,12 @@ public abstract class LLVMInteropType implements TruffleObject {
             return list.toArray(new String[0]);
         }
 
+        public Set<Struct> getSuperTypes() {
+            return new HashSet<>(superTypes.stream().map(ci -> ci.superType).collect(Collectors.toSet()));
+        }
+
         public Set<Clazz> getSuperClasses() {
-            return new HashSet<>(superclasses.stream().map(ci -> ci.superClass).collect(Collectors.toSet()));
+            return new HashSet<>(superTypes.stream().filter(TypeInheritance::isClass).map(TypeInheritance::getSuperClass).collect(Collectors.toSet()));
         }
 
         @TruffleBoundary
@@ -469,8 +588,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                if (ci.superClass.hasVirtualMethods()) {
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass() && ci.getSuperClass().hasVirtualMethods()) {
                     virtualMethods = true;
                     return;
                 }
@@ -496,8 +615,10 @@ public abstract class LLVMInteropType implements TruffleObject {
         public void buildVTable() {
             virtualMethodsInitialized = false;
             if (vtable == null && hasVirtualMethods()) {
-                for (ClazzInheritance ci : superclasses) {
-                    ci.superClass.buildVTable();
+                for (TypeInheritance ci : superTypes) {
+                    if (ci.isClass()) {
+                        ci.getSuperClass().buildVTable();
+                    }
                 }
                 vtable = new VTable(this);
             }
@@ -519,10 +640,12 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
-            for (ClazzInheritance ci : superclasses) {
-                Method m = ci.superClass.findMethodByArgumentsWithSelf(memberName, arguments);
-                if (m != null) {
-                    return m;
+            for (TypeInheritance ci : superTypes) {
+                if (ci.isClass()) {
+                    Method m = ci.getSuperClass().findMethodByArgumentsWithSelf(memberName, arguments);
+                    if (m != null) {
+                        return m;
+                    }
                 }
             }
             if (expectedArgCount >= 0) {
@@ -671,6 +794,31 @@ public abstract class LLVMInteropType implements TruffleObject {
             return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
         }
 
+    }
+
+    @FunctionalInterface
+    public interface SpecialStructGetter {
+        Object get(Object foreign, InteropLibrary library) throws UnsupportedMessageException;
+    }
+
+    public static class SpecialStructAccessor {
+        public final String name;
+        public final long startOffset;
+        public final long endOffset;
+        public final LLVMInteropType type;
+        public final SpecialStructGetter getter;
+
+        public SpecialStructAccessor(String name, long startOffset, long endOffset, LLVMInteropType type, SpecialStructGetter getter) {
+            this.name = name;
+            this.startOffset = startOffset;
+            this.endOffset = endOffset;
+            this.type = type;
+            this.getter = getter;
+        }
+
+        boolean contains(long offset) {
+            return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
+        }
     }
 
     public static class Function extends Structured {
@@ -828,7 +976,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             } else if (type instanceof LLVMSourceClassLikeType) {
                 return convertClass((LLVMSourceClassLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {
-                return convertStruct((LLVMSourceStructLikeType) type);
+                return convertStructuredStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
                 return convertFunction((LLVMSourceFunctionType) type);
             } else {
@@ -841,8 +989,28 @@ public abstract class LLVMInteropType implements TruffleObject {
             return new Array(new Register(type, base), base.getSize() / 8, type.getLength());
         }
 
+        private Structured convertStructuredStruct(LLVMSourceStructLikeType type) {
+            Struct struct = convertStruct(type);
+            Structured ret = struct;
+
+            if (struct.name.equals("struct polyglot_instant")) {
+                ret = new Instant(struct);
+            } else if (struct.name.equals("struct tm")) {
+                ret = new TimeInfo(struct);
+            }
+
+            if (ret != struct) {
+                // If we have changed the structure, then we need to also update
+                // the type cache
+                typeCache.put(type, ret);
+            }
+
+            return ret;
+        }
+
         private Struct convertStruct(LLVMSourceStructLikeType type) {
-            Struct ret = new Struct(type.getName(), new StructMember[type.getDynamicElementCount()], type.getSize() / 8);
+
+            Struct ret = new Struct(type.getName(), new StructMember[type.getDynamicElementCount()], type.getSize() / Byte.SIZE);
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
@@ -862,13 +1030,13 @@ public abstract class LLVMInteropType implements TruffleObject {
                 LLVMSourceType memberType = member.getElementType();
                 final boolean isInheritanceType = member instanceof LLVMSourceInheritanceType;
                 if (isInheritanceType) {
-                    assert memberType instanceof LLVMSourceClassLikeType;
-                    LLVMSourceClassLikeType sourceSuperClazz = (LLVMSourceClassLikeType) memberType;
-                    if (!typeCache.containsKey(sourceSuperClazz)) {
-                        convertClass(sourceSuperClazz);
+                    assert memberType instanceof LLVMSourceStructLikeType;
+                    LLVMSourceStructLikeType sourceSuperType = (LLVMSourceStructLikeType) memberType;
+                    if (!typeCache.containsKey(sourceSuperType)) {
+                        convertStructured(sourceSuperType);
                     }
-                    Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
-                    ret.addSuperClass(superClazz, member.getOffset(), ((LLVMSourceInheritanceType) member).isVirtual());
+                    Struct superType = (Struct) typeCache.get(sourceSuperType);
+                    ret.addSuperType(superType, member.getOffset(), ((LLVMSourceInheritanceType) member).isVirtual());
                 }
                 long startOffset = member.getOffset() / 8;
                 long endOffset = startOffset + (memberType.getSize() + 7) / 8;
@@ -916,6 +1084,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                             return ValueKind.FLOAT.type;
                         case 64:
                             return ValueKind.DOUBLE.type;
+                        case 128:
+                            return ValueKind.FP80.type;
                     }
                     break;
                 case SIGNED:

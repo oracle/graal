@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -31,18 +33,23 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
+
+import java.util.ListIterator;
 
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
@@ -56,7 +63,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
  * null checks performed by access to the objects that need to be null checked. The second phase
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
-public class GuardLoweringPhase extends BasePhase<CoreProviders> {
+public class GuardLoweringPhase extends BasePhase<CoreProviders> implements FloatingGuardPhase {
 
     private static class LowerGuards extends ScheduledNodeIterator {
 
@@ -67,7 +74,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        protected void processNode(Node node) {
+        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 FixedWithNextNode lowered = guard.lowerGuard();
@@ -102,23 +109,35 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
                                 (trueSuccessor == fastPath ? BranchProbabilityNode.ALWAYS_TAKEN_PROFILE : BranchProbabilityNode.NEVER_TAKEN_PROFILE)));
                 guard.replaceAndDelete(fastPath);
                 insert(ifNode, fastPath);
+                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After lowering guard %s", guard);
             }
         }
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
-        if (graph.getGuardsStage().allowsFloatingGuards()) {
-            SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
-            ScheduleResult schedule = graph.getLastSchedule();
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.GUARD_LOWERING, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed"));
+    }
 
-            for (Block block : schedule.getCFG().getBlocks()) {
-                processBlock(block, schedule);
-            }
-            graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
+        ScheduleResult schedule = graph.getLastSchedule();
+
+        for (Block block : schedule.getCFG().getBlocks()) {
+            processBlock(block, schedule);
         }
 
         assert assertNoGuardsLeft(graph);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.GUARD_LOWERING);
+        graphState.setGuardsStage(GuardsStage.FIXED_DEOPTS);
     }
 
     private static boolean assertNoGuardsLeft(StructuredGraph graph) {

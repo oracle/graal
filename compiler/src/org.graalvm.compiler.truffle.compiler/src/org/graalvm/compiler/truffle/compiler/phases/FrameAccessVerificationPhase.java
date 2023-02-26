@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import static org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode.INITIAL_TYPE_MARKER;
-
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,26 +35,30 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.graph.MergeableState;
-import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessorNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
@@ -72,230 +76,340 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * match at all merges. If they do not match, then a deoptimization is inserted that invalidates the
  * frame intrinsic speculation.
  *
- * For indexed slots, this analysis can also handle cases where a predecessor of a merge is the
- * initial, unmodified state of the frame slot. In this case, the frame will be initialized properly
- * to allow the merge to succeed.
+ * This analysis will insert {@link VirtualFrameSetNode}s to change the type of uninitialized slots
+ * whenever this is necessary to produce matching types at merges.
  */
-public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
+public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierContext> {
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
-    private final CompilableTruffleAST compilable;
+    private static final byte NONE = (byte) 0xff;
+    private static final int TYPE_MASK = 0xf;
+    private static final int MODE_MASK = 0x30;
 
-    // Cached tag nodes that have already reported a performance warning.
-    private final EconomicSet<Node> reported = EconomicSet.create();
+    private static final int MODE_CLEARED = 0x00;
+    private static final int MODE_VALUE = 0x10;
 
-    private final EconomicMap<NewFrameNode, HashMap<AbstractEndNode, Integer>> deoptEnds = EconomicMap.create();
-
-    public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
-        this.compilable = compilable;
+    private static byte cleared(byte tag) {
+        assert tag <= TYPE_MASK;
+        return (byte) ((tag & TYPE_MASK) | MODE_CLEARED);
     }
 
-    @SuppressWarnings("try")
-    private void logPerformanceWarningClearIntroducedPhi(Node location, int index) {
-        if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
-            if (reported.contains(location)) {
-                return;
+    private static byte withValue(byte tag) {
+        assert tag <= TYPE_MASK;
+        return (byte) ((tag & TYPE_MASK) | MODE_VALUE);
+    }
+
+    private static byte type(byte tag) {
+        return (byte) (tag & TYPE_MASK);
+    }
+
+    private static byte mode(byte tag) {
+        return (byte) (tag & MODE_MASK);
+    }
+
+    private abstract static class Effect {
+        final NewFrameNode frame;
+        final AbstractEndNode insertBefore;
+        final int index;
+
+        Effect(NewFrameNode frame, AbstractEndNode insertBefore, int index) {
+            this.frame = frame;
+            this.insertBefore = insertBefore;
+            this.index = index;
+        }
+
+        abstract void apply();
+    }
+
+    private final class DeoptEffect extends Effect {
+
+        private final CompilableTruffleAST compilable;
+
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, CompilableTruffleAST compilable) {
+            super(frame, insertBefore, index);
+            this.compilable = compilable;
+        }
+
+        @SuppressWarnings("try")
+        private void logPerformanceWarningClearIntroducedPhi(Node location) {
+            if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
+                Graph graph = location.graph();
+                DebugContext debug = location.getDebug();
+                try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", compilable.getName());
+                    properties.put("index", index);
+                    PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
+                                    Collections.emptyList(),
+                                    "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
+                                                    "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
+                                    properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
+                } catch (Throwable t) {
+                    debug.handle(t);
+                }
             }
-            Graph graph = location.graph();
-            DebugContext debug = location.getDebug();
-            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("location", location);
-                properties.put("method", compilable.getName());
-                properties.put("index", index);
-                PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
-                                Collections.emptyList(),
-                                "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
-                                                "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
-                                properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
-                reported.add(location);
-            } catch (Throwable t) {
-                debug.handle(t);
+        }
+
+        @Override
+        void apply() {
+            if (insertBefore.isAlive()) {
+                StructuredGraph graph = insertBefore.graph();
+                FixedWithNextNode predecessor = (FixedWithNextNode) insertBefore.predecessor();
+                logPerformanceWarningClearIntroducedPhi(predecessor);
+                predecessor.setNext(null);
+                GraphUtil.killCFG(insertBefore);
+                if (predecessor.isAlive()) {
+                    Speculation speculation = graph.getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
+                    DeoptimizeNode deopt = new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint, speculation);
+                    predecessor.setNext(graph.add(deopt));
+                }
             }
         }
     }
 
-    public void insertDeopts() {
-        MapCursor<NewFrameNode, HashMap<AbstractEndNode, Integer>> iterator = deoptEnds.getEntries();
-        while (iterator.advance()) {
-            NewFrameNode frame = iterator.getKey();
-            for (Map.Entry<AbstractEndNode, Integer> entry : iterator.getValue().entrySet()) {
-                AbstractEndNode node = entry.getKey();
-                if (node.isAlive()) {
-                    logPerformanceWarningClearIntroducedPhi(node.predecessor(), entry.getValue());
-                    FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
-                    predecessor.setNext(null);
-                    GraphUtil.killCFG(node);
-                    if (predecessor.isAlive()) {
-                        Speculation speculation = node.graph().getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
-                        DeoptimizeNode deopt = new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint, speculation);
-                        predecessor.setNext(node.graph().add(deopt));
-                    }
-                }
+    private static final class ClearPrimitiveEffect extends Effect {
+        final byte accessTag;
+        final VirtualFrameAccessType type;
+
+        ClearPrimitiveEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, byte accessTag, VirtualFrameAccessType type) {
+            super(frame, insertBefore, index);
+            this.accessTag = accessTag;
+            this.type = type;
+        }
+
+        @Override
+        void apply() {
+            if (insertBefore.isAlive()) {
+                StructuredGraph graph = insertBefore.graph();
+                ConstantNode defaultForKind = ConstantNode.defaultForKind(NewFrameNode.asJavaKind(accessTag), graph);
+                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type, VirtualFrameAccessFlags.NON_STATIC_NO_SET_TAG)));
             }
         }
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
-            new Iterator(graph.start(), new State()).apply();
-            insertDeopts();
+            ArrayList<Effect> effects = new ArrayList<>();
+            ReentrantNodeIterator.apply(new ReentrantIterator(context.compilable, effects), graph.start(), new State(effects));
+            for (Effect effect : effects) {
+                effect.apply();
+            }
         }
     }
 
-    private final class State extends MergeableState<State> implements Cloneable {
+    private static final class State implements Cloneable {
 
-        private final HashMap<NewFrameNode, byte[]> states = new HashMap<>();
         private final HashMap<NewFrameNode, byte[]> indexedStates = new HashMap<>();
+        private final ArrayList<Effect> effects;
+
+        State(ArrayList<Effect> effects) {
+            this.effects = effects;
+        }
 
         @Override
         public State clone() {
-            State newState = new State();
-            copy(states, newState.states);
+            State newState = new State(effects);
             copy(indexedStates, newState.indexedStates);
             return newState;
         }
 
-        private void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
+        private static void copy(HashMap<NewFrameNode, byte[]> from, HashMap<NewFrameNode, byte[]> to) {
             for (Map.Entry<NewFrameNode, byte[]> entry : from.entrySet()) {
                 to.put(entry.getKey(), entry.getValue().clone());
             }
         }
 
-        @Override
-        public boolean merge(AbstractMergeNode merge, List<State> withStates) {
-            // determine the set of frames that are alive after this merge
-            HashSet<NewFrameNode> frames = new HashSet<>(states.keySet());
-            for (State other : withStates) {
-                frames.retainAll(other.states.keySet());
-            }
-
-            for (NewFrameNode frame : frames) {
-                byte[] entries = states.get(frame);
-                byte[] indexedEntries = indexedStates.get(frame);
-                byte[] frameEntries = frame.getFrameSlotKinds();
-                byte[] frameIndexedEntries = frame.getIndexedFrameSlotKinds();
-                int state = 1;
-                for (State other : withStates) {
-                    mergeEntries(merge, frame, entries, other.states.get(frame), frameEntries, state);
-                    mergeEntries(merge, frame, indexedEntries, other.indexedStates.get(frame), frameIndexedEntries, state);
-                    state++;
-                }
-            }
-
-            states.keySet().retainAll(frames);
-            indexedStates.keySet().retainAll(frames);
-
-            return true;
-        }
-
-        /*
-         * Compares "entries" and "otherEntries", taking into account that entries might be
-         * uninitialized (in which case it is taken from the frame itself).
-         */
-        private void mergeEntries(AbstractMergeNode merge, NewFrameNode frame, byte[] entries, byte[] otherEntries, byte[] frameEntries, int state) {
-            for (int i = 0; i < entries.length; i++) {
-                if (entries[i] != otherEntries[i]) {
-                    if (entries[i] == INITIAL_TYPE_MARKER) {
-                        if (frameEntries[i] == INITIAL_TYPE_MARKER) {
-                            frameEntries[i] = otherEntries[i];
-                            continue;
-                        } else if (frameEntries[i] == otherEntries[i]) {
-                            continue;
-                        }
-                    } else if (otherEntries[i] == INITIAL_TYPE_MARKER) {
-                        if (frameEntries[i] == INITIAL_TYPE_MARKER) {
-                            frameEntries[i] = entries[i];
-                            continue;
-                        } else if (frameEntries[i] == entries[i]) {
-                            continue;
-                        }
-                    }
-                    deoptAt(merge, frame, state, i);
-                    break;
-                }
-            }
-        }
-
-        private void deoptAt(AbstractMergeNode merge, NewFrameNode frame, int state, int index) {
-            HashMap<AbstractEndNode, Integer> set = deoptEnds.get(frame);
-            if (set == null) {
-                deoptEnds.put(frame, set = new HashMap<>());
-            }
-            set.put(merge.phiPredecessorAt(state), index);
-        }
-
-        @Override
-        public void loopEnds(LoopBeginNode loopBegin, List<State> loopEndStates) {
-            merge(loopBegin, loopEndStates);
-        }
-
         public void add(NewFrameNode frame) {
-            assert !states.containsKey(frame) && !indexedStates.containsKey(frame);
-            byte[] entries = frame.getFrameSize() == 0 ? EMPTY_BYTE_ARRAY : frame.getFrameSlotKinds().clone();
-            states.put(frame, entries);
+            assert !indexedStates.containsKey(frame);
             byte[] indexedEntries = frame.getIndexedFrameSize() == 0 ? EMPTY_BYTE_ARRAY : frame.getIndexedFrameSlotKinds().clone();
             indexedStates.put(frame, indexedEntries);
         }
 
         public byte[] get(VirtualFrameAccessorNode accessor) {
-            boolean isLegacy = accessor.getType() == VirtualFrameAccessType.Legacy;
-            HashMap<NewFrameNode, byte[]> map = isLegacy ? states : indexedStates;
-            return map.get(accessor.getFrame());
+            return indexedStates.get(accessor.getFrame());
+        }
+
+        public boolean equalsState(State other) {
+            assert indexedStates.keySet().equals(other.indexedStates.keySet());
+            for (Map.Entry<NewFrameNode, byte[]> entry : indexedStates.entrySet()) {
+                byte[] entries = entry.getValue();
+                byte[] otherEntries = other.indexedStates.get(entry.getKey());
+                if (!Arrays.equals(entries, otherEntries)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
-    private static final class Iterator extends PostOrderNodeIterator<State> {
+    private static boolean inRange(byte[] array, int index) {
+        return index >= 0 && index < array.length;
+    }
 
-        Iterator(FixedNode start, State initialState) {
-            super(start, initialState);
-        }
+    private final class ReentrantIterator extends NodeIteratorClosure<State> {
 
-        private static boolean inRange(byte[] array, int index) {
-            return index >= 0 && index < array.length;
+        private final CompilableTruffleAST compilable;
+        private final ArrayList<Effect> effects;
+
+        ReentrantIterator(CompilableTruffleAST compilable, ArrayList<Effect> effects) {
+            this.compilable = compilable;
+            this.effects = effects;
         }
 
         @Override
-        protected void node(FixedNode node) {
+        protected State processNode(FixedNode node, State currentState) {
             if (node instanceof NewFrameNode) {
-                state.add((NewFrameNode) node);
+                currentState.add((NewFrameNode) node);
             } else if (node instanceof VirtualFrameAccessorNode) {
                 VirtualFrameAccessorNode accessor = (VirtualFrameAccessorNode) node;
                 VirtualFrameAccessType type = accessor.getType();
                 if (type != VirtualFrameAccessType.Auxiliary) {
                     /*
-                     * Ignore operations with invalid indexes - these will be handled during PEA.
+                     * Ignoring operations with invalid indexes - these will be handled during PEA.
                      */
-                    if (node instanceof VirtualFrameSetNode) {
-                        byte[] entries = state.get(accessor);
-                        if (inRange(entries, accessor.getFrameSlotIndex()) && accessor.getAccessTag() != NewFrameNode.FrameSlotKindObjectTag) {
-                            entries[accessor.getFrameSlotIndex()] = (byte) accessor.getAccessTag();
-                        }
-                    } else if (node instanceof VirtualFrameClearNode) {
-                        byte[] entries = state.get(accessor);
-                        if (inRange(entries, accessor.getFrameSlotIndex())) {
-                            entries[accessor.getFrameSlotIndex()] = NewFrameNode.FrameSlotKindLongTag;
-                        }
-                    } else if (node instanceof VirtualFrameCopyNode) {
-                        VirtualFrameCopyNode copy = (VirtualFrameCopyNode) node;
-                        byte[] entries = state.get(accessor);
-                        if (inRange(entries, copy.getTargetSlotIndex()) && inRange(entries, copy.getFrameSlotIndex())) {
-                            entries[copy.getTargetSlotIndex()] = entries[copy.getFrameSlotIndex()];
-                        }
-                    } else if (node instanceof VirtualFrameSwapNode) {
-                        VirtualFrameSwapNode swap = (VirtualFrameSwapNode) node;
-                        byte[] entries = state.get(accessor);
-                        byte temp = entries[swap.getTargetSlotIndex()];
-                        if (inRange(entries, swap.getTargetSlotIndex()) && inRange(entries, swap.getFrameSlotIndex())) {
-                            entries[swap.getTargetSlotIndex()] = entries[swap.getFrameSlotIndex()];
-                            entries[swap.getFrameSlotIndex()] = temp;
+                    byte[] entries = currentState.get(accessor);
+                    if (inRange(entries, accessor.getFrameSlotIndex())) {
+                        if (node instanceof VirtualFrameSetNode) {
+                            if (accessor.getAccessTag() == NewFrameNode.FrameSlotKindObjectTag) {
+                                entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);
+                            } else {
+                                entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.asStackTag((byte) accessor.getAccessTag()));
+                            }
+                        } else if (node instanceof VirtualFrameClearNode) {
+                            entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);
+                        } else if (node instanceof VirtualFrameCopyNode) {
+                            VirtualFrameCopyNode copy = (VirtualFrameCopyNode) node;
+                            if (inRange(entries, copy.getFrameSlotIndex())) {
+                                entries[copy.getTargetSlotIndex()] = entries[copy.getFrameSlotIndex()];
+                            }
+                        } else if (node instanceof VirtualFrameSwapNode) {
+                            VirtualFrameSwapNode swap = (VirtualFrameSwapNode) node;
+                            if (inRange(entries, swap.getFrameSlotIndex())) {
+                                byte temp = entries[swap.getTargetSlotIndex()];
+                                entries[swap.getTargetSlotIndex()] = entries[swap.getFrameSlotIndex()];
+                                entries[swap.getFrameSlotIndex()] = temp;
+                            }
                         }
                     }
                 }
             }
+            return currentState;
+        }
+
+        @Override
+        protected State merge(AbstractMergeNode merge, List<State> states) {
+            return merge(merge, states, effects);
+        }
+
+        private State merge(AbstractMergeNode merge, List<State> states, ArrayList<Effect> firstEndEffects) {
+            State result = states.get(0).clone();
+            // determine the set of frames that are alive after this merge
+            HashSet<NewFrameNode> frames = new HashSet<>(result.indexedStates.keySet());
+            for (int i = 1; i < states.size(); i++) {
+                frames.retainAll(states.get(i).indexedStates.keySet());
+            }
+
+            byte[] entries = new byte[states.size()];
+            byte[][] entryArrays = new byte[states.size()][];
+
+            for (NewFrameNode frame : frames) {
+                for (int i = 0; i < states.size(); i++) {
+                    entryArrays[i] = states.get(i).indexedStates.get(frame);
+                }
+                byte[] resultEntries = result.indexedStates.get(frame);
+                for (int entryIndex = 0; entryIndex < resultEntries.length; entryIndex++) {
+                    for (int i = 0; i < states.size(); i++) {
+                        entries[i] = entryArrays[i][entryIndex];
+                    }
+                    mergeEntries(merge, frame, resultEntries, entries, entryIndex, VirtualFrameAccessType.Indexed, firstEndEffects);
+                }
+            }
+
+            result.indexedStates.keySet().retainAll(frames);
+
+            return result;
+        }
+
+        private void mergeEntries(AbstractMergeNode merge, NewFrameNode frame, byte[] resultEntries, byte[] entries, int entryIndex, VirtualFrameAccessType accessType,
+                        ArrayList<Effect> firstEndEffects) {
+            byte result = entries[0];
+            boolean allMatch = true;
+            for (int i = 1; i < entries.length; i++) {
+                if (entries[i] != result) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            if (!allMatch) {
+                // not a simple match, look for non-cleared types
+                byte definitiveType = NONE;
+                for (int i = 0; i < entries.length; i++) {
+                    byte entry = entries[i];
+                    assert entry != NewFrameNode.NO_TYPE_MARKER : "no set/clear nodes with this index should be generated by TruffleGraphBuilderPlugin";
+                    if (mode(entry) == MODE_VALUE) {
+                        if (definitiveType == NONE) {
+                            definitiveType = type(entry);
+                        } else if (definitiveType == type(entry)) {
+                            // match
+                        } else {
+                            // different definitive types at merge
+                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex, compilable));
+                            entries[i] = withValue(definitiveType);
+                        }
+                    }
+                }
+                // insert VirtualFrameSetNodes as necessary to ensure similar types at phis
+                result = definitiveType == NONE ? NewFrameNode.FrameSlotKindLongTag : definitiveType;
+                for (int i = 0; i < entries.length; i++) {
+                    if (type(entries[i]) != result) {
+                        (i == 0 ? firstEndEffects : effects).add(new ClearPrimitiveEffect(frame, merge.phiPredecessorAt(i), entryIndex, result, accessType));
+                    }
+                }
+                result = definitiveType == NONE ? cleared(result) : withValue(result);
+            }
+            resultEntries[entryIndex] = result;
+        }
+
+        @Override
+        protected State afterSplit(AbstractBeginNode node, State oldState) {
+            return oldState.clone();
+        }
+
+        @Override
+        protected EconomicMap<LoopExitNode, State> processLoop(LoopBeginNode loop, State initial) {
+            State initialState = initial;
+            LoopInfo<State> info;
+            /*
+             * Loops are processed iteratively until the merged state is the same as the initial
+             * state.
+             */
+            while (true) {
+                int sizeBeforeLoop = effects.size();
+                info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
+                ArrayList<State> states = new ArrayList<>();
+                states.add(initialState);
+                assert loop.forwardEndCount() == 1;
+                for (int i = 1; i < loop.phiPredecessorCount(); i++) {
+                    states.add(info.endStates.get((LoopEndNode) loop.phiPredecessorAt(i)));
+                }
+
+                ArrayList<Effect> preLoopEffects = new ArrayList<>();
+                State mergeResult = merge(loop, states, preLoopEffects);
+                if (mergeResult.equalsState(initialState)) {
+                    effects.addAll(preLoopEffects);
+                    break;
+                }
+                initialState = mergeResult;
+                while (effects.size() > sizeBeforeLoop) {
+                    effects.remove(effects.size() - 1);
+                }
+                effects.addAll(preLoopEffects);
+            }
+            return info.exitStates;
         }
     }
 }

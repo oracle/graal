@@ -26,7 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
@@ -254,7 +255,7 @@ public abstract class Node implements Cloneable, Formattable {
     Node typeCacheNext;
 
     static final int INLINE_USAGE_COUNT = 2;
-    private static final Node[] NO_NODES = {};
+    static final Node[] EMPTY_ARRAY = {};
 
     /**
      * Head of usage list (i.e. list of nodes that have {@code this} as an input). Note that each
@@ -314,7 +315,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert c.getJavaClass() == this.getClass();
         this.nodeClass = c;
         id = INITIAL_ID;
-        extraUsages = NO_NODES;
+        extraUsages = EMPTY_ARRAY;
         if (TRACK_CREATION_POSITION) {
             setCreationPosition(new NodeCreationStackTrace());
         }
@@ -464,6 +465,28 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether {@code this} has only one usage of type {@code inputType}.
+     *
+     * @param inputType the type of usages to look for
+     */
+    public final boolean hasExactlyOneUsageOfType(InputType inputType) {
+        int numUses = 0;
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == inputType) {
+                        numUses++;
+                        if (numUses > 1) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return numUses == 1;
+    }
+
+    /**
      * Checks whether {@code this} has only usages of type {@code inputType}.
      *
      * @param inputType the type of usages to look for
@@ -599,27 +622,27 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final int modCount() {
-        if (isModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.getNodeModCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeUsageModCount(this);
         }
     }
@@ -856,7 +879,17 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsages(Node replacement, Predicate<Node> filter) {
-        replaceAtUsages(replacement, filter, false);
+        replaceAtUsages(replacement, filter, false, true);
+    }
+
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter == null} or {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean checkInvariants) {
+        replaceAtUsages(replacement, filter, false, checkInvariants);
     }
 
     /**
@@ -866,7 +899,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsagesAndDelete(Node replacement) {
-        replaceAtUsages(replacement, null, true);
+        replaceAtUsages(replacement, null, true, true);
         safeDelete();
     }
 
@@ -878,7 +911,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsagesAndDelete(Node replacement, Predicate<Node> filter) {
-        replaceAtUsages(replacement, filter, true);
+        replaceAtUsages(replacement, filter, true, true);
         safeDelete();
     }
 
@@ -890,13 +923,13 @@ public abstract class Node implements Cloneable, Formattable {
      *            {@code this} from the graph after this method returns
      * @see #replaceAtUsages(Node)
      */
-    private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion) {
+    private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion, boolean checkInvariants) {
         if (filter == null) {
             replaceAtAllUsages(replacement, forDeletion);
         } else {
             replaceAtMatchingUsages(replacement, filter, forDeletion);
         }
-        assert checkReplaceAtUsagesInvariants(replacement);
+        assert !checkInvariants || checkReplaceAtUsagesInvariants(replacement);
     }
 
     /**
@@ -936,7 +969,7 @@ public abstract class Node implements Cloneable, Formattable {
             Node usage = extraUsages[i];
             replaceAtUsage(replacement, forDeletion, usage);
         }
-        this.extraUsages = NO_NODES;
+        this.extraUsages = EMPTY_ARRAY;
         this.extraUsagesCount = 0;
     }
 
@@ -1092,7 +1125,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
-            graph.modificationCount++;
+            graph.edgeModificationCount++;
         }
     }
 
@@ -1108,7 +1141,6 @@ public abstract class Node implements Cloneable, Formattable {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.ZERO_USAGES, node);
             }
-            graph.modificationCount++;
         }
     }
 
@@ -1337,7 +1369,7 @@ public abstract class Node implements Cloneable, Formattable {
         if (into != null) {
             into.register(newNode);
         }
-        newNode.extraUsages = NO_NODES;
+        newNode.extraUsages = EMPTY_ARRAY;
 
         if (into != null && useIntoLeafNodeCache) {
             into.putNodeIntoCache(newNode);
@@ -1490,7 +1522,13 @@ public abstract class Node implements Cloneable, Formattable {
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Fields properties = getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
-            map.put(properties.getName(i), properties.get(this, i));
+            Object value = properties.get(this, i);
+            if (properties.getType(i) == Character.TYPE) {
+                // Convert a char to an int as chars are not guaranteed to printable/viewable
+                char ch = (char) value;
+                value = Integer.valueOf(ch);
+            }
+            map.put(properties.getName(i), value);
         }
         NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {
@@ -1634,7 +1672,28 @@ public abstract class Node implements Cloneable, Formattable {
         getNodeClass().pushInputs(this, stack);
     }
 
-    public NodeSize estimatedNodeSize() {
+    public final NodeSize estimatedNodeSize() {
+        try {
+            return dynamicNodeSizeEstimate();
+        } catch (Exception e) {
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+        }
+    }
+
+    /**
+     * Node subclasses should override this method if they need to specify a dynamically calculated
+     * {@link NodeSize} value. If the node size is static please use {@link NodeInfo#size()}.
+     *
+     * NOTE: When overriding this method, make sure that *all* field reads are null checked (even if
+     * Java semantics seemingly make the value of the field non-null). This is necessary because
+     * node size estimates are needed even during graph decoding which, for some nodes, first
+     * reflectively creates a stub and then later, reflectively, populates its fields. This method
+     * could be invoked between these two points. For this reason, when overriding this method
+     * assume that all fields can and will be null.
+     *
+     * @return The estimated node size for this node.
+     */
+    protected NodeSize dynamicNodeSizeEstimate() {
         return nodeClass.size();
     }
 

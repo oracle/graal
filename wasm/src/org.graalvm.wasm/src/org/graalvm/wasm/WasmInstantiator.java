@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,25 +41,22 @@
 
 package org.graalvm.wasm;
 
+import java.util.List;
+
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
+import org.graalvm.wasm.nodes.WasmRootNode;
+import org.graalvm.wasm.parser.ir.CallNode;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmBlockNode;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmRootNode;
-import org.graalvm.wasm.parser.ir.BlockNode;
-import org.graalvm.wasm.parser.ir.CallNode;
-import org.graalvm.wasm.parser.ir.CodeEntry;
-import org.graalvm.wasm.parser.ir.IfNode;
-import org.graalvm.wasm.parser.ir.LoopNode;
-import org.graalvm.wasm.parser.ir.ParserNode;
-
-import java.util.List;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -96,12 +93,7 @@ public class WasmInstantiator {
         if (binarySize < asyncParsingBinarySize) {
             instantiateCodeEntries(context, instance);
         } else {
-            final Runnable parsing = new Runnable() {
-                @Override
-                public void run() {
-                    instantiateCodeEntries(context, instance);
-                }
-            };
+            final Runnable parsing = () -> instantiateCodeEntries(context, instance);
             final String name = "wasm-parsing-thread(" + instance.name() + ")";
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
@@ -129,89 +121,58 @@ public class WasmInstantiator {
         }
         for (int entry = 0; entry != codeEntries.length; ++entry) {
             CodeEntry codeEntry = codeEntries[entry];
-            instantiateCodeEntry(instance, codeEntry);
+            instantiateCodeEntry(context, instance, codeEntry);
             context.linker().resolveCodeEntry(instance.module(), entry);
         }
     }
 
     private static FrameDescriptor createFrameDescriptor(byte[] localTypes, int maxStackSize) {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(localTypes.length);
-        for (byte type : localTypes) {
-            builder.addSlot(WasmType.asFrameSlotKind(type), null, null);
-        }
-        builder.addSlots(maxStackSize, FrameSlotKind.Illegal);
+        builder.addSlots(localTypes.length + maxStackSize, FrameSlotKind.Static);
         return builder.build();
     }
 
-    private void instantiateCodeEntry(WasmInstance instance, CodeEntry codeEntry) {
+    private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.getFunctionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
-        function.setCodeEntry(wasmCodeEntry);
-
-        /*
-         * Create the root node and create and set the call target for the body. This needs to be
-         * done before translating the body block, because we need to be able to create direct call
-         * nodes {@see TruffleRuntime#createDirectCallNode} during translation.
-         */
-        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instance, wasmCodeEntry);
+        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize(),
+                        codeEntry.getExtraData());
+        final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
+        final WasmFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
+        final WasmRootNode rootNode;
+        if (context.getContextOptions().memoryOverheadMode()) {
+            rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
+        } else {
+            rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
+        }
         instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
-
-        /*
-         * Translate and set the function body.
-         */
-        WasmBlockNode bodyBlock = instantiateBlockNode(instance, rootNode.codeEntry(), codeEntry.getFunctionBlock());
-        rootNode.setBody(bodyBlock);
-
-        /* Initialize the Truffle-related components required for execution. */
-        codeEntry.initializeTruffleComponents(rootNode);
     }
 
-    private WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, BlockNode block) {
-        final WasmBlockNode currentBlock = block.createWasmBlockNode(instance, codeEntry);
-        List<ParserNode> childNodes = block.getChildNodes();
-        Node[] children = new Node[childNodes.size()];
+    private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset());
+        List<CallNode> childNodeList = entry.getCallNodes();
+        Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
-        for (ParserNode childNode : childNodes) {
-            Node child = null;
-            if (childNode instanceof BlockNode) {
-                child = instantiateBlockNode(instance, codeEntry, (BlockNode) childNode);
-            }
-            if (childNode instanceof LoopNode) {
-                LoopNode loopNode = (LoopNode) childNode;
-                WasmBlockNode loopBody = instantiateBlockNode(instance, codeEntry, loopNode.getBodyNode());
-                child = Truffle.getRuntime().createLoopNode(loopBody);
-            }
-            if (childNode instanceof IfNode) {
-                IfNode ifNode = (IfNode) childNode;
-                WasmBlockNode thenBlock = instantiateBlockNode(instance, codeEntry, ifNode.getThenNode());
-                WasmBlockNode elseBlock = null;
-                if (ifNode.hasElseBlock()) {
-                    elseBlock = instantiateBlockNode(instance, codeEntry, ifNode.getElseNode());
-                }
-                child = ifNode.createWasmIfNode(instance, codeEntry, thenBlock, elseBlock);
-            }
-            if (childNode instanceof CallNode) {
-                CallNode callNode = (CallNode) childNode;
-                if (callNode.isIndirectCall()) {
-                    child = WasmIndirectCallNode.create();
-                } else {
-                    // We deliberately do not create the call node during instantiation.
-                    //
-                    // If the call target is imported from another module,
-                    // then that other module might not have been parsed yet.
-                    // Therefore, the call node will be created lazily during linking,
-                    // after the call target from the other module exists.
+        for (CallNode callNode : childNodeList) {
+            Node child;
+            if (callNode.isIndirectCall()) {
+                child = WasmIndirectCallNode.create();
+            } else {
+                // We deliberately do not create the call node during instantiation.
+                //
+                // If the call target is imported from another module,
+                // then that other module might not have been parsed yet.
+                // Therefore, the call node will be created lazily during linking,
+                // after the call target from the other module exists.
 
-                    final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
-                    child = new WasmCallStubNode(function);
-                    final int stubIndex = childIndex;
-                    instance.module().addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
-                }
+                final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
+                child = new WasmCallStubNode(function);
+                final int stubIndex = childIndex;
+                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
             }
-            children[childIndex++] = child;
+            callNodes[childIndex++] = child;
         }
-        block.initializeWasmBlockNode(currentBlock, children);
+        currentBlock.initializeCallNodes(callNodes);
         return currentBlock;
     }
 }

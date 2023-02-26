@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -56,8 +59,12 @@ import org.graalvm.compiler.phases.BasePhase;
 public class BoxNodeIdentityPhase extends BasePhase<CoreProviders> {
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState);
+    }
+
+    @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        assert !graph.isAfterStage(StageFlag.PARTIAL_ESCAPE) : this + " must be run before PEA";
         for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
             if (box.isAlive() && !box.hasIdentity() && !(box.getValue() instanceof TrustedBoxedValue)) {
                 for (Node usage : box.usages()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,25 +53,28 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.ImportExportKind;
+import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
+import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
@@ -93,6 +96,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
+    private static final String REF_TYPES_OPTION = "wasm.BulkMemoryAndRefTypes";
+
     @Test
     public void testCompile() throws IOException {
         runTest(context -> {
@@ -195,13 +200,13 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmTable table = WebAssembly.tableAlloc(4, 8);
+            final WasmTable table = wasm.tableAlloc(4, 8, TableKind.anyfunc, WasmConstant.NULL);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
                             }),
             });
-            WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
+            wasm.tableWrite(table, 0, new WasmFunctionInstance(context, null,
                             new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -237,7 +242,7 @@ public class WasmJsApiSuite {
     private static void checkInstantiateWithImportGlobal(byte[] binaryWithGlobalImport, String globalType, Object globalValue) throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = WebAssembly.globalAlloc(ValueType.valueOf(globalType), false, globalValue);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.valueOf(globalType), false, globalValue);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
@@ -276,6 +281,226 @@ public class WasmJsApiSuite {
     @Test
     public void testInstantiateWithImportGlobalF64() throws IOException {
         checkInstantiateWithImportGlobal(binaryWithGlobalImportF64, "f64", Math.E);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance exportInstance = moduleInstantiate(wasm, binaryWithExports, null);
+            final Object func = WebAssembly.instanceExport(exportInstance, "main");
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, false, func);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "defaultGlobal", global
+                            }),
+            });
+            final WasmInstance instance = moduleInstantiate(wasm, binaryWithGlobalImportAnyfunc, importObject);
+            try {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object readGlobal1 = WebAssembly.instanceExport(instance, "readGlobal1");
+                final Object readGlobal2 = WebAssembly.instanceExport(instance, "readGlobal2");
+                final Object result1 = interop.execute(readGlobal1);
+                final Object result2 = interop.execute(readGlobal2);
+                Assert.assertEquals("Must be " + func + " initially.", func, result1);
+                Assert.assertEquals("Must be " + func + " initially.", func, result2);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+
+        });
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalExternref() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportExternref, "externref", "foo");
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, false, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateExternrefGlobalRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.externref, false, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateI32GlobalWithNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.i32, true, WasmConstant.NULL);
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithZero() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, 0);
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithObject() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateAnyfuncGlobalWithOrdinaryFunction() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.globalAlloc(ValueType.anyfunc, true, new Executable(args -> 0));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testCreateRefTypeGlobalWithNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            wasm.globalAlloc(ValueType.externref, true, WasmConstant.NULL);
+        });
+    }
+
+    @Test
+    public void testGlobalWriteAnyfuncToI32() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
+            try {
+                wasm.globalWrite(global, new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return 0;
+                    }
+                }.getCallTarget()));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteExternrefToI32() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
+            try {
+                wasm.globalWrite(global, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteObjectToAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, "foo");
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteOrdinaryFuncToAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, new Executable(args -> 0));
+                Assert.fail("Should have failed - invalid global type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteNull() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal anyfunc = wasm.globalAlloc(ValueType.anyfunc, true, WasmConstant.NULL);
+            final WasmGlobal externref = wasm.globalAlloc(ValueType.externref, true, WasmConstant.NULL);
+            wasm.globalWrite(anyfunc, WasmConstant.NULL);
+            wasm.globalWrite(externref, WasmConstant.NULL);
+        });
+    }
+
+    @Test
+    public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
+            try {
+                wasm.globalWrite(global, WasmConstant.NULL);
+                Assert.fail("Should have failed - ref types not enabled");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
     }
 
     @Test
@@ -587,11 +812,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -682,7 +907,7 @@ public class WasmJsApiSuite {
             try {
                 final Object table = WebAssembly.instanceExport(instance, "t");
                 final Object grow = wasm.readMember("table_grow");
-                lib.execute(grow, table, 9999999);
+                lib.execute(grow, table, 9999999, WasmConstant.NULL);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -691,7 +916,7 @@ public class WasmJsApiSuite {
             try {
                 final Object table = WebAssembly.instanceExport(instance, "t");
                 final Object grow = wasm.readMember("table_grow");
-                lib.execute(grow, table, 1);
+                lib.execute(grow, table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -981,7 +1206,7 @@ public class WasmJsApiSuite {
                 InteropLibrary interop = InteropLibrary.getUncached(funcType);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
                 // set + get should not break func_type()
-                WebAssembly.tableWrite(table, 0, fn);
+                wasm.tableWrite(table, 0, fn);
                 final Object fnAgain = WebAssembly.tableRead(table, 0);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
             } catch (InteropException e) {
@@ -1014,6 +1239,60 @@ public class WasmJsApiSuite {
             final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "func");
             final String fnType = WebAssembly.functionTypeToString(fn.function());
             Assert.assertEquals("func_type", "0(i32 i64)f32", fnType);
+        });
+    }
+
+    @Test
+    public void testFuncTypeMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module (type (func (param i32 i64) (result f32 f64))) (func (export \"f\") (type 0) f32.const 0 f64.const 0))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "f");
+            final String fnType = WebAssembly.functionTypeToString(fn.function());
+            Assert.assertEquals("func_type", "0(i32 i64)f32 f64", fnType);
+        });
+    }
+
+    @Test
+    public void testMultiValueReferencePassThrough() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module " +
+                        "(type (func (result funcref externref)))" +
+                        "(import \"m\" \"f\" (func (type 0)))" +
+                        "(func (export \"main\") (type 0)" +
+                        "call 0" +
+                        "))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmFunctionInstance func = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            }.getCallTarget());
+            final WasmFunctionInstance f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] result = new Object[2];
+                    result[0] = func;
+                    result[1] = "foo";
+                    return InteropArray.create(result);
+                }
+            }.getCallTarget());
+            final Dictionary importObject = Dictionary.create(new Object[]{"m", Dictionary.create(new Object[]{"f", f})});
+            final WasmInstance instance = moduleInstantiate(wasm, source, importObject);
+            final Object main = WebAssembly.instanceExport(instance, "main");
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                Object result = lib.execute(main);
+                Assert.assertTrue("Multi value must be array", lib.hasArrayElements(result));
+                Object resultFunc = lib.readArrayElement(result, 0);
+                Object foo = lib.readArrayElement(result, 1);
+                Assert.assertEquals("First value must be function", func, resultFunc);
+                Assert.assertEquals("Second value must be string", "foo", foo);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
         });
     }
 
@@ -1057,9 +1336,10 @@ public class WasmJsApiSuite {
     @Test
     public void testInitialTableSizeOutOfBounds() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
                 // Negative numbers represent unsigned values
-                WebAssembly.tableAlloc(-10, -8);
+                wasm.tableAlloc(-10, -8, TableKind.anyfunc, WasmConstant.NULL);
                 Assert.fail("Should have failed - initial table size exceeds implementation limit");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1070,8 +1350,9 @@ public class WasmJsApiSuite {
     @Test
     public void testMinTableSizeExceedsMaxSize() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
-                WebAssembly.tableAlloc(2, 1);
+                wasm.tableAlloc(2, 1, TableKind.anyfunc, WasmConstant.NULL);
                 Assert.fail("Should have failed - min table size bigger than max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1082,9 +1363,10 @@ public class WasmJsApiSuite {
     @Test
     public void testTableGrowLimit() throws IOException {
         runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
             try {
-                WasmTable table = WebAssembly.tableAlloc(1, 1);
-                WebAssembly.tableGrow(table, 1);
+                WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL);
+                WebAssembly.tableGrow(table, 1, WasmConstant.NULL);
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1092,9 +1374,156 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testTableInitAnyfunc() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, 1, 1, "anyfunc", WasmConstant.NULL);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableInitExternref() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, 1, 1, "externref", WasmConstant.NULL);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc1Param() throws IOException {
+        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc2Params() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc3ParamsMaxSize() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, 1, WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc3ParamsElementKind() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAlloc4Params() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableGet = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, 1, "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableGet, table, 0);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocInvalidInitialSize() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                lib.execute(tableAlloc, "a", 1, "anyfunc", WasmConstant.NULL);
+                Assert.fail("Should have thrown");
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocArgumentPriority() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object tableAlloc = wasm.readMember("table_alloc");
+                final Object tableRead = wasm.readMember("table_read");
+                final Object table = lib.execute(tableAlloc, 1, "anyfunc", "anyfunc", WasmConstant.NULL);
+                final Object value = lib.execute(tableRead, table, 0);
+                Assert.assertEquals("Element should be anyfunc", "anyfunc", value);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private static void checkEmbedderData(Object wasmEntity) {
         Object defaultEmbedderData = WebAssembly.embedderDataGet(new Object[]{wasmEntity});
-        Assert.assertEquals("Unexpected default embedder data", WasmVoidResult.getInstance(), defaultEmbedderData);
+        Assert.assertEquals("Unexpected default embedder data", WasmConstant.VOID, defaultEmbedderData);
 
         Object newEmbedderData = new Object();
         WebAssembly.embedderDataSet(new Object[]{wasmEntity, newEmbedderData});
@@ -1115,7 +1544,8 @@ public class WasmJsApiSuite {
     @Test
     public void testGlobalEmbedderData() throws IOException {
         runTest(context -> {
-            WasmGlobal global = WebAssembly.globalAlloc(ValueType.i32, false, 0);
+            WebAssembly wasm = new WebAssembly(context);
+            WasmGlobal global = wasm.globalAlloc(ValueType.i32, false, 0);
             checkEmbedderData(global);
         });
     }
@@ -1131,7 +1561,8 @@ public class WasmJsApiSuite {
     @Test
     public void testTableEmbedderData() throws IOException {
         runTest(context -> {
-            WasmTable table = WebAssembly.tableAlloc(1, 1);
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmTable table = wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL);
             checkEmbedderData(table);
         });
     }
@@ -1153,6 +1584,221 @@ public class WasmJsApiSuite {
                 Assert.fail("embedderDataSet failed to throw");
             } catch (WasmJsApiException ex) {
                 Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, ex.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] arr = {1, 2, 3};
+                    return InteropArray.create(arr);
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f2);
+                Assert.assertEquals("Return value of function is equal", 6, value);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueNotArray() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "multi-value has to be provided by an array type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueInvalidArraySize() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return InteropArray.create(new Object[]{1, 2});
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "provided multi-value size does not match function type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportMultiValueTypeMismatch() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32))) " +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(func $f (result i32)" +
+                        "   call $i" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return InteropArray.create(new Object[]{0, 1.1, 2});
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                lib.execute(f2);
+                Assert.fail("Should not reach here");
+            } catch (WasmException e) {
+                Assert.assertEquals("Expected runtime error", ExceptionType.RUNTIME_ERROR, e.getExceptionType());
+                Assert.assertEquals("Error expected", "type of value in multi-value does not match the function type", e.getMessage());
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32)))" +
+                        "(func $f (type 0)" +
+                        "   i32.const 1" +
+                        "   i32.const 2" +
+                        "   i32.const 3" +
+                        ")" +
+                        "(export \"f\" (func $f))" +
+                        ")");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f);
+                Assert.assertTrue("Must return array", lib.hasArrayElements(value));
+                Assert.assertEquals("First return value of function is equal", 1, lib.readArrayElement(value, 0));
+                Assert.assertEquals("Second return value of function is equal", 2, lib.readArrayElement(value, 1));
+                Assert.assertEquals("Third return value of function is equal", 3, lib.readArrayElement(value, 2));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testImportExportMultiValue() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module" +
+                        "(type (func (result i32 i32 i32)))" +
+                        "(import \"m\" \"f\" (func $i (type 0)))" +
+                        "(export \"f\" (func $i)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    final Object[] arr = {1, 2, 3};
+                    return InteropArray.create(arr);
+                }
+            }.getCallTarget());
+            final Dictionary d = new Dictionary();
+            d.addMember("m", Dictionary.create(new Object[]{
+                            "f", f
+            }));
+            final WasmInstance instance = moduleInstantiate(wasm, source, d);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            final Object f2 = WebAssembly.instanceExport(instance, "f");
+            try {
+                final Object value = lib.execute(f2);
+                Assert.assertTrue("Must return array", lib.hasArrayElements(value));
+                Assert.assertEquals("First return value of function is equal", 1, lib.readArrayElement(value, 0));
+                Assert.assertEquals("Second return value of function is equal", 2, lib.readArrayElement(value, 1));
+                Assert.assertEquals("Third return value of function is equal", 3, lib.readArrayElement(value, 2));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
             }
         });
     }
@@ -1332,15 +1978,15 @@ public class WasmJsApiSuite {
             WebAssembly wasm = new WebAssembly(context);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "globals", Dictionary.create(new Object[]{
-                                            "global0", WebAssembly.globalAlloc(ValueType.i32, false, 1),
-                                            "global1", WebAssembly.globalAlloc(ValueType.i32, false, 2),
-                                            "global2", WebAssembly.globalAlloc(ValueType.i32, false, 3),
-                                            "global3", WebAssembly.globalAlloc(ValueType.i32, false, 4),
-                                            "global4", WebAssembly.globalAlloc(ValueType.i32, false, 5),
-                                            "global5", WebAssembly.globalAlloc(ValueType.i32, false, 6),
-                                            "global6", WebAssembly.globalAlloc(ValueType.i32, false, 7),
-                                            "global7", WebAssembly.globalAlloc(ValueType.i32, false, 8),
-                                            "global8", WebAssembly.globalAlloc(ValueType.i32, false, 9),
+                                            "global0", wasm.globalAlloc(ValueType.i32, false, 1),
+                                            "global1", wasm.globalAlloc(ValueType.i32, false, 2),
+                                            "global2", wasm.globalAlloc(ValueType.i32, false, 3),
+                                            "global3", wasm.globalAlloc(ValueType.i32, false, 4),
+                                            "global4", wasm.globalAlloc(ValueType.i32, false, 5),
+                                            "global5", wasm.globalAlloc(ValueType.i32, false, 6),
+                                            "global6", wasm.globalAlloc(ValueType.i32, false, 7),
+                                            "global7", wasm.globalAlloc(ValueType.i32, false, 8),
+                                            "global8", wasm.globalAlloc(ValueType.i32, false, 9),
                             }),
             });
             WasmInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);
@@ -1356,8 +2002,104 @@ public class WasmJsApiSuite {
 
     }
 
+    @Test
+    public void testImportManyTables() throws IOException, InterruptedException {
+        String importManyTablesWat = "(module" +
+                        "(table $table0 (import \"tables\" \"table0\") 1 1 funcref)" +
+                        "(table $table1 (import \"tables\" \"table1\") 1 1 funcref)" +
+                        "(table $table2 (import \"tables\" \"table2\") 1 1 funcref)" +
+                        "(table $table3 (import \"tables\" \"table3\") 1 1 funcref)" +
+                        "(table $table4 (import \"tables\" \"table4\") 1 1 externref)" +
+                        "(func $id (param i32) (result i32)" +
+                        "   local.get 0" +
+                        ")" +
+                        "(func (export \"funcInit\")" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 0 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 1 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 2 0" +
+                        "   i32.const 0" +
+                        "   i32.const 0" +
+                        "   i32.const 1" +
+                        "   table.init 3 0" +
+                        ")" +
+                        "(func (export \"funcSum\") (result i32)" +
+                        "   i32.const 1" +
+                        "   i32.const 0" +
+                        "   call_indirect 0 (type 0)" +
+                        "   i32.const 2" +
+                        "   i32.const 0" +
+                        "   call_indirect 1 (type 0)" +
+                        "   i32.const 3" +
+                        "   i32.const 0" +
+                        "   call_indirect 2 (type 0)" +
+                        "   i32.const 4" +
+                        "   i32.const 0" +
+                        "   call_indirect 3 (type 0)" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        "   i32.add" +
+                        ")" +
+                        "(func (export \"setTable4\") (param i32 externref)" +
+                        "   local.get 0" +
+                        "   local.get 1" +
+                        "   table.set 4" +
+                        ")" +
+                        "(func (export \"getTable4\") (param i32) (result externref)" +
+                        "   local.get 0" +
+                        "   table.get 4" +
+                        ")" +
+                        "(elem funcref (ref.func 0))" +
+                        ")";
+        byte[] importManyTablesBytes = compileWat("importManyTables", importManyTablesWat);
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "tables", Dictionary.create(new Object[]{
+                                            "table0", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table1", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table2", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table3", wasm.tableAlloc(1, 1, TableKind.anyfunc, WasmConstant.NULL),
+                                            "table4", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table5", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table6", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table7", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                                            "table8", wasm.tableAlloc(1, 1, TableKind.externref, WasmConstant.NULL),
+                            })
+            });
+            WasmInstance instance = moduleInstantiate(wasm, importManyTablesBytes, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                lib.execute(WebAssembly.instanceExport(instance, "funcInit"));
+                Object val = lib.execute(WebAssembly.instanceExport(instance, "funcSum"));
+                Assert.assertEquals("Unexpected sum", 10, lib.asInt(val));
+                final Object foo = "foo";
+                lib.execute(WebAssembly.instanceExport(instance, "setTable4"), 0, foo);
+                Assert.assertEquals("Unexpected string", "foo", lib.execute(WebAssembly.instanceExport(instance, "getTable4"), 0));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
+        runTest(null, testCase);
+    }
+
+    private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
+        if (options != null) {
+            options.accept(contextBuilder);
+        }
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
@@ -1367,6 +2109,7 @@ public class WasmJsApiSuite {
         main.execute();
         Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
         run.execute(new GuestCode(testCase));
+        context.close();
     }
 
     private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
@@ -1593,6 +2336,50 @@ public class WasmJsApiSuite {
                     (byte) 0x01, (byte) 0x7c, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
                     (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7c,
                     (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7c, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result funcref)))
+    // (global $global1 (import "host" "defaultGlobal") funcref)
+    // (global $global2 funcref (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result funcref)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result funcref)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportAnyfunc = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x70, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x70,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x70, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result externref)))
+    // (global $global1 (import "host" "defaultGlobal") externref)
+    // (global $global2 externref (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result externref)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result externref)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportExternref = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x6f, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x6f,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x6f, (byte) 0x00, (byte) 0x23, (byte) 0x00,
                     (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
                     (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
                     (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,

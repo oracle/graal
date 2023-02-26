@@ -27,6 +27,7 @@ package com.oracle.svm.graal;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -60,6 +60,8 @@ import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.FloatingGuardPhase;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -68,6 +70,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -78,9 +81,12 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -89,7 +95,11 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 public class GraalSupport {
 
     private RuntimeConfiguration runtimeConfig;
-    private Suites suites;
+
+    private Suites fullOptimizationSuites;
+    private Suites suitesWithoutSpeculation;
+    private Suites suitesWithExplicitExceptions;
+
     private LIRSuites lirSuites;
     private Suites firstTierSuites;
     private LIRSuites firstTierLirSuites;
@@ -100,19 +110,24 @@ public class GraalSupport {
     private Object[] graphObjects;
     private NodeClass<?>[] graphNodeTypes;
 
-    public final Map<Class<?>, NodeClass<?>> nodeClasses = new HashMap<>();
-    public final Map<Class<?>, LIRInstructionClass<?>> instructionClasses = new HashMap<>();
-    public final Map<Class<?>, CompositeValueClass<?>> compositeValueClasses = new HashMap<>();
+    public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
+    public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();
+    public final EconomicMap<Class<?>, CompositeValueClass<?>> compositeValueClasses = ImageHeapMap.create();
     public HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry;
 
-    protected Map<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
-    protected Map<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
+    protected EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
+    protected EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
     protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
+
+    private static final Field graphEncodingField = ReflectionUtil.lookupField(GraalSupport.class, "graphEncoding");
+    private static final Field graphObjectsField = ReflectionUtil.lookupField(GraalSupport.class, "graphObjects");
+    private static final Field graphNodeTypesField = ReflectionUtil.lookupField(GraalSupport.class, "graphNodeTypes");
+    private static final Field methodsToCompileField = ReflectionUtil.lookupField(GraalSupport.class, "methodsToCompile");
 
     private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
 
@@ -180,44 +195,100 @@ public class GraalSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites) {
         get().runtimeConfig = runtimeConfig;
-        get().suites = suites;
+        get().fullOptimizationSuites = suites;
+        get().suitesWithoutSpeculation = getWithoutSpeculative(suites);
+        get().suitesWithExplicitExceptions = getWithExplicitExceptions(suites);
         get().lirSuites = lirSuites;
         get().firstTierSuites = firstTierSuites;
         get().firstTierLirSuites = firstTierLirSuites;
         get().firstTierProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
     }
 
+    private static Suites getWithoutSpeculative(Suites s) {
+        Suites effectiveSuites = s.copy();
+        effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        return effectiveSuites;
+    }
+
+    private static Suites getWithExplicitExceptions(Suites s) {
+        Suites effectiveSuites = s.copy();
+        effectiveSuites.getHighTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(FloatingGuardPhase.class);
+        effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        return effectiveSuites;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean setMethodsToCompile(SubstrateMethod[] methodsToCompile) {
+    public static boolean setMethodsToCompile(DuringAnalysisAccessImpl config, SubstrateMethod[] methodsToCompile) {
         boolean result = false;
-        if (!Arrays.equals(get().methodsToCompile, methodsToCompile)) {
-            get().methodsToCompile = methodsToCompile;
+        GraalSupport support = get();
+        if (!Arrays.equals(support.methodsToCompile, methodsToCompile)) {
+            support.methodsToCompile = methodsToCompile;
+            GraalSupport.rescan(config, support, methodsToCompileField);
             result = true;
         }
         return result;
     }
 
+    public static Suites getFullOptSuites() {
+        return get().fullOptimizationSuites;
+    }
+
+    public static Suites getWithoutSpeculativeSuites() {
+        return get().suitesWithoutSpeculation;
+    }
+
+    public static Suites getExplicitExceptionSuites() {
+        return get().suitesWithExplicitExceptions;
+    }
+
+    public static Suites getMatchingSuitesForGraph(StructuredGraph graph) {
+        Suites s = getFullOptSuites();
+        if (graph.getSpeculationLog() == null) {
+            s = getWithoutSpeculativeSuites();
+        }
+        if (graph.getGraphState().isExplicitExceptionsNoDeopt()) {
+            s = getExplicitExceptionSuites();
+        }
+        return s;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean setGraphEncoding(byte[] graphEncoding, Object[] graphObjects, NodeClass<?>[] graphNodeTypes) {
-        if (get().graphObjects == null && graphObjects.length == 0) {
+    public static boolean setGraphEncoding(FeatureAccess a, byte[] graphEncoding, Object[] graphObjects, NodeClass<?>[] graphNodeTypes) {
+        GraalSupport support = get();
+        if (support.graphObjects == null && graphObjects.length == 0) {
             assert graphEncoding.length == 0;
             assert graphNodeTypes.length == 0;
             return false;
         }
         boolean result = false;
-        if (!Arrays.equals(get().graphEncoding, graphEncoding)) {
-            get().graphEncoding = graphEncoding;
+        if (!Arrays.equals(support.graphEncoding, graphEncoding)) {
+            support.graphEncoding = graphEncoding;
+            GraalSupport.rescan(a, support, graphEncodingField);
             result = true;
         }
-        if (!Arrays.deepEquals(get().graphObjects, graphObjects)) {
-            get().graphObjects = graphObjects;
+        if (!Arrays.deepEquals(support.graphObjects, graphObjects)) {
+            support.graphObjects = graphObjects;
+            GraalSupport.rescan(a, support, graphObjectsField);
             result = true;
         }
-        if (!Arrays.equals(get().graphNodeTypes, graphNodeTypes)) {
-            get().graphNodeTypes = graphNodeTypes;
+        if (!Arrays.equals(support.graphNodeTypes, graphNodeTypes)) {
+            support.graphNodeTypes = graphNodeTypes;
+            GraalSupport.rescan(a, support, graphNodeTypesField);
             result = true;
         }
         return result;
+    }
+
+    private static void rescan(FeatureAccess a, GraalSupport support, Field field) {
+        if (a instanceof DuringAnalysisAccessImpl) {
+            ((DuringAnalysisAccessImpl) a).rescanField(support, field);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -229,8 +300,8 @@ public class GraalSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void allocatePhaseStatisticsCache() {
-        GraalSupport.get().basePhaseStatistics = new HashMap<>();
-        GraalSupport.get().lirPhaseStatistics = new HashMap<>();
+        GraalSupport.get().basePhaseStatistics = ImageHeapMap.create();
+        GraalSupport.get().lirPhaseStatistics = ImageHeapMap.create();
     }
 
     /* Invoked once for every class that is reachable in the native image. */
@@ -249,7 +320,7 @@ public class GraalSupport {
         }
     }
 
-    private static <S> void registerStatistics(Class<?> phaseSubClass, Map<Class<?>, S> cache, S newStatistics, DuringAnalysisAccessImpl access) {
+    private static <S> void registerStatistics(Class<?> phaseSubClass, EconomicMap<Class<?>, S> cache, S newStatistics, DuringAnalysisAccessImpl access) {
         assert !cache.containsKey(phaseSubClass);
 
         cache.put(phaseSubClass, newStatistics);
@@ -262,10 +333,6 @@ public class GraalSupport {
 
     public static RuntimeConfiguration getRuntimeConfig() {
         return get().runtimeConfig;
-    }
-
-    public static Suites getSuites() {
-        return get().suites;
     }
 
     public static LIRSuites getLIRSuites() {
@@ -302,16 +369,22 @@ public class GraalSupport {
             return null;
         }
 
-        boolean isSubstitution = method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null;
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).name(name).method(method).compilationId(compilationId).setIsSubstitution(isSubstitution).build();
+        boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
+                        .name(name)
+                        .method(method)
+                        .recordInlinedMethods(false)
+                        .compilationId(compilationId)
+                        .setIsSubstitution(isSubstitution)
+                        .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);
         return graph;
     }
 
-    public static class GraalShutdownHook implements Runnable {
+    public static class GraalShutdownHook implements RuntimeSupport.Hook {
         @Override
-        public void run() {
+        public void execute(boolean isFirstIsolate) {
             GraalSupport graalSupport = GraalSupport.get();
             graalSupport.metricValues.print(RuntimeOptionValues.singleton());
             graalSupport.outputDirectory.close();

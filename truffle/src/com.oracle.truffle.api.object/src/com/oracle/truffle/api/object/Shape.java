@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,11 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * A Shape is an immutable descriptor of the current object "shape" of a DynamicObject, i.e., object
@@ -166,12 +166,13 @@ public abstract class Shape {
         private Class<? extends DynamicObject> layoutClass = DynamicObject.class;
         private Object dynamicType = ObjectType.DEFAULT;
         private int shapeFlags;
+        private boolean allowImplicitCastIntToDouble;
+        private boolean allowImplicitCastIntToLong;
         private boolean shared;
         private boolean propertyAssumptions;
         private Object sharedData;
         private Assumption singleContextAssumption;
-        private EconomicMap<Object, Property> properties;
-        private EnumSet<Layout.ImplicitCast> allowedImplicitCasts = EnumSet.noneOf(Layout.ImplicitCast.class);
+        private EconomicMap<Object, Pair<Object, Integer>> properties;
 
         Builder() {
         }
@@ -331,10 +332,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
 
-            Layout layout = Layout.newLayout().type(DynamicObject.class).build();
-
-            Location location = layout.createAllocator().constantLocation(value);
-            properties.put(key, Property.create(key, location, flags));
+            properties.put(key, Pair.create(value, flags));
             return this;
         }
 
@@ -346,11 +344,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToLong(boolean allow) {
-            if (allow) {
-                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToLong);
-            } else {
-                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToLong);
-            }
+            this.allowImplicitCastIntToLong = allow;
             return this;
         }
 
@@ -362,11 +356,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToDouble(boolean allow) {
-            if (allow) {
-                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToDouble);
-            } else {
-                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToDouble);
-            }
+            this.allowImplicitCastIntToDouble = allow;
             return this;
         }
 
@@ -385,15 +375,8 @@ public abstract class Shape {
                 flags = shapeFlags | OBJECT_PROPERTY_ASSUMPTIONS;
             }
 
-            Layout layout = Layout.newLayout().type(layoutClass).setAllowedImplicitCasts(allowedImplicitCasts).build();
-
-            Shape shape = layout.buildShape(dynamicType, sharedData, flags, singleContextAssumption);
-
-            if (properties != null) {
-                for (Property property : properties.getValues()) {
-                    shape = shape.addProperty(property);
-                }
-            }
+            int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
+            Shape shape = Layout.getFactory().createShape(new Object[]{layoutClass, implicitCastFlags, dynamicType, sharedData, flags, properties, singleContextAssumption});
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
@@ -478,6 +461,7 @@ public abstract class Shape {
          * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
          * @since 20.2.0
          */
+        @SuppressWarnings("deprecation")
         @Override
         public DerivedBuilder addConstantProperty(Object key, Object value, int flags) {
             CompilerAsserts.neverPartOfCompilation();
@@ -538,24 +522,24 @@ public abstract class Shape {
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
-     * Planned to be deprecated. Use {@link DynamicObjectLibrary#put} or
-     * {@link DynamicObjectLibrary#putWithFlags} to add properties to an object.
-     *
      * @param property the property to add
      * @return the new Shape
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
+     *             to add properties to an object.
      */
+    @Deprecated(since = "22.2")
     public abstract Shape addProperty(Property property);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
      *
-     * Planned to be deprecated. Use {@link DynamicObjectLibrary#put} or
-     * {@link DynamicObjectLibrary#putWithFlags} to add properties to an object.
-     *
      * @return the shape after defining the property
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
+    @Deprecated(since = "22.2")
     public abstract Shape defineProperty(Object key, Object value, int flags);
 
     /**
@@ -563,13 +547,12 @@ public abstract class Shape {
      *
      * @return the shape after defining the property
      * @since 0.8 or earlier
-     * @deprecated Use {@link #defineProperty(Object, Object, int)} or
-     *             {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
      *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
      *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
      */
-    @Deprecated
-    public abstract Shape defineProperty(Object key, Object value, int flags, LocationFactory locationFactory);
+    @Deprecated(since = "20.2")
+    public abstract Shape defineProperty(Object key, Object value, int flags, @SuppressWarnings("deprecation") LocationFactory locationFactory);
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
@@ -577,16 +560,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract Iterable<Property> getProperties();
-
-    /**
-     * Get a list of properties that this Shape stores.
-     *
-     * @return list of properties
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getPropertyList()} instead
-     */
-    @Deprecated
-    public abstract List<Property> getPropertyList(Pred<Property> filter);
 
     /**
      * Get a list of all properties that this Shape stores.
@@ -606,15 +579,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract List<Property> getPropertyListInternal(boolean ascending);
-
-    /**
-     * Get a filtered list of property keys in insertion order.
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getKeyList()} instead
-     */
-    @Deprecated
-    public abstract List<Object> getKeyList(Pred<Property> filter);
 
     /**
      * Get a list of all property keys in insertion order.
@@ -666,7 +630,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated no replacement, do not rely on a specific parent shape
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape getParent();
 
     /**
@@ -682,7 +646,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#removeKey} to remove properties from an object.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape removeProperty(Property property);
 
     /**
@@ -691,7 +655,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#put} to replace properties in an object.
      */
-    @Deprecated
+    @Deprecated(since = "20.2")
     public abstract Shape replaceProperty(Property oldProperty, Property newProperty);
 
     /**
@@ -700,14 +664,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract Property getLastProperty();
-
-    /**
-     * @see #getFlags()
-     * @since 0.8 or earlier
-     * @deprecated no replacement, returns 0
-     */
-    @Deprecated
-    public abstract int getId();
 
     /**
      * Returns the language-specific shape flags previously set using
@@ -742,19 +698,12 @@ public abstract class Shape {
     }
 
     /**
-     * Append the property, relocating it to the next allocated location.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public abstract Shape append(Property oldProperty);
-
-    /**
      * Obtain an {@link Allocator} instance for the purpose of allocating locations.
      *
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract Allocator allocator();
 
     /**
@@ -771,7 +720,8 @@ public abstract class Shape {
      * @see #getDynamicType()
      * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
+    @SuppressWarnings("deprecation")
     public abstract ObjectType getObjectType();
 
     /**
@@ -786,15 +736,16 @@ public abstract class Shape {
 
     /**
      * Returns a copy of the shape, with the dynamic object type identifier set to
-     * {@code objectType}. Currently, the object type must be an instance of {@link ObjectType}.
+     * {@code dynamicType}.
      *
-     * @param objectType the new dynamic object type identifier
-     * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
+     * @param dynamicType the new dynamic object type identifier
+     * @throws NullPointerException if the argument is null.
      * @see Shape.Builder#dynamicType(Object)
      * @since 20.2.0
      */
-    protected Shape setDynamicType(Object objectType) {
+    protected Shape setDynamicType(Object dynamicType) {
         CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(dynamicType);
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -821,7 +772,7 @@ public abstract class Shape {
      * @since 0.8 or earlier
      * @deprecated since 21.1. You can get the shape's layout class using {@link #getLayoutClass()}.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     @SuppressWarnings("deprecation")
     public abstract Layout getLayout();
 
@@ -845,47 +796,22 @@ public abstract class Shape {
     public abstract Object getSharedData();
 
     /**
-     * Query whether the shape has a transition with the given key.
-     *
-     * @since 0.8 or earlier
-     * @deprecated the result of this method may change at any time
-     */
-    @Deprecated
-    public abstract boolean hasTransitionWithKey(Object key);
-
-    /**
-     * Clone off a separate shape with new shared data.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public abstract Shape createSeparateShape(Object sharedData);
-
-    /**
      * Change the shape's type, yielding a new shape.
      *
-     * Planned to be deprecated. To be replaced by {@link #setDynamicType(Object)}.
-     *
      * @since 0.8 or earlier
+     * @deprecated No replacement. Use {@link DynamicObjectLibrary#setDynamicType} instead.
      */
-    public abstract Shape changeType(ObjectType newOps);
-
-    /**
-     * Reserve the primitive extension array field.
-     *
-     * @since 0.8 or earlier
-     * @deprecated It is unnecessary to call this method, it has no effect and always returns this.
-     */
-    @Deprecated
-    public abstract Shape reservePrimitiveExtensionArray();
+    @Deprecated(since = "22.2")
+    public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
 
     /**
      * Create a new {@link DynamicObject} instance with this shape.
      *
      * @throws UnsupportedOperationException if this layout does not support construction
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract DynamicObject newInstance();
 
     /**
@@ -893,28 +819,20 @@ public abstract class Shape {
      *
      * @throws UnsupportedOperationException if this layout does not support construction
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "22.2")
     public abstract DynamicObjectFactory createFactory();
 
     /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.
      *
-     * Planned to be deprecated.
-     *
      * @since 0.8 or earlier
+     * @deprecated no replacement.
      */
+    @Deprecated(since = "22.2")
     public abstract Object getMutex();
-
-    /**
-     * Are these two shapes related, i.e. do they have the same root?
-     *
-     * @param other Shape to compare to
-     * @return true if one shape is an upcast of the other, or the Shapes are equal
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public abstract boolean isRelated(Shape other);
 
     /**
      * Try to merge two related shapes to a more general shape that has the same properties and can
@@ -926,7 +844,7 @@ public abstract class Shape {
     public abstract Shape tryMerge(Shape other);
 
     /**
-     * Returns {@code true} if this shape is {@link Shape#makeSharedShape() shared}.
+     * Returns {@code true} if this shape is marked as shared.
      *
      * @see DynamicObjectLibrary#isShared(DynamicObject)
      * @see DynamicObjectLibrary#markShared(DynamicObject)
@@ -941,6 +859,9 @@ public abstract class Shape {
      * Make a shared variant of this shape, to allow safe usage of this object between threads.
      * Shared shapes will not reuse storage locations for other fields. In combination with careful
      * synchronization on writes, this can prevent reading out-of-thin-air values.
+     * <p>
+     * Note: Where possible, avoid using this method and use
+     * {@link DynamicObjectLibrary#markShared(DynamicObject)} instead.
      *
      * @return a cached and shared variant of this shape
      * @see #isShared()
@@ -978,7 +899,7 @@ public abstract class Shape {
      * @since 20.2.0
      */
     public Assumption getPropertyAssumption(Object key) {
-        return NeverValidAssumption.INSTANCE;
+        return Assumption.NEVER_VALID;
     }
 
     /**
@@ -995,21 +916,43 @@ public abstract class Shape {
     }
 
     /**
+     * Makes a property getter for this shape and the given property key, if it exists. Otherwise,
+     * returns {@code null}.
+     *
+     * Note that the returned {@link PropertyGetter} only accepts objects of this particular
+     * {@link Shape}.
+     *
+     * @param key the identifier to look up
+     * @return a {@link PropertyGetter}, or {@code null} if the property was not found in this shape
+     * @since 22.2
+     */
+    @CompilerDirectives.TruffleBoundary
+    public PropertyGetter makePropertyGetter(Object key) {
+        Property property = getProperty(key);
+        if (property == null) {
+            return null;
+        }
+        return new PropertyGetter(this, property);
+    }
+
+    /**
      * Utility class to allocate locations in an object layout.
      *
-     * Planned to be deprecated.
-     *
      * @since 0.8 or earlier
+     * @deprecated since 22.1, without replacement. Property locations are automatically allocated
+     *             by {@link DynamicObjectLibrary} methods; there's no need for manual allocation.
      */
+    @Deprecated(since = "22.2")
     public abstract static class Allocator {
         /**
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         protected Allocator() {
         }
 
         /** @since 0.8 or earlier */
-        @Deprecated
+        @Deprecated(since = "19.3")
         protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
 
         /**
@@ -1021,7 +964,7 @@ public abstract class Shape {
          * @param value the initial value this location is going to be assigned
          * @since 0.8 or earlier
          */
-        @Deprecated
+        @Deprecated(since = "20.2")
         public final Location locationForValue(Object value) {
             return locationForValue(value, false, value != null);
         }
@@ -1035,13 +978,15 @@ public abstract class Shape {
          * @deprecated use {@link #locationForType(Class, EnumSet)} or
          *             {@link Shape#defineProperty(Object, Object, int)} instead
          */
-        @Deprecated
+        @SuppressWarnings("deprecation")
+        @Deprecated(since = "19.3")
         public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
             assert value != null || !modifiers.contains(LocationModifier.NonNull);
             return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
         }
 
         /** @since 0.8 or earlier */
+        @Deprecated(since = "22.2")
         protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
 
         /**
@@ -1050,6 +995,7 @@ public abstract class Shape {
          * @param type the Java type this location must be compatible with (may be primitive)
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type) {
             return locationForType(type, false, false);
         }
@@ -1061,6 +1007,8 @@ public abstract class Shape {
          * @param modifiers additional restrictions and semantics
          * @since 0.8 or earlier
          */
+        @SuppressWarnings("deprecation")
+        @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
             return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
         }
@@ -1071,6 +1019,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Location constantLocation(Object value);
 
         /**
@@ -1079,6 +1028,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Location declaredLocation(Object value);
 
         /**
@@ -1087,6 +1037,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Allocator addLocation(Location location);
 
         /**
@@ -1094,28 +1045,7 @@ public abstract class Shape {
          *
          * @since 0.8 or earlier
          */
+        @Deprecated(since = "22.2")
         public abstract Allocator copy();
-    }
-
-    /**
-     * Represents a predicate (boolean-valued function) of one argument.
-     *
-     * For Java 7 compatibility (equivalent to Predicate).
-     *
-     * @param <T> the type of the input to the predicate
-     * @since 0.8 or earlier
-     * @deprecated all methods that use this interface are deprecated; use
-     *             {@link java.util.function.Predicate} instead.
-     */
-    @Deprecated
-    public interface Pred<T> {
-        /**
-         * Evaluates this predicate on the given argument.
-         *
-         * @param t the input argument
-         * @return {@code true} if the input argument matches the predicate, otherwise {@code false}
-         * @since 0.8 or earlier
-         */
-        boolean test(T t);
     }
 }

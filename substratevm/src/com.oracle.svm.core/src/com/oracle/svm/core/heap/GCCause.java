@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,11 @@ import java.util.ArrayList;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -45,15 +45,16 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
     @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
+    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer};
+    @UnknownObjectField(types = GCCause[].class) //
+    protected static GCCause[] GCCauses;
 
     private final int id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected GCCause(String name, int id) {
-        /* Checkstyle: allow synchronization. */
         this.id = id;
         this.name = name;
         addGCCauseMapping();
@@ -61,7 +62,7 @@ public class GCCause {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addGCCauseMapping() {
-        synchronized (HostedGCCauseList) { /* Checkstyle: disallow synchronization. */
+        synchronized (HostedGCCauseList) {
             while (HostedGCCauseList.size() <= id) {
                 HostedGCCauseList.add(null);
             }
@@ -83,14 +84,18 @@ public class GCCause {
         return GCCauses[causeId];
     }
 
+    public static GCCause[] getGCCauses() {
+        return GCCauses;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void cacheReverseMapping() {
         GCCauses = HostedGCCauseList.toArray(new GCCause[HostedGCCauseList.size()]);
     }
 }
 
-@AutomaticFeature
-class GCCauseFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class GCCauseFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         GCCause.cacheReverseMapping();

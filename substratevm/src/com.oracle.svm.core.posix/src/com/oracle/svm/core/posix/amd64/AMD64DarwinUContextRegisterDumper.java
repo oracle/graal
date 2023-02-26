@@ -26,16 +26,14 @@ package com.oracle.svm.core.posix.amd64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.amd64.AMD64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
@@ -45,18 +43,14 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
 
-@Platforms({Platform.DARWIN_AMD64.class})
-@AutomaticFeature
-class AMD64DarwinUContextRegisterDumperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+@AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
+@Platforms(Platform.DARWIN_AMD64.class)
+class AMD64DarwinUContextRegisterDumper implements UContextRegisterDumper {
+    AMD64DarwinUContextRegisterDumper() {
         VMError.guarantee(AMD64.r14.equals(AMD64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AMD64.r15.equals(AMD64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(RegisterDumper.class, new AMD64DarwinUContextRegisterDumper());
     }
-}
 
-class AMD64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         Signal.AMD64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_amd64();
@@ -95,12 +89,14 @@ class AMD64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         Signal.AMD64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_amd64();
         return ((Pointer) sigcontext).readWord(sigcontext.rsp_offset());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         Signal.AMD64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_amd64();
         return ((Pointer) sigcontext).readWord(sigcontext.rip_offset());

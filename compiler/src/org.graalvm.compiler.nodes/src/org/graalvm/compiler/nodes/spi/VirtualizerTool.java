@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,12 +137,23 @@ public interface VirtualizerTool extends CoreProviders {
     void replaceFirstInput(Node oldInput, Node replacement);
 
     /**
-     * Adds the given node to the graph.This action will only be performed when, and if, the changes
-     * are committed.
+     * Adds the given node to the graph. This action will only be performed when, and if, the
+     * changes are committed. This should be used for nodes which have been explicitly created by
+     * the caller. If it's unclear who might have created a node, use
+     * {@link #ensureAdded(ValueNode)}.
      *
      * @param node the node to add.
      */
     void addNode(ValueNode node);
+
+    /**
+     * Adds the given node to the graph. This action will only be performed when, and if, the
+     * changes are committed. This will only add the node if it hasn't already been added when the
+     * changed are committed.
+     *
+     * @param node the node to add.
+     */
+    void ensureAdded(ValueNode node);
 
     /**
      * This method performs either {@link #replaceWithValue(ValueNode)} or
@@ -172,4 +183,12 @@ public interface VirtualizerTool extends CoreProviders {
     OptionValues getOptions();
 
     DebugContext getDebug();
+
+    /**
+     *
+     * Creates a deep-copy of the VirtualizerTool, snapshotting the current virtual ObjectStates.
+     *
+     * @return new VirtualizerTool, deep-copied from this.
+     */
+    VirtualizerTool createSnapshot();
 }

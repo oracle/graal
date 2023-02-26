@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,26 +26,39 @@ package org.graalvm.compiler.loop.phases;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
-    private static final CounterKey UNSWITCHED = DebugContext.counter("Unswitched");
     private static final CounterKey UNSWITCH_CANDIDATES = DebugContext.counter("UnswitchCandidates");
     private static final CounterKey UNSWITCH_EARLY_REJECTS = DebugContext.counter("UnswitchEarlyRejects");
 
-    public LoopUnswitchingPhase(LoopPolicies policies) {
-        super(policies);
+    public LoopUnswitchingPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
+        super(policies, canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState));
     }
 
     @Override
@@ -57,28 +70,31 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
                 unswitched = false;
                 final LoopsData dataUnswitch = context.getLoopsDataProvider().getLoopsData(graph);
                 for (LoopEx loop : dataUnswitch.outerFirst()) {
-                    if (getPolicies().shouldTryUnswitch(loop)) {
-                        List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
-                        if (controlSplits != null) {
+                    if (canUnswitch(loop)) {
+                        if (getPolicies().shouldTryUnswitch(loop)) {
+                            EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
                             UNSWITCH_CANDIDATES.increment(debug);
                             UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
                             if (decision.shouldUnswitch()) {
+                                List<ControlSplitNode> splits = decision.getControlSplits();
                                 if (debug.isLogEnabled()) {
-                                    logUnswitch(loop, controlSplits);
+                                    logUnswitch(loop, splits);
                                 }
-                                LoopTransformations.unswitch(loop, controlSplits, decision.isTrivial());
-                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", controlSplits);
-                                UNSWITCHED.increment(debug);
+                                LoopTransformations.unswitch(loop, splits, decision.isTrivial());
                                 unswitched = true;
                                 break;
                             }
+                        } else {
+                            UNSWITCH_EARLY_REJECTS.increment(debug);
                         }
-                    } else {
-                        UNSWITCH_EARLY_REJECTS.increment(debug);
                     }
                 }
             } while (unswitched);
         }
+    }
+
+    private static boolean canUnswitch(LoopEx loop) {
+        return loop.canDuplicateLoop();
     }
 
     private static void logUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {

@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -36,7 +35,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -44,27 +42,28 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.SubstrateSegfaultHandler.SingleIsolateSegfaultSetup;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
-import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-class SubstrateSegfaultHandlerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class SubstrateSegfaultHandlerFeature implements InternalFeature {
     @Override
-    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
             return; /* No segfault handler. */
         }
@@ -78,13 +77,14 @@ class SubstrateSegfaultHandlerFeature implements Feature {
     }
 }
 
-final class SubstrateSegfaultHandlerStartupHook implements Runnable {
-
+final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
-        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+                ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+            }
         }
     }
 }
@@ -131,7 +131,7 @@ public abstract class SubstrateSegfaultHandler {
             // the crash happened in native code that was linked into Native Image.
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
-                WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
+                CEntryPointSnippets.setHeapBase(heapBase);
             }
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 PointerBase threadPointer = RegisterDumper.singleton().getThreadPointer(context);
@@ -144,8 +144,7 @@ public abstract class SubstrateSegfaultHandler {
              * overflow.
              */
             isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
-                            (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+            return Isolates.checkIsolate(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
         }
         return false;
     }

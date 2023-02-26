@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.tutorial;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -60,8 +61,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.c.ProjectHeaderFile;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.tutorial.CInterfaceTutorial.CInterfaceTutorialDirectives;
 
 @CContext(CInterfaceTutorialDirectives.class)
@@ -75,7 +74,7 @@ public class CInterfaceTutorial {
              * The header file with the C declarations that are imported. We use a helper class that
              * locates the file in our project structure.
              */
-            return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.tutorial", "native/mydata.h"));
+            return Collections.singletonList("\"" + Path.of(System.getProperty("com.oracle.svm.tutorial.headerfile")).toAbsolutePath() + "\"");
         }
     }
 
@@ -298,7 +297,7 @@ public class CInterfaceTutorial {
          */
         @CFieldOffset("header")
         static int offsetOfHeader() {
-            throw VMError.shouldNotReachHere("Calls to the method are replaced with a compile time constant for the offset, so this method body is not reachable.");
+            throw new RuntimeException("Calls to the method are replaced with a compile time constant for the offset, so this method body is not reachable.");
         }
 
         @CField

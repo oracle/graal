@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,13 +42,11 @@ import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
-import org.graalvm.compiler.options.ModuleSupport;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -101,12 +99,8 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     private void runTest(Class<?> testClass, boolean expectGraalClassesLoaded) throws IOException, InterruptedException, AssertionError {
         List<String> vmCommandLine = getVMCommandLine();
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            vmArgs.add("-XX:+TraceClassLoading");
-        } else {
-            vmArgs.add("-Xlog:class+init=info");
-            vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-        }
+        vmArgs.add("-Xlog:class+init=info");
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");
@@ -161,19 +155,9 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
      * Extracts the class name from a line of log output.
      */
     private static String extractClass(String line) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            String traceClassLoadingPrefix = "[Loaded ";
-            int index = line.indexOf(traceClassLoadingPrefix);
-            if (index != -1) {
-                int start = index + traceClassLoadingPrefix.length();
-                int end = line.indexOf(' ', start);
-                return line.substring(start, end);
-            }
-        } else {
-            Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
-            if (matcher.find()) {
-                return matcher.group(1).replace('/', '.');
-            }
+        Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
+        if (matcher.find()) {
+            return matcher.group(1).replace('/', '.');
         }
         return null;
     }
@@ -272,7 +256,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             return true;
         }
 
-        if (cls == Assertions.class || cls == OptionsParser.class || cls == ModuleSupport.class || cls == OptionValues.class ||
+        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class ||
                         cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalOptionValues")) {
             // Classes implementing Graal option loading
             return true;

@@ -45,8 +45,4 @@ public final class StubStartNode extends StartNode {
         super(TYPE);
         this.stub = stub;
     }
-
-    public Stub getStub() {
-        return stub;
-    }
 }

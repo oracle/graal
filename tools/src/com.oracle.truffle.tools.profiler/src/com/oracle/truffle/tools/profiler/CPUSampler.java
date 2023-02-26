@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -74,7 +75,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 public final class CPUSampler implements Closeable {
 
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
-    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
+    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<>() {
         @Override
         public Payload apply(Payload sourcePayload) {
             Payload destinationPayload = new Payload();
@@ -88,7 +89,7 @@ public final class CPUSampler implements Closeable {
     };
 
     static ProfilerToolFactory<CPUSampler> createFactory() {
-        return new ProfilerToolFactory<CPUSampler>() {
+        return new ProfilerToolFactory<>() {
             @Override
             public CPUSampler create(Env env) {
                 return new CPUSampler(env);
@@ -228,7 +229,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void setPeriod(long samplePeriod) {
         enterChangeConfig();
         if (samplePeriod < 1) {
-            throw new ProfilerException(String.format("Invalid sample period %s.", samplePeriod));
+            throw new ProfilerException(format("Invalid sample period %s.", samplePeriod));
         }
         this.period = samplePeriod;
     }
@@ -243,7 +244,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void setDelay(long delay) {
         enterChangeConfig();
         if (delay < 0) {
-            throw new ProfilerException(String.format("Invalid delay %s.", delay));
+            throw new ProfilerException(format("Invalid delay %s.", delay));
         }
         this.delay = delay;
     }
@@ -266,7 +267,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void setStackLimit(int stackLimit) {
         enterChangeConfig();
         if (stackLimit < 1) {
-            throw new ProfilerException(String.format("Invalid stack limit %s.", stackLimit));
+            throw new ProfilerException(format("Invalid stack limit %s.", stackLimit));
         }
         this.stackLimit = stackLimit;
     }
@@ -728,6 +729,10 @@ public final class CPUSampler implements Closeable {
         final LongSummaryStatistics biasStatistic = new LongSummaryStatistics(); // nanoseconds
         final LongSummaryStatistics durationStatistic = new LongSummaryStatistics(); // nanoseconds
         final AtomicLong missedSamples = new AtomicLong(0);
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 
 }

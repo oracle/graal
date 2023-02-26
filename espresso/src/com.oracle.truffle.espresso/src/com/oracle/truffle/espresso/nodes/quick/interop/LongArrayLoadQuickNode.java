@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoad;
 import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -47,9 +47,9 @@ public final class LongArrayLoadQuickNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        int index = BytecodeNode.popInt(frame, top - 1);
-        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 2));
-        BytecodeNode.putLong(frame, top - 2, longArrayLoad.execute(array, index));
+        int index = EspressoFrame.popInt(frame, top - 1);
+        StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 2));
+        EspressoFrame.putLong(frame, top - 2, longArrayLoad.execute(array, index));
         return stackEffectOf_LALOAD;
     }
 }

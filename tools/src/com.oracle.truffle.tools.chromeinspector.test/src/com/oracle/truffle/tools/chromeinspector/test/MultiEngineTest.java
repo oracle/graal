@@ -281,6 +281,7 @@ public class MultiEngineTest extends EnginesGCedTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void checkInfo(String... paths) throws MalformedURLException, IOException {
         URL url = new URL("http", InetAddress.getLoopbackAddress().getHostAddress(), PORT, "/json");
         HttpURLConnection connection = ((HttpURLConnection) url.openConnection());

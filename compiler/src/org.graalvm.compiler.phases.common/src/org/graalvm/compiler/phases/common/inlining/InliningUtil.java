@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.ArrayDeque;
@@ -38,9 +37,10 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -56,6 +56,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeWorkList;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -63,12 +64,15 @@ import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -82,19 +86,22 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -107,9 +114,11 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
 public class InliningUtil extends ValueMergeUtil {
@@ -291,7 +300,7 @@ public class InliningUtil extends ValueMergeUtil {
 
     public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
         MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnStamp(),
+        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(ValueNode.EMPTY_ARRAY), oldCallTarget.returnStamp(),
                         oldCallTarget.getTypeProfile()));
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
@@ -434,11 +443,10 @@ public class InliningUtil extends ValueMergeUtil {
         Mark mark = graph.getMark();
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
+        InliningLog inliningLog = graph.getInliningLog();
+        try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(inliningLog)) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-            if (scope != null || graph.getDebug().hasCompilationListener()) {
-                graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
-            }
+            graph.notifyInliningDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
         }
 
         FrameState stateAfter = invoke.stateAfter();
@@ -594,22 +602,24 @@ public class InliningUtil extends ValueMergeUtil {
 
         ValueNode returnValue;
         if (!processedReturns.isEmpty()) {
-            FixedNode n = invoke.next();
+            FixedNode next = invoke.next();
             invoke.setNext(null);
             if (processedReturns.size() == 1) {
                 ReturnNode returnNode = processedReturns.get(0);
-                returnValue = returnNode.result();
-                invokeNode.replaceAtUsages(returnValue);
-                returnNode.replaceAndDelete(n);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next);
+                returnValue = returnAnchorPair.getLeft();
+                returnNode.replaceAndDelete(returnAnchorPair.getRight());
             } else {
                 MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
-                returnValue = mergeReturns(merge, processedReturns);
-                invokeNode.replaceAtUsages(returnValue);
-                if (merge.isPhiAtMerge(returnValue)) {
-                    fixFrameStates(graph, merge, (PhiNode) returnValue);
+                ValueNode mergedReturn = mergeReturns(merge, processedReturns);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge);
+                returnValue = returnAnchorPair.getLeft();
+                assert returnAnchorPair.getRight() == merge;
+                if (merge.isPhiAtMerge(mergedReturn)) {
+                    fixFrameStates(graph, merge, mergedReturn, returnValue);
                 }
-                merge.setNext(n);
+                merge.setNext(next);
             }
         } else {
             returnValue = null;
@@ -623,12 +633,62 @@ public class InliningUtil extends ValueMergeUtil {
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
         }
-        assert inlineGraph.getSpeculationLog() == null || inlineGraph.getSpeculationLog() == graph.getSpeculationLog() : "Only the root graph should have a speculation log";
+        assert inlineGraph.getSpeculationLog() == null ||
+                        inlineGraph.getSpeculationLog() == graph.getSpeculationLog() : "Only the root graph should have a speculation log";
 
         return returnValue;
     }
 
-    private static void fixFrameStates(StructuredGraph graph, MergeNode originalMerge, PhiNode returnPhi) {
+    /**
+     * Replaces invoke's usages with the provided return value while also insuring the new value's
+     * stamp is not weaker than the original invoke's stamp.
+     *
+     * @return new return and the anchoring values
+     */
+    public static Pair<ValueNode, FixedNode> replaceInvokeAtUsages(ValueNode invokeNode, ValueNode origReturn, FixedNode anchorCandidate) {
+        assert invokeNode instanceof Invoke;
+        ValueNode returnVal = origReturn;
+        FixedNode anchorVal = anchorCandidate;
+        if (origReturn != null) {
+            Stamp currentStamp = origReturn.stamp(NodeView.DEFAULT);
+            Stamp improvedStamp = currentStamp.improveWith(invokeNode.stamp(NodeView.DEFAULT));
+            if (!improvedStamp.equals(currentStamp)) {
+                StructuredGraph graph = origReturn.graph();
+                if (!(anchorCandidate instanceof AbstractBeginNode)) {
+                    // Add anchor for pi after the original candidate
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    if (anchorCandidate.predecessor() == null) {
+                        anchor.setNext(anchorCandidate);
+                    } else {
+                        graph.addBeforeFixed(anchorCandidate, anchor);
+                    }
+                    anchorVal = anchor;
+                }
+                // add PiNode with improved stamp
+                returnVal = graph.addOrUnique(PiNode.create(origReturn, improvedStamp, anchorVal));
+                if (anchorVal instanceof StateSplit) {
+                    /*
+                     * Ensure pi does not replace value within its anchor's framestate.
+                     */
+                    FrameState stateAfter = ((StateSplit) anchorVal).stateAfter();
+                    stateAfter.applyToNonVirtual(new VirtualState.NodePositionClosure<>() {
+                        @Override
+                        public void apply(Node from, Position p) {
+                            if (p.get(from) == invokeNode) {
+                                p.set(from, origReturn);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        invokeNode.replaceAtUsages(returnVal);
+
+        return Pair.create(returnVal, anchorVal);
+    }
+
+    private static void fixFrameStates(StructuredGraph graph, MergeNode originalMerge, ValueNode mergeValue, ValueNode replacementValue) {
         // It is possible that some of the frame states that came from AFTER_BCI reference a Phi
         // node that was created to merge multiple returns. This can create cycles
         // (see GR-3949 and GR-3957).
@@ -638,7 +698,7 @@ public class InliningUtil extends ValueMergeUtil {
         ArrayDeque<Node> workList = new ArrayDeque<>();
         ArrayDeque<ValueNode> valueList = new ArrayDeque<>();
         workList.push(originalMerge);
-        valueList.push(returnPhi);
+        valueList.push(mergeValue);
         while (!workList.isEmpty()) {
             Node current = workList.pop();
             ValueNode currentValue = valueList.pop();
@@ -649,11 +709,11 @@ public class InliningUtil extends ValueMergeUtil {
             if (current instanceof StateSplit && current != originalMerge) {
                 StateSplit stateSplit = (StateSplit) current;
                 FrameState state = stateSplit.stateAfter();
-                if (state != null && state.values().contains(returnPhi)) {
+                if (state != null && state.values().contains(replacementValue)) {
                     int index = 0;
                     FrameState duplicate = state.duplicate();
                     for (ValueNode value : state.values()) {
-                        if (value == returnPhi) {
+                        if (value == replacementValue) {
                             duplicate.values().set(index, currentValue);
                         }
                         index++;
@@ -686,9 +746,8 @@ public class InliningUtil extends ValueMergeUtil {
         StructuredGraph invokeGraph = invokeNode.graph();
         if (invokeGraph.trackNodeSourcePosition() && invoke.stateAfter() != null) {
             boolean isSubstitution = isSub || inlineGraph.isSubstitution();
-            assert !invokeGraph.trackNodeSourcePosition() || inlineGraph.trackNodeSourcePosition() ||
-                            isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph, invokeGraph.trackNodeSourcePosition(), inlineGraph,
-                                            inlineGraph.trackNodeSourcePosition());
+            assert !invokeGraph.trackNodeSourcePosition() || inlineGraph.trackNodeSourcePosition() || isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph,
+                            invokeGraph.trackNodeSourcePosition(), inlineGraph, inlineGraph.trackNodeSourcePosition());
             final NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             updateSourcePosition(invokeGraph, duplicates, mark, invokePos, isSubstitution);
         }
@@ -790,7 +849,8 @@ public class InliningUtil extends ValueMergeUtil {
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
-        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) ||
+                        frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
             /*
              * This path converts the frame states relevant for exception unwinding to
              * deoptimization. This is only allowed in configurations when Graal compiles code for
@@ -878,16 +938,9 @@ public class InliningUtil extends ValueMergeUtil {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
             } else if (method.equals(invoke.callTarget().targetMethod())) {
-                // This occurs when an intrinsic calls back to the original
-                // method to handle a slow path. During parsing of such a
-                // partial intrinsic, these calls are given frame states
-                // that exclude the outer frame state denoting a position
-                // in the intrinsic code.
-                assert IS_IN_NATIVE_IMAGE || inlinedMethod.getAnnotation(
-                                MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
-                                                frameState;
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else if (method.getName().equals(inlinedMethod.getName())) {
-                // This can happen for method substitutions.
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else {
                 throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, method, frameState,
                                 invoke.callTarget().targetMethod()));
@@ -896,7 +949,7 @@ public class InliningUtil extends ValueMergeUtil {
         return true;
     }
 
-    private static final ValueNode[] NO_ARGS = {};
+    private static final ValueNode[] NO_ARGS = ValueNode.EMPTY_ARRAY;
 
     private static boolean isStateAfterException(FrameState frameState) {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.getMethod().isSynchronized());
@@ -1033,6 +1086,26 @@ public class InliningUtil extends ValueMergeUtil {
         }
     }
 
+    @SuppressWarnings("try")
+    public static void insertTypeGuard(CoreProviders providers, Invoke invoke, ResolvedJavaType type, Speculation speculation) {
+        try (DebugCloseable debug = invoke.asNode().withNodeSourcePosition()) {
+            StructuredGraph graph = invoke.asNode().graph();
+            ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
+            LoadHubNode receiverHub = graph.unique(new LoadHubNode(providers.getStampProvider(), nonNullReceiver));
+            ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(NodeView.DEFAULT),
+                            providers.getConstantReflection().asObjectHub(type), providers.getMetaAccess(), graph);
+
+            LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, providers.getConstantReflection(), NodeView.DEFAULT);
+            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
+            assert invoke.predecessor() != null;
+
+            ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);
+            invoke.callTarget().replaceFirstInput(nonNullReceiver, anchoredReceiver);
+
+            graph.addBeforeFixed(invoke.asFixedNode(), guard);
+        }
+    }
+
     private static final SpeculationReasonGroup FALLBACK_DEOPT_SPECULATION = new SpeculationReasonGroup("FallbackDeopt", ResolvedJavaMethod.class, int.class, TriState.class,
                     ReceiverTypeSpeculationContext.class);
 
@@ -1040,8 +1113,9 @@ public class InliningUtil extends ValueMergeUtil {
         assert typeProfile.getNotRecordedProbability() == 0.0D;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
+        ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        frameState.getCode().getProfilingInfo().getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

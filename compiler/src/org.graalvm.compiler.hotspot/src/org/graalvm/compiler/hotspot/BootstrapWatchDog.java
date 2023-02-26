@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.util.Arrays;
@@ -32,6 +31,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.compiler.core.CompilationWatchDog;
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -177,7 +178,7 @@ final class BootstrapWatchDog extends Thread {
                             if (request1 != null && request1 == request2) {
                                 StackTraceElement[] stackTraceNow = t.getStackTrace();
                                 TTY.printf("Printing stack trace for current compilation of %s lasting more than %d seconds:%n%s",
-                                                fmt(request1.getMethod()), EPOCH, fmt(stackTraceNow));
+                                                request1.getMethod().format("%H.%n(%p)"), EPOCH, Util.toString(stackTraceNow));
 
                                 // Fortify: Null Dereference false positive
                                 assert stacksAtTimeout != null;
@@ -188,7 +189,7 @@ final class BootstrapWatchDog extends Thread {
                                 }
                             } else {
                                 if (DEBUG) {
-                                    TTY.printf("%s was compiling %s%n", t, fmt(request1.getMethod()));
+                                    TTY.printf("%s was compiling %s%n", t, request1.getMethod().format("%H.%n(%p)"));
                                 }
                             }
                         }

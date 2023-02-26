@@ -2,18 +2,25 @@ name: GraalVM Gate
 
 on:
   push:
-    branches-ignore:
-      - 'github/**'
+    branches:
+      - 'master'
+      - 'release/**'
     paths-ignore:
-      - '.travis.yml'
+      - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
+      - '**.jsonnet'
+      - '**.libjsonnet'
   pull_request:
     paths-ignore:
-      - '.travis.yml'
+      - '.devcontainer/**'
       - '.github/workflows/quarkus.yml'
       - '**.md'
-  workflow_dispatch: []
+      - '**.jsonnet'
+      - '**.libjsonnet'
+  # Enable manual dispatch of the workflow
+  # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch:
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
@@ -29,153 +36,147 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'oracle/graal' }}
 
 env:
-  LANG: en_US.UTF-8
-  MX_GIT_CACHE: refcache
-  MX_PYTHON_VERSION: 3
   JAVA_HOME: ${{ github.workspace }}/jdk
   JDT: builtin
+  LANG: en_US.UTF-8
+  MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
+  MX_PYTHON: python3.8
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
 
 jobs:
   build-graalvm:
-    name: ${{ matrix.env.JDK }} ${{ matrix.env.GATE }} ${{ matrix.env.PRIMARY }} ${{ matrix.env.WITHOUT_VCS }}
-    runs-on: ubuntu-18.04
+    name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         include:
+          # /compiler
           - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "style,fullbuild"
-              PRIMARY: "substratevm"
-          - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,test"
+              JDK_VERSION: "20"
+              GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,test,helloworld"
-              PRIMARY: "substratevm"
-          - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,test,helloworld_debug"
-              PRIMARY: "substratevm"
-          - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,bootstraplite"
+              JDK_VERSION: "20"
+              GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
+          # /espresso
           - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "style,fullbuild,sulongBasic"
+              JDK_VERSION: "17" # espresso does not support JDK20 yet
+              GATE_TAGS: "style,fullbuild"
+              PRIMARY: "espresso"
+          # /substratevm
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "style,fullbuild"
+              PRIMARY: "substratevm"
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "build,test,helloworld"
+              PRIMARY: "substratevm"
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "build,helloworld_debug"
+              PRIMARY: "substratevm"
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "build,debuginfotest"
+              PRIMARY: "substratevm"
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "hellomodule"
+              PRIMARY: "substratevm"
+          # /sulong
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
+          # /truffle
           - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,sulong"
+              JDK_VERSION: "20"
+              GATE_TAGS: "" # Truffle does not use tags
+              PRIMARY: "truffle"
+          # /vm
+          - env:
+              JDK_VERSION: "19"
+              GATE_TAGS: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "build,debuginfotest"
-              PRIMARY: "substratevm"
-              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,debuginfotest"
-              PRIMARY: "substratevm"
-              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "hellomodule"
-              PRIMARY: "substratevm"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "style,fullbuild"
-              PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,test"
-              PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build,bootstraplite"
-              PRIMARY: "compiler"
-          - env:
-              JDK: "labsjdk-ce-11"
-              GATE: "build"
+              JDK_VERSION: "17"
+              GATE_TAGS: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
-          - env:
-              JDK: "labsjdk-ce-17"
-              GATE: "style,fullbuild"
-              PRIMARY: "espresso"
+    env:
+      MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
+      MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v3
       with:
-        fetch-depth: 1
-    - uses: actions/checkout@v2
+        ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
+        fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
+    - name: Determine mx version
+      run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
+    - name: Checkout graalvm/mx
+      uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
+        ref: ${{ env.MX_VERSION }}
         fetch-depth: 1
-        ref: master
         path: ${{ env.MX_PATH }}
-    - uses: actions/cache@v1
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    - name: Update mx cache
+      uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: ${{ runner.os }}-mx-
-    - name: Get JDK
+    - name: Fetch LabsJDK
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
-      if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
+      if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
-    - name: Debug dependencies
-      if: ${{ contains(matrix.env.GATE, 'debug') }}
+    - name: Install debug dependencies
+      if: ${{ env.MX_RUNS_DEBUG == 'true' }}
       run: sudo apt install gdb
-    - name: Style dependencies
-      if: ${{ contains(matrix.env.GATE, 'style') }}
+    - name: Install style dependencies
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
-        sudo apt install python-pip python-setuptools 
-        cat common.json |
-          jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
+        sudo apt install python3-pip python-setuptools
+        jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
-    - name: Build GraalVM and run gate
-      env: ${{ matrix.env }}
+        ${MX_PYTHON} -m pip install jsonschema==4.6.1
+    - name: Download Eclipse
+      if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
-        if [[ ${GATE} == *style* ]]
-        then
-          export ECLIPSE_TAR=eclipse.tar.gz
-          wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
-          tar -xzf ${ECLIPSE_TAR}
-          export ECLIPSE_EXE=${PWD}/eclipse/eclipse
-
-          # the style gate needs the full commit history for checking copyright years
-          git fetch --unshallow
-        fi
-
-        echo ${JAVA_HOME}
-        ${JAVA_HOME}/bin/java -version
-        if [[ ${WITHOUT_VCS} ]]
-        then
-          rm -rf .git
-        fi
-
-        exit_code=0
-        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE} || exit_code=$?
-
-        if [[ -n "${GHA_EXPECTED_FAILURE}" ]]
-        then
-          if [[ ${exit_code} -eq 0 ]]
-          then
-            echo "Gate passed but was marked as expected failure."
-            exit 25
-          fi
-        else
-          exit ${exit_code}
-        fi
+        ECLIPSE_TAR=eclipse.tar.gz
+        ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
+        ECLIPSE_ORG_TIMESTAMP=$(jq -r '.downloads.eclipse.eclipse_org.timestamp' common.json)
+        wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
+        tar -xzf ${ECLIPSE_TAR}
+        echo "ECLIPSE_EXE=${PWD}/eclipse/eclipse" >> $GITHUB_ENV
+    - name: Remove .git directory
+      if: ${{ matrix.env.WITHOUT_VCS }}
+      run: rm -rf .git
+    - name: Build GraalVM and run gate with tags
+      env: ${{ matrix.env }}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
+      if: ${{ matrix.env.GATE_TAGS != '' }}
+    - name: Build GraalVM and run gate without tags
+      env: ${{ matrix.env }}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode
+      if: ${{ matrix.env.GATE_TAGS == '' }}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,8 @@ public final class Constants {
     public static final CodePointSet UTF8_THREE_BYTE_RANGE = CodePointSet.createNoDedup(0x800, 0xffff);
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
+
+    public static final CodePointSet BMP_WITHOUT_LATIN1_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0100, 0xd7ff, 0xe000, 0xffff);
 
     public static final CodePointSet ASTRAL_SYMBOLS = CodePointSet.createNoDedup(0x010000, 0x10ffff);
 

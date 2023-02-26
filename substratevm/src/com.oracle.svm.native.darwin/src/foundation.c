@@ -23,8 +23,28 @@
  * questions.
  */
 
+#include <string.h>
 #include <Foundation/Foundation.h>
 
 void operatingSystemVersion(NSOperatingSystemVersion* osv) {
     *osv = [[NSProcessInfo processInfo] operatingSystemVersion];
+}
+
+static char *systemVersionPlatformImpl(NSString *path) {
+   NSString *nsVerStr = NULL;
+   NSDictionary *version = [NSDictionary dictionaryWithContentsOfFile : path];
+
+   if (version != NULL) {
+       nsVerStr = [version objectForKey : @"ProductVersion"];
+       return strdup([nsVerStr UTF8String]);
+   }
+   return NULL;
+}
+
+char *systemVersionPlatform(void) {
+    return systemVersionPlatformImpl(@"/System/Library/CoreServices/.SystemVersionPlatform.plist");
+}
+
+char *systemVersionPlatformFallback(void) {
+    return systemVersionPlatformImpl(@"/System/Library/CoreServices/SystemVersion.plist");
 }

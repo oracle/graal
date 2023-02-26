@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,8 @@ public interface Toolchain {
      * <dl>
      * <dt><code>CC</code></dt>
      * <dd>A C compiler with a <code>clang</code>-like command line interface.</dd>
+     * <dt><code>CL</code></dt>
+     * <dd>A C/C++ compiler with a <code>cl</code>-like command line interface.</dd>
      * <dt><code>CXX</code></dt>
      * <dd>A C++ compiler with a <code>clang++</code>-like command line interface.</dd>
      * <dt><code>LD</code></dt>
@@ -119,10 +121,11 @@ abstract class ToolchainExampleSnippet {
         Toolchain toolchain = env.lookup(llvmInfo, Toolchain.class);
         String id = toolchain.getIdentifier();
         TruffleFile cc = toolchain.getToolPath("CC");
+        TruffleFile cl = toolchain.getToolPath("CL");
         TruffleFile cxx = toolchain.getToolPath("CXX");
         TruffleFile ld = toolchain.getToolPath("LD");
 
-        String[] args = {"make", "CC=" + cc, "CXX=" + cxx, "LD=" + ld, "OUTPUT_DIR=" + id};
+        String[] args = {"make", "CC=" + cc, "CL=" + cl, "CXX=" + cxx, "LD=" + ld, "OUTPUT_DIR=" + id};
         Process p = env.newProcessBuilder(args).start();
         p.waitFor();
         // END: toolchain-example

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import com.oracle.truffle.sl.runtime.SLStrings;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
@@ -99,7 +100,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
                         : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
-        SLFunction test = SLContext.get(null).getFunctionRegistry().getFunction("test");
+        SLFunction test = SLContext.get(null).getFunctionRegistry().getFunction(SLStrings.fromJavaString("test"));
 
         Assert.assertFalse(isExecuteCompiled(test));
         for (int i = 0; i < iterations - 1; i++) {

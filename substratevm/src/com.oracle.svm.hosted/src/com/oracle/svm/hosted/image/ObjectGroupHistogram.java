@@ -113,9 +113,9 @@ public final class ObjectGroupHistogram {
 
         try {
             Field field = Class.forName("com.oracle.svm.graal.SubstrateRuntimeProvider").getDeclaredField("graphObjects");
-            Object object = SubstrateObjectConstant.asObject(heap.getMetaAccess().lookupJavaField(field).readValue(null));
-            processObject(heap.getObjectInfo(object), "CompressedGraphObjects", true, null, ObjectGroupHistogram::filterObjectConstantField);
-        } catch (Throwable ex) {
+            JavaConstant fieldValue = heap.getMetaAccess().lookupJavaField(field).readValue(null);
+            processObject(heap.getConstantInfo(fieldValue), "CompressedGraphObjects", true, 1, null, ObjectGroupHistogram::filterObjectConstantField);
+        } catch (LinkageError | ClassNotFoundException | NoSuchFieldException ex) {
             /* Ignore. When we build an image without Graal support, the class is not present. */
         }
 
@@ -181,9 +181,9 @@ public final class ObjectGroupHistogram {
             for (HostedField field : info.getClazz().getInstanceFields(true)) {
                 if (field.getType().getStorageKind() == JavaKind.Object && !HybridLayout.isHybridField(field) && field.isAccessed()) {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
-                        Object fieldValue = SubstrateObjectConstant.asObject(field.readStorageValue(con));
-                        if (fieldValue != null) {
-                            processObject(heap.getObjectInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                        JavaConstant fieldValue = field.readStorageValue(con);
+                        if (fieldValue.isNonNull()) {
+                            processObject(heap.getConstantInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                         }
                     }
                 }

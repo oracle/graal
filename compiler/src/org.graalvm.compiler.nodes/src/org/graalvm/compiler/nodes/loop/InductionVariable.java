@@ -154,4 +154,9 @@ public abstract class InductionVariable {
      * Duplicate this iv including all (non-constant) nodes.
      */
     public abstract InductionVariable duplicate();
+
+    /**
+     * Return the value of this iv upon the first entry of the loop.
+     */
+    public abstract ValueNode entryTripValue();
 }

@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -46,7 +47,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -61,6 +61,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "trace");
 
     private static final String OPTION_LLDEBUG = "llvm.llDebug";
+    private static final String OPTION_LOG_LLDEBUG_LEVEL = "log.llvm.LLDebug.level";
     private static final String OPTION_LLDEBUG_SOURCES = "llvm.llDebug.sources";
 
     @BeforeClass
@@ -106,7 +107,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
             CommonTestUtils.disableBitcodeVerification(contextBuilder);
         }
         contextBuilder.option(OPTION_LLDEBUG, String.valueOf(true));
-        contextBuilder.option(SulongEngineOption.LL_DEBUG_VERBOSE_NAME, String.valueOf(false));
+        contextBuilder.option(OPTION_LOG_LLDEBUG_LEVEL, Level.SEVERE.getName());
         final String sourceMapping = String.format("%s=%s", loadBitcodeSource().getPath(), loadOriginalSource().getPath());
         contextBuilder.option(OPTION_LLDEBUG_SOURCES, sourceMapping);
     }

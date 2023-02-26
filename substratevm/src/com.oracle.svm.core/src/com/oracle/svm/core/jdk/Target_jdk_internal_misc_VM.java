@@ -25,50 +25,36 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Map;
-import java.util.Properties;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.nativeimage.ImageSingletons;
-
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "VM")
-public final class Target_jdk_internal_misc_VM {
-    /* Ensure that we do not leak the full set of properties from the image generator. */
-    @TargetElement(onlyWith = JDK8OrEarlier.class)//
-    @Delete //
-    private static Properties savedProps;
+import jdk.internal.misc.Unsafe;
 
-    @TargetElement(name = "savedProps", onlyWith = JDK11OrLater.class)//
+@TargetClass(className = "jdk.internal.misc.VM")
+public final class Target_jdk_internal_misc_VM {
+    /** Ensure that we do not leak the full set of properties from the image generator. */
     @Delete //
-    private static Map<String, String> savedProps9;
+    private static Map<String, String> savedProps;
 
     @Substitute
     public static String getSavedProperty(String name) {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getSavedProperties().get(name);
+        return SystemPropertiesSupport.singleton().getSavedProperties().get(name);
     }
 
-    @TargetElement(onlyWith = JDK8OrEarlier.class)//
-    @Substitute
-    public static ClassLoader latestUserDefinedLoader() {
-        ClassLoader loader = latestUserDefinedLoader0();
-        if (loader != null) {
-            return loader;
-        }
-        // See the JDK8-specific implementation of
-        // JDKSpecificStackTraceUtils.isExtensionOrPlatformLoader().
-        return Target_jdk_internal_misc_VM.class.getClassLoader();
-    }
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static native Thread.State toThreadState(int threadStatus);
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
@@ -141,7 +127,7 @@ final class DirectMemoryAccessors {
         pageAlignDirectMemory = Boolean.getBoolean("sun.nio.PageAlignDirectMemory");
 
         /* Ensure values are published to other threads before marking fields as initialized. */
-        GraalUnsafeAccess.getUnsafe().storeFence();
+        Unsafe.getUnsafe().storeFence();
         initialized = true;
     }
 }

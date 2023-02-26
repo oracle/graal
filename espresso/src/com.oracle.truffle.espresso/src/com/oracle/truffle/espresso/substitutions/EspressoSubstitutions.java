@@ -30,6 +30,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface EspressoSubstitutions {
+    // TODO: Correctly wire it up when provided and remove hack in
+    // com.oracle.truffle.espresso.substitutions.Target_java_lang_ThreadDollarThreadIdentifiers
     JavaType value() default @JavaType;
 
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;

@@ -29,10 +29,6 @@
 
 typedef enum {
   poly_ok,
-  poly_string_expected,
-  poly_number_expected,
-  poly_boolean_expected,
-  poly_array_expected,
   poly_generic_failure,
   poly_pending_exception,
 } poly_status;
@@ -71,5 +67,7 @@ typedef graal_isolate_t* poly_isolate;
 typedef graal_isolatethread_t* poly_thread;
 
 typedef poly_value (*poly_callback)(poly_thread thread, poly_callback_info info);
+
+typedef void (*poly_output_handler)(const char* bytes, size_t length);
 
 #endif

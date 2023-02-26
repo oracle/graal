@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 import org.junit.runners.model.FrameworkField;
 import org.junit.runners.model.FrameworkMethod;
@@ -67,6 +68,7 @@ import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+import org.junit.AssumptionViolatedException;
 
 final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extends TVMCI.TestAccessor<C, T> {
 
@@ -125,6 +127,10 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
                     rule.testLanguage = prevLang;
                     rule.testEnv = prevEnv;
                     context.leave();
+                }
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled() && !pe.isExit()) {
+                    throw pe;
                 }
             } finally {
                 rule.context = prevContext;
@@ -252,6 +258,17 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
         return null;
     }
 
+    private static RuntimeException forwardException(InvocationTargetException ex) {
+        Throwable cause = ex.getCause();
+        if (cause instanceof AssumptionViolatedException) {
+            throw (AssumptionViolatedException) cause;
+        } else if (cause instanceof AssertionError) {
+            throw (AssertionError) cause;
+        } else {
+            throw new AssertionError(cause);
+        }
+    }
+
     private static NodeConstructor getNodeConstructor(Inject annotation, TestClass testClass) {
         Class<? extends RootNode> nodeClass = annotation.value();
         try {
@@ -259,8 +276,10 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
             return (obj) -> {
                 try {
                     return cons.newInstance(obj);
-                } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | InvocationTargetException ex) {
+                } catch (IllegalAccessException | IllegalArgumentException | InstantiationException ex) {
                     throw new AssertionError(ex);
+                } catch (InvocationTargetException ex) {
+                    throw forwardException(ex);
                 }
             };
         } catch (NoSuchMethodException e) {
@@ -269,8 +288,10 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
                 return (obj) -> {
                     try {
                         return cons.newInstance();
-                    } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | InvocationTargetException ex) {
+                    } catch (IllegalAccessException | IllegalArgumentException | InstantiationException ex) {
                         throw new AssertionError(ex);
+                    } catch (InvocationTargetException ex) {
+                        throw forwardException(ex);
                     }
                 };
             } catch (NoSuchMethodException ex) {

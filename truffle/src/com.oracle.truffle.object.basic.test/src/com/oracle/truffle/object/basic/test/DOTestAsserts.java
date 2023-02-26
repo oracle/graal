@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,6 +100,18 @@ public abstract class DOTestAsserts {
         }
     }
 
+    public static Class<?> getLocationType(Location location) {
+        try {
+            Class<?> locations = Class.forName("com.oracle.truffle.object.LocationImpl");
+            Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
+                            m -> m.getName().equals("getType")).findFirst().get();
+            getInternalLocationMethod.setAccessible(true);
+            return (Class<?>) getInternalLocationMethod.invoke(location);
+        } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     private static Location assumeCoreLocation(Location location) {
         try {
             Class<?> locationBaseClass = Class.forName("com.oracle.truffle.object.CoreLocation");
@@ -156,5 +168,10 @@ public abstract class DOTestAsserts {
             assertEquals("before != after for key: " + key, after, before);
         }
         return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void assertObjectLocation(Location location) {
+        Assert.assertTrue(location instanceof com.oracle.truffle.api.object.ObjectLocation);
     }
 }

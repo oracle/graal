@@ -24,21 +24,18 @@
  */
 package com.oracle.svm.core.jdk17;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.Objects;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(value = RecordSupport.class, onlyWith = JDK17OrLater.class)
 final class RecordSupportJDK17OrLater extends RecordSupport {
     @Override
     public boolean isRecord(Class<?> clazz) {
@@ -54,6 +51,7 @@ final class RecordSupportJDK17OrLater extends RecordSupport {
     public Method[] getRecordComponentAccessorMethods(Class<?> clazz) {
         return Arrays.stream(clazz.getRecordComponents())
                         .map(RecordComponent::getAccessor)
+                        .filter(Objects::nonNull)
                         .toArray(Method[]::new);
     }
 
@@ -69,18 +67,5 @@ final class RecordSupportJDK17OrLater extends RecordSupport {
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere("Malformed record class that does not declare a canonical constructor: " + clazz.getTypeName());
         }
-    }
-}
-
-@AutomaticFeature
-final class RecordFeatureJDK17OrLater implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 17;
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RecordSupport.class, new RecordSupportJDK17OrLater());
     }
 }

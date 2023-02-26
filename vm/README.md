@@ -132,13 +132,13 @@ $ mx --dy truffleruby --components='TruffleRuby' build
 
 ### Example: build only the TruffleRuby launcher
 ```bash
-$ mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=truffleruby build
+$ mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=lib:rubyvm build
 ```
 or as env file (e.g., in `mx.vm/ruby`):
 ```
 DYNAMIC_IMPORTS=truffleruby,/substratevm,/tools
 COMPONENTS=TruffleRuby,Native Image,suite:tools
-NATIVE_IMAGES=truffleruby
+NATIVE_IMAGES=lib:rubyvm
 ```
 ```bash
 $ mx --env ruby build

@@ -24,8 +24,12 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
+ */
 final class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
     private final int threads;
@@ -34,7 +38,8 @@ final class DynamicThresholdsQueue extends TraversingBlockingQueue {
     private final int maxNormalLoad;
     private final double slope;
 
-    DynamicThresholdsQueue(int threads, double minScale, int minNormalLoad, int maxNormalLoad) {
+    DynamicThresholdsQueue(int threads, double minScale, int minNormalLoad, int maxNormalLoad, BlockingQueue<Runnable> entries) {
+        super(entries);
         this.threads = threads;
         this.minScale = minScale;
         this.minNormalLoad = minNormalLoad;

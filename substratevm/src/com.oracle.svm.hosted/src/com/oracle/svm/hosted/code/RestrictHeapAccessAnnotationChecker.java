@@ -30,16 +30,12 @@ import java.util.Deque;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
+import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -68,24 +64,13 @@ public final class RestrictHeapAccessAnnotationChecker {
         }
     }
 
-    static Node checkViolatingNode(StructuredGraph graph, Access access) {
+    static CompilationGraph.AllocationInfo checkViolatingNode(CompilationGraph graph) {
         if (graph != null) {
-            for (Node node : graph.getNodes()) {
-                if (!isViolatingNode(node, access)) {
-                    return node;
-                }
+            for (CompilationGraph.AllocationInfo node : graph.getAllocationInfos()) {
+                return node;
             }
         }
         return null;
-    }
-
-    private static boolean isViolatingNode(Node node, Access access) {
-        assert access != Access.UNRESTRICTED : "does not require checks";
-        return !isAllocationNode(node);
-    }
-
-    private static boolean isAllocationNode(Node node) {
-        return (node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
     }
 
     /** A HostedMethod visitor that checks for violations of heap access restrictions. */
@@ -107,8 +92,8 @@ public final class RestrictHeapAccessAnnotationChecker {
                 return;
             }
             /* Look through the graph for this method and see if it allocates. */
-            final StructuredGraph graph = method.compilationInfo.getGraph();
-            if (RestrictHeapAccessAnnotationChecker.checkViolatingNode(graph, info.getAccess()) != null) {
+            final CompilationGraph graph = method.compilationInfo.getCompilationGraph();
+            if (RestrictHeapAccessAnnotationChecker.checkViolatingNode(graph) != null) {
                 try (DebugContext.Scope s = debug.scope("RestrictHeapAccessAnnotationChecker", graph, method, this)) {
                     postRestrictHeapAccessWarning(method.getWrapped(), restrictHeapAccessCallees.getCallerMap());
                 } catch (Throwable t) {
@@ -134,13 +119,13 @@ public final class RestrictHeapAccessAnnotationChecker {
                 final Deque<RestrictionInfo> allocationList = new ArrayDeque<>();
                 for (RestrictionInfo element : callChain) {
                     allocationList.addLast(element);
-                    if (checkHostedViolatingNode(element.getMethod(), element.getAccess()) != null) {
+                    if (checkHostedViolatingNode(element.getMethod()) != null) {
                         break;
                     }
                 }
                 assert !allocationList.isEmpty();
                 if (allocationList.size() == 1) {
-                    final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(violatingCallee, violatedAccess);
+                    final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(violatingCallee);
                     if (allocationStackTraceElement != null) {
                         message += "Restricted method '" + allocationStackTraceElement.toString() + "' directly violates restriction " + violatedAccess + ".";
                     } else {
@@ -158,7 +143,7 @@ public final class RestrictHeapAccessAnnotationChecker {
                                 message += "\n" + "    " + element.getInvocationStackTraceElement().toString();
                             }
                         }
-                        final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(last.getMethod(), last.getAccess());
+                        final StackTraceElement allocationStackTraceElement = getViolatingStackTraceElement(last.getMethod());
                         if (allocationStackTraceElement != null) {
                             message += "\n" + "    " + allocationStackTraceElement.toString();
                         } else {
@@ -171,11 +156,11 @@ public final class RestrictHeapAccessAnnotationChecker {
             }
         }
 
-        Node checkHostedViolatingNode(AnalysisMethod method, Access access) {
+        CompilationGraph.AllocationInfo checkHostedViolatingNode(AnalysisMethod method) {
             final HostedMethod hostedMethod = universe.optionalLookup(method);
             if (hostedMethod != null) {
-                final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
-                return checkViolatingNode(graph, access);
+                final CompilationGraph graph = hostedMethod.compilationInfo.getCompilationGraph();
+                return checkViolatingNode(graph);
             }
             return null;
         }
@@ -183,11 +168,11 @@ public final class RestrictHeapAccessAnnotationChecker {
         /**
          * Look through the graph of the corresponding HostedMethod to see if it allocates.
          */
-        private StackTraceElement getViolatingStackTraceElement(AnalysisMethod method, Access access) {
+        private StackTraceElement getViolatingStackTraceElement(AnalysisMethod method) {
             final HostedMethod hostedMethod = universe.optionalLookup(method);
             if (hostedMethod != null) {
-                final StructuredGraph graph = hostedMethod.compilationInfo.getGraph();
-                Node node = checkViolatingNode(graph, access);
+                final CompilationGraph graph = hostedMethod.compilationInfo.getCompilationGraph();
+                CompilationGraph.AllocationInfo node = checkViolatingNode(graph);
                 if (node != null) {
                     final NodeSourcePosition sourcePosition = node.getNodeSourcePosition();
                     if (sourcePosition != null && sourcePosition.getBCI() != -1) {

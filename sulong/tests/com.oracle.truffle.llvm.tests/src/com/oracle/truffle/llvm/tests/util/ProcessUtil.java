@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,29 +29,32 @@
  */
 package com.oracle.truffle.llvm.tests.util;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class ProcessUtil {
 
     private static final int BUFFER_SIZE = 1024;
-    private static final int PROCESS_WAIT_TIMEOUT = 60 * 1000; // 1 min timeout
+    private static final int PROCESS_WAIT_TIMEOUT = 5 * 60 * 1000; // 5 min timeout
     private static final int JOIN_TIMEOUT = 5 * 1000; // 5 sec timeout
 
     /**
@@ -64,11 +67,15 @@ public class ProcessUtil {
         private final String stdOutput;
         private final int returnValue;
 
-        private ProcessResult(String originalCommand, int returnValue, String stdErr, String stdOutput) {
+        public ProcessResult(String originalCommand, int returnValue, String stdErr, String stdOutput) {
             this.originalCommand = originalCommand;
             this.returnValue = returnValue;
             this.stdErr = stdErr;
             this.stdOutput = stdOutput;
+        }
+
+        public String getOriginalCommand() {
+            return originalCommand;
         }
 
         /**
@@ -140,103 +147,124 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
-        return executeSulongTestMainSameEngine(bitcodeFile, args, options, captureOutput, Engine.newBuilder().allowExperimentalOptions(true).build());
+    public abstract static class TestEngineMode implements Closeable {
+        public abstract ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException;
+
+        @Override
+        public void close() {
+        }
     }
 
-    public static ProcessResult executeSulongTestMainSameEngine(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput, Engine engine)
-                    throws IOException {
-        if (TestOptions.TEST_AOT_IMAGE == null) {
+    public static class CachedEngineMode extends TestEngineMode {
+        private Engine engine;
+        private Function<Builder, CaptureOutput> captureOutput;
+
+        public CachedEngineMode(Engine engine, Function<Context.Builder, CaptureOutput> captureOutput) {
+            this.engine = engine;
+            this.captureOutput = captureOutput;
+        }
+
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
             Builder builder = Context.newBuilder();
             try (CaptureOutput out = captureOutput.apply(builder)) {
-                int result;
+                int result = 0;
                 try (Context context = builder.engine(engine).arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
                     Value main = context.eval(source);
                     if (!main.canExecute()) {
                         throw new LLVMLinkerException("No main function found.");
                     }
-                    result = main.execute().asInt();
+                    if (!evalSourceOnly) {
+                        result = main.execute().asInt();
+                    }
                 }
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
             }
-        } else {
-            String aotArgs = TestOptions.TEST_AOT_ARGS == null ? "" : TestOptions.TEST_AOT_ARGS + " ";
-            String cmdline = TestOptions.TEST_AOT_IMAGE + " " + aotArgs + concatOptions(options) + bitcodeFile.getAbsolutePath() + " " + concatCommand(args);
-            return executeNativeCommand(cmdline);
+        }
+
+        @Override
+        public void close() {
+            engine.close();
         }
     }
 
-    private static String concatOptions(Map<String, String> options) {
-        StringBuilder str = new StringBuilder();
-        for (Map.Entry<String, String> entry : options.entrySet()) {
-            String encoded = entry.getKey() + '=' + entry.getValue();
-            str.append("'--").append(encoded.replace("'", "''")).append("' ");
+    public static class SeparateProcessEngineMode extends TestEngineMode {
+        private ProcessHarnessManager manager;
+
+        public SeparateProcessEngineMode() throws IOException {
+            this.manager = ProcessHarnessManager.create(1);
         }
-        return str.toString();
-    }
 
-    public static ProcessResult executeNativeCommandZeroReturn(String command) {
-        ProcessResult result = executeNativeCommand(command);
-        checkNoError(result);
-        return result;
-    }
-
-    /**
-     * Executes a native command and checks that the return value of the process is 0.
-     */
-    public static ProcessResult executeNativeCommandZeroReturn(String... command) {
-        ProcessResult result;
-        if (command.length == 1) {
-            result = executeNativeCommand(command[0]);
-        } else {
-            result = executeNativeCommand(concatCommand(command));
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
+            return manager.startTask(bitcodeFile.getAbsolutePath()).get();
         }
-        checkNoError(result);
-        return result;
+
+        @Override
+        public void close() {
+            manager.shutdown();
+        }
     }
 
-    /**
-     * Concats a command by introducing whitespaces between the array elements.
-     */
-    static String concatCommand(Object[] command) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < command.length; i++) {
-            if (i != 0) {
-                sb.append(" ");
+    public static class AOTEngineMode extends TestEngineMode {
+        @Override
+        public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
+
+            ArrayList<String> command = new ArrayList<>();
+            command.add(TestOptions.TEST_AOT_IMAGE);
+            if (evalSourceOnly) {
+                command.add("--eval-source-only");
             }
-            sb.append(command[i]);
+            if (TestOptions.TEST_AOT_ARGS != null) {
+                command.addAll(Arrays.asList(TestOptions.TEST_AOT_ARGS.split(" ")));
+            }
+            command.add("--experimental-options");
+            command.addAll(concatOptions(options));
+            command.add(bitcodeFile.getAbsolutePath());
+            command.addAll(Arrays.asList(args));
+            return executeNativeCommand(command);
         }
-        return sb.toString();
     }
 
-    public static ProcessResult executeNativeCommand(String command) {
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
+        TestEngineMode mode = new CachedEngineMode(Engine.newBuilder().allowExperimentalOptions(true).build(), captureOutput);
+        ProcessResult result = mode.run(bitcodeFile, args, options, false);
+        mode.close();
+        return result;
+    }
+
+    private static List<String> concatOptions(Map<String, String> options) {
+        List<String> optList = new ArrayList<>();
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            String encoded = "--" + entry.getKey() + '=' + entry.getValue();
+            optList.add(encoded);
+        }
+        return optList;
+    }
+
+    public static ProcessResult executeNativeCommand(List<String> command) {
         if (command == null) {
             throw new IllegalArgumentException("command is null!");
         }
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = null;
         try {
-            process = Runtime.getRuntime().exec(command);
+            process = processBuilder.start();
             StreamReader readError = StreamReader.read(process.getErrorStream());
             StreamReader readOutput = StreamReader.read(process.getInputStream());
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (!success) {
-                throw new TimeoutError(command);
+                throw new TimeoutError(command.toString());
             }
             int llvmResult = process.exitValue();
-            return new ProcessResult(command, llvmResult, readError.getResult(), readOutput.getResult());
+            return new ProcessResult(command.toString(), llvmResult, readError.getResult(), readOutput.getResult());
         } catch (Exception e) {
             throw new RuntimeException(command + " ", e);
         } finally {
             if (process != null) {
                 process.destroyForcibly();
             }
-        }
-    }
-
-    public static void checkNoError(ProcessResult processResult) {
-        if (processResult.getReturnValue() != 0) {
-            throw new IllegalStateException(processResult.originalCommand + " exited with value " + processResult.getReturnValue() + " " + processResult.getStdErr());
         }
     }
 

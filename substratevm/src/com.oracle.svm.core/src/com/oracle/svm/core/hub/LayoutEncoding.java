@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -36,28 +35,37 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * The layout encoding for instances is the aligned instance size (i.e., a positive number).
- * <p>
- * For arrays, the layout encoding is a negative number with the following format:<br>
- *
- * <code>[tag:2, free:10, base:12, indexShift:8]</code>
+ * The layout encoding determines how the GC interprets an object. The following encodings are
+ * currently used:
  * <ul>
- * <li>tag: 0x80 if the array is an object array, 0xC0 if it is a primitive array</li>
- * <li>free: currently unused bits</li>
+ * <li>Special objects: a positive value less or equal than {@link #LAST_SPECIAL_VALUE}.</li>
+ * <li>Instance objects: the layout encoding for instances is the aligned instance size (i.e., a
+ * positive number greater than {@link #LAST_SPECIAL_VALUE}).</li>
+ * <li>Array objects: the layout encoding for arrays is a negative number with the following
+ * format:<br>
+ *
+ * <code>[tag:3, unused:9, base:12, indexShift:8]</code>
+ * <ul>
+ * <li>tag: determines element type and whether the object is a true array or a {@link Hybrid}.</li>
+ * <li>unused: bits currently not used for any purpose</li>
  * <li>base: the array base offset</li>
  * <li>indexShift: the array index shift for accessing array elements or for computing the array
  * size based on the array length</li>
+ * </ul>
+ *
+ * {@link Hybrid} objects are encoded like arrays but are treated like instance objects in other
+ * places (e.g. {@link HubType}). Another difference to arrays is that hybrid objects need a
+ * reference map because they have fields.</li>
  * </ul>
  */
 @DuplicatedInNativeCode
@@ -67,17 +75,21 @@ public class LayoutEncoding {
     private static final int PRIMITIVE_VALUE = NEUTRAL_VALUE + 1;
     private static final int INTERFACE_VALUE = PRIMITIVE_VALUE + 1;
     private static final int ABSTRACT_VALUE = INTERFACE_VALUE + 1;
-    private static final int STORED_CONTINUATION_VALUE = ABSTRACT_VALUE + 1;
-    private static final int LAST_SPECIAL_VALUE = STORED_CONTINUATION_VALUE;
+    private static final int LAST_SPECIAL_VALUE = ABSTRACT_VALUE;
 
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
     private static final int ARRAY_INDEX_SHIFT_MASK = 0xff;
     private static final int ARRAY_BASE_SHIFT = 8 + ARRAY_INDEX_SHIFT_SHIFT;
     private static final int ARRAY_BASE_MASK = 0xfff;
-    private static final int ARRAY_TAG_BITS = 2;
+    private static final int ARRAY_TAG_BITS = 3;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
-    private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00;
-    private static final int ARRAY_TAG_OBJECT_VALUE = ~0x01;
+    private static final int ARRAY_TAG_IDENTITY_BIT = 0b100;
+    private static final int ARRAY_TAG_PRIMITIVE_BIT = 0b010;
+    private static final int ARRAY_TAG_PURE_BIT = 0b001; // means non-hybrid
+    private static final int ARRAY_TAG_PRIMITIVE_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PRIMITIVE_BIT | ARRAY_TAG_PURE_BIT; // 0b111
+    private static final int ARRAY_TAG_HYBRID_PRIMITIVE_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PRIMITIVE_BIT;               // 0b110
+    private static final int ARRAY_TAG_OBJECT_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PURE_BIT;                              // 0b101
+    private static final int ARRAY_TAG_HYBRID_OBJECT_VALUE = ARRAY_TAG_IDENTITY_BIT;                                            // 0b100
 
     public static int forPrimitive() {
         return PRIMITIVE_VALUE;
@@ -91,14 +103,11 @@ public class LayoutEncoding {
         return ABSTRACT_VALUE;
     }
 
-    public static int forStoredContinuation() {
-        return STORED_CONTINUATION_VALUE;
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
-        if (!condition) {
-            VMError.shouldNotReachHere(description + ". This error is caused by an incorrect compact encoding of a type " +
+    private static void guaranteeEncoding(ResolvedJavaType type, boolean expected, boolean actual, String description) {
+        if (actual != expected) {
+            throw VMError.shouldNotReachHere(description + ": expected to be " + expected + ". " +
+                            "This error is caused by an incorrect compact encoding of a type " +
                             "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
                             "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
                             "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
@@ -107,31 +116,47 @@ public class LayoutEncoding {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static int forInstance(ResolvedJavaType type, int size) {
-        guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
+    public static int forPureInstance(ResolvedJavaType type, int size) {
+        guaranteeEncoding(type, true, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
         int encoding = size;
-        guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
-        guaranteeEncoding(type, !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
-        guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
-        guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
-        guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
-        guaranteeEncoding(type, getInstanceSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size must match type size");
+        guaranteeEncoding(type, true, isPureInstance(encoding), "Instance type encoding denotes an instance");
+        guaranteeEncoding(type, false, isArray(encoding) || isArrayLike(encoding), "Instance type encoding denotes an array-like object");
+        guaranteeEncoding(type, false, isHybrid(encoding), "Instance type encoding denotes a hybrid");
+        guaranteeEncoding(type, false, isObjectArray(encoding) || isArrayLikeWithObjectElements(encoding), "Instance type encoding denotes an object array");
+        guaranteeEncoding(type, false, isPrimitiveArray(encoding) || isArrayLikeWithPrimitiveElements(encoding), "Instance type encoding denotes a primitive array");
+        guaranteeEncoding(type, true, getPureInstanceSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size matches type size");
         return encoding;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static int forArray(ResolvedJavaType type, boolean isObject, int arrayBaseOffset, int arrayIndexShift) {
-        int tag = isObject ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE;
+    public static int forArray(ResolvedJavaType type, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        return forArrayLike(type, false, objectElements, arrayBaseOffset, arrayIndexShift);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int forHybrid(ResolvedJavaType type, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        return forArrayLike(type, true, objectElements, arrayBaseOffset, arrayIndexShift);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int forArrayLike(ResolvedJavaType type, boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
+        assert isHybrid != type.isArray();
+        int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)
+                        : (objectElements ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE);
         int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
 
-        guaranteeEncoding(type, isArray(encoding), "Array encoding must denote an array");
-        guaranteeEncoding(type, !isInstance(encoding), "Array encoding must not denote an instance type");
-        guaranteeEncoding(type, isObjectArray(encoding) == isObject, "Expected isObjectArray(encoding) == " + isObject);
-        guaranteeEncoding(type, isPrimitiveArray(encoding) != isObject, "Expected isPrimitiveArray(encoding) != " + isObject);
-        guaranteeEncoding(type, getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset)),
-                        "Expected array base offset of " + arrayBaseOffset + ", but encoding gives " + getArrayBaseOffset(encoding));
-        guaranteeEncoding(type, getArrayIndexShift(encoding) == arrayIndexShift,
-                        "Expected array index shift of " + arrayIndexShift + ", but encoding gives " + getArrayIndexShift(encoding));
+        guaranteeEncoding(type, true, isArrayLike(encoding), "Array-like object encoding denotes an array-like object");
+        guaranteeEncoding(type, !isHybrid, isArray(encoding), "Encoding denotes an array");
+        guaranteeEncoding(type, isHybrid, isHybrid(encoding), "Encoding denotes a hybrid");
+        guaranteeEncoding(type, false, isPureInstance(encoding), "Array-like object encoding denotes an instance type");
+        guaranteeEncoding(type, objectElements, isArrayLikeWithObjectElements(encoding), "Encoding denotes an array-like object with object elements");
+        guaranteeEncoding(type, !objectElements, isArrayLikeWithPrimitiveElements(encoding), "Encoding denotes an array-like object with primitive elements");
+        guaranteeEncoding(type, !isHybrid && objectElements, isObjectArray(encoding), "Encoding denotes an object array");
+        guaranteeEncoding(type, !isHybrid && !objectElements, isPrimitiveArray(encoding), "Encoding denotes a primitive array");
+        guaranteeEncoding(type, true, getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset)),
+                        "Encoding denotes a base offset of " + arrayBaseOffset + " (actual value: " + getArrayBaseOffset(encoding) + ')');
+        guaranteeEncoding(type, true, getArrayIndexShift(encoding) == arrayIndexShift,
+                        "Encoding denotes an index shift of " + arrayIndexShift + " (actual value: " + getArrayIndexShift(encoding) + ')');
         return encoding;
     }
 
@@ -147,24 +172,39 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
-    public static boolean isInstance(int encoding) {
+    /** Note that this method does not consider hybrids special. */
+    public static boolean isSpecial(int encoding) {
+        return encoding >= NEUTRAL_VALUE && encoding <= LAST_SPECIAL_VALUE;
+    }
+
+    /** Tests if an encoding denotes a pure instance object, i.e. not a hybrid object or array. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isPureInstance(int encoding) {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
+    /** Determines the size of a pure instance object (i.e. not a hybrid object or array). */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getInstanceSize(int encoding) {
+    public static UnsignedWord getPureInstanceSize(int encoding) {
         return WordFactory.unsigned(encoding);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isStoredContinuation(int encoding) {
-        return encoding == STORED_CONTINUATION_VALUE;
+    public static boolean isArray(int encoding) {
+        int mask = (ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PURE_BIT) << ARRAY_TAG_SHIFT;
+        return (encoding & mask) == mask;
     }
 
-    // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isArray(int encoding) {
+    public static boolean isArrayLike(int encoding) {
         return encoding < NEUTRAL_VALUE;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isHybrid(int encoding) {
+        int setBits = ARRAY_TAG_IDENTITY_BIT << ARRAY_TAG_SHIFT;
+        int mask = setBits | (ARRAY_TAG_PURE_BIT << ARRAY_TAG_SHIFT);
+        return (encoding & mask) == setBits;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -174,7 +214,17 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isObjectArray(int encoding) {
-        return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
+        return (encoding >>> ARRAY_TAG_SHIFT) == ARRAY_TAG_OBJECT_VALUE;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isArrayLikeWithPrimitiveElements(int encoding) {
+        return UnsignedMath.aboveOrEqual(encoding, ARRAY_TAG_HYBRID_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isArrayLikeWithObjectElements(int encoding) {
+        return encoding <= ~(~ARRAY_TAG_OBJECT_VALUE << ARRAY_TAG_SHIFT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -218,12 +268,10 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInline(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
-        if (isArray(encoding)) {
+        if (isArrayLike(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
-        } else if (isStoredContinuation(encoding)) {
-            return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
-            return getInstanceSize(encoding);
+            return getPureInstanceSize(encoding);
         }
     }
 
@@ -234,9 +282,6 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     public static Pointer getObjectEndInline(Object obj) {
-        // TODO: This assumes that the object starts at obj.
-        // - In other universes obj could point to the hub in the middle of,
-        // for example, a butterfly object.
         final Pointer objStart = Word.objectToUntrackedPointer(obj);
         final UnsignedWord objSize = getSizeFromObjectInline(obj);
         return objStart.add(objSize);
@@ -247,9 +292,9 @@ public class LayoutEncoding {
         return isArray(encoding);
     }
 
-    public static boolean isInstance(Object obj) {
+    public static boolean isArrayLike(Object obj) {
         final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
-        return isInstance(encoding);
+        return isArrayLike(encoding);
     }
 
     @Fold

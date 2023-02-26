@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -97,6 +97,21 @@ public class LLVMScope implements TruffleObject {
      */
     public void registerLinkageName(String name, String linkageName) {
         linkageNames.put(name, linkageName);
+    }
+
+    /**
+     * Lookup a global variable in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
+    @TruffleBoundary
+    public LLVMThreadLocalSymbol getThreadLocalVariable(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isThreadLocalSymbol()) {
+            return symbol.asThreadLocalSymbol();
+        }
+        return null;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,17 +57,30 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
-    private final boolean searching;
-    private final boolean genericCG;
+    @CompilationFinal(dimensions = 1) private final short[] cgLastTransition;
+    private final boolean hasUnanchoredEntry;
 
-    public DFAInitialStateNode(short[] successors, boolean searching, boolean genericCG) {
+    public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
         super((short) 0, successors);
-        this.searching = searching;
-        this.genericCG = genericCG;
+        this.cgLastTransition = cgLastTransition;
+        this.hasUnanchoredEntry = initUnanchoredEntry(successors);
+    }
+
+    private static boolean initUnanchoredEntry(short[] successors) {
+        for (int i = successors.length / 2; i < successors.length; i++) {
+            if (successors[i] != -1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.searching, copy.genericCG);
+        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.cgLastTransition);
+    }
+
+    public short[] getCgLastTransition() {
+        return cgLastTransition;
     }
 
     public int getPrefixLength() {
@@ -73,7 +88,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     public boolean hasUnAnchoredEntry() {
-        return successors[successors.length / 2] != -1;
+        return hasUnanchoredEntry;
     }
 
     /**

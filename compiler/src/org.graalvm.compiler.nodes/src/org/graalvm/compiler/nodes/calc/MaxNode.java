@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,6 +25,7 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import org.graalvm.compiler.core.common.NumUtil.Signedness;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
@@ -32,10 +33,12 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
-@NodeInfo(shortName = "MAX")
+@NodeInfo(shortName = "Max")
 public class MaxNode extends MinMaxNode<Max> {
 
     public static final NodeClass<MaxNode> TYPE = NodeClass.create(MaxNode.class);
@@ -57,5 +60,22 @@ public class MaxNode extends MinMaxNode<Max> {
             return tryConstantFold;
         }
         return new MaxNode(x, y).maybeCommuteInputs();
+    }
+
+    @Override
+    public ValueNode asConditional(LoweringProvider lowerer) {
+        if (!(stamp(NodeView.DEFAULT).isIntegerStamp())) {
+            return null;
+        }
+        LogicNode condition = IntegerLessThanNode.create(maybeExtendForCompare(getX(), lowerer, Signedness.SIGNED), maybeExtendForCompare(getY(), lowerer, Signedness.SIGNED), NodeView.DEFAULT);
+        return ConditionalNode.create(condition, getY(), getX(), NodeView.DEFAULT);
+    }
+
+    @Override
+    public boolean isNarrowable(int resultBits) {
+        if (!super.isNarrowable(resultBits)) {
+            return false;
+        }
+        return super.isNarrowable(resultBits, Signedness.SIGNED);
     }
 }

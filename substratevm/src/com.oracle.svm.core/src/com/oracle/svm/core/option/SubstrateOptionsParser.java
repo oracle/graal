@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.option;
 
-// Checkstyle: allow reflection
-
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -109,9 +107,7 @@ public class SubstrateOptionsParser {
             if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
                 message += ": " + deprecationMessage;
             }
-            // Checkstyle: stop
             System.err.println(message);
-            // Checkstyle: resume
         }
         return true;
     }
@@ -212,7 +208,13 @@ public class SubstrateOptionsParser {
                     if (apiOption.fixedValue().length == 0) {
                         if (apiOptionWithValue == null) {
                             /* First APIOption that accepts value is selected as fallback */
-                            apiOptionWithValue = optionName + apiOption.valueSeparator()[0] + value;
+                            if (Arrays.equals(apiOption.defaultValue(), new String[]{value})) {
+                                /* Option with default value. Use short form */
+                                apiOptionWithValue = optionName;
+                            } else {
+                                /* Option with custom value. Use form with valueSeparator */
+                                apiOptionWithValue = optionName + apiOption.valueSeparator()[0] + value;
+                            }
                         }
                     } else if (apiOption.fixedValue()[0].equals(value)) {
                         /* Return requested option expressed as fixed-value APIOption */

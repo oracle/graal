@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,7 @@ public abstract class LocalLiveness {
     }
 
     protected LocalLiveness(BciBlockMapping mapping, boolean asyncLiveness) {
-        if (asyncLiveness && mapping.exceptionHandlers.length > 0) {
+        if (asyncLiveness && mapping.exceptionHandlers != null) {
             Pair<ArrayList<BciBlock>, ArrayList<ArrayList<Integer>>> info = generateAsyncLivenessInfo(mapping);
             this.blocks = info.getLeft().toArray(new BciBlock[0]);
             this.asyncSuccessors = info.getRight();

@@ -26,14 +26,12 @@ package com.oracle.svm.core.c;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CTypeConversionSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -41,9 +39,11 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
+@AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
 class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     static final CCharPointerHolder NULL_HOLDER = new CCharPointerHolder() {
@@ -85,6 +85,16 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
         }
     }
 
+    @Override
+    public String utf8ToJavaString(CCharPointer utf8String) {
+        if (utf8String.isNull()) {
+            return null;
+        } else {
+            // UTF-8 does not break zero-terminated strings.
+            return toJavaStringWithCharset(utf8String, SubstrateUtil.strlen(utf8String), StandardCharsets.UTF_8);
+        }
+    }
+
     private static String toJavaStringWithCharset(CCharPointer cString, UnsignedWord length, Charset charset) {
         byte[] bytes = new byte[(int) length.rawValue()];
         for (int i = 0; i < bytes.length; i++) {
@@ -108,23 +118,31 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     @Override
     public UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize) {
-        if (javaString == null || bufferSize.equal(0)) {
-            return WordFactory.zero();
+        if (javaString == null) {
+            throw new IllegalArgumentException("Provided Java string is null");
         }
 
         byte[] baseString = javaString.toString().getBytes(charset);
+        long capacity = bufferSize.rawValue();
 
-        /*
-         * The array length is always an int, so the truncation of the buffer size to int can never
-         * overflow.
-         */
-        int len = (int) Math.min(baseString.length, bufferSize.rawValue());
+        if (buffer.isNull()) {
+            if (capacity != 0) {
+                throw new IllegalArgumentException("Non zero buffer size passed along with nullptr");
+            }
+            return WordFactory.unsigned(baseString.length);
 
-        for (int i = 0; i < len; i++) {
+        } else if (capacity < baseString.length + 1) {
+            throw new IllegalArgumentException("Provided buffer is too small to hold 0 terminated java string.");
+        }
+
+        for (int i = 0; i < baseString.length; i++) {
             buffer.write(i, baseString[i]);
         }
 
-        return WordFactory.unsigned(len);
+        // write null terminator at end
+        buffer.write(baseString.length, (byte) 0);
+
+        return WordFactory.unsigned(baseString.length);
     }
 
     @Override
@@ -133,6 +151,14 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
             return NULL_HOLDER;
         }
         return new CCharPointerHolderImpl(javaString);
+    }
+
+    @Override
+    public CCharPointerHolder toCBytes(byte[] bytes) {
+        if (bytes == null) {
+            return NULL_HOLDER;
+        }
+        return new CCharPointerHolderImpl(bytes);
     }
 
     @Override
@@ -153,6 +179,10 @@ final class CCharPointerHolderImpl implements CCharPointerHolder {
         cstring = PinnedObject.create(bytes);
     }
 
+    CCharPointerHolderImpl(byte[] bytes) {
+        cstring = PinnedObject.create(bytes);
+    }
+
     @Override
     public CCharPointer get() {
         return cstring.addressOfArrayElement(0);
@@ -161,13 +191,5 @@ final class CCharPointerHolderImpl implements CCharPointerHolder {
     @Override
     public void close() {
         cstring.close();
-    }
-}
-
-@AutomaticFeature
-class CTypeConversionFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CTypeConversionSupport.class, new CTypeConversionSupportImpl());
     }
 }

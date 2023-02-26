@@ -34,7 +34,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
@@ -72,8 +71,7 @@ public final class IsolatedTruffleRuntimeSupport {
         };
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<Consumer<OptimizedAssumptionDependency>> registerOptimizedAssumptionDependency0(
                     @SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<OptimizedAssumption> assumptionHandle) {
 
@@ -82,8 +80,7 @@ public final class IsolatedTruffleRuntimeSupport {
         return IsolatedCompileClient.get().hand(observer);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void notifyAssumption0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<Consumer<OptimizedAssumptionDependency>> consumerHandle,
                     ClientHandle<? extends OptimizedAssumptionDependency> dependencyHandle) {
@@ -101,8 +98,7 @@ public final class IsolatedTruffleRuntimeSupport {
         return new IsolatedObjectConstant(getCallTargetForCallNode0(IsolatedCompileContext.get().getClient(), callNodeHandle), false);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<OptimizedCallTarget> getCallTargetForCallNode0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<OptimizedDirectCallNode> callNode) {
 
         OptimizedDirectCallNode node = IsolatedCompileClient.get().unhand(callNode);
@@ -127,8 +123,7 @@ public final class IsolatedTruffleRuntimeSupport {
         return false;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void log0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<String> id, ClientHandle<SubstrateCompilableTruffleAST> ast, ClientHandle<String> msg) {
 
         SubstrateTruffleRuntime runtime = (SubstrateTruffleRuntime) SubstrateTruffleRuntime.getRuntime();
@@ -146,8 +141,7 @@ public final class IsolatedTruffleRuntimeSupport {
         return TriState.UNDEFINED;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static boolean isSuppressedFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> ast,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle) {
         Supplier<String> serializedException = () -> {
@@ -158,8 +152,7 @@ public final class IsolatedTruffleRuntimeSupport {
         return runtime.isSuppressedFailure(IsolatedCompileClient.get().unhand(ast), serializedException);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<String> getReasonAndStackTrace0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<Supplier<String>> reasonAndStackTraceHandle) {
         Supplier<String> supplier = IsolatedCompileContext.get().unhand(reasonAndStackTraceHandle);
         return IsolatedCompileContext.get().createStringInClient(supplier.get());

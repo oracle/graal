@@ -31,6 +31,7 @@ import static org.graalvm.word.LocationIdentity.any;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
@@ -151,7 +152,7 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
                     assert args[2].isConstant();
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                 }
-                ReadNode read = b.add(new ReadNode(address, location, readStamp, BarrierType.NONE));
+                ReadNode read = b.add(new ReadNode(address, location, readStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
                 b.push(returnKind, read);
                 break;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -253,7 +253,7 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, DerivedOopTest.class);
-        r.register1("getRawPointer", Object.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("getRawPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,10 +99,6 @@ class LinearScanWalker extends IntervalWalker {
 
     AbstractBlockBase<?> blockAt(int idx) {
         return allocator.blockAt(idx);
-    }
-
-    AbstractBlockBase<?> blockOfOpWithId(int opId) {
-        return allocator.blockForId(opId);
     }
 
     LinearScanWalker(LinearScan allocator, Interval unhandledFixedFirst, Interval unhandledAnyFirst) {
@@ -222,29 +218,10 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    void freeCollectUnhandled(RegisterBinding kind, Interval current) {
-        Interval interval = unhandledLists.get(kind);
-        while (!interval.isEndMarker()) {
-            setUsePos(interval, interval.intersectsAt(current), true);
-            if (kind == RegisterBinding.Fixed && current.to() <= interval.from()) {
-                setUsePos(interval, interval.from(), true);
-            }
-            interval = interval.next;
-        }
-    }
-
     void spillExcludeActiveFixed() {
         Interval interval = activeLists.get(RegisterBinding.Fixed);
         while (!interval.isEndMarker()) {
             excludeFromUse(interval);
-            interval = interval.next;
-        }
-    }
-
-    void spillBlockUnhandledFixed(Interval current) {
-        Interval interval = unhandledLists.get(RegisterBinding.Fixed);
-        while (!interval.isEndMarker()) {
-            setBlockPos(interval, interval.intersectsAt(current));
             interval = interval.next;
         }
     }
@@ -1026,6 +1003,9 @@ class LinearScanWalker extends IntervalWalker {
 
     void initVarsForAlloc(Interval interval) {
         AllocatableRegisters allocatableRegisters = allocator.getRegisterAllocationConfig().getAllocatableRegisters(interval.kind().getPlatformKind());
+        if (allocatableRegisters == null) {
+            throw new OutOfRegistersException("There are no allocatable registers for kind " + interval.kind().getPlatformKind() + ", consider assigning fixed registers.");
+        }
         availableRegs = allocatableRegisters.allocatableRegisters;
         minReg = allocatableRegisters.minRegisterNumber;
         maxReg = allocatableRegisters.maxRegisterNumber;

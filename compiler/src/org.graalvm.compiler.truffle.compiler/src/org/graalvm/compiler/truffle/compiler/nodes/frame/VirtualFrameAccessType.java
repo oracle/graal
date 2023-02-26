@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.nodes.frame;
 
 public enum VirtualFrameAccessType {
-    Legacy,
     Indexed,
     Auxiliary
 }

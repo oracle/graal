@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,7 +38,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -152,20 +152,8 @@ public final class Space {
         log.string(getName()).string(":").indent(true);
         accounting.report(log);
         if (traceHeapChunks) {
-            if (getFirstAlignedHeapChunk().isNonNull()) {
-                log.newline().string("aligned chunks:").redent(true);
-                for (AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-                    log.newline().zhex(aChunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").zhex(HeapChunk.getTopPointer(aChunk)).string(")");
-                }
-                log.redent(false);
-            }
-            if (getFirstUnalignedHeapChunk().isNonNull()) {
-                log.newline().string("unaligned chunks:").redent(true);
-                for (UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk(); uChunk.isNonNull(); uChunk = HeapChunk.getNext(uChunk)) {
-                    log.newline().zhex(uChunk).string(" (").zhex(UnalignedHeapChunk.getObjectStart(uChunk)).string("-").zhex(HeapChunk.getTopPointer(uChunk)).string(")");
-                }
-                log.redent(false);
-            }
+            HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk());
+            HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk());
         }
         log.redent(false);
         return log;

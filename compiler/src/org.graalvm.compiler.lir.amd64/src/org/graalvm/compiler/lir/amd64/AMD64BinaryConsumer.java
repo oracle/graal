@@ -285,6 +285,10 @@ public class AMD64BinaryConsumer {
             }
             return false;
         }
+
+        public AMD64MROp getOpcode() {
+            return opcode;
+        }
     }
 
     /**

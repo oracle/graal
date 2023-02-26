@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,8 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.PrimaryEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Iterator;
@@ -47,7 +46,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * Line header section always contains fixed number of bytes.
      */
-    private static final int DW_LN_HEADER_SIZE = 27;
+    private static final int DW_LN_HEADER_SIZE = 28;
     /**
      * Current generator follows C++ with line base -5.
      */
@@ -57,7 +56,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_LN_LINE_RANGE = 14;
     /**
-     * Current generator uses opcode base of 13 which must equal DW_LNS_define_file + 1.
+     * Current generator uses opcode base of 13 which must equal DW_LNS_set_isa + 1.
      */
     private static final int DW_LN_OPCODE_BASE = 13;
 
@@ -110,6 +109,16 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     private static final byte DW_LNS_fixed_advance_pc = 9;
 
     /*
+     * Increment address 1 ushort arg.
+     */
+    @SuppressWarnings("unused") private static final byte DW_LNS_set_prologue_end = 10;
+
+    /*
+     * Increment address 1 ushort arg.
+     */
+    @SuppressWarnings("unused") private static final byte DW_LNS_set_epilogue_begin = 11;
+
+    /*
      * Extended opcodes defined by DWARF 2.
      */
     /*
@@ -148,25 +157,27 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
 
         /*
-         * Write entries for each file listed in the primary list.
+         * Write line info for each instance class. We do this even when a class has no compiled
+         * methods ane hence no line records. This avoids bail outs by tools when a class's methods
+         * crop up inline-only but the tool still expects a line info entry to provide a file and
+         * dir table.
          */
-        int pos = 0;
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.getFileName().length() != 0) {
-                int startPos = pos;
-                setLineIndex(classEntry, startPos);
-                int headerSize = headerSize();
-                int dirTableSize = computeDirTableSize(classEntry);
-                int fileTableSize = computeFileTableSize(classEntry);
-                int prologueSize = headerSize + dirTableSize + fileTableSize;
-                setLinePrologueSize(classEntry, prologueSize);
-                int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
-                int totalSize = prologueSize + lineNumberTableSize;
-                setLineSectionSize(classEntry, totalSize);
-                pos += totalSize;
-            }
-        }
-        byte[] buffer = new byte[pos];
+        Cursor cursor = new Cursor();
+        instanceClassStream().forEach(classEntry -> {
+            assert classEntry.getFileName().length() != 0;
+            int startPos = cursor.get();
+            setLineIndex(classEntry, startPos);
+            int headerSize = headerSize();
+            int dirTableSize = computeDirTableSize(classEntry);
+            int fileTableSize = computeFileTableSize(classEntry);
+            int prologueSize = headerSize + dirTableSize + fileTableSize;
+            setLinePrologueSize(classEntry, prologueSize);
+            int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
+            int totalSize = prologueSize + lineNumberTableSize;
+            setLineSectionSize(classEntry, totalSize);
+            cursor.add(totalSize);
+        });
+        byte[] buffer = new byte[cursor.get()];
         super.setContent(buffer);
     }
 
@@ -180,9 +191,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>uint16 version</code>
          *
-         * <li><code>uint32 prologue_length</code>
+         * <li><code>uint32 header_length</code>
          *
          * <li><code>uint8 min_insn_length</code>
+         *
+         * <li><code>uint8 max_operations_per_instruction</code>
          *
          * <li><code>uint8 default_is_stmt</code>
          *
@@ -191,8 +204,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * <li><code>uint8 line_range</code>
          *
          * <li><code>uint8 opcode_base</code>
-         *
-         * <li><code>uint8 li_opcode_base</code>
          *
          * <li><code>uint8[opcode_base-1] standard_opcode_lengths</code>
          *
@@ -239,7 +250,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             fileSize += length + 1;
             DirEntry dirEntry = localEntry.getDirEntry();
             int idx = classEntry.localDirsIdx(dirEntry);
-            fileSize += putULEB(idx, scratch, 0);
+            fileSize += writeULEB(idx, scratch, 0);
             /*
              * The two zero timestamps require 1 byte each.
              */
@@ -283,30 +294,30 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
         byte[] buffer = getContent();
 
-        int pos = 0;
-        enableLog(context, pos);
-        log(context, "  [0x%08x] DEBUG_LINE", pos);
+        Cursor cursor = new Cursor();
+        enableLog(context, cursor.get());
+        log(context, "  [0x%08x] DEBUG_LINE", cursor.get());
 
-        for (ClassEntry classEntry : getPrimaryClasses()) {
-            if (classEntry.getFileName().length() != 0) {
-                int startPos = pos;
-                assert getLineIndex(classEntry) == startPos;
-                log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
-                pos = writeHeader(classEntry, buffer, pos);
-                log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
-                int dirTablePos = pos;
-                pos = writeDirTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
-                int fileTablePos = pos;
-                pos = writeFileTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
-                int lineNumberTablePos = pos;
-                pos = writeLineNumberTable(context, classEntry, buffer, pos);
-                log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
-                log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
-            }
-        }
-        assert pos == buffer.length;
+        instanceClassStream().forEach(classEntry -> {
+            int pos = cursor.get();
+            int startPos = pos;
+            assert getLineIndex(classEntry) == startPos;
+            log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
+            pos = writeHeader(classEntry, buffer, pos);
+            log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
+            int dirTablePos = pos;
+            pos = writeDirTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
+            int fileTablePos = pos;
+            pos = writeFileTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
+            int lineNumberTablePos = pos;
+            pos = writeLineNumberTable(context, classEntry, buffer, pos);
+            log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
+            log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
+            cursor.set(pos);
+        });
+        assert cursor.get() == buffer.length;
     }
 
     private int writeHeader(ClassEntry classEntry, byte[] buffer, int p) {
@@ -314,63 +325,67 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte length field.
          */
-        pos = putInt(getLineSectionSize(classEntry) - 4, buffer, pos);
+        pos = writeInt(getLineSectionSize(classEntry) - 4, buffer, pos);
         /*
          * 2 ubyte version is always 2.
          */
-        pos = putShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+        pos = writeShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
         int prologueSize = getLinePrologueSize(classEntry) - (4 + 2 + 4);
-        pos = putInt(prologueSize, buffer, pos);
+        pos = writeInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
          */
-        pos = putByte((byte) 1, buffer, pos);
+        pos = writeByte((byte) 1, buffer, pos);
+        /*
+         * 1 ubyte max operations per instruction is always 1.
+         */
+        pos = writeByte((byte) 1, buffer, pos);
         /*
          * 1 byte default is_stmt is always 1.
          */
-        pos = putByte((byte) 1, buffer, pos);
+        pos = writeByte((byte) 1, buffer, pos);
         /*
          * 1 byte line base is always -5.
          */
-        pos = putByte((byte) DW_LN_LINE_BASE, buffer, pos);
+        pos = writeByte((byte) DW_LN_LINE_BASE, buffer, pos);
         /*
          * 1 ubyte line range is always 14 giving range -5 to 8.
          */
-        pos = putByte((byte) DW_LN_LINE_RANGE, buffer, pos);
+        pos = writeByte((byte) DW_LN_LINE_RANGE, buffer, pos);
         /*
          * 1 ubyte opcode base is always 13.
          */
-        pos = putByte((byte) DW_LN_OPCODE_BASE, buffer, pos);
+        pos = writeByte((byte) DW_LN_OPCODE_BASE, buffer, pos);
         /*
          * specify opcode arg sizes for the standard opcodes.
          */
         /* DW_LNS_copy */
-        putByte((byte) 0, buffer, pos);
+        writeByte((byte) 0, buffer, pos);
         /* DW_LNS_advance_pc */
-        putByte((byte) 1, buffer, pos + 1);
+        writeByte((byte) 1, buffer, pos + 1);
         /* DW_LNS_advance_line */
-        putByte((byte) 1, buffer, pos + 2);
+        writeByte((byte) 1, buffer, pos + 2);
         /* DW_LNS_set_file */
-        putByte((byte) 1, buffer, pos + 3);
+        writeByte((byte) 1, buffer, pos + 3);
         /* DW_LNS_set_column */
-        putByte((byte) 1, buffer, pos + 4);
+        writeByte((byte) 1, buffer, pos + 4);
         /* DW_LNS_negate_stmt */
-        putByte((byte) 0, buffer, pos + 5);
+        writeByte((byte) 0, buffer, pos + 5);
         /* DW_LNS_set_basic_block */
-        putByte((byte) 0, buffer, pos + 6);
+        writeByte((byte) 0, buffer, pos + 6);
         /* DW_LNS_const_add_pc */
-        putByte((byte) 0, buffer, pos + 7);
+        writeByte((byte) 0, buffer, pos + 7);
         /* DW_LNS_fixed_advance_pc */
-        putByte((byte) 1, buffer, pos + 8);
-        /* DW_LNS_end_sequence */
-        putByte((byte) 0, buffer, pos + 9);
-        /* DW_LNS_set_address */
-        putByte((byte) 0, buffer, pos + 10);
-        /* DW_LNS_define_file */
-        pos = putByte((byte) 1, buffer, pos + 11);
+        writeByte((byte) 1, buffer, pos + 8);
+        /* DW_LNS_set_prologue_end */
+        writeByte((byte) 0, buffer, pos + 9);
+        /* DW_LNS_set_epilogue_begin */
+        writeByte((byte) 0, buffer, pos + 10);
+        /* DW_LNS_set_isa */
+        pos = writeByte((byte) 1, buffer, pos + 11);
         return pos;
     }
 
@@ -386,13 +401,13 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * write nul terminated string text.
              */
             verboseLog(context, "  [0x%08x] %-4d %s", pos, dirIdx, dir.getPath());
-            pos = putUTF8StringBytes(dir.getPathString(), buffer, pos);
+            pos = writeUTF8StringBytes(dir.getPathString(), buffer, pos);
             dirIdx++;
         }
         /*
          * Separate dirs from files with a nul.
          */
-        pos = putByte((byte) 0, buffer, pos);
+        pos = writeByte((byte) 0, buffer, pos);
         return pos;
     }
 
@@ -408,419 +423,350 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             DirEntry dirEntry = localEntry.getDirEntry();
             int dirIdx = classEntry.localDirsIdx(dirEntry);
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
-            pos = putUTF8StringBytes(baseName, buffer, pos);
-            pos = putULEB(dirIdx, buffer, pos);
-            pos = putULEB(0, buffer, pos);
-            pos = putULEB(0, buffer, pos);
+            pos = writeUTF8StringBytes(baseName, buffer, pos);
+            pos = writeULEB(dirIdx, buffer, pos);
+            pos = writeULEB(0, buffer, pos);
+            pos = writeULEB(0, buffer, pos);
             fileIdx++;
         }
         /*
          * Terminate files with a nul.
          */
-        pos = putByte((byte) 0, buffer, pos);
+        pos = writeByte((byte) 0, buffer, pos);
         return pos;
     }
 
     private int debugLine = 1;
     private int debugCopyCount = 0;
 
-    private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeCompiledMethodLineInfo(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        // if the class has no associated file then don't generate line info
-        if (classEntry.getFileEntry() == null) {
+        Range primaryRange = compiledEntry.getPrimary();
+        // the compiled method might be a substitution and not in the file of the class entry
+        FileEntry fileEntry = primaryRange.getFileEntry();
+        if (fileEntry == null) {
+            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                            primaryRange.getFullMethodNameWithParams());
             return pos;
         }
+        String file = fileEntry.getFileName();
+        int fileIdx = classEntry.localFilesIdx(fileEntry);
         /*
-         * The class file entry should always be first in the local files list.
+         * Each primary represents a method i.e. a contiguous sequence of subranges. For normal
+         * methods we expect the first leaf range to start at offset 0 covering the method prologue.
+         * In that case we can rely on it to set the initial file, line and address for the state
+         * machine. Otherwise we need to default the initial state and copy it to the file.
          */
-        assert classEntry.localFilesIdx() == 1;
-        String primaryClassName = classEntry.getTypeName();
-        String primaryFileName = classEntry.getFileName();
-        log(context, "  [0x%08x] primary class %s", pos, primaryClassName);
-        log(context, "  [0x%08x] primary class file %s", pos, primaryFileName);
-        for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
-            Range primaryRange = primaryEntry.getPrimary();
-            // the primary method might be a substitution and not in the primary class file
-            FileEntry fileEntry = primaryRange.getFileEntry();
-            if (fileEntry == null) {
-                log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
-                                primaryRange.getFullMethodNameWithParams());
+        long line = primaryRange.getLine();
+        long address = primaryRange.getLo();
+        Range prologueRange = prologueLeafRange(compiledEntry);
+        if (prologueRange != null) {
+            // use the line for the range and use its file if available
+            line = prologueRange.getLine();
+            if (line > 0) {
+                FileEntry firstFileEntry = prologueRange.getFileEntry();
+                if (firstFileEntry != null) {
+                    fileIdx = classEntry.localFilesIdx(firstFileEntry);
+                }
+            }
+        }
+        if (line < 0) {
+            // never emit a negative line
+            line = 0;
+        }
+
+        /*
+         * Set state for primary.
+         */
+        log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                        primaryRange.getFullMethodNameWithParams(),
+                        file, primaryRange.getLine());
+
+        /*
+         * Initialize and write a row for the start of the compiled method.
+         */
+        pos = writeSetFileOp(context, file, fileIdx, buffer, pos);
+        pos = writeSetBasicBlockOp(context, buffer, pos);
+        /*
+         * Address is currently at offset 0.
+         */
+        pos = writeSetAddressOp(context, address, buffer, pos);
+        /*
+         * State machine value of line is currently 1 increment to desired line.
+         */
+        if (line != 1) {
+            pos = writeAdvanceLineOp(context, line - 1, buffer, pos);
+        }
+        pos = writeCopyOp(context, buffer, pos);
+
+        /*
+         * Now write a row for each subrange lo and hi.
+         */
+        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
+        if (prologueRange != null) {
+            // skip already processed range
+            Range first = iterator.next();
+            assert first == prologueRange;
+        }
+        while (iterator.hasNext()) {
+            Range subrange = iterator.next();
+            assert subrange.getLo() >= primaryRange.getLo();
+            assert subrange.getHi() <= primaryRange.getHi();
+            FileEntry subFileEntry = subrange.getFileEntry();
+            if (subFileEntry == null) {
                 continue;
             }
-            String file = fileEntry.getFileName();
-            int fileIdx = classEntry.localFilesIdx(fileEntry);
-            /*
-             * Each primary represents a method i.e. a contiguous sequence of subranges. we write
-             * the default state at the start of each sequence because we always post an
-             * end_sequence when we finish all the subranges in the method.
-             */
-            long line = primaryRange.getLine();
-            if (line < 0) {
-                Iterator<Range> iterator = primaryEntry.leafRangeIterator();
-                if (iterator.hasNext()) {
-                    final Range subRange = iterator.next();
-                    line = subRange.getLine();
-                    /*
-                     * If line gets successfully retrieved from subrange get file index from there
-                     * since the line might be from a different file for inlined methods
-                     */
-                    if (line > 0) {
-                        FileEntry subFileEntry = subRange.getFileEntry();
-                        if (subFileEntry != null) {
-                            fileIdx = classEntry.localFilesIdx(subFileEntry);
-                        }
-                    }
-                }
+            String subfile = subFileEntry.getFileName();
+            int subFileIdx = classEntry.localFilesIdx(subFileEntry);
+            assert subFileIdx > 0;
+            long subLine = subrange.getLine();
+            long subAddressLo = subrange.getLo();
+            long subAddressHi = subrange.getHi();
+            log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
+                            subLine);
+            if (subLine < 0) {
+                /*
+                 * No line info so stay at previous file:line.
+                 */
+                subLine = line;
+                subfile = file;
+                subFileIdx = fileIdx;
+                verboseLog(context, "  [0x%08x] missing line info - staying put at %s:%d", pos, file, line);
             }
-            if (line < 0) {
-                line = 0;
-            }
-            long address = primaryRange.getLo();
-
             /*
-             * Set state for primary.
-             */
-            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
-                            primaryRange.getFullMethodNameWithParams(),
-                            file, primaryRange.getLine());
-
-            /*
-             * Initialize and write a row for the start of the primary method.
-             */
-            pos = writeSetFileOp(context, file, fileIdx, buffer, pos);
-            pos = writeSetBasicBlockOp(context, buffer, pos);
-            /*
-             * Address is currently 0.
-             */
-            pos = writeSetAddressOp(context, address, buffer, pos);
-            /*
-             * State machine value of line is currently 1 increment to desired line.
-             */
-            if (line != 1) {
-                pos = writeAdvanceLineOp(context, line - 1, buffer, pos);
-            }
-            pos = writeCopyOp(context, buffer, pos);
-
-            /*
-             * On AArch64 gdb expects to see a line record at the start of the method and a second
-             * one at the end of the prologue marking the point where the method code begins for
-             * real. If we don't provide it then gdb will skip to the second line record when we
-             * place a breakpoint on the method.
+             * There is a temptation to append end sequence at here when the hiAddress lies strictly
+             * between the current address and the start of the next subrange because, ostensibly,
+             * we have void space between the end of the current subrange and the start of the next
+             * one. however, debug works better if we treat all the insns up to the next range start
+             * as belonging to the current line.
              *
-             * We can identify the end of the prologue for normal methods by noting where the stack
-             * frame height is first adjusted. This should normally be no more a few instructions in
-             * total.
+             * If we have to update to a new file then do so.
              */
-            if (isAArch64() && !primaryEntry.getFrameSizeInfos().isEmpty()) {
-                DebugFrameSizeChange frameSizeChange = primaryEntry.getFrameSizeInfos().get(0);
-                assert frameSizeChange.getType() == DebugFrameSizeChange.Type.EXTEND;
-                long addressDelta = frameSizeChange.getOffset();
-                if (addressDelta < 16 && (primaryRange.getLo() + addressDelta) < primaryRange.getHi()) {
-                    /*
-                     * we should be able to write this with a special opcode as the prologue should
-                     * only be a few instructions
-                     */
-                    byte opcode = isSpecialOpcode(addressDelta, 0);
-                    assert opcode != DW_LNS_undefined;
-                    pos = writeSpecialOpcode(context, opcode, buffer, pos);
-                    pos = writeCopyOp(context, buffer, pos);
-                    address += addressDelta;
-                }
+            if (subFileIdx != fileIdx) {
+                /*
+                 * Update the current file.
+                 */
+                pos = writeSetFileOp(context, subfile, subFileIdx, buffer, pos);
+                file = subfile;
+                fileIdx = subFileIdx;
             }
+            long lineDelta = subLine - line;
+            long addressDelta = subAddressLo - address;
             /*
-             * Now write a row for each subrange lo and hi.
+             * Check if we can advance line and/or address in one byte with a special opcode.
              */
-            Iterator<Range> iterator = primaryEntry.leafRangeIterator();
-            while (iterator.hasNext()) {
-                Range subrange = iterator.next();
-                assert subrange.getLo() >= primaryRange.getLo();
-                assert subrange.getHi() <= primaryRange.getHi();
-                FileEntry subFileEntry = subrange.getFileEntry();
-                if (subFileEntry == null) {
-                    continue;
-                }
-                String subfile = subFileEntry.getFileName();
-                int subFileIdx = classEntry.localFilesIdx(subFileEntry);
-                assert subFileIdx > 0;
-                long subLine = subrange.getLine();
-                long subAddressLo = subrange.getLo();
-                long subAddressHi = subrange.getHi();
-                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
-                                subLine);
-                if (subLine < 0) {
-                    /*
-                     * No line info so stay at previous file:line.
-                     */
-                    subLine = line;
-                    subfile = file;
-                    subFileIdx = fileIdx;
-                    verboseLog(context, "  [0x%08x] missing line info - staying put at %s:%d", pos, file, line);
-                }
+            byte opcode = isSpecialOpcode(addressDelta, lineDelta);
+            if (opcode != DW_LNS_undefined) {
                 /*
-                 * There is a temptation to append end sequence at here when the hiAddress lies
-                 * strictly between the current address and the start of the next subrange because,
-                 * ostensibly, we have void space between the end of the current subrange and the
-                 * start of the next one. however, debug works better if we treat all the insns up
-                 * to the next range start as belonging to the current line.
-                 *
-                 * If we have to update to a new file then do so.
+                 * Ignore pointless write when addressDelta == lineDelta == 0.
                  */
-                if (subFileIdx != fileIdx) {
-                    /*
-                     * Update the current file.
-                     */
-                    pos = writeSetFileOp(context, subfile, subFileIdx, buffer, pos);
-                    file = subfile;
-                    fileIdx = subFileIdx;
+                if (addressDelta != 0 || lineDelta != 0) {
+                    pos = writeSpecialOpcode(context, opcode, buffer, pos);
                 }
+            } else {
                 /*
-                 * Check if we can advance line and/or address in one byte with a special opcode.
+                 * Does it help to divide and conquer using a fixed address increment.
                  */
-                long lineDelta = subLine - line;
-                long addressDelta = subAddressLo - address;
-                byte opcode = isSpecialOpcode(addressDelta, lineDelta);
-                if (opcode != DW_LNS_undefined) {
+                int remainder = isConstAddPC(addressDelta);
+                if (remainder > 0) {
+                    pos = writeConstAddPCOp(context, buffer, pos);
                     /*
-                     * Ignore pointless write when addressDelta == lineDelta == 0.
+                     * The remaining address can be handled with a special opcode but what about the
+                     * line delta.
                      */
-                    if (addressDelta != 0 || lineDelta != 0) {
+                    opcode = isSpecialOpcode(remainder, lineDelta);
+                    if (opcode != DW_LNS_undefined) {
+                        /*
+                         * Address remainder and line now fit.
+                         */
+                        pos = writeSpecialOpcode(context, opcode, buffer, pos);
+                    } else {
+                        /*
+                         * Ok, bump the line separately then use a special opcode for the address
+                         * remainder.
+                         */
+                        opcode = isSpecialOpcode(remainder, 0);
+                        assert opcode != DW_LNS_undefined;
+                        pos = writeAdvanceLineOp(context, lineDelta, buffer, pos);
                         pos = writeSpecialOpcode(context, opcode, buffer, pos);
                     }
                 } else {
                     /*
-                     * Does it help to divide and conquer using a fixed address increment.
+                     * Increment line and pc separately.
                      */
-                    int remainder = isConstAddPC(addressDelta);
-                    if (remainder > 0) {
-                        pos = writeConstAddPCOp(context, buffer, pos);
-                        /*
-                         * The remaining address can be handled with a special opcode but what about
-                         * the line delta.
-                         */
-                        opcode = isSpecialOpcode(remainder, lineDelta);
-                        if (opcode != DW_LNS_undefined) {
-                            /*
-                             * Address remainder and line now fit.
-                             */
-                            pos = writeSpecialOpcode(context, opcode, buffer, pos);
-                        } else {
-                            /*
-                             * Ok, bump the line separately then use a special opcode for the
-                             * address remainder.
-                             */
-                            opcode = isSpecialOpcode(remainder, 0);
-                            assert opcode != DW_LNS_undefined;
-                            pos = writeAdvanceLineOp(context, lineDelta, buffer, pos);
-                            pos = writeSpecialOpcode(context, opcode, buffer, pos);
-                        }
-                    } else {
-                        /*
-                         * Increment line and pc separately.
-                         */
-                        if (lineDelta != 0) {
-                            pos = writeAdvanceLineOp(context, lineDelta, buffer, pos);
-                        }
-                        /*
-                         * n.b. we might just have had an out of range line increment with a zero
-                         * address increment.
-                         */
-                        if (addressDelta > 0) {
-                            /*
-                             * See if we can use a ushort for the increment.
-                             */
-                            if (isFixedAdvancePC(addressDelta)) {
-                                pos = writeFixedAdvancePCOp(context, (short) addressDelta, buffer, pos);
-                            } else {
-                                pos = writeAdvancePCOp(context, addressDelta, buffer, pos);
-                            }
-                        }
-                        pos = writeCopyOp(context, buffer, pos);
+                    if (lineDelta != 0) {
+                        pos = writeAdvanceLineOp(context, lineDelta, buffer, pos);
                     }
+                    /*
+                     * n.b. we might just have had an out of range line increment with a zero
+                     * address increment.
+                     */
+                    if (addressDelta > 0) {
+                        /*
+                         * See if we can use a ushort for the increment.
+                         */
+                        if (isFixedAdvancePC(addressDelta)) {
+                            pos = writeFixedAdvancePCOp(context, (short) addressDelta, buffer, pos);
+                        } else {
+                            pos = writeAdvancePCOp(context, addressDelta, buffer, pos);
+                        }
+                    }
+                    pos = writeCopyOp(context, buffer, pos);
                 }
-                /*
-                 * Move line and address range on.
-                 */
-                line += lineDelta;
-                address += addressDelta;
             }
             /*
-             * Append a final end sequence just below the next primary range.
+             * Move line and address range on.
              */
-            if (address < primaryRange.getHi()) {
-                long addressDelta = primaryRange.getHi() - address;
-                /*
-                 * Increment address before we write the end sequence.
-                 */
-                pos = writeAdvancePCOp(context, addressDelta, buffer, pos);
-            }
-            pos = writeEndSequenceOp(context, buffer, pos);
+            line += lineDelta;
+            address += addressDelta;
         }
-        log(context, "  [0x%08x] primary class processed %s", pos, primaryClassName);
+        /*
+         * Append a final end sequence just below the next primary range.
+         */
+        if (address < primaryRange.getHi()) {
+            long addressDelta = primaryRange.getHi() - address;
+            /*
+             * Increment address before we write the end sequence.
+             */
+            pos = writeAdvancePCOp(context, addressDelta, buffer, pos);
+        }
+        pos = writeEndSequenceOp(context, buffer, pos);
 
         return pos;
+    }
+
+    private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * The class file entry should always be first in the local files list.
+         */
+        assert classEntry.localFilesIdx() == 1;
+        String className = classEntry.getTypeName();
+        String fileName = classEntry.getFileName();
+        String classLabel = classEntry.hasCompiledEntries() ? "compiled class" : "non-compiled class";
+        log(context, "  [0x%08x] %s %s", pos, classLabel, className);
+        log(context, "  [0x%08x] %s file %s", pos, className, fileName);
+        // generate for both non-deopt and deopt entries so they share the file + dir table
+        pos = classEntry.compiledEntries().reduce(pos,
+                        (p1, compiledEntry) -> writeCompiledMethodLineInfo(context, classEntry, compiledEntry, buffer, p1),
+                        (oldPos, newPos) -> newPos);
+        log(context, "  [0x%08x] processed %s %s", pos, classLabel, className);
+
+        return pos;
+    }
+
+    private static Range prologueLeafRange(CompiledMethodEntry compiledEntry) {
+        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
+        if (iterator.hasNext()) {
+            Range range = iterator.next();
+            if (range.getLo() == compiledEntry.getPrimary().getLo()) {
+                return range;
+            }
+        }
+        return null;
     }
 
     private int writeCopyOp(DebugContext context, byte[] buffer, int p) {
         byte opcode = DW_LNS_copy;
         int pos = p;
-        if (buffer == null) {
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            debugCopyCount++;
-            verboseLog(context, "  [0x%08x] Copy %d", pos, debugCopyCount);
-            return putByte(opcode, buffer, pos);
-        }
+        debugCopyCount++;
+        verboseLog(context, "  [0x%08x] Copy %d", pos, debugCopyCount);
+        return writeByte(opcode, buffer, pos);
     }
 
     private int writeAdvancePCOp(DebugContext context, long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_advance_pc;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putULEB(uleb, scratch, 0);
-        } else {
-            debugAddress += uleb;
-            verboseLog(context, "  [0x%08x] Advance PC by %d to 0x%08x", pos, uleb, debugAddress);
-            pos = putByte(opcode, buffer, pos);
-            return putULEB(uleb, buffer, pos);
-        }
+        debugAddress += uleb;
+        verboseLog(context, "  [0x%08x] Advance PC by %d to 0x%08x", pos, uleb, debugAddress);
+        pos = writeByte(opcode, buffer, pos);
+        return writeULEB(uleb, buffer, pos);
     }
 
     private int writeAdvanceLineOp(DebugContext context, long sleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_advance_line;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putSLEB(sleb, scratch, 0);
-        } else {
-            debugLine += sleb;
-            verboseLog(context, "  [0x%08x] Advance Line by %d to %d", pos, sleb, debugLine);
-            pos = putByte(opcode, buffer, pos);
-            return putSLEB(sleb, buffer, pos);
-        }
+        debugLine += sleb;
+        verboseLog(context, "  [0x%08x] Advance Line by %d to %d", pos, sleb, debugLine);
+        pos = writeByte(opcode, buffer, pos);
+        return writeSLEB(sleb, buffer, pos);
     }
 
     private int writeSetFileOp(DebugContext context, String file, long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_file;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putULEB(uleb, scratch, 0);
-        } else {
-            verboseLog(context, "  [0x%08x] Set File Name to entry %d in the File Name Table (%s)", pos, uleb, file);
-            pos = putByte(opcode, buffer, pos);
-            return putULEB(uleb, buffer, pos);
-        }
+        verboseLog(context, "  [0x%08x] Set File Name to entry %d in the File Name Table (%s)", pos, uleb, file);
+        pos = writeByte(opcode, buffer, pos);
+        return writeULEB(uleb, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     private int writeSetColumnOp(DebugContext context, long uleb, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_column;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putULEB(uleb, scratch, 0);
-        } else {
-            pos = putByte(opcode, buffer, pos);
-            return putULEB(uleb, buffer, pos);
-        }
+        pos = writeByte(opcode, buffer, pos);
+        return writeULEB(uleb, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     private int writeNegateStmtOp(DebugContext context, byte[] buffer, int p) {
         byte opcode = DW_LNS_negate_stmt;
         int pos = p;
-        if (buffer == null) {
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            return putByte(opcode, buffer, pos);
-        }
+        return writeByte(opcode, buffer, pos);
     }
 
     private int writeSetBasicBlockOp(DebugContext context, byte[] buffer, int p) {
         byte opcode = DW_LNS_set_basic_block;
         int pos = p;
-        if (buffer == null) {
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            verboseLog(context, "  [0x%08x] Set basic block", pos);
-            return putByte(opcode, buffer, pos);
-        }
+        verboseLog(context, "  [0x%08x] Set basic block", pos);
+        return writeByte(opcode, buffer, pos);
     }
 
     private int writeConstAddPCOp(DebugContext context, byte[] buffer, int p) {
         byte opcode = DW_LNS_const_add_pc;
         int pos = p;
-        if (buffer == null) {
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            int advance = opcodeAddress((byte) 255);
-            debugAddress += advance;
-            verboseLog(context, "  [0x%08x] Advance PC by constant %d to 0x%08x", pos, advance, debugAddress);
-            return putByte(opcode, buffer, pos);
-        }
+        int advance = opcodeAddress((byte) 255);
+        debugAddress += advance;
+        verboseLog(context, "  [0x%08x] Advance PC by constant %d to 0x%08x", pos, advance, debugAddress);
+        return writeByte(opcode, buffer, pos);
     }
 
     private int writeFixedAdvancePCOp(DebugContext context, short arg, byte[] buffer, int p) {
         byte opcode = DW_LNS_fixed_advance_pc;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putShort(arg, scratch, 0);
-        } else {
-            debugAddress += arg;
-            verboseLog(context, "  [0x%08x] Fixed advance Address by %d to 0x%08x", pos, arg, debugAddress);
-            pos = putByte(opcode, buffer, pos);
-            return putShort(arg, buffer, pos);
-        }
+        debugAddress += arg;
+        verboseLog(context, "  [0x%08x] Fixed advance Address by %d to 0x%08x", pos, arg, debugAddress);
+        pos = writeByte(opcode, buffer, pos);
+        return writeShort(arg, buffer, pos);
     }
 
     private int writeEndSequenceOp(DebugContext context, byte[] buffer, int p) {
         byte opcode = DW_LNE_end_sequence;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
-            /*
-             * Insert extended insn byte count as ULEB.
-             */
-            pos = pos + putULEB(1, scratch, 0);
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            verboseLog(context, "  [0x%08x] Extended opcode 1: End sequence", pos);
-            debugAddress = debugTextBase;
-            debugLine = 1;
-            debugCopyCount = 0;
-            pos = putByte(DW_LNS_extended_prefix, buffer, pos);
-            /*
-             * Insert extended insn byte count as ULEB.
-             */
-            pos = putULEB(1, buffer, pos);
-            return putByte(opcode, buffer, pos);
-        }
+        verboseLog(context, "  [0x%08x] Extended opcode 1: End sequence", pos);
+        debugAddress = debugTextBase;
+        debugLine = 1;
+        debugCopyCount = 0;
+        pos = writeByte(DW_LNS_extended_prefix, buffer, pos);
+        /*
+         * Insert extended insn byte count as ULEB.
+         */
+        pos = writeULEB(1, buffer, pos);
+        return writeByte(opcode, buffer, pos);
     }
 
     private int writeSetAddressOp(DebugContext context, long arg, byte[] buffer, int p) {
         byte opcode = DW_LNE_set_address;
         int pos = p;
-        if (buffer == null) {
-            pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
-            /*
-             * Insert extended insn byte count as ULEB.
-             */
-            pos = pos + putULEB(9, scratch, 0);
-            pos = pos + putByte(opcode, scratch, 0);
-            return pos + putLong(arg, scratch, 0);
-        } else {
-            debugAddress = debugTextBase + (int) arg;
-            verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, debugAddress);
-            pos = putByte(DW_LNS_extended_prefix, buffer, pos);
-            /*
-             * Insert extended insn byte count as ULEB.
-             */
-            pos = putULEB(9, buffer, pos);
-            pos = putByte(opcode, buffer, pos);
-            return putRelocatableCodeOffset(arg, buffer, pos);
-        }
+        debugAddress = debugTextBase + (int) arg;
+        verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, debugAddress);
+        pos = writeByte(DW_LNS_extended_prefix, buffer, pos);
+        /*
+         * Insert extended insn byte count as ULEB.
+         */
+        pos = writeULEB(9, buffer, pos);
+        pos = writeByte(opcode, buffer, pos);
+        return writeRelocatableCodeOffset(arg, buffer, pos);
     }
 
     @SuppressWarnings("unused")
@@ -833,32 +779,23 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         int fileBytes = countUTF8Bytes(file) + 1;
         long insnBytes = 1;
         insnBytes += fileBytes;
-        insnBytes += putULEB(uleb1, scratch, 0);
-        insnBytes += putULEB(uleb2, scratch, 0);
-        insnBytes += putULEB(uleb3, scratch, 0);
-        if (buffer == null) {
-            pos = pos + putByte(DW_LNS_extended_prefix, scratch, 0);
-            /*
-             * Write insnBytes as a ULEB.
-             */
-            pos += putULEB(insnBytes, scratch, 0);
-            return pos + (int) insnBytes;
-        } else {
-            verboseLog(context, "  [0x%08x] Extended opcode 3: Define File %s idx %d ts1 %d ts2 %d", pos, file, uleb1, uleb2, uleb3);
-            pos = putByte(DW_LNS_extended_prefix, buffer, pos);
-            /*
-             * Insert insn length as uleb.
-             */
-            pos = putULEB(insnBytes, buffer, pos);
-            /*
-             * Insert opcode and args.
-             */
-            pos = putByte(opcode, buffer, pos);
-            pos = putUTF8StringBytes(file, buffer, pos);
-            pos = putULEB(uleb1, buffer, pos);
-            pos = putULEB(uleb2, buffer, pos);
-            return putULEB(uleb3, buffer, pos);
-        }
+        insnBytes += writeULEB(uleb1, scratch, 0);
+        insnBytes += writeULEB(uleb2, scratch, 0);
+        insnBytes += writeULEB(uleb3, scratch, 0);
+        verboseLog(context, "  [0x%08x] Extended opcode 3: Define File %s idx %d ts1 %d ts2 %d", pos, file, uleb1, uleb2, uleb3);
+        pos = writeByte(DW_LNS_extended_prefix, buffer, pos);
+        /*
+         * Insert insn length as uleb.
+         */
+        pos = writeULEB(insnBytes, buffer, pos);
+        /*
+         * Insert opcode and args.
+         */
+        pos = writeByte(opcode, buffer, pos);
+        pos = writeUTF8StringBytes(file, buffer, pos);
+        pos = writeULEB(uleb1, buffer, pos);
+        pos = writeULEB(uleb2, buffer, pos);
+        return writeULEB(uleb3, buffer, pos);
     }
 
     private static int opcodeId(byte opcode) {
@@ -878,18 +815,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeSpecialOpcode(DebugContext context, byte opcode, byte[] buffer, int p) {
         int pos = p;
-        if (buffer == null) {
-            return pos + putByte(opcode, scratch, 0);
-        } else {
-            if (debug && opcode == 0) {
-                verboseLog(context, "  [0x%08x] ERROR Special Opcode %d: Address 0x%08x Line %d", debugAddress, debugLine);
-            }
-            debugAddress += opcodeAddress(opcode);
-            debugLine += opcodeLine(opcode);
-            verboseLog(context, "  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d",
-                            pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
-            return putByte(opcode, buffer, pos);
+        if (debug && opcode == 0) {
+            verboseLog(context, "  [0x%08x] ERROR Special Opcode %d: Address 0x%08x Line %d", debugAddress, debugLine);
         }
+        debugAddress += opcodeAddress(opcode);
+        debugLine += opcodeLine(opcode);
+        verboseLog(context, "  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d",
+                        pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
+        return writeByte(opcode, buffer, pos);
     }
 
     private static final int MAX_ADDRESS_ONLY_DELTA = (0xff - DW_LN_OPCODE_BASE) / DW_LN_LINE_RANGE;

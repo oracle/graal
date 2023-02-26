@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,18 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
+
+link_libraries(graalvm-llvm)
+
+if(WIN32)
+  link_libraries(pthread)
+endif()
+
+# Apply no optimization to vtableTest3 to prevent constructor inlining
+set_source_files_properties(interop/vtableTest3.cpp
+                PROPERTIES
+                COMPILE_FLAGS -O0)
 
 include(SulongTestSuite)

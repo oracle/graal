@@ -80,18 +80,24 @@ public class LoadExceptionObjectSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException", EXCEPTION_OOP_LOCATION, EXCEPTION_PC_LOCATION);
+        private final SnippetInfo loadException;
         private final HotSpotWordTypes wordTypes;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.loadException = snippet(providers,
+                            LoadExceptionObjectSnippets.class,
+                            "loadException",
+                            EXCEPTION_OOP_LOCATION,
+                            EXCEPTION_PC_LOCATION);
             this.wordTypes = providers.getWordTypes();
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = loadExceptionObject.graph();
             if (LoadExceptionObjectInVM.getValue(graph.getOptions())) {
-                ResolvedJavaType wordType = providers.getMetaAccess().lookupJavaType(Word.class);
+                ResolvedJavaType wordType = tool.getMetaAccess().lookupJavaType(Word.class);
                 Stamp stamp = wordTypes.getWordStamp(wordType);
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(stamp, registers.getThreadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
@@ -102,7 +108,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());
                 args.addConst("threadRegister", registers.getThreadRegister());
-                template(loadExceptionObject, args).instantiate(providers.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
+                template(tool, loadExceptionObject, args).instantiate(tool.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
     }

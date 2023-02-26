@@ -50,6 +50,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class ProcessHandlers {
@@ -122,8 +125,8 @@ final class ProcessHandlers {
             this.owner = new WeakReference<>(owner);
             this.command = command;
             this.delegate = delegate;
-            this.outCopier = out == null ? null : new CopierThread(createThreadName(owner, command, "stdout"), delegate.getInputStream(), out);
-            this.errCopier = err == null ? null : new CopierThread(createThreadName(owner, command, "stderr"), delegate.getErrorStream(), err);
+            this.outCopier = out == null ? null : new CopierThread(owner.getImpl(), createThreadName(owner, command, "stdout"), delegate.getInputStream(), out);
+            this.errCopier = err == null ? null : new CopierThread(owner.getImpl(), createThreadName(owner, command, "stderr"), delegate.getErrorStream(), err);
             if (outCopier != null) {
                 outCopier.start();
             }
@@ -184,7 +187,9 @@ final class ProcessHandlers {
         @Override
         public Process destroyForcibly() {
             Process result = delegate.destroyForcibly();
-            assert result == delegate;
+            // In the case of a Truffle isolate, they do not have to be the same instance, but must
+            // represent the same OS process.
+            assert result.pid() == delegate.pid();
             return this;
         }
 
@@ -234,23 +239,27 @@ final class ProcessHandlers {
 
         private static final int BUFSIZE = 8192;
 
+        private final AbstractPolyglotImpl polyglot;
         private final InputStream in;
         private final OutputStream out;
         private final byte[] buffer;
 
-        CopierThread(String name, InputStream in, OutputStream out) {
+        CopierThread(AbstractPolyglotImpl polyglot, String name, InputStream in, OutputStream out) {
+            Objects.requireNonNull(polyglot, "Polyglot must be non null.");
             Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(in, "In must be non null.");
             Objects.requireNonNull(out, "Out must be non null.");
             setName(name);
+            this.polyglot = polyglot;
             this.in = in;
             this.out = out;
             this.buffer = new byte[BUFSIZE];
         }
 
         @Override
+        @SuppressWarnings("try")
         public void run() {
-            try {
+            try (ThreadScope scope = polyglot.getRootImpl().createThreadScope()) {
                 while (true) {
                     if (isInterrupted()) {
                         return;

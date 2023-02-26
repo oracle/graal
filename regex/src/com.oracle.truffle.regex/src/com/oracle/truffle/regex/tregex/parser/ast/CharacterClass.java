@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -66,14 +66,14 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * Note that {@link CharacterClass} nodes and the {@link CodePointSet}s that they rely on can only
  * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
  * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
- * by {@link RegexParser} into a more complex expression which matches the individual code units
+ * by {@link JSRegexParser} into a more complex expression which matches the individual code units
  * that would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends QuantifiableTerm {
 
     private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private StateSet<LookAroundIndex, LookBehindAssertion> lookBehindEntries;
+    private StateSet<GlobalSubTreeIndex, LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
@@ -134,7 +134,7 @@ public class CharacterClass extends QuantifiableTerm {
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(ast.getLookArounds());
+            lookBehindEntries = StateSet.create(ast.getSubtrees());
         }
         lookBehindEntries.add(lookBehindEntry);
     }

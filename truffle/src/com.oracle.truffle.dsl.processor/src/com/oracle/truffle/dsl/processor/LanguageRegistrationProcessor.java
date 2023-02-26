@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,8 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
@@ -74,6 +76,21 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     private static final Set<String> RESERVED_IDS = new HashSet<>(
                     Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
+
+    static String resolveLanguageId(Element annotatedElement, AnnotationMirror registration) {
+        String id = ElementUtils.getAnnotationValue(String.class, registration, "id");
+        if (id.isEmpty()) {
+            return getDefaultLanguageId(annotatedElement);
+        } else {
+            return id;
+        }
+    }
+
+    private static String getDefaultLanguageId(Element annotatedElement) {
+        String className = annotatedElement.toString();
+        assert TruffleTypes.TEST_PACKAGES.stream().anyMatch(className::startsWith);
+        return className.replaceAll("[.$]", "_").toLowerCase();
+    }
 
     @SuppressWarnings("deprecation")
     @Override
@@ -168,8 +185,11 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
 
         String id = ElementUtils.getAnnotationValue(String.class, registrationMirror, "id");
         if (id.isEmpty()) {
-            emitError("The attribute id is mandatory.", annotatedElement, registrationMirror, null);
-            return false;
+            String className = annotatedElement.toString();
+            if (TruffleTypes.TEST_PACKAGES.stream().noneMatch(className::startsWith)) {
+                emitError("The attribute id is mandatory.", annotatedElement, registrationMirror, null);
+                return false;
+            }
         }
         if (RESERVED_IDS.contains(id)) {
             emitError(String.format("Id '%s' is reserved for other use and must not be used as id.", id), annotatedElement, registrationMirror,
@@ -198,13 +218,16 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         List<AnnotationMirror> result = new ArrayList<>(2);
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleLanguage_Registration;
-        AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
+        CodeAnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
                         new Predicate<ExecutableElement>() {
                             @Override
                             public boolean test(ExecutableElement t) {
                                 return !"services".contentEquals(t.getSimpleName()) && !"fileTypeDetectors".contentEquals(t.getSimpleName());
                             }
                         });
+        if (ElementUtils.getAnnotationValue(String.class, registration, "id").isEmpty()) {
+            registration.setElementValue(registration.findExecutableElement("id"), new CodeAnnotationValue(getDefaultLanguageId(annotatedElement)));
+        }
         result.add(registration);
         AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), types.ProvidedTags);
         if (providedTags != null) {

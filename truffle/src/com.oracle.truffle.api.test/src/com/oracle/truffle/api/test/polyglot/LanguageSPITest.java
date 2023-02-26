@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.execute;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -51,11 +54,16 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,14 +88,15 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -97,6 +106,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -116,21 +126,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.NullObject;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService1;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
-import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import com.oracle.truffle.tck.tests.ValueAssert;
+import org.graalvm.home.Version;
 
 public class LanguageSPITest {
 
     static LanguageContext langContext;
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
 
     @After
     public void cleanup() {
@@ -140,18 +149,61 @@ public class LanguageSPITest {
         InitializeTestInternalLanguage.initialized = false;
     }
 
+    Context assertContext;
+    int evalNo;
+
+    private void remoteAssert(Engine engine, Class<? extends AbstractExecutableTestLanguage> assertLanguage, boolean hostAccessNeeded, int assertsBlockNo) {
+        if (assertContext == null || assertContext.getEngine() != engine) {
+            if (assertContext != null) {
+                assertContext.close();
+            }
+            Context.Builder builder = Context.newBuilder().engine(engine);
+            if (hostAccessNeeded) {
+                builder.allowHostAccess(HostAccess.ALL);
+            }
+            assertContext = builder.build();
+        }
+        evalTestLanguage(assertContext, assertLanguage, "assert no. " + (++evalNo), assertsBlockNo);
+    }
+
+    @After
+    public void closeAssertContext() {
+        if (assertContext != null) {
+            assertContext.close();
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class ContextCloseTestLanguage extends AbstractExecutableTestLanguage {
+
+        @TruffleBoundary
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            int assertsBlockNo = (Integer) contextArguments[0];
+            switch (assertsBlockNo) {
+                case 1:
+                    assertNotNull(langContext);
+                    assertEquals(0, langContext.disposeCalled);
+                    break;
+                case 2:
+                    assertEquals(1, langContext.disposeCalled);
+                    break;
+            }
+            return null;
+        }
+    }
+
     @Test
     public void testContextClose() {
         langContext = null;
         Engine engine = Engine.create();
 
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build();
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).allowPolyglotAccess(PolyglotAccess.ALL).build();
         assertTrue(context.initialize(LanguageSPITestLanguage.ID));
-        assertNotNull(langContext);
-        assertEquals(0, langContext.disposeCalled);
+        remoteAssert(engine, ContextCloseTestLanguage.class, false, 1);
         context.close();
+        remoteAssert(engine, ContextCloseTestLanguage.class, false, 2);
         engine.close();
-        assertEquals(1, langContext.disposeCalled);
     }
 
     @Test
@@ -162,12 +214,10 @@ public class LanguageSPITest {
         Context context = Context.newBuilder().engine(engine).build();
         context.initialize(LanguageSPITestLanguage.ID);
 
-        assertNotNull(langContext);
-
-        assertEquals(0, langContext.disposeCalled);
+        remoteAssert(engine, ContextCloseTestLanguage.class, false, 1);
         context.close();
+        remoteAssert(engine, ContextCloseTestLanguage.class, false, 2);
         engine.close();
-        assertEquals(1, langContext.disposeCalled);
     }
 
     @Test
@@ -178,13 +228,21 @@ public class LanguageSPITest {
         c.initialize(LanguageSPITestLanguage.ID);
         LanguageContext context1 = langContext;
 
-        Context.newBuilder().engine(engine).build().initialize(LanguageSPITestLanguage.ID);
+        Context c2 = Context.newBuilder().engine(engine).build();
+        c2.initialize(LanguageSPITestLanguage.ID);
         LanguageContext context2 = langContext;
 
         c.close();
         engine.close();
-        assertEquals(1, context1.disposeCalled);
-        assertEquals(1, context2.disposeCalled);
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, context1.disposeCalled);
+            assertEquals(1, context2.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(c2::enter, IllegalStateException.class, (e) -> {
+                assertEquals("The Context is already closed.", e.getMessage());
+            });
+        }
     }
 
     @Test
@@ -201,92 +259,99 @@ public class LanguageSPITest {
         });
         t.start();
         t.join(10000);
-        assertEquals(1, langContext.disposeCalled);
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
+                assertEquals("The Context is already closed.", e.getMessage());
+            });
+        }
     }
 
     @Test
     public void testCreateFromOtherThreadAndCloseFromMain() throws InterruptedException {
         Engine engine = Engine.create();
         langContext = null;
+        Context[] context = new Context[1];
         Thread t = new Thread(new Runnable() {
             public void run() {
-                Context context = Context.newBuilder().engine(engine).build();
-                context.initialize(LanguageSPITestLanguage.ID);
+                context[0] = Context.newBuilder().engine(engine).build();
+                context[0].initialize(LanguageSPITestLanguage.ID);
             }
         });
         t.start();
         t.join(10000);
         engine.close();
-        assertEquals(1, langContext.disposeCalled);
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context[0]::enter, IllegalStateException.class, (e) -> {
+                assertEquals("The Context is already closed.", e.getMessage());
+            });
+        }
     }
 
-    private static Value eval(Context context, Function<Env, Object> f) {
-        LanguageSPITestLanguage.runinside = f;
-        try {
-            return context.eval(LanguageSPITestLanguage.ID, "");
-        } finally {
-            LanguageSPITestLanguage.runinside = null;
+    @TruffleLanguage.Registration
+    static class ExecuteFirstContextArgumentTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(ExecuteFirstContextArgumentTestLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return interop.execute(contextArguments[0]);
         }
     }
 
     @Test
     public void testContextCloseInsideFromSameThread() {
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).build();
-        eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                context.close();
-                return null;
-            }
-        });
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).build();
+        context.initialize(LanguageSPITestLanguage.ID);
+        evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) context::close);
         context.close();
-        assertEquals(1, langContext.disposeCalled);
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
+                assertEquals("The Context is already closed.", e.getMessage());
+            });
+        }
     }
 
     @Test
     public void testContextCloseInsideFromSameThreadCancelExecution() {
         Engine engine = Engine.create();
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
         try {
-            eval(context, new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    context.close(true);
-                    return null;
-                }
-            });
+            evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) () -> context.close(true));
             fail();
         } catch (PolyglotException pe) {
             if (!pe.isCancelled()) {
                 throw pe;
             }
         }
+        remoteAssert(engine, ContextCloseTestLanguage.class, true, 2);
         engine.close();
-        assertEquals(1, langContext.disposeCalled);
     }
 
     @Test
     public void testContextCloseInsideFromSameThreadCancelExecutionNestedEval() {
         Engine engine = Engine.create();
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
         try {
-            eval(context, new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    try {
-                        eval(context, new Function<Env, Object>() {
-                            public Object apply(Env t2) {
-                                context.close(true);
-                                return null;
-                            }
-                        });
-                        fail();
-                    } catch (PolyglotException pe) {
-                        if (!pe.isCancelled()) {
-                            throw pe;
-                        }
+            evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "outer level", (Runnable) () -> {
+                try {
+                    evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "inner level", (Runnable) () -> context.close(true));
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
                     }
-                    return null;
                 }
             });
             fail();
@@ -295,69 +360,68 @@ public class LanguageSPITest {
                 throw pe;
             }
         }
+        remoteAssert(engine, ContextCloseTestLanguage.class, true, 2);
         engine.close();
-        assertEquals(1, langContext.disposeCalled);
     }
 
     @Test
     public void testEngineCloseInsideFromSameThread() {
         Engine engine = Engine.create();
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                engine.close();
-                return null;
-            }
-        });
-        assertEquals(1, langContext.disposeCalled);
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
+        evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) engine::close);
         engine.close();
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context::enter, IllegalStateException.class, (e) -> {
+                assertEquals("The Context is already closed.", e.getMessage());
+            });
+        }
     }
 
     @Test
     public void testEngineCloseInsideFromSameThreadCancelExecution() {
         Engine engine = Engine.create();
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
         try {
-            eval(context, new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    engine.close(true);
-                    return null;
-                }
-            });
+            evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) () -> engine.close(true));
             fail();
         } catch (PolyglotException pe) {
             if (!pe.isCancelled()) {
                 throw pe;
             }
         }
-        assertEquals(1, langContext.disposeCalled);
         engine.close();
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context::enter, PolyglotException.class, (e) -> {
+                assertFalse(e.isInternalError());
+                assertTrue(e.isCancelled());
+            });
+        }
     }
 
     @Test
     public void testEngineCloseInsideFromSameThreadCancelExecutionNestedEval() {
         Engine engine = Engine.create();
         langContext = null;
-        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID, ExecuteFirstContextArgumentTestLanguage.ID).allowHostAccess(HostAccess.ALL).engine(engine).build();
+        context.initialize(LanguageSPITestLanguage.ID);
         try {
-            eval(context, new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    try {
-                        eval(context, new Function<Env, Object>() {
-                            public Object apply(Env t2) {
-                                engine.close(true);
-                                return null;
-                            }
-                        });
-                        fail();
-                    } catch (PolyglotException pe) {
-                        if (!pe.isCancelled()) {
-                            throw pe;
-                        }
+            evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "outer level", (Runnable) () -> {
+                try {
+                    evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "inner level", (Runnable) () -> engine.close(true));
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
                     }
-                    return null;
                 }
             });
             fail();
@@ -366,8 +430,16 @@ public class LanguageSPITest {
                 throw pe;
             }
         }
-        assertEquals(1, langContext.disposeCalled);
         engine.close();
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertEquals(1, langContext.disposeCalled);
+        } else {
+            // We cannot obtain any information from a closed isolate.
+            AbstractPolyglotTest.assertFails(context::enter, PolyglotException.class, (e) -> {
+                assertFalse(e.isInternalError());
+                assertTrue(e.isCancelled());
+            });
+        }
     }
 
     @SuppressWarnings("serial")
@@ -406,6 +478,7 @@ public class LanguageSPITest {
         }
 
         @ExportMessage(name = "getSourceLocation")
+        @TruffleBoundary
         SourceSection getSourceSection() throws UnsupportedMessageException {
             if (source == null) {
                 throw UnsupportedMessageException.create();
@@ -414,35 +487,83 @@ public class LanguageSPITest {
         }
     }
 
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class RemoteLatch implements TruffleObject {
+        CountDownLatch latch = new CountDownLatch(1);
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        @CompilerDirectives.TruffleBoundary
+        final Object execute(Object[] arguments) {
+            latch.countDown();
+            return true;
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class RemoteCounter implements TruffleObject {
+        AtomicInteger counter = new AtomicInteger();
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        @CompilerDirectives.TruffleBoundary
+        final Object execute(Object[] arguments) {
+            counter.incrementAndGet();
+            return true;
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class CancelExecutionWhileSleepingTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(CancelExecutionWhileSleepingTestLanguage.class);
+
+        @TruffleBoundary
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object beforeSleepLatch = contextArguments[0];
+            Object interruptLatch = contextArguments[1];
+            Object interruptCounter = contextArguments[2];
+            try {
+                interop.execute(beforeSleepLatch);
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                interop.execute(interruptCounter);
+                interop.execute(interruptLatch);
+                throw new Interrupted();
+            }
+            return null;
+        }
+    }
+
     @Test
     public void testCancelExecutionWhileSleeping() throws InterruptedException {
         ExecutorService service = Executors.newFixedThreadPool(1);
         try {
             Engine engine = Engine.create();
-            Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+            Context context = Context.newBuilder(LanguageSPITestLanguage.ID, CancelExecutionWhileSleepingTestLanguage.ID).engine(engine).build();
+            context.initialize(LanguageSPITestLanguage.ID);
 
-            CountDownLatch beforeSleep = new CountDownLatch(1);
-            CountDownLatch interrupt = new CountDownLatch(1);
-            AtomicInteger gotInterrupt = new AtomicInteger(0);
-            Function<Env, Object> f = new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    try {
-                        beforeSleep.countDown();
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        gotInterrupt.incrementAndGet();
-                        interrupt.countDown();
-                        throw new Interrupted();
-                    }
-                    return null;
-                }
-            };
-            Future<Value> future = service.submit(() -> eval(context, f));
-            beforeSleep.await(10000, TimeUnit.MILLISECONDS);
+            RemoteLatch beforeSleep = new RemoteLatch();
+            RemoteLatch interrupt = new RemoteLatch();
+            RemoteCounter gotInterrupt = new RemoteCounter();
+            Future<Value> future = service.submit(() -> evalTestLanguage(context, CancelExecutionWhileSleepingTestLanguage.class, "", beforeSleep, interrupt, gotInterrupt));
+            beforeSleep.latch.await(10000, TimeUnit.MILLISECONDS);
             context.close(true);
 
-            interrupt.await(10000, TimeUnit.MILLISECONDS);
-            assertEquals(1, gotInterrupt.get());
+            interrupt.latch.await(10000, TimeUnit.MILLISECONDS);
+            assertEquals(1, gotInterrupt.counter.get());
 
             try {
                 future.get();
@@ -497,28 +618,36 @@ public class LanguageSPITest {
         context.getEngine().close();
     }
 
+    @TruffleLanguage.Registration
+    static class LookupHostTestLangauge extends AbstractExecutableTestLanguage {
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return env.lookupHostSymbol("java.util.HashMap");
+        }
+    }
+
     @Test
     public void testLookupHost() {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build();
-        Value value = eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                return t.lookupHostSymbol("java.util.HashMap");
-            }
-        });
+        Value value = evalTestLanguage(context, LookupHostTestLangauge.class, "");
         assertTrue(value.isHostObject());
         Object map = value.asHostObject();
         assertSame(map, HashMap.class);
         context.close();
     }
 
+    @TruffleLanguage.Registration
+    static class LookupHostArrayTestLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return env.lookupHostSymbol("java.lang.String[]");
+        }
+    }
+
     @Test
     public void testLookupHostArray() {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build();
-        Value value = eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                return t.lookupHostSymbol("java.lang.String[]");
-            }
-        });
+        Value value = evalTestLanguage(context, LookupHostArrayTestLanguage.class, "");
         assertTrue(value.isHostObject());
         Object map = value.asHostObject();
         assertSame(map, String[].class);
@@ -529,11 +658,7 @@ public class LanguageSPITest {
     public void testLookupHostDisabled() {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> false).build();
         try {
-            eval(context, new Function<Env, Object>() {
-                public Object apply(Env t) {
-                    return t.lookupHostSymbol("java.util.HashMap");
-                }
-            });
+            evalTestLanguage(context, LookupHostTestLangauge.class, "");
             fail();
         } catch (PolyglotException e) {
             assertTrue(!e.isInternalError());
@@ -541,218 +666,1143 @@ public class LanguageSPITest {
         context.close();
     }
 
+    @TruffleLanguage.Registration
+    static class IsHostAccessAllowedTestLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return env.isHostLookupAllowed();
+        }
+    }
+
     @Test
     public void testIsHostAccessAllowed() {
         Context context = Context.create();
-        assertTrue(!eval(context, env -> env.isHostLookupAllowed()).asBoolean());
+        assertFalse(evalTestLanguage(context, IsHostAccessAllowedTestLanguage.class, "").asBoolean());
         context.close();
 
         context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build();
-        assertTrue(eval(context, env -> env.isHostLookupAllowed()).asBoolean());
+        assertTrue(evalTestLanguage(context, IsHostAccessAllowedTestLanguage.class, "").asBoolean());
         context.close();
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextTestLanguage extends TruffleLanguage<InnerContextTestLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextTestLanguage.class);
+
+        static class Context {
+            private final Env env;
+            private final Map<String, Object> config;
+
+            private int disposeCalled;
+
+            Context(Env env, Map<String, Object> config) {
+                this.env = env;
+                this.config = config;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env, env.getConfig());
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            context.disposeCalled++;
+        }
+
+        private static final ContextReference<Context> CONTEXT_REF = ContextReference.create(InnerContextTestLanguage.class);
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return executeBoundary();
+                }
+            }.getCallTarget();
+        }
+
+        @TruffleBoundary
+        protected Object executeBoundary() {
+            Context outerLangContext = CONTEXT_REF.get(null);
+            Object config = new Object();
+            TruffleContext innerContext = outerLangContext.env.newInnerContextBuilder().initializeCreatorContext(true).config("config", config).build();
+            Object p = innerContext.enter(null);
+            Context innerLangContext = CONTEXT_REF.get(null);
+            try {
+
+                try {
+                    innerContext.close();
+                    fail("context could be closed when entered");
+                } catch (IllegalStateException e) {
+                }
+                assertEquals(0, innerLangContext.disposeCalled);
+
+                assertEquals(config, innerLangContext.config.get("config"));
+                assertNotSame(outerLangContext, innerLangContext);
+
+                boolean assertions = false;
+                assert (assertions = true) == true;
+                if (assertions) {
+                    boolean leaveFailed = false;
+                    try {
+                        innerContext.leave(null, "foo");
+                    } catch (AssertionError e) {
+                        leaveFailed = true;
+                    }
+                    if (!leaveFailed) {
+                        fail("no assertion error for leaving with the wrong object");
+                    }
+                }
+            } finally {
+                innerContext.leave(null, p);
+            }
+            assertSame(outerLangContext, CONTEXT_REF.get(null));
+            innerContext.close();
+
+            try {
+                innerContext.enter(null);
+                fail("cannot be entered after closing");
+            } catch (IllegalStateException e) {
+            }
+
+            innerContext.close();
+
+            assertEquals(1, innerLangContext.disposeCalled);
+
+            return NullObject.SINGLETON;
+        }
     }
 
     @Test
     public void testInnerContext() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
-            public Object apply(Env env) {
-                LanguageContext outerLangContext = LanguageSPITestLanguage.getContext();
-                Object config = new Object();
-                TruffleContext innerContext = env.newContextBuilder().config("config", config).build();
-                Object p = innerContext.enter(null);
-                LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
-                try {
-
-                    try {
-                        innerContext.close();
-                        fail("context could be closed when entered");
-                    } catch (IllegalStateException e) {
-                    }
-                    assertEquals(0, innerLangContext.disposeCalled);
-
-                    assertEquals(config, innerLangContext.config.get("config"));
-                    assertNotSame(outerLangContext, innerLangContext);
-
-                    boolean assertions = false;
-                    assert (assertions = true) == true;
-                    if (assertions) {
-                        boolean leaveFailed = false;
-                        try {
-                            innerContext.leave(null, "foo");
-                        } catch (AssertionError e) {
-                            leaveFailed = true;
-                        }
-                        if (!leaveFailed) {
-                            fail("no assertion error for leaving with the wrong object");
-                        }
-                    }
-                } finally {
-                    innerContext.leave(null, p);
-                }
-                assertSame(outerLangContext, LanguageSPITestLanguage.getContext());
-                innerContext.close();
-
-                try {
-                    innerContext.enter(null);
-                    fail("cannot be entered after closing");
-                } catch (IllegalStateException e) {
-                }
-
-                innerContext.close();
-
-                assertEquals(1, innerLangContext.disposeCalled);
-                return null;
-            }
-        };
-        eval(context, f);
+        context.eval(InnerContextTestLanguage.ID, "");
 
         // ensure we are not yet closed
-        eval(context, f);
+        context.eval(InnerContextTestLanguage.ID, "");
         context.close();
+    }
+
+    @TruffleLanguage.Registration
+    static class TruffleContextTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(TruffleContextTestLanguage.class);
+        static boolean firstExecution = true;
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            if (!firstExecution) {
+                return null;
+            } else {
+                // no recursive runs inside
+                firstExecution = false;
+            }
+            Throwable[] error = new Throwable[1];
+            Thread thread = new Thread(() -> {
+                try {
+                    Source source = Source.newBuilder(ID, "", "s").build();
+                    boolean parsingFailed = false;
+                    try {
+                        // execute Truffle code in a fresh thread fails
+                        env.parsePublic(source).call();
+                    } catch (IllegalStateException e) {
+                        // No current context available.
+                        parsingFailed = true;
+                    }
+                    if (!parsingFailed) {
+                        fail("no IllegalStateException \"No current context available.\"");
+                    }
+
+                    TruffleContext truffleContext = env.getContext();
+                    // attach the Thread
+                    Object prev = truffleContext.enter(null);
+                    try {
+                        // execute Truffle code
+                        env.parsePublic(source).call();
+                    } finally {
+                        // detach the Thread
+                        truffleContext.leave(null, prev);
+                    }
+                } catch (Throwable t) {
+                    error[0] = t;
+                }
+            });
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+            if (error[0] != null) {
+                throw new AssertionError(error[0]);
+            }
+            boolean leaveFailed = false;
+            try {
+                TruffleContext truffleContext = env.getContext();
+                truffleContext.leave(null, null);
+            } catch (AssertionError e) {
+                leaveFailed = true;
+            }
+            if (!leaveFailed) {
+                fail("no assertion error for leaving without enter");
+            }
+
+            return null;
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
     }
 
     @Test
     public void testTruffleContext() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
-            public Object apply(Env env) {
-                LanguageSPITestLanguage.runinside = null; // No more recursive runs inside
-                Throwable[] error = new Throwable[1];
-                Thread thread = new Thread(() -> {
-                    try {
-                        Source source = Source.newBuilder(LanguageSPITestLanguage.ID, "", "s").build();
-                        boolean parsingFailed = false;
-                        try {
-                            // execute Truffle code in a fresh thread fails
-                            env.parsePublic(source).call();
-                        } catch (IllegalStateException e) {
-                            // No current context available.
-                            parsingFailed = true;
-                        }
-                        if (!parsingFailed) {
-                            fail("no IllegalStateException \"No current context available.\"");
-                        }
-
-                        TruffleContext truffleContext = env.getContext();
-                        // attach the Thread
-                        Object prev = truffleContext.enter(null);
-                        try {
-                            // execute Truffle code
-                            env.parsePublic(source).call();
-                        } finally {
-                            // detach the Thread
-                            truffleContext.leave(null, prev);
-                        }
-                    } catch (Throwable t) {
-                        error[0] = t;
-                    }
-                });
-                thread.start();
-                try {
-                    thread.join();
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-                if (error[0] != null) {
-                    throw new AssertionError(error[0]);
-                }
-                boolean leaveFailed = false;
-                try {
-                    TruffleContext truffleContext = env.getContext();
-                    truffleContext.leave(null, null);
-                } catch (AssertionError e) {
-                    leaveFailed = true;
-                }
-                if (!leaveFailed) {
-                    fail("no assertion error for leaving without enter");
-                }
-                return null;
-            }
-        };
-        eval(context, f);
+        evalTestLanguage(context, TruffleContextTestLanguage.class, "");
         context.close();
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextAccessPrivilegesLanguage extends AbstractExecutableTestLanguage {
+
+        static final int CREATE_PROCESS = 0;
+        static final int NATIVE_ACCESS = 1;
+        static final int IO = 2;
+        static final int HOST_CLASS_LOADING = 3;
+        static final int HOST_LOOKUP = 4;
+        static final int CREATE_THREAD = 5;
+        static final int POLYGLOT_ACCESS = 6;
+        static final int ENVIRONMENT_ACCESS = 7;
+
+        static final int NUMBER_PRIVILEGES = 8;
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextAccessPrivilegesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectedPrivilege = (boolean) contextArguments[0];
+            int privilege = (int) contextArguments[1];
+            boolean inheritPrivileges = (boolean) contextArguments[2];
+            Boolean allowPrivilege = (Boolean) contextArguments[3];
+
+            var builder = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(inheritPrivileges);
+            if (allowPrivilege != null) {
+                setInnerPrivilege(builder, privilege, allowPrivilege);
+            }
+
+            Boolean actualOuterPrivilege = getPrivilege(env, privilege);
+
+            TruffleContext c = builder.build();
+            Object prev = c.enter(null);
+            try {
+                ExecutableContext innerContext = CONTEXT_REFERENCE.get(null);
+                Boolean actualInnerPrivilege = getPrivilege(innerContext.env, privilege);
+
+                if (actualInnerPrivilege != null) {
+                    assertEquals("Privilege " + privilege, expectedPrivilege, actualInnerPrivilege);
+
+                    // check invariants
+                    if (inheritPrivileges) {
+                        if (allowPrivilege == null) {
+                            assertEquals(actualOuterPrivilege, actualInnerPrivilege);
+                        } else {
+                            assertEquals(allowPrivilege && actualOuterPrivilege, actualInnerPrivilege);
+                        }
+                    } else {
+                        if (allowPrivilege == null || !allowPrivilege) {
+                            assertEquals(false, actualInnerPrivilege);
+                        }
+                    }
+                }
+
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+        private static void setInnerPrivilege(TruffleContext.Builder builder, int privilege, boolean allowPrivilege) {
+            switch (privilege) {
+                case CREATE_PROCESS:
+                    builder.allowCreateProcess(allowPrivilege);
+                    break;
+                case NATIVE_ACCESS:
+                    builder.allowNativeAccess(allowPrivilege);
+                    break;
+                case IO:
+                    builder.allowIO(allowPrivilege);
+                    break;
+                case HOST_CLASS_LOADING:
+                    if (allowPrivilege) {
+                        // needed for host class loading
+                        builder.allowIO(true);
+                        builder.allowHostClassLookup(true);
+                    }
+                    builder.allowHostClassLoading(allowPrivilege);
+                    break;
+                case HOST_LOOKUP:
+                    builder.allowHostClassLookup(allowPrivilege);
+                    break;
+                case CREATE_THREAD:
+                    builder.allowCreateThread(allowPrivilege);
+                    break;
+                case POLYGLOT_ACCESS:
+                    builder.allowPolyglotAccess(allowPrivilege);
+                    break;
+                case ENVIRONMENT_ACCESS:
+                    builder.environment("testInnerEnvKey", "true");
+                    builder.allowInheritEnvironmentAccess(allowPrivilege);
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+
+        }
+
+        private static Boolean getPrivilege(Env env, int privilege) {
+            switch (privilege) {
+                case CREATE_PROCESS:
+                    return env.isCreateProcessAllowed();
+                case NATIVE_ACCESS:
+                    return env.isNativeAccessAllowed();
+                case IO:
+                    return env.isFileIOAllowed();
+                case HOST_CLASS_LOADING:
+                    TruffleFile file = env.getTruffleFileInternal("", null);
+                    try {
+                        env.addToHostClassPath(file);
+                        return true;
+                    } catch (AbstractTruffleException e) {
+                        if ("Cannot add classpath entry  in native mode.".equals(e.getMessage())) {
+                            return null;
+                        } else {
+                            return false;
+                        }
+                    }
+                case HOST_LOOKUP:
+                    return env.isHostLookupAllowed();
+                case CREATE_THREAD:
+                    return env.isCreateThreadAllowed();
+                case POLYGLOT_ACCESS:
+                    return env.isPolyglotBindingsAccessAllowed() || env.isPolyglotEvalAllowed();
+                case ENVIRONMENT_ACCESS:
+                    // environment access can only be observed with properties
+                    String value = env.getEnvironment().get(OUTER_CONTEXT_TEST_KEY);
+                    if (value != null) {
+                        return value.equals("enabled");
+                    }
+                    return false;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+
+        }
+
+    }
+
+    static final String OUTER_CONTEXT_TEST_KEY = "OuterContextTestKey";
+
+    @Test
+    public void testInnerContextAccessPrivileges() {
+        // test all privileges
+        for (int privilege = 0; privilege < InnerContextAccessPrivilegesLanguage.NUMBER_PRIVILEGES; privilege++) {
+
+            // test no outer context privilege
+            assertInnerContextPrivilege(false, privilege, false, false, null);
+            assertInnerContextPrivilege(false, privilege, false, false, true);
+            assertInnerContextPrivilege(false, privilege, false, false, false);
+
+            // test outer context privilege but no inheritance
+            assertInnerContextPrivilege(false, privilege, true, false, null);
+            assertInnerContextPrivilege(true, privilege, true, false, true);
+            assertInnerContextPrivilege(false, privilege, true, false, false);
+
+            // test outer context privilege and inheritance
+            assertInnerContextPrivilege(true, privilege, true, true, null);
+            assertInnerContextPrivilege(true, privilege, true, true, true);
+            assertInnerContextPrivilege(false, privilege, true, true, false);
+
+            // test no outer context privilege and inheritance
+            assertInnerContextPrivilege(false, privilege, false, true, null);
+            assertInnerContextPrivilege(false, privilege, false, true, true);
+            assertInnerContextPrivilege(false, privilege, false, true, false);
+        }
+    }
+
+    private static void assertInnerContextPrivilege(boolean expectedInnerPrivilege, int privilege, boolean outerPrivilege, boolean innerInheritPrivileges, Boolean innerPrivilege) {
+        try (Context context = setOuterPrivilege(Context.newBuilder(), privilege, outerPrivilege).build()) {
+            execute(context, InnerContextAccessPrivilegesLanguage.class, expectedInnerPrivilege, privilege, innerInheritPrivileges, innerPrivilege);
+        }
+    }
+
+    private static Context.Builder setOuterPrivilege(Context.Builder builder, int privilege, boolean allowPrivilege) {
+        switch (privilege) {
+            case InnerContextAccessPrivilegesLanguage.CREATE_PROCESS:
+                builder.allowCreateProcess(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.NATIVE_ACCESS:
+                builder.allowNativeAccess(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.IO:
+                builder.allowIO(allowPrivilege ? IOAccess.ALL : IOAccess.NONE);
+                break;
+            case InnerContextAccessPrivilegesLanguage.HOST_CLASS_LOADING:
+                // required for host class loading
+                builder.allowIO(IOAccess.ALL);
+                builder.allowHostClassLookup((s) -> true);
+                builder.allowHostClassLoading(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.HOST_LOOKUP:
+                if (allowPrivilege) {
+                    builder.allowHostClassLookup((s) -> true);
+                } else {
+                    builder.allowHostClassLookup(null);
+                }
+                break;
+            case InnerContextAccessPrivilegesLanguage.CREATE_THREAD:
+                builder.allowCreateThread(allowPrivilege);
+                break;
+            case InnerContextAccessPrivilegesLanguage.POLYGLOT_ACCESS:
+                builder.allowPolyglotAccess(allowPrivilege ? PolyglotAccess.ALL : PolyglotAccess.NONE);
+                break;
+            case InnerContextAccessPrivilegesLanguage.ENVIRONMENT_ACCESS:
+                if (allowPrivilege) {
+                    builder.environment(OUTER_CONTEXT_TEST_KEY, "enabled");
+                    builder.allowEnvironmentAccess(EnvironmentAccess.INHERIT);
+                } else {
+                    builder.environment(OUTER_CONTEXT_TEST_KEY, "disabled");
+                    builder.allowEnvironmentAccess(EnvironmentAccess.NONE);
+                }
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        return builder;
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextSharingLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextSharingLanguage.class);
+        static final LanguageReference<InnerContextSharingLanguage> LANGUAGE_REFERENCE = LanguageReference.create(InnerContextSharingLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ExecutableContext outerContext = CONTEXT_REFERENCE.get(null);
+            InnerContextSharingLanguage outerLanguage = LANGUAGE_REFERENCE.get(null);
+            Boolean forceSharing = (Boolean) contextArguments[0];
+            boolean expectOuterShared = (boolean) contextArguments[1];
+            boolean expectInnerShared = (boolean) contextArguments[2];
+
+            ExecutableContext innerContext = null;
+            InnerContextSharingLanguage innerLanguage = null;
+
+            for (int i = 0; i < 3; i++) {
+                TruffleContext c = env.newInnerContextBuilder().initializeCreatorContext(true).forceSharing(forceSharing).build();
+                Object prev = c.enter(null);
+                try {
+                    if (i != 0) {
+                        if (expectInnerShared) {
+                            Assert.assertSame(innerLanguage, LANGUAGE_REFERENCE.get(null));
+                        } else {
+                            Assert.assertNotSame(innerLanguage, LANGUAGE_REFERENCE.get(null));
+                        }
+                    }
+                    innerContext = CONTEXT_REFERENCE.get(null);
+                    innerLanguage = LANGUAGE_REFERENCE.get(null);
+
+                    if (expectOuterShared) {
+                        Assert.assertSame(outerLanguage, innerLanguage);
+                    } else {
+                        Assert.assertNotSame(outerLanguage, innerLanguage);
+                    }
+
+                    Assert.assertNotSame(outerContext, innerContext);
+
+                } finally {
+                    c.leave(null, prev);
+                    c.close();
+                }
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextSharing() {
+        Boolean forceSharing;
+        boolean expectOuterShared;
+        boolean expectInnerShared;
+
+        forceSharing = null;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = null;
+        expectOuterShared = true;
+        expectInnerShared = true;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+
+        forceSharing = Boolean.TRUE;
+        expectOuterShared = false;
+        expectInnerShared = true;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing,
+                            expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = Boolean.TRUE;
+        expectOuterShared = true;
+        expectInnerShared = true;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+
+        forceSharing = Boolean.FALSE;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Context context = Context.newBuilder().build()) {
+            execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+        }
+
+        forceSharing = Boolean.FALSE;
+        expectOuterShared = false;
+        expectInnerShared = false;
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                execute(context, InnerContextSharingLanguage.class, forceSharing, expectOuterShared, expectInnerShared);
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextOptionsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextOptionsLanguage.class);
+        static final LanguageReference<InnerContextOptionsLanguage> LANGUAGE_REFERENCE = LanguageReference.create(InnerContextOptionsLanguage.class);
+
+        @Option(help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) public static final OptionKey<String> InheritedKey = new OptionKey<>("");
+        @Option(help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) public static final OptionKey<String> SharingKey = new OptionKey<>("");
+
+        @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(SharingKey).equals(newOptions.get(SharingKey));
+        }
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new InnerContextOptionsLanguageOptionDescriptors();
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectSupportOptions = (boolean) contextArguments[0];
+            boolean expectShared = (boolean) contextArguments[1];
+
+            ExecutableContext innerContext = null;
+            assertEquals("inheritedValue", env.getOptions().get(InheritedKey));
+
+            if (expectSupportOptions) {
+                assertTrue(env.isInnerContextOptionsAllowed());
+                var builder = env.newInnerContextBuilder();
+
+                assertFails(() -> builder.option(null, "value"), NullPointerException.class);
+                assertFails(() -> builder.option(getOptionKey("SharingKey"), null), NullPointerException.class);
+                assertFails(() -> builder.options(null), NullPointerException.class);
+                var invalidMap = new HashMap<String, String>();
+                invalidMap.put("map", null);
+                assertFails(() -> builder.options(invalidMap), NullPointerException.class);
+
+                builder.options(new HashMap<>());
+
+                TruffleContext c = builder.initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value").build();
+                Object prev = c.enter(null);
+
+                if (expectShared) {
+                    assertSame(this, LANGUAGE_REFERENCE.get(null));
+                } else {
+                    assertNotSame(this, LANGUAGE_REFERENCE.get(null));
+                }
+
+                try {
+                    innerContext = CONTEXT_REFERENCE.get(null);
+                    assertEquals("value", innerContext.env.getOptions().get(SharingKey));
+                    assertEquals("inheritedValue", innerContext.env.getOptions().get(InheritedKey));
+
+                } finally {
+                    c.leave(null, prev);
+                    c.close();
+                }
+            } else {
+                assertFalse(env.isInnerContextOptionsAllowed());
+                var builder = env.newInnerContextBuilder().initializeCreatorContext(true).option(getOptionKey("SharingKey"), "value");
+                assertFails(() -> builder.build(), IllegalArgumentException.class, (e) -> {
+                    assertEquals("Language options were specified for the inner context but the outer context does not have the required context options privilege for this operation. " +
+                                    "Use TruffleLanguage.Env.isInnerContextOptionsAllowed() to check whether the inner context has this privilege. " +
+                                    "Use Context.Builder.allowInnerContextOptions(true) to grant inner context option privilege for inner contexts.", e.getMessage());
+                });
+            }
+
+            return null;
+        }
+
+        static String getOptionKey(String name) {
+            return TestUtils.getDefaultLanguageId(InnerContextOptionsLanguage.class) + "." + name;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextOptions() {
+        // allow inner context options when all access is granted
+        try (Context context = Context.newBuilder().//
+                        option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                        allowInnerContextOptions(true).build()) {
+            execute(context, InnerContextOptionsLanguage.class, true, false);
+        }
+
+        // disallow inner context options when all is denied
+        try (Context context = Context.newBuilder().//
+                        option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                        allowInnerContextOptions(false).build()) {
+            execute(context, InnerContextOptionsLanguage.class, false, false);
+        }
+
+        try (Engine engine = Engine.create()) {
+            // test options may disable sharing for inner context options
+            try (Context context = Context.newBuilder().//
+                            option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                            allowInnerContextOptions(true).engine(engine).build()) {
+                execute(context, InnerContextOptionsLanguage.class, true, false);
+            }
+            // test with matching options we share code with the inner context
+            try (Context context = Context.newBuilder().//
+                            option(InnerContextOptionsLanguage.getOptionKey("InheritedKey"), "inheritedValue").//
+                            option(InnerContextOptionsLanguage.getOptionKey("SharingKey"), "value").//
+                            allowInnerContextOptions(true).engine(engine).build()) {
+                execute(context, InnerContextOptionsLanguage.class, true, true);
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextArgumentsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextArgumentsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            assertArrayEquals(env.getApplicationArguments(), new String[]{"outerArgs"});
+
+            var builder = env.newInnerContextBuilder().initializeCreatorContext(true);
+
+            assertFails(() -> builder.arguments(null, new String[0]), NullPointerException.class);
+            assertFails(() -> builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), null), NullPointerException.class);
+            assertFails(() -> builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{null}), NullPointerException.class);
+
+            TruffleContext c;
+            Object prev;
+
+            c = builder.build();
+            prev = c.enter(null);
+            try {
+                // application arguments are not inherited to inner contexts by default
+                assertArrayEquals(new String[0], CONTEXT_REFERENCE.get(null).env.getApplicationArguments());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            c = builder.arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{"innerArgs"}).build();
+            prev = c.enter(null);
+            try {
+                // if set for inner contexts application arguments are availble
+                assertArrayEquals(new String[]{"innerArgs"}, CONTEXT_REFERENCE.get(null).env.getApplicationArguments());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextArguments() {
+        try (Context context = Context.newBuilder().//
+                        arguments(TestUtils.getDefaultLanguageId(InnerContextArgumentsLanguage.class), new String[]{"outerArgs"}).build()) {
+            execute(context, InnerContextArgumentsLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextTimeZoneLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextTimeZoneLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            ZoneId outerZone = env.getTimeZone();
+            assertEquals(ZoneOffset.UTC, outerZone);
+
+            TruffleContext c;
+            Object prev;
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).timeZone(null).build();
+            prev = c.enter(null);
+            try {
+                // time zone is inherited unless set explicitly
+                assertEquals(ZoneOffset.UTC, CONTEXT_REFERENCE.get(null).env.getTimeZone());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).timeZone(ZoneOffset.of("+1")).build();
+            prev = c.enter(null);
+            try {
+                // if explicitly set time zone is passed on
+                assertEquals(ZoneOffset.of("+1"), CONTEXT_REFERENCE.get(null).env.getTimeZone());
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testInnerContextTimeZone() {
+        try (Context context = Context.newBuilder().//
+                        timeZone(ZoneOffset.UTC).build()) {
+            execute(context, InnerContextTimeZoneLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextInnerStreamsLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextInnerStreamsLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextInnerStreamsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext c;
+            Object prev;
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ByteArrayOutputStream err = new ByteArrayOutputStream();
+            ByteArrayInputStream in = new ByteArrayInputStream("innerIn".getBytes());
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).out(out).err(err).in(in).build();
+            prev = c.enter(null);
+            try {
+                Env innerEnv = CONTEXT_REFERENCE.get(null).env;
+                innerEnv.out().write("innerOut".getBytes());
+                assertEquals("innerOut", new String(out.toByteArray()));
+
+                innerEnv.err().write("innerErr".getBytes());
+                assertEquals("innerErr", new String(err.toByteArray()));
+
+                assertEquals("innerIn", new String(innerEnv.in().readAllBytes()));
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextInnerStreams() {
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        ByteArrayInputStream in = new ByteArrayInputStream("outerIn".getBytes());
+        try (Context context = Context.newBuilder().logHandler(log).out(out).err(err).in(in).build()) {
+            execute(context, InnerContextInnerStreamsLanguage.class);
+        }
+        assertEquals("", new String(out.toByteArray()));
+        assertEquals("", new String(err.toByteArray()));
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextOuterStreamsLanguage extends AbstractExecutableTestLanguage {
+
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextOuterStreamsLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext c;
+            Object prev;
+
+            c = env.newInnerContextBuilder().initializeCreatorContext(true).out(null).err(null).in(null).build();
+            prev = c.enter(null);
+            try {
+                Env innerEnv = CONTEXT_REFERENCE.get(null).env;
+                innerEnv.out().write("innerOut".getBytes());
+                innerEnv.err().write("innerErr".getBytes());
+                assertEquals("outerIn", new String(innerEnv.in().readAllBytes()));
+            } finally {
+                c.leave(null, prev);
+                c.close();
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextOuterStreams() {
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        ByteArrayInputStream in = new ByteArrayInputStream("outerIn".getBytes());
+        try (Context context = Context.newBuilder().logHandler(log).out(out).err(err).in(in).build()) {
+            execute(context, InnerContextOuterStreamsLanguage.class);
+        }
+        assertEquals("innerOut", new String(out.toByteArray()));
+        assertEquals("innerErr", new String(err.toByteArray()));
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextPermittedLanguagesLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextPermittedLanguagesLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextPermittedLanguagesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object prev;
+
+            // all languages accessible
+            TruffleContext c0 = env.newInnerContextBuilder().build();
+            prev = c0.enter(null);
+            try {
+                c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                c0.initializePublic(null, ID); // current language works
+            } finally {
+                c0.leave(null, prev);
+                c0.close();
+            }
+
+            // creator context always accessible even if not specified as permitted language
+            TruffleContext c1 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).initializeCreatorContext(true).build();
+            prev = c1.enter(null);
+            try {
+                c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                c1.initializePublic(null, ID); // current language works
+            } finally {
+                c1.leave(null, prev);
+                c1.close();
+            }
+
+            // creator context always accessible if initialized
+            TruffleContext c2 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID).build();
+            prev = c2.enter(null);
+            try {
+                c2.initializePublic(null, InnerContextInnerStreamsLanguage.ID); // other language
+                                                                                // works
+                assertFails(() -> c2.initializePublic(null, ID), IllegalArgumentException.class);
+            } finally {
+                c2.leave(null, prev);
+                c2.close();
+            }
+
+            TruffleContext c3 = env.newInnerContextBuilder(ID).initializeCreatorContext(true).build();
+            prev = c3.enter(null);
+            try {
+                c3.initializePublic(null, ID); // other language works
+                assertFails(() -> c3.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+
+                assertNull(CONTEXT_REFERENCE.get(null).env.getPublicLanguages().get(InnerContextInnerStreamsLanguage.ID));
+                assertNull(CONTEXT_REFERENCE.get(null).env.getInternalLanguages().get(InnerContextInnerStreamsLanguage.ID));
+            } finally {
+                c3.leave(null, prev);
+                c3.close();
+            }
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextPermittedLanguages() {
+        try (Context context = Context.create()) {
+            execute(context, InnerContextPermittedLanguagesLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration(contextPolicy = ContextPolicy.SHARED)
+    static class InnerContextInheritPermittedLanguagesLanguage extends AbstractExecutableTestLanguage {
+
+        static final String ID = TestUtils.getDefaultLanguageId(InnerContextInheritPermittedLanguagesLanguage.class);
+        static final ContextReference<ExecutableContext> CONTEXT_REFERENCE = ContextReference.create(InnerContextInheritPermittedLanguagesLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object prev;
+
+            // all languages accessible accessible language config is inherited
+            TruffleContext c0 = env.newInnerContextBuilder().build();
+            prev = c0.enter(null);
+            try {
+                c0.initializePublic(null, InnerContextPermittedLanguagesLanguage.ID);
+                c0.initializePublic(null, InnerContextInheritPermittedLanguagesLanguage.ID);
+                assertFails(() -> c0.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+            } finally {
+                c0.leave(null, prev);
+                c0.close();
+            }
+
+            // reduce languages further
+            TruffleContext c1 = env.newInnerContextBuilder(InnerContextInheritPermittedLanguagesLanguage.ID).build();
+            prev = c1.enter(null);
+            try {
+                c1.initializePublic(null, InnerContextInheritPermittedLanguagesLanguage.ID);
+                assertFails(() -> c1.initializePublic(null, InnerContextPermittedLanguagesLanguage.ID), IllegalArgumentException.class);
+                assertFails(() -> c1.initializePublic(null, InnerContextInnerStreamsLanguage.ID), IllegalArgumentException.class);
+            } finally {
+                c1.leave(null, prev);
+                c1.close();
+            }
+
+            // not exisiting language
+            var builder0 = env.newInnerContextBuilder("$$$invalidLanguage$$$");
+            assertFails(() -> builder0.build(), IllegalArgumentException.class, (e) -> {
+                assertTrue(e.getMessage(),
+                                e.getMessage().startsWith("The language $$$invalidLanguage$$$ permitted for the created inner context is not installed or was not permitted by the parent context."));
+            });
+
+            // existing but unaccessible language
+            var builder1 = env.newInnerContextBuilder(InnerContextInnerStreamsLanguage.ID);
+            assertFails(() -> builder1.build(), IllegalArgumentException.class, (e) -> {
+                assertTrue(e.getMessage(), e.getMessage().startsWith(
+                                "The language " + InnerContextInnerStreamsLanguage.ID + " permitted for the created inner context is not installed or was not permitted by the parent context."));
+            });
+
+            return null;
+        }
+    }
+
+    @Test
+    public void testInnerContextInheritPermittedLanguages() {
+        try (Context context = Context.create(InnerContextInheritPermittedLanguagesLanguage.ID, InnerContextPermittedLanguagesLanguage.ID)) {
+            execute(context, InnerContextInheritPermittedLanguagesLanguage.class);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class EnterInNewThreadTestLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Throwable[] error = new Throwable[1];
+            Thread thread = new Thread(() -> {
+                try {
+                    try {
+                        Object prev = env.getContext().enter(null);
+                        assertNull("already entered in new thread", prev);
+                    } finally {
+                        env.getContext().leave(null, null);
+                    }
+                } catch (Throwable t) {
+                    error[0] = t;
+                }
+            });
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+            if (error[0] != null) {
+                throw new AssertionError(error[0]);
+            }
+            return null;
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
     }
 
     @Test
     public void testEnterInNewThread() {
         Context context = Context.create();
-        Function<Env, Object> f = new Function<Env, Object>() {
-            @Override
-            public Object apply(Env env) {
-                Throwable[] error = new Throwable[1];
-                Thread thread = new Thread(() -> {
-                    try {
-                        try {
-                            Object prev = env.getContext().enter(null);
-                            assertNull("already entered in new thread", prev);
-                        } finally {
-                            env.getContext().leave(null, null);
-                        }
-                    } catch (Throwable t) {
-                        error[0] = t;
-                    }
-                });
-                thread.start();
-                try {
-                    thread.join();
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-                if (error[0] != null) {
-                    throw new AssertionError(error[0]);
-                }
-                return null;
-            }
-        };
-        eval(context, f);
+        evalTestLanguage(context, EnterInNewThreadTestLanguage.class, "");
         context.close();
+    }
+
+    @TruffleLanguage.Registration
+    static class CloseInnerContextWithParentTestLanguage extends TruffleLanguage<CloseInnerContextWithParentTestLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(CloseInnerContextWithParentTestLanguage.class);
+
+        static class Context {
+            private final Env env;
+            private int disposeCalled;
+            private static int disposeCalledStatic;
+
+            Context(Env env) {
+                this.env = env;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return executeBoundary();
+                }
+
+                @TruffleBoundary
+                private Object executeBoundary() {
+                    Env env = CONTEXT_REF.get(null).env;
+                    TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
+                    Object p = innerContext.enter(null);
+                    Context innerLangContext = CONTEXT_REF.get(null);
+                    innerContext.leave(null, p);
+                    return innerLangContext.disposeCalled;
+                }
+            }.getCallTarget();
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            Context.disposeCalledStatic++;
+        }
+
+        private static final ContextReference<Context> CONTEXT_REF = ContextReference.create(CloseInnerContextWithParentTestLanguage.class);
+    }
+
+    @TruffleLanguage.Registration
+    static class CloseInnerContextWithParentAssertTestLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            int assertsBlockNo = (Integer) contextArguments[0];
+            switch (assertsBlockNo) {
+                case 1:
+                    // no context disposed
+                    assertEquals(0, CloseInnerContextWithParentTestLanguage.Context.disposeCalledStatic);
+                    break;
+                case 2:
+                    // bot inner and outer contexts disposed
+                    assertEquals(2, CloseInnerContextWithParentTestLanguage.Context.disposeCalledStatic);
+                    break;
+            }
+            return null;
+        }
     }
 
     @Test
     public void testCloseInnerContextWithParent() {
-        Context context = Context.create();
-        LanguageContext returnedInnerContext = eval(context, new Function<Env, Object>() {
-            public Object apply(Env env) {
-                TruffleContext innerContext = env.newContextBuilder().build();
-                Object p = innerContext.enter(null);
-                LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
-                innerContext.leave(null, p);
-                return env.asGuestValue(innerLangContext);
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).allowHostAccess(HostAccess.ALL).build()) {
+                assertEquals(0, context.eval(CloseInnerContextWithParentTestLanguage.ID, "").asInt());
+                remoteAssert(engine, CloseInnerContextWithParentAssertTestLanguage.class, true, 1);
             }
-        }).asHostObject();
-        context.close();
-        // inner context automatically closed
-        assertEquals(1, returnedInnerContext.disposeCalled);
+            // inner context automatically closed
+            remoteAssert(engine, CloseInnerContextWithParentAssertTestLanguage.class, true, 2);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class LazyInitTestLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            int assertsBlockNo = (Integer) contextArguments[0];
+            switch (assertsBlockNo) {
+                case 1:
+                    assertEquals(0, LanguageSPITestLanguage.instanceCount.get());
+                    break;
+                case 2:
+                    assertEquals(1, LanguageSPITestLanguage.instanceCount.get());
+                    break;
+            }
+            return null;
+        }
     }
 
     @Test
     public void testLazyInit() {
         LanguageSPITestLanguage.instanceCount.set(0);
-        Context context = Context.create();
-        assertEquals(0, LanguageSPITestLanguage.instanceCount.get());
-        context.initialize(LanguageSPITestLanguage.ID);
-        assertEquals(1, LanguageSPITestLanguage.instanceCount.get());
-        context.close();
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                remoteAssert(engine, LazyInitTestLanguage.class, false, 1);
+                context.initialize(LanguageSPITestLanguage.ID);
+                remoteAssert(engine, LazyInitTestLanguage.class, false, 2);
+            }
+        }
     }
 
     @Test
     public void testLazyInitSharedEngine() {
         LanguageSPITestLanguage.instanceCount.set(0);
-        Engine engine = Engine.create();
-        Context context1 = Context.newBuilder().engine(engine).build();
-        Context context2 = Context.newBuilder().engine(engine).build();
-        assertEquals(0, LanguageSPITestLanguage.instanceCount.get());
-        context1.initialize(LanguageSPITestLanguage.ID);
-        context2.initialize(LanguageSPITestLanguage.ID);
-        assertEquals(1, LanguageSPITestLanguage.instanceCount.get());
-        context1.close();
-        context2.close();
+        try (Engine engine = Engine.create()) {
+            try (Context context1 = Context.newBuilder().engine(engine).build();
+                            Context context2 = Context.newBuilder().engine(engine).build()) {
+                remoteAssert(engine, LazyInitTestLanguage.class, false, 1);
+                context1.initialize(LanguageSPITestLanguage.ID);
+                context2.initialize(LanguageSPITestLanguage.ID);
+                remoteAssert(engine, LazyInitTestLanguage.class, false, 2);
+            }
+        }
     }
 
     @TruffleLanguage.Registration(id = OneContextLanguage.ID, name = OneContextLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.EXCLUSIVE)
     public static class OneContextLanguage extends MultiContextLanguage {
         static final String ID = "OneContextLanguage";
+
+        public OneContextLanguage() {
+            wrapper = false;
+        }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
@@ -790,6 +1840,10 @@ public class LanguageSPITest {
 
         @Option(help = "", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
         static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
+
+        public MultiContextLanguage() {
+            wrapper = false;
+        }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
@@ -850,6 +1904,8 @@ public class LanguageSPITest {
 
     @Test
     public void testMultiContextBoundEngine() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
 
@@ -880,6 +1936,7 @@ public class LanguageSPITest {
 
     @Test
     public void testMultiContextBoundEngineInnerContextWithCaching() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
@@ -903,7 +1960,7 @@ public class LanguageSPITest {
         assertEquals(1, outerLang.parseCalled.size());
         assertEquals(source1.getCharacters(), outerLang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
         MultiContextLanguage innerLang = MultiContextLanguage.REFERENCE.get(null);
         assertNotSame(innerLang, outerLang);
@@ -940,6 +1997,8 @@ public class LanguageSPITest {
 
     @Test
     public void testMultiContextBoundEngineInnerContextNoCaching() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(OneContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(OneContextLanguage.ID, "bar");
 
@@ -961,7 +2020,7 @@ public class LanguageSPITest {
         assertEquals(1, lang.parseCalled.size());
         assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
 
-        TruffleContext innerContext = env.newContextBuilder().build();
+        TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object prev = innerContext.enter(null);
 
         MultiContextLanguage innerLang = OneContextLanguage.get(null);
@@ -1001,6 +2060,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeMultiContextNotCalledForExclusive() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         // test behavior with explicit engine
         Engine engine = Engine.create();
         Context context1 = Context.newBuilder().engine(engine).build();
@@ -1017,6 +2078,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeCalledWithEngineOptions() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
         Context context = Context.newBuilder().engine(engine).build();
         context.initialize(MultiContextLanguage.ID);
@@ -1030,6 +2093,8 @@ public class LanguageSPITest {
 
     @Test
     public void testMultiContextExplicitEngineNoCaching() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
 
@@ -1090,6 +2155,8 @@ public class LanguageSPITest {
 
     @Test
     public void testMultiContextExplicitEngineWithCaching() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
 
@@ -1136,54 +2203,87 @@ public class LanguageSPITest {
         assertEquals(1, lang.initializeMultipleContextsCalled.size());
     }
 
+    @TruffleLanguage.Registration
+    static class ErrorInCreateContextTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = TestUtils.getDefaultLanguageId(ErrorInCreateContextTestLanguage.class);
+
+        @Override
+        protected Env createContext(Env env) {
+            throw new RuntimeException();
+        }
+    }
+
     @Test
     public void testErrorInCreateContext() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-                throw new RuntimeException();
-            }
-        });
-        testFails((c) -> c.initialize(ProxyLanguage.ID));
+        testFails((c) -> c.initialize(ErrorInCreateContextTestLanguage.ID));
+    }
+
+    @TruffleLanguage.Registration
+    static class ErrorInInitializeContextTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = TestUtils.getDefaultLanguageId(ErrorInInitializeContextTestLanguage.class);
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected void initializeContext(Env context) throws Exception {
+            throw new RuntimeException();
+        }
     }
 
     @Test
     public void testErrorInInitializeContext() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected void initializeContext(LanguageContext context) throws Exception {
-                throw new RuntimeException();
-            }
-        });
-        testFails((c) -> c.initialize(ProxyLanguage.ID));
+        testFails((c) -> c.initialize(ErrorInInitializeContextTestLanguage.ID));
+    }
+
+    @TruffleLanguage.Registration
+    static class ErrorInInitializeThreadTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = TestUtils.getDefaultLanguageId(ErrorInInitializeThreadTestLanguage.class);
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected void initializeThread(Env context, Thread thread) {
+            throw new RuntimeException();
+        }
     }
 
     @Test
     public void testErrorInInitializeThread() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected void initializeThread(LanguageContext context, Thread thread) {
+        testFails((c) -> c.initialize(ErrorInInitializeThreadTestLanguage.ID));
+    }
+
+    @TruffleLanguage.Registration
+    static class ErrorInDisposeTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(ErrorInDisposeTestLanguage.class);
+        static final AtomicBoolean fail = new AtomicBoolean();
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            fail.set((Boolean) contextArguments[0]);
+            return null;
+        }
+
+        @Override
+        protected void disposeContext(ExecutableContext context) {
+            if (fail.get()) {
                 throw new RuntimeException();
             }
-        });
-        testFails((c) -> c.initialize(ProxyLanguage.ID));
+        }
     }
 
     @Test
     public void testErrorInDisposeLanguage() {
-        AtomicBoolean fail = new AtomicBoolean(true);
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-
-            @Override
-            protected void disposeContext(LanguageContext context) {
-                if (fail.get()) {
-                    throw new RuntimeException();
-                }
-            }
-        });
+        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         Context c = Context.create();
-        c.initialize(ProxyLanguage.ID);
+        c.initialize(ErrorInDisposeTestLanguage.ID);
+        evalTestLanguage(c, ErrorInDisposeTestLanguage.class, "set fail to true", true);
         testFails(() -> {
             c.close();
         });
@@ -1192,28 +2292,39 @@ public class LanguageSPITest {
         });
 
         // clean up the context
-        fail.set(false);
+        evalTestLanguage(c, ErrorInDisposeTestLanguage.class, "set fail to false", false);
         c.close();
+    }
+
+    @TruffleLanguage.Registration
+    static class ErrorInParseTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = TestUtils.getDefaultLanguageId(ErrorInParseTestLanguage.class);
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            throw new RuntimeException();
+        }
     }
 
     @Test
     public void testErrorInParse() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-                throw new RuntimeException();
-            }
-        });
         Context c = Context.create();
-        c.initialize(ProxyLanguage.ID);
-        testFails(() -> c.eval(ProxyLanguage.ID, "t0"));
-        testFails(() -> c.eval(ProxyLanguage.ID, "t1"));
+        c.initialize(ErrorInParseTestLanguage.ID);
+        testFails(() -> c.eval(ErrorInParseTestLanguage.ID, "t0"));
+        testFails(() -> c.eval(ErrorInParseTestLanguage.ID, "t1"));
         c.close();
     }
 
     @Test
     @SuppressWarnings("all")
     public void testLazyOptionInit() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         AtomicInteger getOptionDescriptors = new AtomicInteger(0);
         AtomicInteger iterator = new AtomicInteger(0);
         AtomicInteger get = new AtomicInteger(0);
@@ -1307,6 +2418,8 @@ public class LanguageSPITest {
 
     @Test
     public void testExportSymbolInCreate() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
@@ -1323,6 +2436,8 @@ public class LanguageSPITest {
 
     @Test
     public void testRemoveSymbol() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         c.initialize(ProxyLanguage.ID);
         c.enter();
@@ -1336,6 +2451,8 @@ public class LanguageSPITest {
 
     @Test
     public void testCreateContextDuringDispose() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         AtomicBoolean contextOnFinalize = new AtomicBoolean(true);
         AtomicBoolean contextOnDispose = new AtomicBoolean(false);
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -1348,14 +2465,14 @@ public class LanguageSPITest {
             @Override
             protected void finalizeContext(LanguageContext context) {
                 if (contextOnFinalize.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
 
             @Override
             protected void disposeContext(LanguageContext context) {
                 if (contextOnDispose.get()) {
-                    context.env.newContextBuilder().build();
+                    context.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                 }
             }
         });
@@ -1380,6 +2497,8 @@ public class LanguageSPITest {
 
     @Test
     public void testCreateThreadDuringDispose() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         AtomicBoolean contextOnFinalize = new AtomicBoolean(true);
         AtomicBoolean contextOnDispose = new AtomicBoolean(false);
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -1426,6 +2545,8 @@ public class LanguageSPITest {
 
     @Test
     public void testNullContext() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(TruffleLanguage.Env env) {
@@ -1443,6 +2564,8 @@ public class LanguageSPITest {
 
     @Test
     public void testExceptionGetSourceLocation() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.create(LanguageSPITestLanguage.ID)) {
             final String text = "0123456789";
             LanguageSPITestLanguage.runinside = (env) -> {
@@ -1495,6 +2618,8 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithInvalidScopes() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         setupTopScopes(new TruffleObject() {
         });
         Context c = Context.create();
@@ -1544,7 +2669,7 @@ public class LanguageSPITest {
     @ExportLibrary(InteropLibrary.class)
     static final class TestScope implements TruffleObject {
 
-        final Map<String, Object> values = new HashMap<>();
+        final Map<String, Object> values = new LinkedHashMap<>();
         TestScope parentScope;
         boolean modifiable;
         boolean insertable;
@@ -1677,6 +2802,8 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithDefaultScope() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Context c = Context.create();
         Value bindings = c.getBindings(ProxyLanguage.ID);
         assertTrue(bindings.hasMembers());
@@ -1692,6 +2819,8 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithSimpleScope() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         TestScope scope = new TestScope();
         setupTopScopes(scope);
         testBindingsWithSimpleScope(scope);
@@ -1742,6 +2871,8 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithMultipleScopes() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         // innermost to outermost
         TestScope[] scopes = new TestScope[5];
         for (int i = 0; i < 5; i++) {
@@ -1806,9 +2937,9 @@ public class LanguageSPITest {
             // Expected as the merged scope does not contain parent scopes.
         }
         // Correct the scope hierarchy:
-        scopes[0].values.put("foo", "val");
         scopes[0].values.put("bar", "val");
-        scopes[1].values.put("bar", "val");
+        scopes[0].values.put("foo", "val");
+        scopes[3].values.clear();
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
@@ -1816,6 +2947,8 @@ public class LanguageSPITest {
 
     @Test
     public void testPolyglotBindings() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -1848,6 +2981,8 @@ public class LanguageSPITest {
 
     @Test
     public void testPolyglotBindingsMultiThreaded() throws Throwable {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
 
             @Override
@@ -1908,6 +3043,8 @@ public class LanguageSPITest {
 
     @Test
     public void testLookup() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         // Registered service
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
@@ -1932,7 +3069,25 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testHostLookup() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build()) {
+            // Get the host language info:
+            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            @SuppressWarnings("unchecked")
+            Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
+            LanguageInfo hostInfo = instrumentEnv.getLanguageInfo(hostLanguage);
+
+            context.initialize(LanguageSPITestLanguage.ID);
+            langContext.env.initializeLanguage(hostInfo);
+            langContext.env.lookup(hostInfo, Runnable.class);
+        }
+    }
+
+    @Test
     public void testConcurrentLookupWhileInitializing() throws InterruptedException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
@@ -1982,6 +3137,8 @@ public class LanguageSPITest {
 
     @Test
     public void testRegisterService() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage registerServiceLanguage = new ProxyLanguage() {
             @Override
             protected ProxyLanguage.LanguageContext createContext(Env env) {
@@ -2024,14 +3181,41 @@ public class LanguageSPITest {
 
     @TruffleLanguage.Registration(id = INHERITED_VERSION, name = "")
     public static class InheritedVersionLanguage extends ProxyLanguage {
+
+        public InheritedVersionLanguage() {
+            wrapper = false;
+        }
     }
 
     @Test
     public void testInheritedVersionLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Context context = Context.create();
         context.initialize(INHERITED_VERSION);
         final Engine engine = context.getEngine();
         assertEquals(engine.getVersion(), engine.getLanguages().get(INHERITED_VERSION).getVersion());
+        context.close();
+    }
+
+    static final String WEBSITE_TEST = "SPIWebsiteLanguage";
+
+    @TruffleLanguage.Registration(id = WEBSITE_TEST, name = "", website = "https://graalvm.org/test/${graalvm-website-version}")
+    public static class WebsiteLanguage extends ProxyLanguage {
+
+        public WebsiteLanguage() {
+            wrapper = false;
+        }
+    }
+
+    @Test
+    public void testWebsiteLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        Context context = Context.create();
+        context.initialize(WEBSITE_TEST);
+        final Engine engine = context.getEngine();
+        assertEquals(Version.getCurrent().format("https://graalvm.org/test/%[R%d.%d]%[Sdev]"), engine.getLanguages().get(WEBSITE_TEST).getWebsite());
         context.close();
     }
 
@@ -2041,6 +3225,8 @@ public class LanguageSPITest {
 
     @Test
     public void testLanguageErrorDuringInitialization() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected void initializeContext(LanguageContext c) throws Exception {
@@ -2060,6 +3246,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeInternalLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.create()) {
             testInitializeInternalImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), (se) -> se == null && InitializeTestInternalLanguage.initialized);
         }
@@ -2067,6 +3255,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeNonInternalLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
             testInitializeInternalImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), (se) -> se == null && InitializeTestLanguage.initialized);
         }
@@ -2074,6 +3264,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeNonAccessibleLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.create()) {
             Function<TruffleLanguage.Env, LanguageInfo> languageResolver = (env) -> {
                 InstrumentInfo instrumentInfo = env.getInstruments().get(InitializeTestInstrument.ID);
@@ -2097,6 +3289,12 @@ public class LanguageSPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         Env env = LanguageContext.get(this).getEnv();
+                        boundary(env);
+                        return true;
+                    }
+
+                    @TruffleBoundary
+                    private void boundary(Env env) {
                         LanguageInfo languageToInitialize = languageResolver.apply(env);
                         assertNotNull(languageToInitialize);
                         try {
@@ -2104,7 +3302,6 @@ public class LanguageSPITest {
                         } catch (SecurityException se) {
                             exception.set(se);
                         }
-                        return true;
                     }
                 }.getCallTarget();
             }
@@ -2115,6 +3312,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeFromServiceInternalLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.create()) {
             testInitializeFromServiceImpl(context, (env) -> env.getInternalLanguages().get(InitializeTestInternalLanguage.ID), () -> InitializeTestInternalLanguage.initialized);
         }
@@ -2122,6 +3321,8 @@ public class LanguageSPITest {
 
     @Test
     public void testInitializeFromServiceNonInternalLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(ProxyLanguage.ID, InitializeTestLanguage.ID).build()).build()) {
             testInitializeFromServiceImpl(context, (env) -> env.getPublicLanguages().get(InitializeTestLanguage.ID), () -> InitializeTestLanguage.initialized);
         }
@@ -2135,6 +3336,12 @@ public class LanguageSPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         Env env = LanguageContext.get(this).getEnv();
+                        boundary(env);
+                        return true;
+                    }
+
+                    @TruffleBoundary
+                    private void boundary(Env env) {
                         LanguageInfo languageProvidingService = languageResolver.apply(env);
                         assertNotNull(languageProvidingService);
                         InitializeTestBaseLanguage.Service service = env.lookup(languageProvidingService, InitializeTestBaseLanguage.Service.class);
@@ -2143,7 +3350,6 @@ public class LanguageSPITest {
                         assertFalse(verifier.get());
                         service.doesInitialize();
                         assertTrue(verifier.get());
-                        return true;
                     }
                 }.getCallTarget();
             }
@@ -2309,6 +3515,8 @@ public class LanguageSPITest {
 
     @Test
     public void testThrowInClassInitializer() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         enableThrow = true;
         try {
             try (Engine engine = Engine.create()) {

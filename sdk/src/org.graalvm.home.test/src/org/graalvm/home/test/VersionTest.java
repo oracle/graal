@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,6 +193,25 @@ public class VersionTest {
         for (int i = 0; i < expected.size(); i++) {
             assertEquals(expected.get(i), actual.get(i));
         }
+    }
+
+    @Test
+    public void testFormat() {
+        assertFormat("%d.%d", "19.3", "19.3");
+        assertFormat("%d.%d", "22.3.0.1", "22.3");
+        assertFormat("%d.%d.%d", "22.3-dev", "22.3.0");
+        assertFormat("%4$d", "22.3.0.2", "2");
+        assertFormat("%[R%d.%d]%[Sdev]", "22.3.0.1", "22.3");
+        assertFormat("%[R%d.%d]%[Sdev]", "22.3-dev", "dev");
+        assertFormat("%[2XX]", "22.3", "XX");
+        assertFormat("%[2XX]", "23.0", "");
+        assertFormat("%%[R%d.%%d]", "23.0", "%[R23.%d]");
+    }
+
+    private static void assertFormat(String format, String version, String expected) {
+        Version v = Version.parse(version);
+        String result = v.format(format);
+        assertEquals(expected, result);
     }
 
     private static void assertNPE(Runnable v) {

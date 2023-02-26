@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,6 @@ public class Variable extends AllocatableValue {
      */
     public final int index;
 
-    private String name;
-
     /**
      * Creates a new variable.
      *
@@ -54,21 +52,9 @@ public class Variable extends AllocatableValue {
         this.index = index;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
     @Override
     public String toString() {
-        if (name != null) {
-            return name;
-        } else {
-            return "v" + index + getKindSuffix();
-        }
+        return "v" + index + getKindSuffix();
     }
 
     @Override

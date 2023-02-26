@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,14 +41,13 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
 public class UnsafeSnippets implements Snippets {
 
-    public static final String copyMemoryName = JavaVersionUtil.JAVA_SPEC <= 8 ? "copyMemory" : "copyMemory0";
+    public static final String copyMemoryName = "copyMemory0";
 
     @SuppressWarnings("unused")
     @Snippet
@@ -78,11 +77,15 @@ public class UnsafeSnippets implements Snippets {
     }
 
     public static class Templates extends AbstractTemplates {
-        private final SnippetInfo copyMemory = snippet(UnsafeSnippets.class, "copyMemory");
-        private final SnippetInfo copyMemoryGuarded = snippet(UnsafeSnippets.class, "copyMemoryGuarded");
+
+        private final SnippetInfo copyMemory;
+        private final SnippetInfo copyMemoryGuarded;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.copyMemory = snippet(providers, UnsafeSnippets.class, "copyMemory");
+            this.copyMemoryGuarded = snippet(providers, UnsafeSnippets.class, "copyMemoryGuarded");
         }
 
         public void lower(UnsafeCopyMemoryNode copyMemoryNode, LoweringTool tool) {
@@ -94,8 +97,8 @@ public class UnsafeSnippets implements Snippets {
             args.add("destBase", copyMemoryNode.destBase);
             args.add("destOffset", copyMemoryNode.desOffset);
             args.add("bytes", copyMemoryNode.bytes);
-            SnippetTemplate template = template(copyMemoryNode, args);
-            template.instantiate(providers.getMetaAccess(), copyMemoryNode, DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, copyMemoryNode, args);
+            template.instantiate(tool.getMetaAccess(), copyMemoryNode, DEFAULT_REPLACER, args);
         }
     }
 }

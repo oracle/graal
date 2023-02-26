@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,7 +64,7 @@ public abstract class CommonTestUtils {
 
     public static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 
-    public static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
+    public static final Predicate<? super Path> isExecutable = Platform.isWindows() ? f -> f.getFileName().toString().endsWith(".exe") : f -> f.getFileName().toString().endsWith(".out");
     public static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
     public static final Predicate<? super Path> isExcludeFile = f -> f.getFileName().toString().endsWith(".exclude");
     public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");

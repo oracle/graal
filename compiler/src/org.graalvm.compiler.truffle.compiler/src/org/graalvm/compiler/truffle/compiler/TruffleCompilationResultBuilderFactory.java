@@ -66,7 +66,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
     }
 
     @Override
-    public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler<?> asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
         return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister) {
             @Override

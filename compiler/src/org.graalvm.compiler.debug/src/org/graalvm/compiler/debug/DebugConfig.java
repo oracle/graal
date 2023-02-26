@@ -81,7 +81,9 @@ public interface DebugConfig {
     boolean isVerifyEnabled(DebugContext.Scope scope);
 
     /**
-     * @see DebugContext#isVerifyEnabledForMethod()
+     * Determines if verification is enabled for any {@link JavaMethod} in the provided scope.
+     *
+     * @see DebugContext#verify(Object, String)
      */
     boolean isVerifyEnabledForMethod(DebugContext.Scope scope);
 
@@ -89,6 +91,11 @@ public interface DebugConfig {
      * @see DebugContext#timer(CharSequence)
      */
     boolean isTimeEnabled(DebugContext.Scope scope);
+
+    /**
+     * @see DebugContext#methodFilterMatchesCurrentMethod()
+     */
+    boolean methodFilterMatchesCurrentMethod(DebugContext.Scope scope);
 
     /**
      * Handles notification of an exception occurring within a debug scope.

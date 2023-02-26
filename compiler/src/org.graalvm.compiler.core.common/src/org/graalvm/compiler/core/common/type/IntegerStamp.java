@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,8 +66,19 @@ public final class IntegerStamp extends PrimitiveStamp {
     private final long upperBound;
     private final long downMask;
     private final long upMask;
+    /**
+     * Determines if this stamp can contain the value {@code 0}. If this is {@code true} the stamp
+     * is a typical stamp without holes. If the stamp ranges over zero but {@code canBeZero==false}
+     * it means the stamp contains a "hole", i.e., all values in the range except zero. We typically
+     * cannot express holes in our Stamp system, thus we have the special logic for {@code 0}.
+     */
+    private final boolean canBeZero;
 
     private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
+        this(bits, lowerBound, upperBound, downMask, upMask, true);
+    }
+
+    private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask, boolean canBeZero) {
         super(bits, OPS);
 
         this.lowerBound = lowerBound;
@@ -81,6 +92,9 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
         // Check for valid masks or the empty encoding
         assert (downMask & ~upMask) == 0 || (upMask == 0 && downMask == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
+        // use ctor param because canBeZero is not set yet
+        this.canBeZero = contains(0, canBeZero);
+        assert !this.canBeZero || contains(0) : " Stamp " + this + " either has canBeZero set to false or needs to contain 0";
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -88,6 +102,10 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        return create(bits, lowerBoundInput, upperBoundInput, downMask, upMask, true);
+    }
+
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask, boolean canBeZero) {
         assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
@@ -126,7 +144,16 @@ public final class IntegerStamp extends PrimitiveStamp {
             }
         }
 
-        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask);
+        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask, canBeZero);
+    }
+
+    /**
+     * A stamp is empty if the lower bound is greater than the upper bound, the downMask contains
+     * bits which are not part of the upMask, or there are no bits set and the bound doesn't contain
+     * 0.
+     */
+    private static boolean isEmpty(long lowerBound, long upperBound, long downMask, long upMask) {
+        return lowerBound > upperBound || (downMask & (~upMask)) != 0 || (upMask == 0 && (lowerBound > 0 || upperBound < 0));
     }
 
     private static long significantBit(long bits, long value) {
@@ -178,7 +205,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         return createEmptyStamp(getBits());
     }
 
-    private static IntegerStamp createEmptyStamp(int bits) {
+    static IntegerStamp createEmptyStamp(int bits) {
         return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
     }
 
@@ -303,10 +330,24 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public boolean isUnrestricted() {
-        return lowerBound == CodeUtil.minValue(getBits()) && upperBound == CodeUtil.maxValue(getBits()) && downMask == 0 && upMask == CodeUtil.mask(getBits());
+        return lowerBound == CodeUtil.minValue(getBits()) && upperBound == CodeUtil.maxValue(getBits()) && downMask == 0 && upMask == CodeUtil.mask(getBits()) && canBeZero;
     }
 
     public boolean contains(long value) {
+        return contains(value, canBeZero);
+    }
+
+    private boolean contains(long value, boolean isCanBeZero) {
+        if (value == 0 && !isCanBeZero) {
+            /*
+             * Special case partially canonicalized graphs and constants: If a guarded pi was
+             * created with canBeZero=false but we feed in a constant 0
+             */
+            if (lowerBound == upperBound && lowerBound == 0) {
+                return true;
+            }
+            return false;
+        }
         return value >= lowerBound && value <= upperBound && (value & downMask) == downMask && (value & upMask) == (value & CodeUtil.mask(getBits()));
     }
 
@@ -343,7 +384,9 @@ public final class IntegerStamp extends PrimitiveStamp {
             if (lowerBound == upperBound) {
                 str.append(" [").append(lowerBound).append(']');
             } else if (lowerBound != CodeUtil.minValue(getBits()) || upperBound != CodeUtil.maxValue(getBits())) {
-                str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
+                str.append(" [").append(lowerBound);
+                str.append(" - ");
+                str.append(upperBound).append(']');
             }
             if (downMask != 0) {
                 str.append(" \u21ca");
@@ -356,19 +399,22 @@ public final class IntegerStamp extends PrimitiveStamp {
         } else {
             str.append("<empty>");
         }
+        if (!canBeZero) {
+            str.append(" {!=0}");
+        }
         return str.toString();
     }
 
-    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask) {
+    private IntegerStamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask, boolean newCanBeZero) {
         assert getBits() == other.getBits();
         if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0 || (newUpMask == 0 && (newLowerBound > 0 || newUpperBound < 0))) {
             return empty();
-        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask) {
+        } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask && canBeZero == newCanBeZero) {
             return this;
-        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask) {
+        } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask && newCanBeZero == other.canBeZero) {
             return other;
         } else {
-            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newDownMask, newUpMask);
+            return IntegerStamp.create(getBits(), newLowerBound, newUpperBound, newDownMask, newUpMask, newCanBeZero);
         }
     }
 
@@ -384,7 +430,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             return this;
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
-        return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask);
+        return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask, canBeZero || other.canBeZero);
     }
 
     @Override
@@ -397,7 +443,8 @@ public final class IntegerStamp extends PrimitiveStamp {
         long newLowerBound = Math.max(lowerBound, other.lowerBound);
         long newUpperBound = Math.min(upperBound, other.upperBound);
         long newUpMask = upMask & other.upMask;
-        return createStamp(other, newUpperBound, newLowerBound, newDownMask, newUpMask);
+        boolean newCanBeZero = canBeZero && other.canBeZero;
+        return createStamp(other, newUpperBound, newLowerBound, newDownMask, newUpMask, newCanBeZero);
     }
 
     @Override
@@ -449,6 +496,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         result = prime * result + (int) (upperBound ^ (upperBound >>> 32));
         result = prime * result + (int) (downMask ^ (downMask >>> 32));
         result = prime * result + (int) (upMask ^ (upMask >>> 32));
+        result = prime * result + Boolean.hashCode(canBeZero);
         return result;
     }
 
@@ -461,7 +509,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             return false;
         }
         IntegerStamp other = (IntegerStamp) obj;
-        if (lowerBound != other.lowerBound || upperBound != other.upperBound || downMask != other.downMask || upMask != other.upMask) {
+        if (lowerBound != other.lowerBound || upperBound != other.upperBound || downMask != other.downMask || upMask != other.upMask || canBeZero != other.canBeZero) {
             return false;
         }
         return super.equals(other);
@@ -637,6 +685,17 @@ public final class IntegerStamp extends PrimitiveStamp {
         return result < CodeUtil.minValue(bits) || result > CodeUtil.maxValue(bits);
     }
 
+    /**
+     * Returns if {@code stamp} can overflow when applying negation. It effectively tests if
+     * {@code stamp}'s value range contains the minimal value of an N-bits integer, where N is the
+     * width in bits of the values described by {@code stamp}.
+     *
+     * @see Math#negateExact
+     */
+    public static boolean negateCanOverflow(IntegerStamp stamp) {
+        return stamp.lowerBound() == CodeUtil.minValue(stamp.getBits());
+    }
+
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
 
                     new UnaryOp.Neg() {
@@ -728,7 +787,18 @@ public final class IntegerStamp extends PrimitiveStamp {
                             newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
                             newDownMask |= limit.downMask();
                             newLowerBound |= newDownMask;
-                            return new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+                            if (isEmpty(newLowerBound, newUpperBound, newDownMask, newUpMask)) {
+                                // It's possible the masks are inconsistent with the bounds so
+                                // return some less precise but non-empty stamp in that case
+                                if (newLowerBound < newUpperBound) {
+                                    return StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+                                } else {
+                                    return limit.unrestricted();
+                                }
+                            }
+                            IntegerStamp result = new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+                            assert !result.isEmpty() : result;
+                            return result;
                         }
 
                         @Override
@@ -942,7 +1012,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.MulHigh(true, true) {
+                    /*
+                     * MulHigh is not associative, for example:
+                     *
+                     * mulHigh(mulHigh(-1, 1), 1) = mulHigh(-1, 1) = -1
+                     *
+                     * but
+                     *
+                     * mulHigh(-1, mulHigh(1, 1)) = mulHigh(-1, 0) = 0
+                     */
+                    new BinaryOp.MulHigh(false, true) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1015,7 +1094,16 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.UMulHigh(true, true) {
+                    /*
+                     * UMulHigh is not associative, for example:
+                     *
+                     * uMulHigh(uMulHigh(-1L, Long.MAX_VALUE), 4L) = 1
+                     *
+                     * but
+                     *
+                     * uMulHigh(-1L, uMulHigh(Long.MAX_VALUE, 4L)) = 0
+                     */
+                    new BinaryOp.UMulHigh(false, true) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1378,6 +1466,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 if (shiftAmount == 0) {
                                     return value;
                                 }
+                                if (shiftAmount >= bits) {
+                                    IntegerStamp result = IntegerStamp.create(bits, 0, 0, 0, 0);
+                                    return result;
+                                }
                                 // the mask of bits that will be lost or shifted into the sign bit
                                 if (testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) && testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {
                                     /*
@@ -1587,7 +1679,26 @@ public final class IntegerStamp extends PrimitiveStamp {
                             if (stamp.isEmpty()) {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
-                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask(), stamp.upMask());
+
+                            /*
+                             * there is no guarantee that a given result is in the range of the
+                             * input because of holes in ranges resulting from signed / unsigned
+                             * extension, so we must ensure that the extension bits are all zeros
+                             * otherwise we cannot represent the result, and we have to return an
+                             * unrestricted stamp
+                             *
+                             * This case is much less likely to happen than the case for SignExtend
+                             * but the following is defensive to ensure that we only perform valid
+                             * inversions.
+                             */
+                            long alwaysSetOutputBits = stamp.downMask();
+                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
+                            if (alwaysSetExtensionBits != 0) {
+                                StampFactory.forInteger(inputBits).empty();
+                            }
+
+                            long inputMask = CodeUtil.mask(inputBits);
+                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
@@ -1617,12 +1728,50 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
-                            if (outStamp.isEmpty()) {
+                            IntegerStamp stamp = (IntegerStamp) outStamp;
+                            if (stamp.isEmpty()) {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
-                            IntegerStamp stamp = (IntegerStamp) outStamp;
-                            long mask = CodeUtil.mask(inputBits);
-                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & mask, stamp.upMask() & mask);
+
+                            /*
+                             * there is no guarantee that a given result bit is in the range of the
+                             * input because of holes in ranges resulting from signed / unsigned
+                             * extension, so we must ensure that the extension bits are either all
+                             * zeros or all ones otherwise we cannot represent the result, and we
+                             * have to return an unrestricted stamp
+                             *
+                             * As an example:
+                             * @formatter:off
+                             * byte a = ...
+                             * char b = (char) a;
+                             * if ((short) b != 45832)
+                             * @formatter:on
+                             *
+                             * the flow from a to the use of b in terms of nodes would be:
+                             * @formatter:off
+                             * read#Array byte (stamp i8 [ -128 - 127 ])
+                             *   V
+                             * SignExtend (stamp i16 [ -128 - 127 ])
+                             *   V
+                             * ZeroExtend (stamp i32 [ 0 - 65535 ])
+                             * @formatter:on
+                             *
+                             * The stamp on the compare of b suggests that b could equal 45832
+                             * 0x0000b308. If we assume the value is 0x0000b308. We invert the
+                             * ZeroExtend to get 0xb308, but then we try to invert the SignExtend.
+                             * The sign extend could only have produced 0xff__ or 0x00__ from a byte
+                             * but 0xb308 has 0xb3, and so we cannot invert the stamp. In this case
+                             * the only sensible inversion is the unrestricted stamp.
+                             */
+                            long alwaysSetOutputBits = stamp.downMask();
+                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
+                            long outputMask = CodeUtil.mask(resultBits);
+                            if (alwaysSetExtensionBits != 0 && alwaysSetExtensionBits != (outputMask >>> inputBits)) {
+                                return StampFactory.forInteger(inputBits).empty();
+                            }
+
+                            long inputMask = CodeUtil.mask(inputBits);
+                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
@@ -1671,9 +1820,126 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    null,   // BinaryOp.max
+                    new BinaryOp.Max(true, true) {
 
-                    null,   // BinaryOp.min
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), Math.max(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forInteger(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return n.asLong() == NumUtil.minValue(bits);
+                        }
+                    },
+
+                    new BinaryOp.Min(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), Math.min(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forInteger(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return n.asLong() == NumUtil.maxValue(bits);
+                        }
+                    },
+
+                    new BinaryOp.UMax(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), NumUtil.maxUnsigned(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
+                                            NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            return n.asLong() == 0;
+                        }
+                    },
+
+                    new BinaryOp.UMin(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant x = (PrimitiveConstant) a;
+                            PrimitiveConstant y = (PrimitiveConstant) b;
+                            return JavaConstant.forIntegerKind(x.getJavaKind(), NumUtil.minUnsigned(x.asLong(), y.asLong()));
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            IntegerStamp x = (IntegerStamp) a;
+                            IntegerStamp y = (IntegerStamp) b;
+                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
+                                            NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant value) {
+                            PrimitiveConstant n = (PrimitiveConstant) value;
+                            int bits = n.getJavaKind().getBitCount();
+                            return CodeUtil.zeroExtend(n.asLong(), bits) == NumUtil.maxValueUnsigned(bits);
+                        }
+                    },
 
                     new ReinterpretOp() {
 

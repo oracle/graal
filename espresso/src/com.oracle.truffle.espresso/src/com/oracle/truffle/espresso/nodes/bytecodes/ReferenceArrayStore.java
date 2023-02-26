@@ -27,11 +27,11 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -53,7 +53,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "AASTORE")
-public abstract class ReferenceArrayStore extends Node {
+public abstract class ReferenceArrayStore extends EspressoNode {
 
     public abstract void execute(StaticObject receiver, int index, StaticObject value);
 
@@ -66,19 +66,15 @@ public abstract class ReferenceArrayStore extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "AASTORE !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
         static final int LIMIT = 2;
 
         public abstract void execute(StaticObject receiver, int index, StaticObject value);
 
-        protected EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
-
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, StaticObject value) {
             assert !StaticObject.isNull(array);
-            getContext().getInterpreterToVM().setArrayObject(value, index, array);
+            getContext().getInterpreterToVM().setArrayObject(getLanguage(), value, index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")
@@ -86,8 +82,9 @@ public abstract class ReferenceArrayStore extends Node {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            Object unwrappedValue = value.isForeignObject() ? value.rawForeignObject() : value;
-            ForeignArrayUtils.writeForeignArrayElement(array, index, unwrappedValue, interop, getContext().getMeta(), exceptionProfile);
+            EspressoLanguage language = getLanguage();
+            Object unwrappedValue = value.isForeignObject() ? value.rawForeignObject(language) : value;
+            ForeignArrayUtils.writeForeignArrayElement(array, index, unwrappedValue, language, getContext().getMeta(), interop, exceptionProfile);
         }
     }
 }

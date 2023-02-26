@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdint.h>
 
 int main() {
     char a;
@@ -41,7 +42,7 @@ int main() {
     char *ptr = &a;
 #pragma clang diagnostic pop
 
-    if ((long) &test % __alignof__(test) != 0) {
+    if ((int64_t) &test % __alignof__(test) != 0) {
         abort();
     }
     return 0;

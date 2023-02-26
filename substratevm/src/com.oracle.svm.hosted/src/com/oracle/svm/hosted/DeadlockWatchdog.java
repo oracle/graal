@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ExitStatus;
 
 public class DeadlockWatchdog implements Closeable {
 
@@ -43,13 +44,13 @@ public class DeadlockWatchdog implements Closeable {
 
     private volatile long nextDeadline;
     private volatile boolean stopped;
+    private volatile boolean enabled;
 
-    DeadlockWatchdog() {
-        /* Access to options must be done in main thread because it requires ImageSingletons. */
-        watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue();
-        watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue();
-
-        if (watchdogInterval > 0) {
+    DeadlockWatchdog(int watchdogInterval, boolean watchdogExitOnTimeout) {
+        this.watchdogInterval = watchdogInterval;
+        this.watchdogExitOnTimeout = watchdogExitOnTimeout;
+        enabled = true;
+        if (this.watchdogInterval > 0) {
             thread = new Thread(this::watchdogThread);
             thread.start();
         } else {
@@ -74,7 +75,7 @@ public class DeadlockWatchdog implements Closeable {
 
         while (!stopped) {
             long now = System.currentTimeMillis();
-            if (now >= nextDeadline) {
+            if (enabled && now >= nextDeadline) {
                 System.err.println();
                 System.err.println("=== Image generator watchdog detected no activity. This can be a sign of a deadlock during image building. Dumping all stack traces. Current time: " + new Date());
                 threadDump();
@@ -94,7 +95,7 @@ public class DeadlockWatchdog implements Closeable {
                      * Since there is a likely deadlock somewhere, there is no less intrusive way to
                      * abort other than a hard exit of the image builder VM.
                      */
-                    System.exit(1);
+                    System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
 
                 } else {
                     recordActivity();
@@ -102,11 +103,21 @@ public class DeadlockWatchdog implements Closeable {
             }
 
             try {
-                Thread.sleep(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)));
+                Thread.sleep(Math.max(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)), 1));
             } catch (InterruptedException e) {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }
         }
+    }
+
+    public void setEnabled(boolean enable) {
+        if (enable == this.enabled) {
+            return;
+        }
+        if (enable) {
+            recordActivity();
+        }
+        this.enabled = enable;
     }
 
     private static void threadDump() {

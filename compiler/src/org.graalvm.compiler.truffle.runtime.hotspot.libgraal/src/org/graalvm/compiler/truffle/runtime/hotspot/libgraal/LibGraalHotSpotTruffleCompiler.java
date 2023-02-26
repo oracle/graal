@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
@@ -193,5 +194,28 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     private static Supplier<Map<String, Object>> optionsEncoder(CompilableTruffleAST compilable) {
         return () -> GraalTruffleRuntime.getOptionsForCompiler((OptimizedCallTarget) compilable);
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public void purgePartialEvaluationCaches() {
+        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            try {
+                Handle compilerHandle = scope.getIsolate().getSingleton(Handle.class, () -> null);
+                // Clear the encoded graph cache only if the compiler has already been created.
+                if (compilerHandle != null) {
+                    TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), compilerHandle.getHandle());
+                }
+            } catch (DestroyedIsolateException e) {
+                // Truffle compiler threads (trying to purge PE caches) may race during VM exit with
+                // the compiler isolate teardown. DestroyedIsolateException is only expected to be
+                // observed here during VM exit; where it can be safely ignored.
+                if (e.isVmExit()) {
+                    // ignore
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 }

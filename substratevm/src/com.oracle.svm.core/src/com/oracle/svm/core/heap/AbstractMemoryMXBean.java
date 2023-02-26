@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-//Checkstyle: stop
-
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -42,14 +40,13 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 public abstract class AbstractMemoryMXBean implements MemoryMXBean, NotificationEmitter {
     protected static final long UNDEFINED_MEMORY_USAGE = -1L;
@@ -67,6 +64,7 @@ public abstract class AbstractMemoryMXBean implements MemoryMXBean, Notification
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public int getObjectPendingFinalizationCount() {
         // SVM does not have any finalization support.
         return 0;

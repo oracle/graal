@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -61,7 +60,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -267,7 +265,7 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Returns <code>true</code> if a TruffleException leaving this node should capture
+     * Returns <code>true</code> if an AbstractTruffleException leaving this node should capture
      * {@link Frame} objects in its stack trace in addition to the default information. This is
      * <code>false</code> by default to avoid the attached overhead. The captured frames are then
      * accessible through {@link TruffleStackTraceElement#getFrame()}
@@ -388,17 +386,23 @@ public abstract class RootNode extends ExecutableNode {
         // Check isLoaded to avoid returning a CallTarget before notifyOnLoad() is done
         if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ReentrantLock l = getLazyLock();
-            l.lock();
-            try {
-                target = this.callTarget;
-                if (target == null) {
-                    target = NodeAccessor.RUNTIME.newCallTarget(null, this);
-                    this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
-                }
-            } finally {
-                l.unlock();
+            target = initializeTarget();
+        }
+        return target;
+    }
+
+    private RootCallTarget initializeTarget() {
+        RootCallTarget target;
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            target = this.callTarget;
+            if (target == null) {
+                target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
             }
+        } finally {
+            l.unlock();
         }
         return target;
     }
@@ -425,28 +429,6 @@ public abstract class RootNode extends ExecutableNode {
     /** @since 0.8 or earlier */
     public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
-    }
-
-    /**
-     * @throws UnsupportedOperationException if a call target already exists.
-     * @since 19.0
-     * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
-     */
-    @Deprecated
-    protected final void setCallTarget(RootCallTarget callTarget) {
-        if (this.callTarget != null) {
-            throw new UnsupportedOperationException();
-        }
-        this.callTarget = callTarget;
-    }
-
-    /**
-     * Get compiler options specific to this <code>RootNode</code>.
-     *
-     * @since 0.8 or earlier
-     */
-    public CompilerOptions getCompilerOptions() {
-        return DefaultCompilerOptions.INSTANCE;
     }
 
     /**
@@ -567,6 +549,46 @@ public abstract class RootNode extends ExecutableNode {
      */
     public static RootNode createConstantNode(Object constant) {
         return new Constant(constant);
+    }
+
+    /**
+     * If this root node has a lexical scope parent, this method returns its frame descriptor.
+     * 
+     * As an example, consider the following pseudocode:
+     * 
+     * <pre>
+     * def m {
+     *   # For the "m" root node:
+     *   # getFrameDescriptor       returns FrameDescriptor(m)
+     *   # getParentFrameDescriptor returns null
+     *   var_method = 0
+     *   a = () -> {
+     *     # For the "a lambda" root node:
+     *     # getFrameDescriptor       returns FrameDescriptor(a)
+     *     # getParentFrameDescriptor returns FrameDescriptor(m)
+     *     var_lambda1 = 1
+     *     b = () -> {
+     *       # For the "b lambda" root node:
+     *       # getFrameDescriptor       returns FrameDescriptor(b)
+     *       # getParentFrameDescriptor returns FrameDescriptor(a)
+     *       var_method + var_lambda1
+     *     }
+     *     b.call
+     *   }
+     *   a.call
+     * }
+     * </pre>
+     *
+     * This info is used by the runtime to optimize compilation order by giving more priority to
+     * lexical parents which are likely to inline the child thus resulting in better performance
+     * sooner rather than waiting for the lexical parent to get hot on its own.
+     *
+     * @return The frame descriptor of the lexical parent scope if it exists. <code>null</code>
+     *         otherwise.
+     * @since 22.3.0
+     */
+    protected FrameDescriptor getParentFrameDescriptor() {
+        return null;
     }
 
     final ReentrantLock getLazyLock() {

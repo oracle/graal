@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,11 @@ package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GenLoopSafepoints;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -47,6 +51,13 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.SAFEPOINTS_INSERTION, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
         if (GenLoopSafepoints.getValue(graph.getOptions())) {
@@ -61,5 +72,11 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
                 }
             }
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.SAFEPOINTS_INSERTION);
     }
 }

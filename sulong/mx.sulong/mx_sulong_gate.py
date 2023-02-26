@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,12 +29,10 @@
 #
 import argparse
 import os
-import subprocess
 from argparse import ArgumentParser
 
 import mx
 import mx_subst
-import mx_sulong
 import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
@@ -87,6 +85,7 @@ class UnittestTaskFactory(object):
             unittestArgs = ['--very-verbose', '--enable-timing']
         unittestArgs += extraUnittestArgs or []
         unittestArgs += args.extra_llvm_arguments
+        unittestArgs = [mx_subst.path_substitutions.substitute(arg) for arg in unittestArgs]
 
         def _sulong_gate_format_description(testClasses, description=None):
             if description:
@@ -176,41 +175,45 @@ class SulongGateEnv(object):
 def _sulong_gate_runner(args, tasks):
     _unittest_task_factory = UnittestTaskFactory()
 
-    def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, description=None):
-        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, description=description)
+    def _unittest(title, test_suite, tags=None, testClasses=None, unittestArgs=None, extraUnittestArgs=None, description=None):
+        _unittest_task_factory.add(title, test_suite, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs, extraUnittestArgs=extraUnittestArgs, description=description)
+
+    with Task('GenerateSources', tasks, tags=['fullbuild']) as t:
+        if t:
+            mx.command_function('create-generated-sources')(['--check'])
 
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
-    with Task('BuildLLVMorg', tasks, tags=['style', 'clangformat']) as t:
-        # needed for clang-format
-        if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-        if t: clangformat([])
+        if t: mx.command_function('clangformat')([])
+    # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating'], tags=['type', 'sulongMisc', 'sulongCoverage'])
-    _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc', 'sulongCoverage'])
-    _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
-    _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
-    _unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', description="Parser test using GCC suite", testClasses=['ParserTortureSuite'], tags=['parser', 'sulongCoverage'])
-    _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c', 'sulongCoverage'])
-    _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
-    _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
-    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
-    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongCoverage'])
-    _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongCoverage'])
-    _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongCoverage'])
+    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc'])
+    _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm'])
+    _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc'])
+    _unittest('GCCParserTorture', 'SULONG_PARSER_TORTURE', description="Parser test using GCC suite", testClasses=['ParserTortureSuite'], tags=['parser'])
+    _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c'])
+    _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
+    _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
+    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic'])
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
+            extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
+    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic'])
+    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic'])
+    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcodeformat.'], tags=['bitcodeFormat', 'sulongBasic'])
+    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugExprParserTest'], tags=['debugexpr', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcode.', 'com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongWinSupport'])
     _unittest_task_factory.execute(tasks)
-    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc', 'sulongCoverage'], tasks=tasks) as t:
+    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc'], tasks=tasks) as t:
         if t:
             with SulongGateEnv():
                 mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
@@ -276,71 +279,5 @@ def runLLVMUnittests(unittest_runner):
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
+    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--force-builder-on-cp', '--run-args'] + run_args +
                     ['--build-args', '--initialize-at-build-time'] + build_args)
-
-
-def build_llvm_org(args=None):
-    defaultBuildArgs = ['-p']
-    if not args.no_warning_as_error:
-        defaultBuildArgs += ['--warning-as-error']
-    mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
-
-
-@mx.command(_suite.name, "clangformat")
-def clangformat(args=None):
-    """ Runs clang-format on C/C++ files in native projects of the primary suite """
-    parser = ArgumentParser(prog='mx clangformat')
-    parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
-    parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
-    args = parser.parse_args(args)
-    paths = [(p, "<cmd-line-argument>") for p in args.paths]
-
-    if not paths or args.with_projects:
-        paths += [(p.dir, p.name) for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
-
-    error = False
-    for f, reason in paths:
-        if not checkCFiles(f, reason):
-            error = True
-    if error:
-        mx.log_error("found formatting errors!")
-        exit(-1)
-
-
-def checkCFiles(target, reason):
-    error = False
-    files_to_check = []
-    if os.path.isfile(target):
-        files_to_check.append(target)
-    else:
-        for path, _, files in os.walk(target):
-            for f in files:
-                if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                    files_to_check.append(os.path.join(path, f))
-    if not files_to_check:
-        mx.logv("clang-format: no files found {} ({})".format(target, reason))
-        return True
-    mx.logv("clang-format: checking {} ({}, {} files)".format(target, reason, len(files_to_check)))
-    for f in files_to_check:
-        if not checkCFile(f):
-            error = True
-    return not error
-
-
-def checkCFile(targetFile):
-    mx.logvv("  checking file " + targetFile)
-    """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = mx_sulong.findBundledLLVMProgram('clang-format')
-    formatCommand = [clangFormat, targetFile]
-    formattedContent = mx_sulong._decode(subprocess.check_output(formatCommand)).splitlines()
-    with open(targetFile) as f:
-        originalContent = f.read().splitlines()
-    if not formattedContent == originalContent:
-        # modify the file to the right format
-        subprocess.check_output(formatCommand + ['-i'])
-        mx.log('\n'.join(formattedContent))
-        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
-        mx.logv("command: " + " ".join(formatCommand))
-        return False
-    return True

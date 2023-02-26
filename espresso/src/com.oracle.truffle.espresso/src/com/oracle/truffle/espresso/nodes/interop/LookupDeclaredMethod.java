@@ -28,13 +28,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 @GenerateUncached
 public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     static final int LIMIT = 2;
 
-    public abstract Method.MethodVersion execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException;
+    public abstract Method[] execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException;
 
     public boolean isInvocable(Klass klass, String key, boolean isStatic) {
         return isInvocable(klass, key, true, isStatic);
@@ -42,30 +43,29 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
-                    "klass.equals(cachedKlass)",
+                    "klass.equals(cachedKlass.getKlass())",
                     "key.equals(cachedMethodName)",
                     "publicOnly == cachedPublicOnly",
                     "isStatic == cachedIsStatic",
                     "arity == cachedArity",
-                    "methodVersion != null"}, limit = "LIMIT", assumptions = "methodVersion.getRedefineAssumption()")
-    Method.MethodVersion doCached(Klass klass,
+                    "method != null"}, limit = "LIMIT", assumptions = "cachedKlass.getAssumption()")
+    Method[] doCached(ObjectKlass klass,
                     String key,
                     boolean publicOnly,
                     boolean isStatic,
                     int arity,
-                    @Cached("klass") Klass cachedKlass,
+                    @Cached("klass.getKlassVersion()") ObjectKlass.KlassVersion cachedKlass,
                     @Cached("key") String cachedMethodName,
                     @Cached("publicOnly") boolean cachedPublicOnly,
                     @Cached("isStatic") boolean cachedIsStatic,
                     @Cached("arity") int cachedArity,
-                    @Cached("doGeneric(klass, key, publicOnly, isStatic, arity)") Method.MethodVersion methodVersion) {
-        return methodVersion;
+                    @Cached("doGeneric(klass, key, publicOnly, isStatic, arity)") Method[] method) {
+        return method;
     }
 
     @Specialization(replaces = "doCached")
-    Method.MethodVersion doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
-        Method method = doLookup(klass, key, publicOnly, isStatic, arity);
-        return method == null ? null : method.getMethodVersion();
+    Method[] doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+        return doLookup(klass, key, publicOnly, isStatic, arity);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -209,7 +209,7 @@ public class GenerateUncachedTest {
         Uncached5Node.testAssumption.invalidate();
         assertEquals("s2", node.execute(42));
         Uncached5Node.testAssumption = null;
-        assertEquals("s1", node.execute(42));
+        assertEquals("s2", node.execute(42));
     }
 
     @TypeSystem

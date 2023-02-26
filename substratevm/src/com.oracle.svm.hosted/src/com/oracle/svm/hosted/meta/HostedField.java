@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -39,7 +43,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 /**
  * Store the compile-time information for a field in the Substrate VM, such as the field offset.
  */
-public class HostedField implements OriginalFieldProvider, SharedField, Comparable<HostedField> {
+public class HostedField implements OriginalFieldProvider, SharedField, WrappedJavaField, AnnotationWrapper {
 
     private final HostedUniverse universe;
     private final HostedMetaAccess metaAccess;
@@ -62,6 +66,11 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
         this.type = type;
         this.typeProfile = typeProfile;
         this.location = LOC_UNINITIALIZED;
+    }
+
+    @Override
+    public AnalysisField getWrapped() {
+        return wrapped;
     }
 
     public JavaTypeProfile getFieldTypeProfile() {
@@ -104,6 +113,11 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
         return wrapped.isAccessed();
     }
 
+    @Override
+    public boolean isReachable() {
+        return wrapped.isReachable();
+    }
+
     public boolean isRead() {
         return wrapped.isRead();
     }
@@ -140,9 +154,14 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
 
     public JavaConstant readValue(JavaConstant receiver) {
         JavaConstant wrappedReceiver;
-        if (receiver != null && SubstrateObjectConstant.asObject(receiver) instanceof Class) {
-            /* Manual object replacement from java.lang.Class to DynamicHub. */
-            wrappedReceiver = SubstrateObjectConstant.forObject(metaAccess.lookupJavaType((Class<?>) SubstrateObjectConstant.asObject(receiver)).getHub());
+        if (metaAccess.isInstanceOf(receiver, Class.class)) {
+            Object classObject = SubstrateObjectConstant.asObject(receiver);
+            if (classObject instanceof Class) {
+                throw VMError.shouldNotReachHere("Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.");
+            } else {
+                VMError.guarantee(classObject instanceof DynamicHub);
+                wrappedReceiver = receiver;
+            }
         } else {
             wrappedReceiver = receiver;
         }
@@ -172,18 +191,8 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return wrapped;
     }
 
     @Override
@@ -194,20 +203,6 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
     @Override
     public JavaKind getStorageKind() {
         return getType().getStorageKind();
-    }
-
-    @Override
-    public int compareTo(HostedField other) {
-        /*
-         * Order by JavaKind. This is required, since we want instance fields of the same size and
-         * kind consecutive.
-         */
-        int result = other.getJavaKind().ordinal() - this.getJavaKind().ordinal();
-        /*
-         * If the kind is the same, i.e., result == 0, we return 0 so that the sorting keeps the
-         * order unchanged and therefore keeps the field order we get from the hosting VM.
-         */
-        return result;
     }
 
     @Override

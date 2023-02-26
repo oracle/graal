@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.test;
 import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -81,6 +82,7 @@ import com.oracle.truffle.api.debug.StepConfig;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -166,6 +168,52 @@ public class SLDebugTest {
             DebugValue value = valMap.get(expectedIdentifier);
             Assert.assertNotNull(value);
             Assert.assertEquals(expectedValue, value.toDisplayString());
+        }
+    }
+
+    @Test
+    public void testHostValueMetadata() {
+        Source source = slCode("function main(){\n" +
+                        "  symbol = java(\"java.lang.StringBuilder\");\n" +
+                        "  instance = new(symbol);\n" +
+                        "  instance.reverse();\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended(event -> event.prepareStepOver(1));
+
+            expectSuspended(event -> {
+                DebugValue symbolValue = event.getTopStackFrame().getScope().getDeclaredValue("symbol");
+                assertTrue(symbolValue.isReadable());
+                assertFalse(symbolValue.isInternal());
+                assertFalse(symbolValue.hasReadSideEffects());
+                LanguageInfo hostLang = symbolValue.getOriginalLanguage();
+                assertNotNull(hostLang);
+                assertEquals("host", hostLang.getId());
+                DebugValue symbolValCasted = symbolValue.asInLanguage(hostLang);
+
+                assertEquals(symbolValCasted.getOriginalLanguage(), symbolValue.getOriginalLanguage());
+                DebugValue symbolMeta = symbolValCasted.getMetaObject();
+                assertNotNull(symbolMeta);
+                assertEquals(Class.class.getSimpleName(), symbolMeta.getMetaSimpleName());
+                assertEquals(Class.class.getName(), symbolMeta.getMetaQualifiedName());
+                event.prepareStepOver(1);
+            });
+
+            expectSuspended(event -> {
+                DebugValue instanceValue = event.getTopStackFrame().getScope().getDeclaredValue("instance");
+                LanguageInfo hostLang = instanceValue.getOriginalLanguage();
+                assertEquals("host", hostLang.getId());
+                instanceValue = instanceValue.asInLanguage(hostLang);
+                DebugValue instanceMeta = instanceValue.getMetaObject();
+                assertEquals(StringBuilder.class.getSimpleName(), instanceMeta.getMetaSimpleName());
+                assertEquals(StringBuilder.class.getName(), instanceMeta.getMetaQualifiedName());
+                event.prepareContinue();
+            });
+
+            expectDone();
         }
     }
 

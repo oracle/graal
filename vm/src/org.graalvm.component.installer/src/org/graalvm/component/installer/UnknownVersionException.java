@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,8 @@ package org.graalvm.component.installer;
 public class UnknownVersionException extends InstallerStopException {
     private static final long serialVersionUID = 33;
 
-    private final Version version;
-    private final Version candidate;
+    private final transient Version version;
+    private final transient Version candidate;
 
     public UnknownVersionException(String s, Version v, Version c) {
         super(s);

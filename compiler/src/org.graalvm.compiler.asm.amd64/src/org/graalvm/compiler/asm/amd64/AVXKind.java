@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,37 +30,58 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 
-import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Helper methods for dealing with AVX and SSE {@link AMD64Kind AMD64Kinds}.
  */
 public final class AVXKind {
 
-    public enum AVXSize {
-        DWORD,
-        QWORD,
-        XMM,
-        YMM,
-        ZMM;
+    public enum AVXSize implements VectorSize {
+        DWORD(4),
+        QWORD(8),
+        XMM(16),
+        YMM(32),
+        ZMM(64);
+
+        private final int size;
+
+        AVXSize(int size) {
+            this.size = size;
+        }
 
         public int getBytes() {
+            return size;
+        }
+
+        /**
+         * Tests if this can fit within {@code supportedVectorSize}. For XMM/YMM/ZMM, we check if
+         * {@code supportedVectorSize} has larger width; for DWORD/QWORD, we check if both AVXSizes
+         * are identical.
+         */
+        @SuppressWarnings("fallthrough")
+        public boolean fitsWithin(AVXSize supportedVectorSize) {
             switch (this) {
-                case DWORD:
-                    return 4;
-                case QWORD:
-                    return 8;
                 case XMM:
-                    return 16;
+                    if (supportedVectorSize == XMM) {
+                        return true;
+                    }
+                    // fall through
                 case YMM:
-                    return 32;
+                    if (supportedVectorSize == YMM) {
+                        return true;
+                    }
+                    // fall through
                 case ZMM:
-                    return 64;
+                    return supportedVectorSize == ZMM;
                 default:
-                    return 0;
+                    // For general purpose avx instructions, we check if both AVXSizes are
+                    // identical.
+                    return this == supportedVectorSize;
             }
         }
     }

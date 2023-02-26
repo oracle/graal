@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,8 +44,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLScanner {
@@ -101,7 +99,7 @@ final class LLScanner {
 
         final TruffleFile llFile = findLLPathMapping(bcPath, pathMappings, context);
         if (llFile == null || !llFile.exists() || !llFile.isReadable()) {
-            printWarning(context, "Cannot find .ll file for %s (set %s to \"false\" to disable this message)\n", bcPath, SulongEngineOption.LL_DEBUG_VERBOSE_NAME);
+            printWarning("Cannot find .ll file for %s (decrease %s logging level to disable this message)\n", bcPath, LLVMContext.llDebugLogger().getName());
             return NOT_FOUND;
         }
 
@@ -111,7 +109,7 @@ final class LLScanner {
 
             EconomicSet<LLVMSourceFileReference> sourceFileWorkset = createSourceFileSet(sourceFileReferences);
             if (sourceFileWorkset == null) {
-                printWarning(context, "No source file checksums found in %s\n", bcPath);
+                printVerbose("No source file checksums found in %s\n", bcPath);
             }
             final LLScanner scanner = new LLScanner(sourceMap, sourceFileWorkset);
             for (String line = llReader.readLine(); line != null; line = llReader.readLine()) {
@@ -120,10 +118,10 @@ final class LLScanner {
                 }
             }
             if (sourceFileWorkset != null && !sourceFileWorkset.isEmpty()) {
-                printWarning(context, "Checksums in the .ll file (%s) and the .bc file (%s) do not match!\n", llFile, bcPath);
-                printWarning(context, "The following files have changed in the .bc file:\n");
+                printVerbose("Checksums in the .ll file (%s) and the .bc file (%s) do not match!\n", llFile, bcPath);
+                printVerbose("The following files have changed in the .bc file:\n");
                 for (LLVMSourceFileReference sourceFileReference : sourceFileWorkset) {
-                    printWarning(context, "  %s\n", LLVMSourceFileReference.toString(sourceFileReference));
+                    printVerbose("  %s\n", LLVMSourceFileReference.toString(sourceFileReference));
                 }
             }
             return sourceMap;
@@ -132,10 +130,15 @@ final class LLScanner {
         }
     }
 
-    private static void printWarning(LLVMContext context, String format, Object... args) {
-        TargetStream stream = context.llDebugVerboseStream();
-        if (stream != null) {
-            stream.format(format, args);
+    private static void printWarning(String format, Object... args) {
+        if (LLVMContext.llDebugWarningEnabled()) {
+            LLVMContext.llDebugWarningLog(String.format(format, args));
+        }
+    }
+
+    private static void printVerbose(String format, Object... args) {
+        if (LLVMContext.llDebugVerboseEnabled()) {
+            LLVMContext.llDebugVerboseLog(String.format(format, args));
         }
     }
 

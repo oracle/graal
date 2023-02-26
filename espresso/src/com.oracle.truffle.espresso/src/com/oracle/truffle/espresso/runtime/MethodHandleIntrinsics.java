@@ -26,15 +26,16 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNodeGen;
@@ -54,29 +55,27 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
  * with a signature that was never seen before by the context, espresso creates a dummy placeholder
  * method and keeps track of it.
  * <li>When a call site needs to link against a polymorphic signatures, it obtains the dummy method.
- * It then calls {@link Method#spawnIntrinsicNode(Klass, Symbol, Symbol)} which gives a truffle node
- * implementing the behavior of the MethodHandle intrinsics (ie: extracting the call target from the
- * arguments, appending an appendix to the erguments, etc...)
+ * It then calls {@link Method#spawnIntrinsicNode(EspressoLanguage, Meta, Klass, Symbol, Symbol)}
+ * which gives a truffle node implementing the behavior of the MethodHandle intrinsics (ie:
+ * extracting the call target from the arguments, appending an appendix to the erguments, etc...)
  * <li>This node is then fed to a {@link InvokeHandleNode} whose role is exactly like the other
  * invoke nodes: extracting arguments from the stack and passing it to its child.
  */
-public final class MethodHandleIntrinsics implements ContextAccess {
+public final class MethodHandleIntrinsics {
 
-    private final EspressoContext context;
     private final ConcurrentHashMap<MethodRef, Method> intrinsics;
 
-    MethodHandleIntrinsics(EspressoContext context) {
-        this.context = context;
+    MethodHandleIntrinsics() {
         this.intrinsics = new ConcurrentHashMap<>();
     }
 
-    public MethodHandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
+    public static MethodHandleIntrinsicNode createIntrinsicNode(EspressoLanguage language, Meta meta, Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
         PolySigIntrinsics id = getId(method);
         switch (id) {
             case InvokeBasic:
                 return MHInvokeBasicNodeGen.create(method);
             case InvokeGeneric:
-                return MHInvokeGenericNode.create(accessingKlass, method, methodName, signature, getMeta());
+                return MHInvokeGenericNode.create(language, meta, accessingKlass, method, methodName, signature);
             case LinkToVirtual:
             case LinkToStatic:
             case LinkToSpecial:
@@ -133,11 +132,6 @@ public final class MethodHandleIntrinsics implements ContextAccess {
             return PolySigIntrinsics.InvokeGeneric;
         }
         return PolySigIntrinsics.None;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     private Method findIntrinsic(Method m, MethodRef methodRef) {

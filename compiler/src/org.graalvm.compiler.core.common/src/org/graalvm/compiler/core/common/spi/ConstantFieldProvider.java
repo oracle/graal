@@ -42,6 +42,13 @@ public interface ConstantFieldProvider {
 
         JavaConstant getReceiver();
 
+        /**
+         * The reason why this constant folding was attempted. Ideally this is a
+         * {@link jdk.vm.ci.code.BytecodePosition}, where available, or a {@link String}
+         * description, however it can be {@code null}.
+         */
+        Object getReason();
+
         T foldConstant(JavaConstant ret);
 
         T foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable);
@@ -53,4 +60,12 @@ public interface ConstantFieldProvider {
      * read should be constant folded, or {@code null} otherwise.
      */
     <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool);
+
+    /**
+     * Returns {@code true} if a field may be constant folded even though it is not declared as
+     * {@code final}. This applies to well-known fields such as {@code String#hash}.
+     */
+    default boolean maybeFinal(@SuppressWarnings("unused") ResolvedJavaField field) {
+        return false;
+    }
 }

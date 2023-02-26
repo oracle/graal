@@ -99,10 +99,16 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 final class PolyglotEngineException extends RuntimeException {
 
     final RuntimeException e;
+    final boolean closedException;
 
     PolyglotEngineException(RuntimeException e) {
+        this(e, false);
+    }
+
+    PolyglotEngineException(RuntimeException e, boolean closedException) {
         super(null, e);
         this.e = e;
+        this.closedException = closedException;
     }
 
     @SuppressWarnings("sync-override")
@@ -127,6 +133,10 @@ final class PolyglotEngineException extends RuntimeException {
 
     static PolyglotEngineException illegalState(String message) {
         return new PolyglotEngineException(new IllegalStateException(message));
+    }
+
+    static PolyglotEngineException closedException(String message) {
+        return new PolyglotEngineException(new IllegalStateException(message), true);
     }
 
     static PolyglotEngineException nullPointer(String message) {

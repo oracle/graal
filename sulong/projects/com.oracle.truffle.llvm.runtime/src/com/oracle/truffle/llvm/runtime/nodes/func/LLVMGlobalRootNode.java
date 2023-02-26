@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -80,7 +80,7 @@ public class LLVMGlobalRootNode extends RootNode {
     @SuppressWarnings("try")
     @TruffleBoundary
     private Object executeWithoutFrame() {
-        LLVMStack stack = getContext().getThreadingStack().getStack();
+        LLVMStack stack = getContext().getThreadingStack().getStack(this);
         try {
             Object appPath = new LLVMArgumentBuffer(applicationPath);
             LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);

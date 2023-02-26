@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.lir.gen;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
@@ -47,9 +46,6 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
         return lirGen.asAllocatable(value);
     }
 
-    public OptionValues getOptions() {
-        return getLIRGen().getResult().getLIR().getOptions();
-    }
     // automatic derived reference handling
 
     protected abstract boolean isNumericInteger(PlatformKind kind);
@@ -112,7 +108,7 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
 
     public Value emitRor(Value value, Value distance) {
         // (value >>> distance) | (value << -distance)
-        return emitOr(emitUShr(value, distance), emitShl(value, emitNegate(distance)));
+        return emitOr(emitUShr(value, distance), emitShl(value, emitNegate(distance, false)));
     }
 
 }

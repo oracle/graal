@@ -28,12 +28,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -53,7 +52,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "LALOAD")
-public abstract class LongArrayLoad extends Node {
+public abstract class LongArrayLoad extends EspressoNode {
 
     public abstract long execute(StaticObject receiver, int index);
 
@@ -66,20 +65,16 @@ public abstract class LongArrayLoad extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "LALOAD !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
         public abstract long execute(StaticObject receiver, int index);
 
-        protected EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
-
         @Specialization(guards = "array.isEspressoObject()")
         long doEspresso(StaticObject array, int index) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayLong(index, array);
+            return getContext().getInterpreterToVM().getArrayLong(getLanguage(), index, array);
         }
 
         @Specialization(guards = "array.isForeignObject()")
@@ -89,7 +84,7 @@ public abstract class LongArrayLoad extends Node {
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             Meta meta = getContext().getMeta();
-            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, arrayInterop, meta, exceptionProfile);
+            Object result = ForeignArrayUtils.readForeignArrayElement(array, index, getLanguage(), meta, arrayInterop, exceptionProfile);
             try {
                 return elemInterop.asLong(result);
             } catch (UnsupportedMessageException e) {

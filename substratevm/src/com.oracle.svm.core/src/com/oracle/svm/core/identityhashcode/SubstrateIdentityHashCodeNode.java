@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -32,8 +33,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_8)
@@ -41,7 +40,15 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     public static final NodeClass<SubstrateIdentityHashCodeNode> TYPE = NodeClass.create(SubstrateIdentityHashCodeNode.class);
 
-    public SubstrateIdentityHashCodeNode(ValueNode object, int bci) {
+    public static ValueNode create(ValueNode object, int bci) {
+        /*
+         * Because the canonicalization logic is in the superclass, it is easier to always create a
+         * new node and then canonicalize it.
+         */
+        return (ValueNode) new SubstrateIdentityHashCodeNode(object, bci).canonical(null);
+    }
+
+    protected SubstrateIdentityHashCodeNode(ValueNode object, int bci) {
         super(TYPE, object, bci);
     }
 
@@ -52,6 +59,6 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     protected int getIdentityHashCode(JavaConstant constant) {
-        return ((SubstrateObjectConstant) constant).getIdentityHashCode();
+        return ((TypedConstant) constant).getIdentityHashCode();
     }
 }

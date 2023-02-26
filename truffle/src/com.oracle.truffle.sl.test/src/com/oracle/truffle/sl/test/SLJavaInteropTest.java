@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,12 +68,18 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).out(os).build();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
     }
 
     @After
     public void dispose() {
         context.close();
+    }
+
+    @Test
+    public void testHostFunctionDisplayName() {
+        assertEquals(BigInteger.class.getName() + ".valueOf", context.eval("sl", "function main() {\n" + "    return java(\"java.math.BigInteger\").valueOf;\n" + "}\n").toString());
+        assertEquals(BigInteger.class.getName() + ".add", context.eval("sl", "function main() {\n" + "    return java(\"java.math.BigInteger\").ZERO.add;\n" + "}\n").toString());
     }
 
     @Test

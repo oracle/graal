@@ -59,12 +59,15 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateAnnotationInvocationHandler;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -211,7 +214,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (isConstantAnnotationType(method.getDeclaringClass())) {
+        if (isConstantAnnotationType(method.getDeclaringClass()) && !method.getName().equals("proxyClassLookup")) {
             AnnotationSubstitutionType declaringClass = getSubstitution(method.getDeclaringClass());
             AnnotationSubstitutionMethod result = declaringClass.getSubstitutionMethod(method);
             assert result != null && result.original.equals(method);
@@ -236,6 +239,10 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             for (ResolvedJavaMethod originalMethod : type.getDeclaredMethods()) {
                 AnnotationSubstitutionMethod substitutionMethod;
                 String methodName = canonicalMethodName(originalMethod);
+                /* Our annotation implementation doesn't use the proxyClassLookup method. */
+                if (methodName.equals("proxyClassLookup")) {
+                    continue;
+                }
                 if (methodName.equals("equals")) {
                     substitutionMethod = new AnnotationEqualsMethod(originalMethod);
                 } else if (methodName.equals("hashCode")) {
@@ -320,7 +327,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 kit.startIf(graph.unique(new IntegerEqualsNode(arrayLength, ConstantNode.forInt(0, graph))), BranchProbabilityNode.NOT_LIKELY_PROFILE);
                 kit.elsePart();
 
-                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone", false);
+                ResolvedJavaMethod cloneMethod = kit.findMethod(Object.class, "clone");
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
@@ -441,7 +448,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute, otherAttribute);
                 } else {
                     /* Just call Object.equals(). Primitive values are already boxed. */
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", Object.class);
                     ValueNode ourAttributeNonNull = kit.maybeCreateExplicitNullCheck(ourAttribute);
                     attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttributeNonNull, otherAttribute);
                 }
@@ -507,7 +514,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 } else {
                     /* Just call Object.hashCode(). Primitive values are already boxed. */
                     ourAttribute = kit.maybeCreateExplicitNullCheck(ourAttribute);
-                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode", false);
+                    ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode");
                     attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute);
                 }
 
@@ -581,11 +588,24 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
             graph.start().setStateAfter(state.create(0, graph.start()));
 
-            String returnValue = "@" + annotationInterfaceType.toJavaName(true);
+            String returnValue;
+            if (JavaVersionUtil.JAVA_SPEC >= 19) {
+                /*
+                 * In JDK 19, annotations use Class.getCanonicalName() instead of Class.getName().
+                 * See JDK-8281462.
+                 */
+                returnValue = "@" + getJavaClass(annotationInterfaceType).getCanonicalName();
+            } else {
+                returnValue = "@" + annotationInterfaceType.toJavaName(true);
+            }
             ValueNode returnConstant = kit.unique(ConstantNode.forConstant(SubstrateObjectConstant.forObject(returnValue), providers.getMetaAccess()));
             kit.append(new ReturnNode(returnConstant));
 
             return kit.finalizeGraph();
+        }
+
+        private static Class<?> getJavaClass(ResolvedJavaType type) {
+            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
         }
     }
 
@@ -632,8 +652,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
 }
 
-@AutomaticFeature
-class AnnotationSupportFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class AnnotationSupportFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

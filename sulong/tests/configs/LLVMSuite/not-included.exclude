@@ -155,3 +155,5 @@ test-suite-3.2.src/SingleSource/UnitTests/byval-alignment.c.dir
 test-suite-3.2.src/SingleSource/UnitTests/stmtexpr.cpp.dir
 test-suite-3.2.src/tools/fpcmp.c.dir
 test-suite-3.2.src/tools/timeit.c.dir
+# native code yields wrong result
+test-suite-3.2.src/SingleSource/UnitTests/Integer/union-init.c.dir

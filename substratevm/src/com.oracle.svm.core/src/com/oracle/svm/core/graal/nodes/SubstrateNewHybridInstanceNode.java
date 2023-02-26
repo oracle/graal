@@ -31,13 +31,15 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
 
+import com.oracle.svm.core.hub.Hybrid;
+
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The {@link SubstrateNewHybridInstanceNode} represents the allocation of an instance class object
  * with a hybrid layout.
  * 
- * @see com.oracle.svm.core.annotate.Hybrid
+ * @see Hybrid
  */
 @NodeInfo(nameTemplate = "NewHybridInstance {p#instanceClass/s}")
 public final class SubstrateNewHybridInstanceNode extends AbstractNewArrayNode {
@@ -69,4 +71,7 @@ public final class SubstrateNewHybridInstanceNode extends AbstractNewArrayNode {
     public ResolvedJavaType elementType() {
         return elementType;
     }
+
+    @NodeIntrinsic
+    public static native Object allocate(@ConstantNodeParameter Class<?> instanceType, @ConstantNodeParameter Class<?> elementType, int arrayLength);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,12 +115,30 @@ public abstract class ByteArraySupport {
      * @param buffer the byte array
      * @param startByteOffset the start byte offset of the access
      * @param length the number of bytes accessed
-     * @return True if if the access is in bounds, false otherwise
+     * @return True if the access is in bounds, false otherwise
      * @since 20.3
      */
     @SuppressWarnings("static-method")
     public final boolean inBounds(byte[] buffer, int startByteOffset, int length) {
         return length >= 1 && startByteOffset >= 0 && startByteOffset <= buffer.length - length;
+    }
+
+    /**
+     * Checks if an access is in bounds of the given buffer.
+     * <p>
+     * If out-of-bounds accesses are expected to happen frequently, it is faster (~1.2x in
+     * interpreter mode) to use this method to check for them than catching
+     * {@link IndexOutOfBoundsException}s.
+     *
+     * @param buffer the byte array
+     * @param startByteOffset the start byte offset of the access
+     * @param length the number of bytes accessed
+     * @return True if the access is in bounds, false otherwise
+     * @since 22.2
+     */
+    @SuppressWarnings("static-method")
+    public final boolean inBounds(byte[] buffer, long startByteOffset, long length) {
+        return length >= 1L && startByteOffset >= 0L && startByteOffset <= buffer.length - length;
     }
 
     /**
@@ -136,6 +154,18 @@ public abstract class ByteArraySupport {
     public abstract byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the byte at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset at which the byte will be read
+     * @return the byte at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 22.2
+     */
+    public abstract byte getByte(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given byte at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -146,6 +176,18 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given byte at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset at which the byte will be written
+     * @param value the byte value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length}
+     * @since 22.2
+     */
+    public abstract void putByte(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException;
 
     /**
      * Reads the short at the given byte offset from the start of the buffer.
@@ -160,6 +202,18 @@ public abstract class ByteArraySupport {
     public abstract short getShort(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the short at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 22.2
+     */
+    public abstract short getShort(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given short at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -170,6 +224,18 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given short at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the short will be written
+     * @param value the short value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 22.2
+     */
+    public abstract void putShort(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException;
 
     /**
      * Reads the int at the given byte offset from the start of the buffer.
@@ -184,6 +250,18 @@ public abstract class ByteArraySupport {
     public abstract int getInt(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the int at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 20.3
+     */
+    public abstract int getInt(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given int at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -194,6 +272,18 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given int at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the int will be written
+     * @param value the int value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 22.2
+     */
+    public abstract void putInt(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException;
 
     /**
      * Reads the long at the given byte offset from the start of the buffer.
@@ -208,6 +298,18 @@ public abstract class ByteArraySupport {
     public abstract long getLong(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the long at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 22.2
+     */
+    public abstract long getLong(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given long at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -218,6 +320,18 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given long at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the int will be written
+     * @param value the int value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 22.2
+     */
+    public abstract void putLong(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException;
 
     /**
      * Reads the float at the given byte offset from the start of the buffer.
@@ -232,6 +346,18 @@ public abstract class ByteArraySupport {
     public abstract float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the float at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the float will be read
+     * @return the float at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 22.2
+     */
+    public abstract float getFloat(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given float at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -242,6 +368,18 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putFloat(byte[] buffer, int byteOffset, float value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given float at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the float will be written
+     * @param value the float value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 22.2
+     */
+    public abstract void putFloat(byte[] buffer, long byteOffset, float value) throws IndexOutOfBoundsException;
 
     /**
      * Reads the double at the given byte offset from the start of the buffer.
@@ -256,6 +394,18 @@ public abstract class ByteArraySupport {
     public abstract double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the double at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the double will be read
+     * @return the double at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 22.2
+     */
+    public abstract double getDouble(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Writes the given double at the given byte offset from the start of the buffer.
      *
      * @param buffer the byte array to write in
@@ -266,4 +416,16 @@ public abstract class ByteArraySupport {
      * @since 20.3
      */
     public abstract void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException;
+
+    /**
+     * Writes the given double at the given byte offset from the start of the buffer.
+     *
+     * @param buffer the byte array to write in
+     * @param byteOffset the byte offset from which the double will be written
+     * @param value the double value to be written
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 22.2
+     */
+    public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
 }

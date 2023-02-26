@@ -29,20 +29,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public class TruffleConstantFieldProvider implements ConstantFieldProvider {
-    private final ConstantFieldProvider graalConstantFieldProvider;
-    private final MetaAccessProvider metaAccess;
+public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProvider {
     private final ConcurrentHashMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
 
-    public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess) {
-        this.graalConstantFieldProvider = graalConstantFieldProvider;
-        this.metaAccess = metaAccess;
+    public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
+        super(graalConstantFieldProvider, metaAccess, types);
         this.cachedConstantFieldInfo = new ConcurrentHashMap<>();
     }
 
@@ -52,6 +50,10 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
         if (!isStaticField && tool.getReceiver().isNull()) {
             // can't be optimized
             return null;
+        }
+        T wellKnownField = readWellKnownConstantTruffleField(field, tool);
+        if (wellKnownField != null) {
+            return wellKnownField;
         }
 
         boolean isArrayField = field.getType().isArray();

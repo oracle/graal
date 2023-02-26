@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -106,7 +106,7 @@ public final class TestCaseCollector {
             ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
             List<Object[]> list = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
-                String testCaseName = getTestCaseName(suitesPath, testPath);
+                String testCaseName = getTestCaseName(suitesPath, testPath).replace("\\", "/");
                 return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
             }).collect(Collectors.toList());
             if (!list.isEmpty()) {
@@ -192,7 +192,7 @@ public final class TestCaseCollector {
             // walk <ROOT><testSuiteClass>/os_arch/
             walkOsArch(visitors, osArchDirectory);
 
-            Path configExcludeDirectory = configDirectory.resolve(TestEngineConfig.getInstance().getName());
+            Path configExcludeDirectory = configDirectory.resolve(TestEngineConfig.getInstance().getConfigFolderName());
             Path configOsArchDirectory = configExcludeDirectory.resolve("os_arch");
             // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/, skip "os_arch"
             walkFileTreeIfExists(configExcludeDirectory, visitors.skippingVisitor(configOsArchDirectory));

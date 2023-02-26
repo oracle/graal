@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,9 @@ package org.graalvm.compiler.hotspot.replacements;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
@@ -36,6 +37,7 @@ import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -96,7 +98,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     private ValueNode readLocation(ValueNode base, int offset, LocationIdentity location, Stamp stamp, GuardingNode guard) {
         assert StampTool.isPointerNonNull(base) || base.stamp(NodeView.DEFAULT).getStackKind() == getWordKind() : "must be null guarded";
         AddressNode address = makeOffsetAddress(base, asWord(offset));
-        ReadNode value = b.add(new ReadNode(address, location, stamp, BarrierType.NONE));
+        ReadNode value = b.add(new ReadNode(address, location, stamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         ValueNode returnValue = ReadNode.canonicalizeRead(value, value.getAddress(), value.getLocationIdentity(), b, NodeView.DEFAULT);
         if (value != returnValue) {
             // We could clean up the dead nodes here
@@ -117,7 +119,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         OS_THREAD_INTERRUPTED_OFFSET(config -> config.osThreadInterruptedOffset, any(), StampFactory.forKind(JavaKind.Int)),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
-        JAVA_THREAD_THREAD_OBJECT(config -> config.threadObjectOffset, JAVA_THREAD_THREAD_OBJECT_LOCATION, null),
+        JAVA_THREAD_THREAD_OBJECT(config -> config.threadCurrentThreadObjectOffset, JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
@@ -216,7 +218,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
             // Read the Object from the OopHandle
             ValueNode handleOffset = ConstantNode.forIntegerKind(getWordKind(), 0, b.getGraph());
             AddressNode handleAddress = b.add(new OffsetAddressNode(value, handleOffset));
-            value = b.add(new ReadNode(handleAddress, HOTSPOT_OOP_HANDLE_LOCATION, threadStamp, BarrierType.NONE));
+            value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         }
         return value;
     }

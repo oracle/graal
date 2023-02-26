@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -66,7 +67,7 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
@@ -200,7 +201,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 }
                 final ValueNode node;
                 if (isPinnedObject) {
-                    node = b.add(new JavaReadNode(stamp, readKind, offsetAddress, locationIdentity, BarrierType.NONE, true));
+                    node = b.add(new JavaReadNode(stamp, readKind, offsetAddress, locationIdentity, BarrierType.NONE, MemoryOrderMode.PLAIN, true));
                 } else {
                     ValueNode read = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo);
                     node = adaptPrimitiveType(graph, read, readKind, resultKind == JavaKind.Boolean ? resultKind : resultKind.getStackKind(), isUnsigned);
@@ -344,7 +345,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     }
 
     private static ValueNode readPrimitive(GraphBuilderContext b, AddressNode address, LocationIdentity locationIdentity, Stamp stamp, AccessorInfo accessorInfo) {
-        CInterfaceReadNode read = b.add(new CInterfaceReadNode(address, locationIdentity, stamp, BarrierType.NONE, accessName(accessorInfo)));
+        CInterfaceReadNode read = b.add(new CInterfaceReadNode(address, locationIdentity, stamp, BarrierType.NONE, MemoryOrderMode.PLAIN, accessName(accessorInfo)));
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
          * check on its base address.
@@ -354,7 +355,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     }
 
     private static void writePrimitive(GraphBuilderContext b, AddressNode address, LocationIdentity locationIdentity, ValueNode value, AccessorInfo accessorInfo) {
-        b.add(new CInterfaceWriteNode(address, locationIdentity, value, BarrierType.NONE, accessName(accessorInfo)));
+        b.add(new CInterfaceWriteNode(address, locationIdentity, value, BarrierType.NONE, MemoryOrderMode.PLAIN, accessName(accessorInfo)));
     }
 
     private static String accessName(AccessorInfo accessorInfo) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -355,10 +355,34 @@ public interface InstrumentableNode extends NodeInterface {
      *            this set
      * @return the nearest instrumentable node according to the execution flow and tagged with some
      *         of the tags, or <code>null</code> when none was found
+     * @see #findNearestNodeAt(int, int, Set)
      * @since 0.33
      */
     default Node findNearestNodeAt(int sourceCharIndex, Set<Class<? extends Tag>> tags) {
         return DefaultNearestNodeSearch.findNearestNodeAt(sourceCharIndex, (Node) this, tags);
+    }
+
+    /**
+     * Find the nearest {@link Node node} to the given source line and column position, according to
+     * the guest language control flow, that is tagged with some of the given tags.
+     * <p>
+     * Behaves in the same way as {@link #findNearestNodeAt(int, Set)} but uses line/column as the
+     * position specification instead of a character index.
+     *
+     * @param line 1-based line number
+     * @param column 1-based column number, or less than one when the column is unknown
+     * @param tags a set of tags, the nearest node needs to be tagged with at least one tag from
+     *            this set
+     * @return the nearest instrumentable node according to the execution flow and tagged with some
+     *         of the tags, or <code>null</code> when none was found
+     * @see #findNearestNodeAt(int, Set)
+     * @since 23.0
+     */
+    default Node findNearestNodeAt(int line, int column, Set<Class<? extends Tag>> tags) {
+        if (line < 1) {
+            throw new IllegalArgumentException("A 1-based line needs to be specified, was " + line);
+        }
+        return DefaultNearestNodeSearch.findNearestNodeAt(line, column, (Node) this, tags);
     }
 
     /**

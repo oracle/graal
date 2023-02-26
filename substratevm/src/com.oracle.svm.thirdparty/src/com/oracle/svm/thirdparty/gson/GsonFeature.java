@@ -27,7 +27,6 @@ package com.oracle.svm.thirdparty.gson;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -40,7 +39,6 @@ import com.oracle.svm.core.util.VMError;
  * This feature registers parts of {@link sun.misc.Unsafe} as reflectively accessible. Gson uses it
  * internally to instantiate classes that do not have a no-argument constructor.
  */
-@AutomaticFeature
 public final class GsonFeature implements Feature {
 
     @Override

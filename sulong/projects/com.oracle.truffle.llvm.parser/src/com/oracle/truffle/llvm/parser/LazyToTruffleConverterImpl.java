@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,19 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -54,6 +61,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMFunctionModifier;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph;
@@ -65,6 +73,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMNodeUtils;
+import com.oracle.truffle.llvm.runtime.LLVMNodeUtils.LambdaLineWriter;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -82,19 +92,8 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-import org.graalvm.options.OptionValues;
 
-import java.io.PrintWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import org.graalvm.options.OptionValues;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
@@ -149,15 +148,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         NodeFactory nodeFactory = runtime.getNodeFactory();
         OptionValues options = context.getEnv().getOptions();
 
-        String printASTOption = options.get(SulongEngineOption.PRINT_AST);
         boolean printAST = false;
-        if (!printASTOption.isEmpty()) {
-            String[] regexes = printASTOption.split(",");
-            for (String regex : regexes) {
-                if (method.getName().matches(regex)) {
-                    printAST = true;
-                    System.out.println("\n========== " + method.getName() + "\n");
-                    break;
+        if (LLVMContext.printAstEnabled()) {
+            String printASTOption = options.get(SulongEngineOption.PRINT_AST_FILTER);
+            if (!printASTOption.isEmpty()) {
+                String[] regexes = printASTOption.split(",");
+                for (String regex : regexes) {
+                    if (method.getName().matches(regex)) {
+                        printAST = true;
+                        LLVMContext.printAstLog("========== " + method.getName());
+                        break;
+                    }
                 }
             }
         }
@@ -167,7 +168,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, LLVMLanguage.getContext().lifetimeAnalysisStream());
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method);
 
         // setup the frameDescriptor
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
@@ -188,11 +189,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         boolean initDebugValues = true;
         LLVMRuntimeDebugInformation info = new LLVMRuntimeDebugInformation(method.getBlocks().size());
         LLVMBasicBlockNode[] blockNodes = new LLVMBasicBlockNode[method.getBlocks().size()];
+        List<LLVMFunctionModifier> functionModifiers = new ArrayList<>();
         for (InstructionBlock block : method.getBlocks()) {
             List<Phi> blockPhis = phis.get(block);
             ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
             LLVMBitcodeInstructionVisitor visitor = new LLVMBitcodeInstructionVisitor(exceptionSlot, uniquesRegion, blockPhis, method.getParameters().size(), symbols, context,
-                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory);
+                            blockNullerInfos, neededForDebug, dataLayout, nodeFactory, functionModifiers);
 
             if (initDebugValues) {
                 for (SourceVariable variable : method.getSourceFunction().getVariables()) {
@@ -209,7 +211,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
             LLVMStatementNode[] nodes = visitor.finish();
             info.setBlockDebugInfo(block.getBlockIndex(), visitor.getDebugInfo());
-            blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
+            blockNodes[block.getBlockIndex()] = LLVMBasicBlockNode.createBasicBlockNode(nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName());
+        }
+
+        for (LLVMFunctionModifier modifier : functionModifiers) {
+            modifier.modify(blockNodes);
         }
 
         for (int j = 0; j < blockNodes.length; j++) {
@@ -220,13 +226,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         int loopSuccessorSlot = -1;
-        if (options.get(SulongEngineOption.ENABLE_OSR) && !options.get(SulongEngineOption.AOTCacheStore)) {
+        if (nodeFactory.isCfgOsrEnabled() && !options.get(SulongEngineOption.AOTCacheStore)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 
             if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
                 loopSuccessorSlot = builder.addSlot(FrameSlotKind.Int, null, null);
-                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info, options);
+                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info);
             }
         }
 
@@ -240,8 +246,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         method.onAfterParse();
 
         if (printAST) {
-            printCompactTree(rootNode);
-            System.out.println();
+            LLVMNodeUtils.printNodeAST(new LambdaLineWriter(LLVMContext::printAstLog), rootNode);
+            LLVMContext.printAstLog("");
         }
 
         return rootNode.getCallTarget();
@@ -267,60 +273,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return neededForDebug;
     }
 
-    private static void printCompactTree(Node node) {
-        printCompactTree(new PrintWriter(System.out), null, node, null, 1);
-    }
-
-    private static void printCompactTree(PrintWriter p, NodeInterface parent, NodeInterface node, String fieldName, int level) {
-        if (node == null) {
-            return;
-        }
-        for (int i = 0; i < level; i++) {
-            p.print("  ");
-        }
-        if (parent == null) {
-            p.println(node);
-        } else {
-            p.print(fieldName);
-            p.print(" = ");
-            p.println(node);
-        }
-
-        for (Class<?> c = node.getClass(); c != Object.class; c = c.getSuperclass()) {
-            Field[] fields = c.getDeclaredFields();
-            for (Field field : fields) {
-                if (Modifier.isStatic(field.getModifiers())) {
-                    continue;
-                }
-                if (NodeInterface.class.isAssignableFrom(field.getType())) {
-                    try {
-                        field.setAccessible(true);
-                        NodeInterface value = (NodeInterface) field.get(node);
-                        if (value != null) {
-                            printCompactTree(p, node, value, field.getName(), level + 1);
-                        }
-                    } catch (IllegalAccessException | RuntimeException e) {
-                        // ignore
-                    }
-                } else if (NodeInterface[].class.isAssignableFrom(field.getType())) {
-                    try {
-                        field.setAccessible(true);
-                        NodeInterface[] value = (NodeInterface[]) field.get(node);
-                        if (value != null) {
-                            for (int i = 0; i < value.length; i++) {
-                                printCompactTree(p, node, value[i], field.getName() + "[" + i + "]", level + 1);
-                            }
-                        }
-                    } catch (IllegalAccessException | RuntimeException e) {
-                        // ignore
-                    }
-                }
-            }
-        }
-        p.flush();
-    }
-
-    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info, OptionValues options) {
+    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info) {
         // The original array is needed to access the frame nuller information for outgoing control
         // flow egdes
         LLVMBasicBlockNode[] originalBodyNodes = nodes.clone();
@@ -345,7 +298,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                             loopSuccessorSlot);
             LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
             // replace header block with loop node
-            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(options, new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
+            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
             nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
             // remove inner loops to reduce number of nodes
             for (CFGLoop innerLoop : loop.getInnerLoops()) {

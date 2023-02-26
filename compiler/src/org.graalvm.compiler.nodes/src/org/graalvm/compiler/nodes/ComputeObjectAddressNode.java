@@ -63,4 +63,9 @@ public final class ComputeObjectAddressNode extends FixedWithNextNode implements
     public ValueNode getOffset() {
         return offset;
     }
+
+    public void setOffset(ValueNode offset) {
+        updateUsages(this.offset, offset);
+        this.offset = offset;
+    }
 }

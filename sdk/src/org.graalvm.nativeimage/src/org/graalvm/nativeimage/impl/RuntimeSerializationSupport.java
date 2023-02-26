@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,13 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public interface RuntimeSerializationSupport {
+
+    void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz);
 
     void register(ConfigurationCondition condition, Class<?>... classes);
 
@@ -48,4 +54,15 @@ public interface RuntimeSerializationSupport {
 
     void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
 
+    void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
+
+    default void registerLambdaCapturingClass(ConfigurationCondition condition, Class<?> lambdaCapturingClass) {
+        registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
+    }
+
+    void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces);
+
+    default void registerProxyClass(ConfigurationCondition condition, Class<?>... implementedInterfaces) {
+        registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
+    }
 }

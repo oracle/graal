@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static org.junit.Assert.assertSame;
 
 import java.util.Map;
@@ -88,7 +89,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                 Object result = "null result";
                 if (runinside != null) {
                     try {
-                        result = runinside.apply(getContext().env);
+                        result = runCustomCode();
                     } finally {
                         runinside = null;
                     }
@@ -97,6 +98,11 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                     result = "null result";
                 }
                 return result;
+            }
+
+            @TruffleBoundary
+            private Object runCustomCode() {
+                return runinside.apply(getContext().env);
             }
         }.getCallTarget();
     }
@@ -119,13 +125,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected void disposeContext(LanguageContext context) {
         if (context.initialized) {
             assertSame(getContext(), context);
-
-            assertSame(context, new RootNode(this) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return lookupContextReference(LanguageSPITestLanguage.class).get();
-                }
-            }.execute(null));
         }
 
         context.disposeCalled++;

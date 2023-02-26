@@ -67,7 +67,7 @@ public final class SingleImplementor {
         this.currentState = AssumptionGuardedValue.create(implementor);
     }
 
-    void addImplementor(ObjectKlass implementor) {
+    void addImplementor(ObjectKlass.KlassVersion implementor) {
         // Implementors are only added when the implementing class is loaded, which happens in the
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
@@ -75,20 +75,20 @@ public final class SingleImplementor {
         if (currentState == MultipleImplementorsState) {
             return;
         }
-        AssumptionGuardedValue<ObjectKlass> singleImplementor = AssumptionGuardedValue.create(implementor);
+        AssumptionGuardedValue<ObjectKlass> singleImplementor = AssumptionGuardedValue.create(implementor.getKlass());
         if (!STATE_UPDATER.compareAndSet(this, NoImplementorsState, singleImplementor)) {
             // CAS failed, i.e. there already exists an implementor
             AssumptionGuardedValue<ObjectKlass> state = currentState;
             // adding the same implementor repeatedly, so the class / interface still has a single
             // implementor
-            if (state.value == implementor) {
+            if (state.value == implementor.getKlass()) {
                 return;
             }
             while (!STATE_UPDATER.compareAndSet(this, state, MultipleImplementorsState)) {
                 state = currentState;
             }
             // whoever executed the CAS successfully is responsible for invalidating the assumption
-            state.hasValue().invalidate();
+            state.hasValue().invalidate("Single implementor invalidated");
         }
     }
 

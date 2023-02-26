@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -69,6 +71,7 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -81,6 +84,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -90,6 +94,8 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
 
     public ContextInterruptCloseCancelOrExitTest() {
         needsInstrumentEnv = true;
+        ignoreCancelOnClose = true;
+        ignoreExitOnClose = true;
     }
 
     @After
@@ -156,11 +162,11 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                 } catch (InterruptedException ie) {
                     interruptedExceptionSwallowed = true;
                 }
-                Assert.assertTrue(interruptedExceptionSwallowed);
+                assertTrue(interruptedExceptionSwallowed);
                 Assert.assertFalse(interruptFuture.isDone());
             });
             context.close();
-            assertContextState("CLOSED");
+            assertContextState("CLOSED_INTERRUPTED");
             Assert.assertNotNull(interruptFutureReference.get());
             interruptFutureReference.get().get();
         } finally {
@@ -204,7 +210,13 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                  */
                 context.close(true);
             });
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
+            }
             assertContextState("CLOSED_CANCELLED");
         } finally {
             executorService.shutdownNow();
@@ -304,7 +316,13 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                 throw pe;
             }
         }
-        context.close();
+        try {
+            context.close();
+        } catch (PolyglotException pe) {
+            if (!pe.isExit()) {
+                throw pe;
+            }
+        }
     }
 
     @Test
@@ -368,7 +386,13 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                 waitObject.notifyAll();
             }
             future.get();
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isExit()) {
+                    throw pe;
+                }
+            }
             assertContextState("CLOSED_EXITED");
         } finally {
             executorService.shutdownNow();
@@ -444,11 +468,91 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
             exitLatch.await();
             future.get();
             runOnNaturalContextExit.set(() -> {
-                // No effect calling context exit during closing
+                try {
+                    context.eval(InstrumentationTestLanguage.ID, "EXIT(1)");
+                } catch (PolyglotException pe) {
+                    if (!pe.isExit()) {
+                        throw pe;
+                    }
+                }
+            });
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isExit()) {
+                    throw pe;
+                }
+            }
+            assertContextState("CLOSED_EXITED");
+        } finally {
+            executorService.shutdownNow();
+            executorService.awaitTermination(100, TimeUnit.SECONDS);
+        }
+    }
+
+    static AtomicReference<Runnable> runOnFinalizeContext;
+
+    @After
+    public void clearRunOnFinalizeContext() {
+        runOnFinalizeContext = null;
+    }
+
+    @TruffleLanguage.Registration(dependentLanguages = InstrumentationTestLanguage.ID)
+    static class ExecuteCustomCodeWhileClosingTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        static final String ID = TestUtils.getDefaultLanguageId(ExecuteCustomCodeWhileClosingTestLanguage.class);
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected void finalizeContext(TruffleLanguage.Env context) {
+            if (runOnFinalizeContext != null && runOnFinalizeContext.get() != null) {
+                runOnFinalizeContext.get().run();
+            }
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testExitWhileFinalizing() throws ExecutionException, InterruptedException, IOException {
+        enterContext = false;
+        runOnFinalizeContext = new AtomicReference<>();
+        ProxyLanguage proxyLanguage = new ProxyLanguage() {
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        };
+        setupEnv(Context.newBuilder().allowCreateThread(true), proxyLanguage);
+        context.initialize(ExecuteCustomCodeWhileClosingTestLanguage.ID);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        try {
+            CountDownLatch exitLatch = new CountDownLatch(1);
+            Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(DEFINE(foo,CONSTANT(42),LOOP(infinity,STATEMENT)),SPAWN(foo))", "InfiniteLoop").build();
+            attachListener(exitLatch::countDown, instrumentEnv);
+            Future<?> future = executorService.submit(() -> {
+                context.eval(source);
+            });
+            exitLatch.await();
+            future.get();
+            runOnFinalizeContext.set(() -> {
+                // No effect calling context exit during closing finalization
                 context.eval(InstrumentationTestLanguage.ID, "EXIT(1)");
                 context.close(true);
             });
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
+            }
             assertContextState("CLOSED_CANCELLED");
         } finally {
             executorService.shutdownNow();
@@ -509,6 +613,16 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                                                 !"Another main thread was started while closing a polyglot context!".equals(ise.getMessage())) {
                                     throw ise;
                                 }
+                            } catch (PolyglotException pe) {
+                                /*
+                                 * CLOSING_CANCELLING and CLOSING_EXITING states can be set when
+                                 * normal close initiated for non-invalid context is in progress. In
+                                 * such case, the enter operation done as a part of normal close can
+                                 * throw exit or cancel exception.
+                                 */
+                                if (!pe.isCancelled() && !pe.isExit()) {
+                                    throw pe;
+                                }
                             }
                             break;
                         case 3:
@@ -544,9 +658,13 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
         } finally {
             try {
                 ctx.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled() && !pe.isExit()) {
+                    throw pe;
+                }
             } finally {
                 executorService.shutdownNow();
-                executorService.awaitTermination(100, TimeUnit.SECONDS);
+                assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
             }
         }
     }

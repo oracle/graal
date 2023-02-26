@@ -91,9 +91,8 @@ abstract class HostToGuestRootNode extends RootNode {
         PolyglotContextImpl constantContext = layer.getSingleConstantContext();
         if (constantContext == null) {
             constantContext = languageContext.context;
-        } else {
-            assert languageContext.context == constantContext;
         }
+        assert languageContext.context == constantContext;
         PolyglotContextImpl context = constantContext;
 
         assert Objects.equals(layer, languageContext.context.layer) : PolyglotSharingLayer.invalidSharingError(this, layer, languageContext.context.layer);

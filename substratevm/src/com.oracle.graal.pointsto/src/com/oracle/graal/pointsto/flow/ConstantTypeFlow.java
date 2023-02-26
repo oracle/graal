@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,50 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * The ConstantTypeFlow extends SourceTypeFlowBase which implements the mechanism for propagating
- * the type state to it's uses only after the exactType has been added to the
- * AllInstantiatedTypeFlow.
- *
- * TODO: Use this class for constant sources.
+ * Models a flow that introduces a constant in the type flow graph. Depending on the analysis policy
+ * this could be just the type of the constant, without the object identity.
  */
-public class ConstantTypeFlow extends SourceTypeFlowBase {
+public class ConstantTypeFlow extends TypeFlow<BytecodePosition> {
 
-    /**
-     * Constant flow has an immutable type state.
-     */
-    public ConstantTypeFlow(ValueNode node, TypeState state) {
-        super(node, state);
+    /** The constant state is propagated when the flow is linked in. */
+    private final TypeState constantState;
+
+    /** Constant flow has an immutable type state. */
+    public ConstantTypeFlow(BytecodePosition position, AnalysisType type, TypeState constantState) {
+        super(position, type, TypeState.forEmpty());
+        this.constantState = constantState;
+        assert source != null;
+        assert declaredType == null || declaredType.isInstantiated() : "Type " + declaredType + " not instantiated " + position;
+    }
+
+    public ConstantTypeFlow(ConstantTypeFlow original, MethodFlowsGraph methodFlows) {
+        super(original, methodFlows);
+        this.constantState = original.constantState;
     }
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        /* ConstantTypeFlow is not context sensitive, thus not cloneable. */
-        return this;
+        return new ConstantTypeFlow(this, methodFlows);
+    }
+
+    @Override
+    public void initFlow(PointsToAnalysis bb) {
+        /*
+         * Inject state into graphs lazily, only after the type flow graph is pruned. When context
+         * sensitivity is enabled the default graph is kept clean and used as a template for clones.
+         */
+        addState(bb, constantState);
     }
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("ConstantFlow<").append(getState()).append(">");
-        return str.toString();
+        return "ConstantFlow<" + getState() + ">";
     }
 }

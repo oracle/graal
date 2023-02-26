@@ -61,7 +61,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -120,6 +119,10 @@ final class PolyglotExceptionImpl {
                     boolean entered) {
         this.polyglot = polyglot;
         this.engine = engine;
+        /*
+         * If allowInterop == false, languageContext is passed just to get languageContext.context
+         * from it. It must not be used for anything else!
+         */
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
@@ -131,10 +134,8 @@ final class PolyglotExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
-                boolean cancelInducedTruffleException = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
-                                truffleException);
-                this.cancelled = cancelInducedTruffleException || isLegacyTruffleExceptionCancelled(exception);
+                boolean cancelInducedTruffleException = polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED);
+                this.cancelled = cancelInducedTruffleException;
                 this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleException && polyglotContextResourceExhausted);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
@@ -149,18 +150,8 @@ final class PolyglotExceptionImpl {
                 } else {
                     this.sourceLocation = null;
                 }
-                Object exceptionObject;
-                if (entered && languageContext != null && languageContext.isCreated() &&
-                                !isHostException(engine, exception) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
-                    /*
-                     * Allow proxies in guest language objects. This is for legacy support. Ideally
-                     * we should get rid of this if it is no longer relied upon.
-                     */
-                    Object receiver = exceptionObject;
-                    if (receiver instanceof Proxy) {
-                        receiver = languageContext.toGuestValue(null, receiver);
-                    }
-                    this.guestObject = languageContext.asValue(receiver);
+                if (entered && languageContext != null && languageContext.isCreated() && !isHostException(engine, exception)) {
+                    this.guestObject = languageContext.asValue(exception);
                 } else {
                     this.guestObject = null;
                 }
@@ -175,7 +166,7 @@ final class PolyglotExceptionImpl {
              */
             boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
                             (isHostException(engine, exception) && asHostException() instanceof InterruptedException);
-            boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+            boolean truffleException = exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException;
             boolean cancelInducedTruffleOrInterruptException = (polyglotContextState != null &&
                             (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
                             (interruptException || truffleException));
@@ -184,7 +175,7 @@ final class PolyglotExceptionImpl {
              * cancelled state, set the cancelled flag, but only if the original exception is a
              * truffle exception or interrupt exception.
              */
-            this.cancelled = cancelInducedTruffleOrInterruptException || (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.cancelled = cancelInducedTruffleOrInterruptException || (exception instanceof CancelExecution);
             this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleOrInterruptException && polyglotContextResourceExhausted);
             this.interrupted = interruptException && !this.cancelled;
             this.syntaxError = false;
@@ -199,21 +190,13 @@ final class PolyglotExceptionImpl {
                 this.guestObject = null;
                 location = exception instanceof PolyglotContextImpl.ExitException ? ((PolyglotContextImpl.ExitException) exception).getSourceLocation() : null;
             } else {
-                if (allowInterop) {
-                    this.exit = isLegacyTruffleExceptionExit(exception);
-                    this.exitStatus = exit ? getLegacyTruffleExceptionExitStatus(exception) : 0;
-                    this.guestObject = getLegacyTruffleExceptionGuestObject(languageContext, exception);
-                } else {
-                    this.exit = false;
-                    this.exitStatus = 0;
-                    this.guestObject = null;
-                }
+                this.exit = false;
+                this.exitStatus = 0;
+                this.guestObject = null;
             }
-            this.internal = !interrupted && !cancelled && !resourceExhausted && !exit;
+            this.internal = !interrupted && !cancelled && !resourceExhausted && !exit && !truffleException;
             if (exception instanceof CancelExecution) {
                 location = ((CancelExecution) exception).getSourceLocation();
-            } else if (allowInterop) {
-                location = getLegacyTruffleExceptionSourceLocation(exception);
             }
             this.sourceLocation = location != null ? newSourceSection(location) : null;
         }
@@ -249,57 +232,6 @@ final class PolyglotExceptionImpl {
             return (Error) toCheck;
         } else if (e instanceof StackOverflowError || e instanceof OutOfMemoryError) {
             return (Error) e;
-        }
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean isLegacyTruffleExceptionCancelled(Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException) {
-            return ((com.oracle.truffle.api.TruffleException) e).isCancelled();
-        }
-        return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean isLegacyTruffleExceptionExit(Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException) {
-            return ((com.oracle.truffle.api.TruffleException) e).isExit();
-        }
-        return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static int getLegacyTruffleExceptionExitStatus(Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException) {
-            return ((com.oracle.truffle.api.TruffleException) e).getExitStatus();
-        }
-        return 0;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.source.SourceSection getLegacyTruffleExceptionSourceLocation(Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException) {
-            return ((com.oracle.truffle.api.TruffleException) e).getSourceLocation();
-        }
-        return null;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static Value getLegacyTruffleExceptionGuestObject(PolyglotLanguageContext languageContext, Throwable e) {
-        // Legacy TruffleException
-        if (e instanceof com.oracle.truffle.api.TruffleException && languageContext != null) {
-            Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();
-            if (exceptionObject != null) {
-                if (exceptionObject instanceof Proxy) {
-                    exceptionObject = languageContext.toGuestValue(null, exceptionObject);
-                }
-                return languageContext.asValue(exceptionObject);
-            }
         }
         return null;
     }
@@ -437,7 +369,7 @@ final class PolyglotExceptionImpl {
         if (materializedFrames != null) {
             return materializedFrames;
         } else {
-            return new Iterable<StackFrame>() {
+            return new Iterable<>() {
                 public Iterator<StackFrame> iterator() {
                     return createStackFrameIterator(PolyglotExceptionImpl.this);
                 }

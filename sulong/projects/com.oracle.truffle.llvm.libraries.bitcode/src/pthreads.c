@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <pthread.h>
-
-/*
- * On different platforms, pthread_t and pthread_key_t might be different types
- * (e.g. on Linux they are long/int, on Darwin they are pointer/long). We do an
- * indirection here to abstract away the difference. On GraalVM, both are just
- * implemented as IDs.
- */
-typedef long __sulong_thread_t;
-typedef int __sulong_key_t;
-
-int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg);
-void *__sulong_thread_join(long thread);
-__sulong_thread_t __sulong_thread_self();
-int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
-int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len);
-
-__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
-void __sulong_thread_key_delete(__sulong_key_t key);
-void *__sulong_thread_getspecific(__sulong_key_t key);
-void __sulong_thread_setspecific(__sulong_key_t key, const void *value);
+#include <graalvm/llvm/threads.h>
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg) {
     __sulong_thread_t sthread;
@@ -80,13 +61,17 @@ pthread_t pthread_self() {
     return (pthread_t) __sulong_thread_self();
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(_WIN32)
 int pthread_setname_np(pthread_t thread, const char *name) {
     return __sulong_thread_setname_np((__sulong_thread_t) thread, name);
 }
 #else
 int pthread_setname_np(const char *name) {
     return __sulong_thread_setname_np(__sulong_thread_self(), name);
+}
+
+mach_port_t pthread_mach_thread_np(pthread_t thread) {
+    return (mach_port_t) thread;
 }
 #endif
 

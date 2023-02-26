@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,6 +85,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 final class ObjectSizeCalculator {
+    private enum ForcedStop {
+        NONE,
+        STOPATBYTES,
+        CANCELLATION
+    }
+
     private static volatile int staticObjectAlignment = -1;
 
     private static int getObjectAlignment() {
@@ -95,6 +101,20 @@ final class ObjectSizeCalculator {
             staticObjectAlignment = localObjectAlignment;
         }
         return localObjectAlignment;
+    }
+
+    private static ForcedStop enqueueOrStop(CalculationState calculationState, Object obj) {
+        ClassInfo classInfo = canProceed(calculationState.classInfos, obj);
+        if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(obj)) {
+            classInfo.increaseByBaseSize(calculationState, obj);
+            if (calculationState.dataSize > calculationState.stopAtBytes) {
+                return ForcedStop.STOPATBYTES;
+            } else if (calculationState.cancelled.get()) {
+                return ForcedStop.CANCELLATION;
+            }
+            enqueue(calculationState.pending, obj);
+        }
+        return ForcedStop.NONE;
     }
 
     private static final class ArrayMemoryLayout {
@@ -132,13 +152,15 @@ final class ObjectSizeCalculator {
         private final QuickIdentitySet<Object> alreadyVisited;
         private final Deque<Object> pending = new ArrayDeque<>(16 * 1024);
         private final long stopAtBytes;
+        private final AtomicBoolean cancelled;
 
         private long dataSize;
 
-        CalculationState(Map<Class<?>, ClassInfo> classInfos, QuickIdentitySet<Object> alreadyVisited, long stopAtBytes) {
+        CalculationState(Map<Class<?>, ClassInfo> classInfos, QuickIdentitySet<Object> alreadyVisited, long stopAtBytes, AtomicBoolean cancelled) {
             this.classInfos = classInfos;
             this.alreadyVisited = alreadyVisited;
             this.stopAtBytes = stopAtBytes;
+            this.cancelled = cancelled;
         }
     }
 
@@ -166,7 +188,7 @@ final class ObjectSizeCalculator {
     @CompilerDirectives.TruffleBoundary
     long calculateObjectSize(final Object obj, long stopAtBytes, AtomicBoolean cancelled) {
         if (TruffleOptions.AOT || Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on this platform.");
         }
         /*
          * Breadth-first traversal instead of naive depth-first with recursive implementation, so we
@@ -194,21 +216,20 @@ final class ObjectSizeCalculator {
             } else {
                 classInfosToUse = new IdentityHashMap<>();
             }
-            calculationState = new CalculationState(classInfosToUse, new QuickIdentitySet<>(alreadyVisitedInitialCapacity), stopAtBytes);
+            calculationState = new CalculationState(classInfosToUse, new QuickIdentitySet<>(alreadyVisitedInitialCapacity), stopAtBytes, cancelled);
         }
         try {
             if (cancelled.get()) {
                 throw cancel(calculationState.dataSize);
             }
-            ClassInfo classInfo = getClassInfo(calculationState.classInfos, obj.getClass());
-            classInfo.increaseByBaseSize(calculationState, obj);
-            calculationState.alreadyVisited.add(obj);
-            for (Object o = obj;;) {
-                visit(calculationState, o);
-                boolean localCancelled = cancelled.get();
-                if (calculationState.pending.isEmpty() || calculationState.dataSize > calculationState.stopAtBytes) {
+            ForcedStop stop = enqueueOrStop(calculationState, obj);
+            for (Object o = calculationState.pending.pollFirst();;) {
+                if (o != null) {
+                    stop = visit(calculationState, o);
+                }
+                if (calculationState.pending.isEmpty() || stop == ForcedStop.STOPATBYTES) {
                     return calculationState.dataSize;
-                } else if (localCancelled) {
+                } else if (stop == ForcedStop.CANCELLATION) {
                     throw cancel(calculationState.dataSize);
                 }
                 o = calculationState.pending.pollFirst();
@@ -238,12 +259,12 @@ final class ObjectSizeCalculator {
         });
     }
 
-    private static void visit(CalculationState calculationState, Object obj) {
+    private static ForcedStop visit(CalculationState calculationState, Object obj) {
         Class<?> clazz = obj.getClass();
         if (clazz == ArrayElementsVisitor.class) {
-            ((ArrayElementsVisitor) obj).visit(calculationState);
+            return ((ArrayElementsVisitor) obj).visit(calculationState);
         } else {
-            calculationState.classInfos.get(clazz).visit(calculationState, obj);
+            return calculationState.classInfos.get(clazz).visit(calculationState, obj);
         }
     }
 
@@ -261,7 +282,6 @@ final class ObjectSizeCalculator {
                         !(obj instanceof TruffleLanguage.Provider) &&
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
-                        !(obj instanceof ClassLoader) &&
                         !(obj instanceof PolyglotWrapper) &&
                         !(obj instanceof Value) &&
                         !(obj instanceof Context) &&
@@ -275,6 +295,7 @@ final class ObjectSizeCalculator {
                         EngineAccessor.HOST.isHostBoundaryValue(obj) ||
 
                         (obj instanceof Class) ||
+                        (obj instanceof ClassLoader) ||
                         (obj instanceof OptionValues) ||
 
                         (obj instanceof TruffleLanguage.ContextReference) ||
@@ -309,7 +330,6 @@ final class ObjectSizeCalculator {
                         (obj instanceof TruffleLanguage.Provider) ||
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
-                        (obj instanceof ClassLoader) ||
                         (obj instanceof PolyglotWrapper) ||
                         (obj instanceof Value) ||
                         (obj instanceof Context) ||
@@ -349,17 +369,23 @@ final class ObjectSizeCalculator {
             this.alreadyVisited = alreadyVisited;
         }
 
-        public void visit(CalculationState calculationState) {
+        public ForcedStop visit(CalculationState calculationState) {
             for (final Object elem : array) {
                 ClassInfo classInfo = canProceed(calculationState.classInfos, elem);
                 if (classInfo != StopClassInfo.INSTANCE && alreadyVisited.add(elem)) {
                     classInfo.increaseByBaseSize(calculationState, elem);
                     if (calculationState.dataSize > calculationState.stopAtBytes) {
-                        break;
+                        return ForcedStop.STOPATBYTES;
+                    } else if (calculationState.cancelled.get()) {
+                        return ForcedStop.CANCELLATION;
                     }
-                    ObjectSizeCalculator.visit(calculationState, elem);
+                    ForcedStop stop = ObjectSizeCalculator.visit(calculationState, elem);
+                    if (stop != ForcedStop.NONE) {
+                        return stop;
+                    }
                 }
             }
+            return ForcedStop.NONE;
         }
     }
 
@@ -376,7 +402,12 @@ final class ObjectSizeCalculator {
     }
 
     private interface ClassInfo {
-        void visit(CalculationState calculationState, Object obj);
+        /**
+         * @return <code>STOPATBYTES</code> or <code>CANCELLATION</code> if calculation should be
+         *         stopped due to stopAtBytes or cancellation, respectively, <code>NONE</code>
+         *         otherwise.
+         */
+        ForcedStop visit(CalculationState calculationState, Object obj);
 
         /*
          * Base size is added when the object is enqueued so that the queue doesn't grow too much
@@ -395,7 +426,8 @@ final class ObjectSizeCalculator {
         }
 
         @Override
-        public void visit(CalculationState calculationState, Object obj) {
+        public ForcedStop visit(CalculationState calculationState, Object obj) {
+            return ForcedStop.NONE;
         }
 
         @Override
@@ -426,7 +458,7 @@ final class ObjectSizeCalculator {
         }
 
         @Override
-        public void visit(CalculationState calculationState, Object obj) {
+        public ForcedStop visit(CalculationState calculationState, Object obj) {
             if (!isPrimitive) {
                 int length = Array.getLength(obj);
                 /*
@@ -442,18 +474,14 @@ final class ObjectSizeCalculator {
                     }
                     case 1: {
                         Object o = Array.get(obj, 0);
-                        ClassInfo classInfo = canProceed(calculationState.classInfos, o);
-                        if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(o)) {
-                            classInfo.increaseByBaseSize(calculationState, o);
-                            enqueue(calculationState.pending, o);
-                        }
-                        break;
+                        return enqueueOrStop(calculationState, o);
                     }
                     default: {
                         enqueue(calculationState.pending, new ArrayElementsVisitor((Object[]) obj, calculationState.alreadyVisited));
                     }
                 }
             }
+            return ForcedStop.NONE;
         }
     }
 
@@ -475,32 +503,32 @@ final class ObjectSizeCalculator {
         }
 
         @Override
-        public void visit(CalculationState calculationState, Object obj) {
+        public ForcedStop visit(CalculationState calculationState, Object obj) {
             if (isReference) {
-                Object nextObj = ((Reference<?>) obj).get();
-                if (enqueueOrStop(calculationState, nextObj)) {
-                    return;
+                Object nextObj = null;
+                try {
+                    nextObj = ((Reference<?>) obj).get();
+                } catch (Exception t) {
+                    /*
+                     * The lookup might throw an exception .e.g UnsupportedOperationException for
+                     * phantom references.
+                     */
+                }
+                ForcedStop stop = enqueueOrStop(calculationState, nextObj);
+                if (stop != ForcedStop.NONE) {
+                    return stop;
                 }
             }
             for (Object f : resolvedJavaFields) {
                 Object nextObj = EngineAccessor.RUNTIME.getFieldValue(f, obj);
-                if (enqueueOrStop(calculationState, nextObj)) {
-                    break;
+                ForcedStop stop = enqueueOrStop(calculationState, nextObj);
+                if (stop != ForcedStop.NONE) {
+                    return stop;
                 }
             }
+            return ForcedStop.NONE;
         }
 
-        private static boolean enqueueOrStop(CalculationState calculationState, Object nextObj) {
-            ClassInfo classInfo = canProceed(calculationState.classInfos, nextObj);
-            if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(nextObj)) {
-                classInfo.increaseByBaseSize(calculationState, nextObj);
-                if (calculationState.dataSize > calculationState.stopAtBytes) {
-                    return true;
-                }
-                enqueue(calculationState.pending, nextObj);
-            }
-            return false;
-        }
     }
 
     /**

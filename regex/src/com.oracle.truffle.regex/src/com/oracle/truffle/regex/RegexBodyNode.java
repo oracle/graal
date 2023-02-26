@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -50,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
@@ -75,6 +77,16 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
 
     public RegexLanguage getRegexLanguage() {
         return language;
+    }
+
+    public Encodings.Encoding getEncoding() {
+        return source.getEncoding();
+    }
+
+    public boolean isBooleanMatch() {
+        boolean booleanMatch = source.getOptions().isBooleanMatch();
+        CompilerAsserts.partialEvaluationConstant(booleanMatch);
+        return booleanMatch;
     }
 
     @TruffleBoundary

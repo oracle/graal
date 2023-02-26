@@ -26,16 +26,14 @@ package com.oracle.svm.core.posix.aarch64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
@@ -44,18 +42,14 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
-@AutomaticFeature
-class AArch64DarwinUContextRegisterDumperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+@AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
+@Platforms(Platform.DARWIN_AARCH64.class)
+class AArch64DarwinUContextRegisterDumper implements UContextRegisterDumper {
+    AArch64DarwinUContextRegisterDumper() {
         VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AArch64.r28.equals(AArch64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(RegisterDumper.class, new AArch64DarwinUContextRegisterDumper());
     }
-}
 
-public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, Signal.ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
@@ -91,8 +85,8 @@ public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDump
         dumpReg(log, "R28 ", regs.read(28), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R29 ", sigcontext.fp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R30 ", sigcontext.lr(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "SP ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "PC ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "SP  ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "PC  ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
     @Override
@@ -110,12 +104,14 @@ public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDump
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.sp());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.pc());

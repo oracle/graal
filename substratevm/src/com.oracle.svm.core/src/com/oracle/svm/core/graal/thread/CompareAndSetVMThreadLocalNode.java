@@ -35,15 +35,17 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_8, size = NodeSize.SIZE_8)
-public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable {
+public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable, SingleMemoryKill {
     public static final NodeClass<CompareAndSetVMThreadLocalNode> TYPE = NodeClass.create(CompareAndSetVMThreadLocalNode.class);
 
     private final VMThreadLocalInfo threadLocalInfo;
@@ -61,6 +63,11 @@ public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implement
 
     public ValueNode getUpdate() {
         return update;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 
     @Override

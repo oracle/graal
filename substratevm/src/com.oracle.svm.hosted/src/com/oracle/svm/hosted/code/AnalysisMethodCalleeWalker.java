@@ -30,7 +30,7 @@ import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.hosted.code.AnalysisMethodCalleeWalker.CallPathVisitor.VisitResult;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -77,31 +77,24 @@ public class AnalysisMethodCalleeWalker {
         path.add(method);
         try {
             /* Visit the method directly. */
-            final VisitResult directResult = visitor.visitMethod(method, caller, invokePosition, path.size());
+            VisitResult directResult = visitor.visitMethod(method, caller, invokePosition, path.size());
             if (directResult != VisitResult.CONTINUE) {
                 return directResult;
             }
             /* Visit the callees of this method. */
-            final VisitResult calleeResult = walkCallees(method, visitor);
-            if (calleeResult != VisitResult.CONTINUE) {
-                return calleeResult;
+            for (InvokeInfo invoke : method.getInvokes()) {
+                walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getPosition(), visitor);
             }
-            /* Visit all the implementations of this method, ignoring if any of them says CUT. */
-            for (AnalysisMethod impl : method.getImplementations()) {
-                walkMethodAndCallees(impl, caller, invokePosition, visitor);
+            if (caller != null) {
+                /* Visit all the implementations of this method. */
+                for (AnalysisMethod impl : method.getImplementations()) {
+                    walkMethodAndCallees(impl, caller, invokePosition, visitor);
+                }
             }
             return VisitResult.CONTINUE;
         } finally {
             path.remove(method);
         }
-    }
-
-    /** Visit the callees of this method. */
-    VisitResult walkCallees(AnalysisMethod method, CallPathVisitor visitor) {
-        for (InvokeInfo invoke : method.getInvokes()) {
-            walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getPosition(), visitor);
-        }
-        return VisitResult.CONTINUE;
     }
 
     /** A visitor for HostedMethods, with a caller path. */

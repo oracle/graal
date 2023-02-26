@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 
 public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
+    final JNIObjectHandle javaLangClassNotFoundException;
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
 
@@ -81,10 +82,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIFieldId javaUtilResourceBundleParentField;
     private JNIMethodId javaUtilResourceBundleGetLocale;
 
+    final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
+        javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
 
@@ -113,6 +117,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangIllegalAccessError = newClassGlobalRef(env, "java/lang/IllegalAccessError");
         javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
         javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
+
+        JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
+        javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {

@@ -28,12 +28,8 @@ import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_EXCEPTION_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -88,8 +84,6 @@ public class IntrinsicContext {
         assert bytecodeProvider != null;
         this.compilationContext = compilationContext;
         this.allowPartialIntrinsicArgumentMismatch = allowPartialIntrinsicArgumentMismatch;
-        assert !isCompilationRoot() || method.hasBytecodes() : "Cannot root compile intrinsic for native or abstract method " + method.format("%H.%n(%p)");
-        assert IS_IN_NATIVE_IMAGE || !method.equals(intrinsic) || method.getAnnotation(MethodSubstitution.class) == null : "method and intrinsic must be different: " + method + " " + intrinsic;
     }
 
     /**
@@ -131,27 +125,8 @@ public class IntrinsicContext {
         return originalMethod.equals(targetMethod) || intrinsicMethod.equals(targetMethod);
     }
 
-    private NodeSourcePosition nodeSourcePosition;
-
     public boolean isPostParseInlined() {
         return compilationContext.equals(INLINE_AFTER_PARSING);
-    }
-
-    public boolean isCompilationRoot() {
-        return compilationContext.equals(ROOT_COMPILATION) || compilationContext.equals(ROOT_COMPILATION_ENCODING);
-    }
-
-    public boolean isIntrinsicEncoding() {
-        return compilationContext.equals(ROOT_COMPILATION_ENCODING);
-    }
-
-    public NodeSourcePosition getNodeSourcePosition() {
-        return nodeSourcePosition;
-    }
-
-    public void setNodeSourcePosition(NodeSourcePosition position) {
-        assert nodeSourcePosition == null : "can only be set once";
-        this.nodeSourcePosition = position;
     }
 
     /**
@@ -167,17 +142,7 @@ public class IntrinsicContext {
         /**
          * An intrinsic is being processed when inlining an {@link Invoke} in an existing graph.
          */
-        INLINE_AFTER_PARSING,
-
-        /**
-         * An intrinsic is the root of compilation.
-         */
-        ROOT_COMPILATION,
-
-        /**
-         * An intrinsic is the root of a compilation done for graph encoding.
-         */
-        ROOT_COMPILATION_ENCODING
+        INLINE_AFTER_PARSING
     }
 
     /**

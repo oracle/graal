@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,7 @@ public class StampMemoryAccessTest extends GraalCompilerTest {
         Object object = this;
         JavaConstant objectBase = getSnippetReflection().forObject(object);
         Field f = getClass().getDeclaredField("longField1");
-        long baseDisplacement = UNSAFE.objectFieldOffset(f);
+        long baseDisplacement = getObjectFieldOffset(f);
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void && kind.getByteCount() > 1) {
                 for (long offset = 1; offset < kind.getByteCount(); offset++) {

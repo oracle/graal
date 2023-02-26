@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,9 +82,9 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -195,9 +194,6 @@ public final class DebuggerSession implements Closeable {
     private final boolean hasExpressionElement;
     private final boolean hasRootElement;
     private final List<Breakpoint> breakpoints = Collections.synchronizedList(new ArrayList<>());
-    // We keep a set of unresolved breakpoints to call just those for resolution.
-    private final Collection<Breakpoint> breakpointsUnresolved = ConcurrentHashMap.newKeySet();
-    private volatile boolean breakpointsUnresolvedEmpty = true;
 
     private EventBinding<? extends ExecutionEventNodeFactory> syntaxElementsBinding;
     final Set<EventBinding<? extends ExecutionEventNodeFactory>> allBindings = Collections.synchronizedSet(new HashSet<>());
@@ -218,6 +214,7 @@ public final class DebuggerSession implements Closeable {
     private final DebuggerExecutionLifecycle executionLifecycle;
     final ThreadLocal<ThreadSuspension> threadSuspensions = new ThreadLocal<>();
     private final DebugSourcesResolver sources;
+    private final ThreadLocal<Set<Integer>> steppingEnabledSlots = new ThreadLocal<>();
 
     private final int sessionId;
 
@@ -303,7 +300,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.30
      */
     public Map<String, ? extends DebugValue> getExportedSymbols() {
-        return new AbstractMap<String, DebugValue>() {
+        return new AbstractMap<>() {
             private final DebugValue polyglotBindings = new DebugValue.HeapValue(DebuggerSession.this, "polyglot", debugger.getEnv().getPolyglotBindings());
 
             @Override
@@ -425,64 +422,104 @@ public final class DebuggerSession implements Closeable {
         if (event != null) {
             throw new IllegalStateException("Suspended already");
         }
-        RootNode nodeRoot = null;
+        RootNode nodeRoot;
         if (node != null) {
             nodeRoot = node.getRootNode();
             if (nodeRoot == null) {
                 throw new IllegalArgumentException(String.format("The node %s does not have a root.", node));
             }
+        } else {
+            nodeRoot = null;
         }
-        FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
-        if (frameInstance == null) {
-            return false;
-        }
-        RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-        if (!includeInternal) {
-            if (root.isInternal()) {
-                // In an internal code, we need to iterate stack to find non-internal location
-                frameInstance = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                    int startDepth = 1;
 
-                    @Override
-                    public FrameInstance visitFrame(FrameInstance fi) {
-                        if (startDepth-- > 0) {
-                            return null;
-                        }
-                        if (!((RootCallTarget) fi.getCallTarget()).getRootNode().isInternal()) {
-                            return fi;
-                        }
-                        return null;
-                    }
-                });
-                if (frameInstance == null) {
-                    return false;
-                } else {
-                    root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+        SuspendContextAndFrame result = Truffle.getRuntime().iterateFrames((frameInstance) -> {
+            RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+            if (!includeInternal) {
+                if (root.isInternal()) {
+                    return null;
                 }
             }
-        }
-        if (nodeRoot != null && nodeRoot != root) {
-            throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
-        }
-        Node callNode = frameInstance.getCallNode();
-        if (callNode == null) {
-            callNode = node;
+            if (nodeRoot != null && nodeRoot != root) {
+                throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
+            }
+            Node callNode = frameInstance.getCallNode();
             if (callNode == null) {
-                // We have no idea where in the function we are.
-                callNode = root;
+                callNode = node;
+                if (callNode == null) {
+                    // We have no idea where in the function we are.
+                    callNode = root;
+                }
+            }
+            if (node != null && node != callNode) {
+                throw new IllegalArgumentException(String.format("The node %s does not match the current known call node %s.", node, callNode));
+            }
+            Node icallNode = InstrumentableNode.findInstrumentableParent(callNode);
+            if (icallNode != null) {
+                callNode = icallNode;
+            }
+            MaterializedFrame frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+            SuspendedContext context = SuspendedContext.create(callNode, null);
+            return new SuspendContextAndFrame(context, frame);
+        });
+        if (result == null) {
+            return false;
+        }
+        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null);
+        return true;
+    }
+
+    // Session-specific stepping control.
+    void restoreSteppingOnCurrentThread() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert debugger.getEnv().getEnteredContext() != null : "Need to be called on a context thread";
+        int count = debugger.getSteppingDisabledCount();
+        if (count == 0) {
+            // There is nothing to restore
+            return;
+        }
+        Set<Integer> enabledSlots = steppingEnabledSlots.get();
+        if (enabledSlots == null) {
+            enabledSlots = new HashSet<>();
+            steppingEnabledSlots.set(enabledSlots);
+        }
+        enabledSlots.add(count);
+    }
+
+    // Session-specific stepping control, delegates to Debugger.getSteppingDisabledCount().
+    boolean isSteppingEnabledOnCurrentThread() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert debugger.getEnv().getEnteredContext() != null : "Need to be called on a context thread";
+        int count = debugger.getSteppingDisabledCount();
+        if (count == 0) {
+            return true;
+        }
+        Set<Integer> enabledSlots = steppingEnabledSlots.get();
+        return enabledSlots != null && enabledSlots.contains(count);
+    }
+
+    // Clear session-specific stepping control
+    void clearDisabledSteppingOnCurrentThread(int count) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert debugger.getEnv().getEnteredContext() != null : "Need to be called on a context thread";
+        assert count > 0 : "Wrong count = " + count;
+        Set<Integer> enabledSlots = steppingEnabledSlots.get();
+        if (enabledSlots != null) {
+            enabledSlots.remove(count);
+            if (enabledSlots.isEmpty()) {
+                steppingEnabledSlots.remove();
             }
         }
-        if (node != null && node != callNode) {
-            throw new IllegalArgumentException(String.format("The node %s does not match the current known call node %s.", node, callNode));
+    }
+
+    static final class SuspendContextAndFrame {
+
+        final SuspendedContext context;
+        final MaterializedFrame frame;
+
+        SuspendContextAndFrame(SuspendedContext context, MaterializedFrame frame) {
+            this.context = context;
+            this.frame = frame;
         }
-        Node icallNode = InstrumentableNode.findInstrumentableParent(callNode);
-        if (icallNode != null) {
-            callNode = icallNode;
-        }
-        MaterializedFrame frame = frameInstance.getFrame(FrameAccess.READ_WRITE).materialize();
-        SuspendedContext context = SuspendedContext.create(callNode, null);
-        doSuspend(context, SuspendAnchor.BEFORE, frame, null);
-        return true;
     }
 
     /**
@@ -635,7 +672,6 @@ public final class DebuggerSession implements Closeable {
                     @Override
                     public ExecutionEventNode create(EventContext context) {
                         if (context.hasTag(RootTag.class)) {
-                            resolveUnresolvedBreakpoints(context.getInstrumentedNode());
                             return new RootSteppingDepthNode(context);
                         } else {
                             return new SteppingNode(context);
@@ -643,17 +679,6 @@ public final class DebuggerSession implements Closeable {
                     }
                 }, hasExpressionElement, syntaxTags);
                 allBindings.add(syntaxElementsBinding);
-            } else {
-                // Create binding for breakpoints resolution
-                this.syntaxElementsBinding = createBinding(includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
-                    @Override
-                    public ExecutionEventNode create(EventContext context) {
-                        if (context.hasTag(RootTag.class)) {
-                            resolveUnresolvedBreakpoints(context.getInstrumentedNode());
-                        }
-                        return null;
-                    }
-                }, false, RootTag.class);
             }
         }
     }
@@ -778,7 +803,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #setBreakpointsActive(Breakpoint.Kind, boolean)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public void setBreakpointsActive(boolean active) {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             setBreakpointsActive(kind, active);
@@ -819,7 +844,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #isBreakpointsActive(Breakpoint.Kind)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public boolean isBreakpointsActive() {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             if (isBreakpointsActive(kind)) {
@@ -876,15 +901,7 @@ public final class DebuggerSession implements Closeable {
                 return;
             }
         }
-        if (!global) {
-            if (breakpoint.isResolvable() && !breakpoint.isResolved()) {
-                this.breakpointsUnresolved.add(breakpoint);
-                this.breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
-            }
-        }
         if (!breakpoint.install(this, !global)) {
-            this.breakpointsUnresolved.remove(breakpoint);
-            this.breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
             return;
         }
         if (!global) { // Do not keep global breakpoints in the list
@@ -893,27 +910,6 @@ public final class DebuggerSession implements Closeable {
         if (Debugger.TRACE) {
             trace("installed session breakpoint %s", breakpoint);
         }
-    }
-
-    private void resolveUnresolvedBreakpoints(Node node) {
-        if (breakpointsUnresolvedEmpty) {
-            return;
-        }
-        SourceSection sourceSection = node.getSourceSection();
-        if (sourceSection != null) {
-            Source source = sourceSection.getSource();
-            for (Breakpoint breakpoint : breakpointsUnresolved) {
-                if (breakpoint.isEnabled()) {
-                    breakpoint.doResolve(source);
-                }
-            }
-        }
-    }
-
-    void breakpointResolved(Breakpoint breakpoint) {
-        assert breakpoint.isResolved();
-        breakpointsUnresolved.remove(breakpoint);
-        breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
     }
 
     synchronized void disposeBreakpoint(Breakpoint breakpoint) {
@@ -1093,17 +1089,17 @@ public final class DebuggerSession implements Closeable {
         return newReturnValue;
     }
 
-    @SuppressWarnings("deprecation")
     private static void clearFrame(RootNode root, MaterializedFrame frame) {
         FrameDescriptor descriptor = frame.getFrameDescriptor();
         if (root.getFrameDescriptor() == descriptor) {
             // Clear only those frames that correspond to the current root
             Object value = descriptor.getDefaultValue();
-            for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
-                frame.setObject(slot, value);
-            }
             for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
-                frame.setObject(slot, value);
+                if (frame.isStatic(slot)) {
+                    frame.setObjectStatic(slot, value);
+                } else {
+                    frame.setObject(slot, value);
+                }
             }
             for (int slot = 0; slot < descriptor.getNumberOfAuxiliarySlots(); slot++) {
                 frame.setAuxiliarySlot(slot, null);
@@ -1564,8 +1560,14 @@ public final class DebuggerSession implements Closeable {
         @TruffleBoundary
         private void doStepBefore(MaterializedFrame frame) {
             SuspendAnchor anchor = SuspendAnchor.BEFORE;
-            SteppingStrategy steppingStrategy;
-            if (suspendNext || suspendAll || (steppingStrategy = getSteppingStrategy(Thread.currentThread())) != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
+            boolean doCallback;
+            if (suspendNext || suspendAll) {
+                doCallback = isSteppingEnabledOnCurrentThread();
+            } else {
+                SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
+                doCallback = steppingStrategy != null && isSteppingEnabledOnCurrentThread() && steppingStrategy.isActiveOnStepTo(context, anchor);
+            }
+            if (doCallback) {
                 notifyCallback(context, this, frame, anchor, null, null, null, null);
             }
         }
@@ -1574,7 +1576,7 @@ public final class DebuggerSession implements Closeable {
         protected final Object doStepAfter(MaterializedFrame frame, Object result) {
             SuspendAnchor anchor = SuspendAnchor.AFTER;
             SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
-            if (steppingStrategy != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
+            if (steppingStrategy != null && isSteppingEnabledOnCurrentThread() && steppingStrategy.isActiveOnStepTo(context, anchor)) {
                 return notifyCallback(context, this, frame, anchor, this, result, null, null);
             }
             return result;

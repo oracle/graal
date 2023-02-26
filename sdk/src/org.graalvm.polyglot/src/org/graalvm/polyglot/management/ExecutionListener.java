@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 /**
@@ -193,10 +193,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 public final class ExecutionListener implements AutoCloseable {
 
     private static final ExecutionListener EMPTY = new ExecutionListener(null, null);
-    final AbstractManagementDispatch dispatch;
+    final AbstractExecutionListenerDispatch dispatch;
     final Object receiver;
 
-    ExecutionListener(AbstractManagementDispatch dispatch, Object receiver) {
+    ExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {
         this.dispatch = dispatch;
         this.receiver = receiver;
     }

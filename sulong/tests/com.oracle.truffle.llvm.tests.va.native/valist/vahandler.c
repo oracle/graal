@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,16 @@ double sumDoublesNative(int count, va_list args) {
     return sum;
 }
 
+double sumDoublesNativeWithPtr(int count, va_list *args) {
+    double sum = 0;
+    for (int i = 0; i < count; ++i) {
+        double num = va_arg(*args, double);
+        printf("arg[%d]=%f\n", i, num);
+        sum += num;
+    }
+    return sum;
+}
+
 double testVariousTypesNative(int count, va_list args) {
     double sum = 0;
     int i = 0;
@@ -57,5 +67,26 @@ double testVariousTypesNative(int count, va_list args) {
     int overflow1 = va_arg(args, int);
     char *overflow2 = va_arg(args, char *);
     printf("%s, %d, %f, %d, %f, %d, %f, %d, %s\n", msg, a.x, a.y, b.x, b.y, c->x, c->y, overflow1, overflow2);
+    return sum;
+}
+
+double testLargeStructNative(int count, va_list args) {
+    double sum = va_arg(args, int);
+    struct Large large = va_arg(args, struct Large);
+    sum += large.f1;
+    sum += large.f2;
+    sum += large.f3;
+    sum += large.d1;
+    sum += large.d2;
+    sum += large.d3;
+    sum += large.i1;
+    sum += large.i2;
+    sum += large.i3;
+    sum += large.l1;
+    sum += large.l2;
+    sum += large.l3;
+    sum += va_arg(args, int);
+    printf("Large: %f, %f, %f, %f, %f, %f, %d, %d, %d, %ld, %ld, %ld\n", large.f1, large.f2, large.f3, large.d1, large.d2, large.d3, large.i1,
+           large.i2, large.i3, large.l1, large.l2, large.l3);
     return sum;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.PrintStream;
 import java.util.Iterator;
 
 import org.graalvm.compiler.debug.DebugContext.DisabledScope;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -65,7 +66,7 @@ public final class ScopeImpl implements DebugContext.Scope {
                  * didn't print. This ensure the first new scope always shows up.
                  */
                 if (isCurrent || printContext(null) != 0 || mustPrint) {
-                    str.append(indent).append("[thread:").append(Thread.currentThread().getId()).append("] scope: ").append(getQualifiedName()).append(System.lineSeparator());
+                    str.append(indent).append("[thread:").append(GraalServices.getCurrentThreadId()).append("] scope: ").append(getQualifiedName()).append(System.lineSeparator());
                 }
                 printContext(str);
                 emitted = true;
@@ -382,11 +383,11 @@ public final class ScopeImpl implements DebugContext.Scope {
     @Override
     public Iterable<Object> getCurrentContext() {
         final ScopeImpl scope = this;
-        return new Iterable<Object>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Object> iterator() {
-                return new Iterator<Object>() {
+                return new Iterator<>() {
 
                     ScopeImpl currentScope = scope;
                     int objectIndex;

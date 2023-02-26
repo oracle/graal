@@ -83,7 +83,6 @@ import jdk.vm.ci.meta.Signature;
 
 public final class FrameStateBuilder implements SideEffectsState {
 
-    private static final ValueNode[] EMPTY_ARRAY = new ValueNode[0];
     private static final MonitorIdNode[] EMPTY_MONITOR_ARRAY = new MonitorIdNode[0];
 
     private final BytecodeParser parser;
@@ -284,7 +283,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     private static ValueNode[] allocateArray(int length) {
-        return length == 0 ? EMPTY_ARRAY : new ValueNode[length];
+        return length == 0 ? ValueNode.EMPTY_ARRAY : new ValueNode[length];
     }
 
     public ResolvedJavaMethod getMethod() {
@@ -608,7 +607,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         try {
             return lockedObjects[lockedObjects.length - 1];
         } finally {
-            lockedObjects = lockedObjects.length == 1 ? EMPTY_ARRAY : Arrays.copyOf(lockedObjects, lockedObjects.length - 1);
+            lockedObjects = lockedObjects.length == 1 ? ValueNode.EMPTY_ARRAY : Arrays.copyOf(lockedObjects, lockedObjects.length - 1);
             monitorIds = monitorIds.length == 1 ? EMPTY_MONITOR_ARRAY : Arrays.copyOf(monitorIds, monitorIds.length - 1);
             assert lockedObjects.length == monitorIds.length;
         }
@@ -1082,8 +1081,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             }
         }
         assert stackSize == 0;
-        ValueNode[] newStack = {};
-        ValueNode[] locks = {};
+        ValueNode[] newStack = ValueNode.EMPTY_ARRAY;
+        ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         assert monitorIds.length == 0;
         stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), false, false));
         return stateAfterStart;

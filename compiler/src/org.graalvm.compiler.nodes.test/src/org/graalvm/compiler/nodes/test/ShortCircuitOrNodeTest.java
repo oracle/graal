@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,14 @@ package org.graalvm.compiler.nodes.test;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -42,7 +41,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -57,7 +55,7 @@ public class ShortCircuitOrNodeTest extends GraalCompilerTest {
 
     public static void registerShortCircuitOrPlugin(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, ShortCircuitOrNodeTest.class);
-        r.register2("shortCircuitOr", boolean.class, boolean.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("shortCircuitOr", boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode b1, ValueNode b2) {
                 LogicNode x = b.add(new IntegerEqualsNode(b1, b.add(ConstantNode.forInt(1))));
@@ -379,7 +377,7 @@ public class ShortCircuitOrNodeTest extends GraalCompilerTest {
         for (int i = 1; i <= 64; ++i) {
             String snippet = "testCascadeSnippet" + i;
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-            Suites s = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().getDefaultSuites(getInitialOptions());
+            Suites s = super.createSuites(getInitialOptions());
             s.getHighTier().apply(graph, getDefaultHighTierContext());
             s.getMidTier().apply(graph, getDefaultMidTierContext());
             int shortCircuitCount = graph.getNodes(ShortCircuitOrNode.TYPE).count();

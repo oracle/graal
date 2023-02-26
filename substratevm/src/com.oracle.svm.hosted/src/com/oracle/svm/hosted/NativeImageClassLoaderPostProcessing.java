@@ -27,12 +27,12 @@ package com.oracle.svm.hosted;
 
 /**
  * ServiceLoader interface to allow post-processing tasks that should be performed right after
- * {@link AbstractNativeImageClassLoaderSupport} is created. For example, this is used to apply the
+ * {@link NativeImageClassLoaderSupport} is created. For example, this is used to apply the
  * native-image classloader options after hosted options are accessible but before
- * {@link com.oracle.svm.hosted.ImageClassLoader#initAllClasses()} gets called.
+ * {@link com.oracle.svm.hosted.ImageClassLoader#loadAllClasses()} gets called.
  */
 public interface NativeImageClassLoaderPostProcessing {
 
-    void apply(AbstractNativeImageClassLoaderSupport support);
+    void apply(NativeImageClassLoaderSupport support);
 
 }

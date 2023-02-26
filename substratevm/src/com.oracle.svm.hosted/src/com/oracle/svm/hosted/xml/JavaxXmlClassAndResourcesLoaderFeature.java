@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,19 +25,21 @@
 
 package com.oracle.svm.hosted.xml;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import org.graalvm.nativeimage.hosted.Feature;
-
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.BuiltinSchemaGrammarClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMImplementationRegistryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DOMParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.DatatypeFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SAXParserClasses;
+import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 
-@AutomaticFeature
-public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements Feature {
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+
+@AutomaticallyRegisteredFeature
+public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -58,5 +60,11 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
         access.registerReachabilityHandler(new DatatypeFactoryClasses()::registerConfigs,
                         method(access, "javax.xml.datatype.DatatypeFactory", "newInstance"));
+
+        access.registerReachabilityHandler(new SchemaDVFactoryClasses()::registerConfigs,
+                        method(access, "com.sun.org.apache.xerces.internal.impl.dv.SchemaDVFactory", "getInstance"));
+
+        access.registerReachabilityHandler(new BuiltinSchemaGrammarClasses()::registerConfigs,
+                        constructor(access, "com.sun.org.apache.xerces.internal.impl.xs.SchemaGrammar$BuiltinSchemaGrammar", int.class, short.class));
     }
 }

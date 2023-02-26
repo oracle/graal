@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,23 +55,25 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
 
 // @formatter:off
 @TruffleInstrument.Registration(
     id = Insight.ID,
     name = InsightInstrument.NAME,
     version = Insight.VERSION,
-    services = { Function.class }
+    services = { Function.class },
+    website = "https://www.graalvm.org/tools/graalvm-insight/"
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {
     static final String NAME = "Insight";
 
-    @Option(stability = OptionStability.STABLE, name = "", help = "Use provided file as an insight script", category = OptionCategory.USER) //
+    @Option(stability = OptionStability.STABLE, name = "", help = "Use provided file as an insight script (default: no script).", usageSyntax = "<path>", category = OptionCategory.USER) //
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
     final IgnoreSources ignoreSources = new IgnoreSources();
-    final ContextLocal<InsightPerContext> perContextData;
+    private final ContextLocal<InsightPerContext> perContextData;
     private Env env;
     /** @GuardedBy("keys" */
     private final BitSet keys = new BitSet();
@@ -80,7 +82,7 @@ public class InsightInstrument extends TruffleInstrument {
 
     public InsightInstrument() {
         this.perContextData = createContextLocal((context) -> {
-            return new InsightPerContext(this, context);
+            return new InsightPerContext(this);
         });
         this.keysUnchanged = Truffle.getRuntime().createAssumption();
     }
@@ -99,7 +101,7 @@ public class InsightInstrument extends TruffleInstrument {
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
                 try {
-                    TruffleFile file = env.getTruffleFile(path);
+                    TruffleFile file = env.getTruffleFile(null, path);
                     if (file == null || !file.exists()) {
                         throw InsightException.notFound(file);
                     }
@@ -258,7 +260,7 @@ public class InsightInstrument extends TruffleInstrument {
         private int functionsMaxLen;
         private final AgentType type;
         /* @GuardedBy(keys) */
-        private EventBinding<?> binding;
+        private final List<EventBinding<?>> bindings = new ArrayList<>(2);
 
         private Key(AgentType type, int index) {
             if (index < 0) {
@@ -269,8 +271,9 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         Key assign(EventBinding<?> b) {
+            CompilerAsserts.neverPartOfCompilation();
             synchronized (keys) {
-                this.binding = b;
+                this.bindings.add(b);
                 return this;
             }
         }
@@ -289,14 +292,14 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         private void close() {
-            EventBinding<?> b;
+            List<EventBinding<?>> bs;
+            CompilerAsserts.neverPartOfCompilation();
             synchronized (keys) {
-                b = binding;
-                binding = null;
-                CompilerAsserts.neverPartOfCompilation();
+                bs = new ArrayList<>(bindings);
+                bindings.clear();
                 index = -1;
             }
-            if (b != null) {
+            for (EventBinding<?> b : bs) {
                 b.dispose();
             }
         }

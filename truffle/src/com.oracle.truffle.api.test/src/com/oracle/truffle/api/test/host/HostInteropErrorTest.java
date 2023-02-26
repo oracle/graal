@@ -245,7 +245,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        list = new ArrayList<Object>() {
+        list = new ArrayList<>() {
             @Override
             public Object get(int index) {
                 throw new NullPointerException();
@@ -259,7 +259,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        list = new ArrayList<Object>() {
+        list = new ArrayList<>() {
             @Override
             public int size() {
                 throw new NullPointerException();
@@ -282,7 +282,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
             assertTrue(pe.isHostException());
         });
 
-        entry = new Map.Entry<Object, Object>() {
+        entry = new Map.Entry<>() {
             @Override
             public Object getKey() {
                 throw new NullPointerException();
@@ -311,7 +311,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
             assertTrue(pe.isHostException());
         });
 
-        Iterable<Object> iterable = new Iterable<Object>() {
+        Iterable<Object> iterable = new Iterable<>() {
             @Override
             public Iterator<Object> iterator() {
                 throw new NullPointerException();
@@ -324,7 +324,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        Iterator<Object> iterator = new Iterator<Object>() {
+        Iterator<Object> iterator = new Iterator<>() {
             @Override
             public boolean hasNext() {
                 throw new NullPointerException();
@@ -361,7 +361,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        map = new HashMap<Object, Object>() {
+        map = new HashMap<>() {
             @Override
             public int size() {
                 throw new NullPointerException();
@@ -374,7 +374,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        map = new HashMap<Object, Object>() {
+        map = new HashMap<>() {
             @Override
             public Object getOrDefault(Object key, Object defaultValue) {
                 throw new NullPointerException();
@@ -387,7 +387,7 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         }, PolyglotException.class, (pe) -> {
             assertTrue(pe.isHostException());
         });
-        map = new HashMap<Object, Object>() {
+        map = new HashMap<>() {
             @Override
             public Set<Entry<Object, Object>> entrySet() {
                 throw new NullPointerException();

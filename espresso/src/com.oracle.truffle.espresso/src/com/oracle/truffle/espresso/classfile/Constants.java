@@ -51,6 +51,7 @@ public final class Constants {
 
     // Not part of the spec, used internally by the VM.
     public static final int ACC_FINALIZER            = 0x00010000;
+    public static final int ACC_FORCE_INLINE         = 0x00020000;
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
     public static final int ACC_CALLER_SENSITIVE     = 0x00080000;
     public static final int ACC_HIDDEN               = 0x00100000;
@@ -58,7 +59,6 @@ public final class Constants {
 
     public static final int FIELD_ID_TYPE            = 0x01000000;
     public static final int FIELD_ID_OBFUSCATE       = 0x02000000;
-    public static final int FIELD_REDEFINE_ADDED     = 0x08000000;
 
     public static final int JVM_ACC_WRITTEN_FLAGS    = 0x00007FFF;
     // @formatter:on
@@ -571,23 +571,37 @@ public final class Constants {
     public static final int opc_priv = 255;
 
     /* ArrayType constants */
+
+    public static final int JVM_ArrayType_Boolean = 4;
+    public static final int JVM_ArrayType_Char = 5;
+    public static final int JVM_ArrayType_Float = 6;
+    public static final int JVM_ArrayType_Double = 7;
+    public static final int JVM_ArrayType_Byte = 8;
+    public static final int JVM_ArrayType_Short = 9;
+    public static final int JVM_ArrayType_Int = 10;
+    public static final int JVM_ArrayType_Long = 11;
+    public static final int JVM_ArrayType_Object = 12;
+    public static final int JVM_ArrayType_Void = 14;
+    public static final int JVM_ArrayType_ReturnAddress = 98;
+    public static final int JVM_ArrayType_Illegal = 99;
+
     public static byte atype(final Class<?> clazz) {
         if (clazz == boolean.class) {
-            return 4;
+            return JVM_ArrayType_Boolean;
         } else if (clazz == char.class) {
-            return 5;
+            return JVM_ArrayType_Char;
         } else if (clazz == float.class) {
-            return 6;
+            return JVM_ArrayType_Float;
         } else if (clazz == double.class) {
-            return 7;
+            return JVM_ArrayType_Double;
         } else if (clazz == byte.class) {
-            return 8;
+            return JVM_ArrayType_Byte;
         } else if (clazz == short.class) {
-            return 9;
+            return JVM_ArrayType_Short;
         } else if (clazz == int.class) {
-            return 10;
+            return JVM_ArrayType_Int;
         } else if (clazz == long.class) {
-            return 11;
+            return JVM_ArrayType_Long;
         }
 
         throw new IllegalArgumentException();
@@ -595,21 +609,21 @@ public final class Constants {
 
     public static Class<?> arrayType(byte atype) {
         switch (atype) {
-            case 4:
+            case JVM_ArrayType_Boolean:
                 return boolean.class;
-            case 5:
+            case JVM_ArrayType_Char:
                 return char.class;
-            case 6:
+            case JVM_ArrayType_Float:
                 return float.class;
-            case 7:
+            case JVM_ArrayType_Double:
                 return double.class;
-            case 8:
+            case JVM_ArrayType_Byte:
                 return byte.class;
-            case 9:
+            case JVM_ArrayType_Short:
                 return short.class;
-            case 10:
+            case JVM_ArrayType_Int:
                 return int.class;
-            case 11:
+            case JVM_ArrayType_Long:
                 return long.class;
             default:
                 throw new IllegalArgumentException();

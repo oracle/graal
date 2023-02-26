@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.library.internal;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -139,7 +140,7 @@ abstract class LLVMNativeLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = false)
     static class LongLibrary {
 
         /**
@@ -162,7 +163,7 @@ abstract class LLVMNativeLibraryDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOT = true, useForAOTPriority = 1)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOT = false)
     static class ArrayLibrary {
 
         /**
@@ -180,6 +181,7 @@ abstract class LLVMNativeLibraryDefaults {
          */
         @ExportMessage
         static long asPointer(byte[] receiver) throws UnsupportedMessageException {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedMessageException.create();
         }
 
@@ -190,6 +192,7 @@ abstract class LLVMNativeLibraryDefaults {
         @ExportMessage
         static LLVMNativePointer toNativePointer(byte[] receiver,
                         @CachedLibrary("receiver") LLVMNativeLibrary self) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new LLVMPolyglotException(self, "Cannot convert virtual allocation object to native pointer.");
         }
     }

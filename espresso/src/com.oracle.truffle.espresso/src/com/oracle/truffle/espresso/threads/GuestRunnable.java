@@ -58,14 +58,15 @@ final class GuestRunnable implements Runnable {
     @Override
     public void run() {
         try {
+            context.registerCurrentThread(thread);
             context.getVM().attachThread(Thread.currentThread());
             try {
                 // Execute the payload
-                context.getThreadAccess().checkDeprecation();
+                context.getThreadAccess().fullSafePoint(thread);
                 thread.getKlass().vtableLookup(context.getMeta().java_lang_Thread_run.getVTableIndex()).invokeDirect(thread);
-                context.getThreadAccess().checkDeprecation();
+                context.getThreadAccess().fullSafePoint(thread);
             } catch (EspressoException uncaught) {
-                dispatchUncaught.call(thread, uncaught.getExceptionObject());
+                dispatchUncaught.call(thread, uncaught.getGuestException());
             }
         } catch (EspressoExitException exitException) {
             /* Suppress */

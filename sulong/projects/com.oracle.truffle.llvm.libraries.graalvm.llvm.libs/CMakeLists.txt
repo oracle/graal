@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,7 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.graalvm.llvm.libs LANGUAGES C)
 
 set(GRAALVM_LLVM_INCLUDE_DIR)
@@ -50,20 +50,21 @@ endif()
 add_library(graalvm-llvm SHARED
     src/common.c
     src/handles.c
+    src/intrinsics.c
     src/polyglot.c
+    src/polyglot-buffer.c
+    src/polyglot-time.c
     src/toolchain-api.c
     src/truffle-compat.c
 )
-target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
-set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
-if (WIN32)
-    if(NOT LLVM_LINK)
-        message(FATAL_ERROR "LLVM_LINK needs to be set")
-    endif()
-    # no idea why we need to set this here but not for libsulong
-    set_target_properties(graalvm-llvm PROPERTIES PREFIX "")
-    # link to bitcode
-    set(CMAKE_BC_CREATE_SHARED_LIBRARY "${LLVM_LINK} <OBJECTS> -o <TARGET>")
-    set_target_properties(graalvm-llvm PROPERTIES LINKER_LANGUAGE BC)
+
+if(WIN32)
+  target_sources(graalvm-llvm PRIVATE
+    src/threads.c
+    graalvm-llvm.def)
 endif()
+
+target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+target_include_directories(graalvm-llvm PRIVATE include)
+set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
 install(TARGETS graalvm-llvm DESTINATION bin)

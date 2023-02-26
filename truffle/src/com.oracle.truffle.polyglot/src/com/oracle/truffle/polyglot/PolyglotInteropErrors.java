@@ -66,7 +66,7 @@ final class PolyglotInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidListIndex(PolyglotLanguageContext context, Object receiver, Type componentType, int index) {
+    static RuntimeException invalidListIndex(PolyglotLanguageContext context, Object receiver, Type componentType, long index) {
         String message = String.format("Invalid index %s for List<%s> %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
         throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
@@ -151,7 +151,7 @@ final class PolyglotInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidListValue(PolyglotLanguageContext context, Object receiver, Type componentType, int identifier, Object value) {
+    static RuntimeException invalidListValue(PolyglotLanguageContext context, Object receiver, Type componentType, long identifier, Object value) {
         throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for List<%s> %s and index %s.",
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));

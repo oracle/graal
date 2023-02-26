@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
@@ -318,7 +317,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         }
     }
 
-    private static class GraphCostPhase extends BasePhase<CoreProviders> {
+    private static class GraphCostPhase extends TestBasePhase<CoreProviders> {
         private double finalCycles;
         private double finalSize;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,28 @@
  */
 #include <stdio.h>
 
-char caller_i8(char (*callback)(char), char value) {
+#if defined(_WIN32)
+#define EXPORT_FUNCTION __declspec(dllexport)
+#else
+#define EXPORT_FUNCTION
+#endif
+
+EXPORT_FUNCTION char caller_i8(char (*callback)(char), char value) {
     printf("calling i8 callback\n");
     return callback(value);
 }
 
-long caller_i64(long (*callback)(long), long value) {
+EXPORT_FUNCTION long caller_i64(long (*callback)(long), long value) {
     printf("calling i64 callback\n");
     return callback(value);
 }
 
-float caller_f32(float (*callback)(float), float value) {
+EXPORT_FUNCTION float caller_f32(float (*callback)(float), float value) {
     printf("calling f32 callback\n");
     return callback(value);
 }
 
-double caller_f64(double (*callback)(double), double value) {
+EXPORT_FUNCTION double caller_f64(double (*callback)(double), double value) {
     printf("calling f64 callback\n");
     return callback(value);
 }

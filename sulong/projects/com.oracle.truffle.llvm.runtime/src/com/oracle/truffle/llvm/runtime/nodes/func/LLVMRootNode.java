@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,11 @@ public abstract class LLVMRootNode extends RootNode {
 
     public final LLVMStackAccess getStackAccess() {
         return stackAccess;
+    }
+
+    @Override
+    public String getName() {
+        return '<' + getClass().getSimpleName() + '>';
     }
 
     @Override

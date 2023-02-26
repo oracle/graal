@@ -36,20 +36,21 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-public class ReachabilityHandlerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ReachabilityHandlerFeature implements InternalFeature, ReachabilityHandler {
 
     private final IdentityHashMap<Object, Set<Object>> activeHandlers = new IdentityHashMap<>();
     private final IdentityHashMap<Object, Map<Object, Set<Object>>> triggeredHandlers = new IdentityHashMap<>();
@@ -58,19 +59,28 @@ public class ReachabilityHandlerFeature implements Feature {
         return ImageSingletons.lookup(ReachabilityHandlerFeature.class);
     }
 
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !SubstrateOptions.RunReachabilityHandlersConcurrently.getValue();
+    }
+
+    @Override
     public void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
         registerReachabilityHandler(a, callback, new Executable[]{baseMethod}, false);
     }
 
-    public void registerSubtypeReachabilityHandler(BeforeAnalysisAccess a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
+    @Override
+    public void registerSubtypeReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
         registerReachabilityHandler(a, callback, new Class<?>[]{baseClass}, false);
     }
 
-    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
+    @Override
+    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccessImpl a, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
         registerReachabilityHandler(a, callback, new Class<?>[]{clazz}, true);
     }
 
-    public void registerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
+    @Override
+    public void registerReachabilityHandler(BeforeAnalysisAccessImpl a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
         registerReachabilityHandler(a, callback, triggers, false);
     }
 

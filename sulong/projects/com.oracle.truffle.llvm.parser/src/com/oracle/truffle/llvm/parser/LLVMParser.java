@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,11 +48,16 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -60,32 +65,48 @@ import java.util.function.Supplier;
 public final class LLVMParser {
     private final Source source;
     private final LLVMParserRuntime runtime;
+    private int threadLocalGlobalObjectCounter;
 
     public LLVMParser(Source source, LLVMParserRuntime runtime) {
         this.source = source;
         this.runtime = runtime;
+        threadLocalGlobalObjectCounter = 0;
     }
 
     public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout) {
         List<GlobalVariable> externalGlobals = new ArrayList<>();
         List<GlobalVariable> definedGlobals = new ArrayList<>();
+        List<GlobalVariable> threadLocalGlobals = new ArrayList<>();
         List<FunctionSymbol> externalFunctions = new ArrayList<>();
         List<FunctionSymbol> definedFunctions = new ArrayList<>();
 
-        defineGlobals(module.getGlobalVariables(), definedGlobals, externalGlobals);
+        defineGlobals(module.getGlobalVariables(), definedGlobals, externalGlobals, threadLocalGlobals);
         defineFunctions(module, definedFunctions, externalFunctions, targetDataLayout);
         defineAliases(module.getAliases(), targetDataLayout);
 
-        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, targetDataLayout, module.getTargetInformation(TargetTriple.class));
+        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, threadLocalGlobalObjectCounter, targetDataLayout,
+                        module.getTargetInformation(TargetTriple.class), module.getTotalSize());
     }
 
-    private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals) {
+    private static boolean ignoreGlobal(GlobalVariable g) {
+        String name = g.getName();
+        /*
+         * Dummy array to keep other globals alive during compilation and linking. We do not
+         * initialize it as it's not relevant for execution, and it can cause problems during module
+         * initialization (e.g. if a TLS variable is referenced).
+         */
+        return name.equals("llvm.used") || name.equals("llvm.compiler.used");
+    }
+
+    private void defineGlobals(List<GlobalVariable> globals, List<GlobalVariable> definedGlobals, List<GlobalVariable> externalGlobals, List<GlobalVariable> threadLocalGlobals) {
         for (GlobalVariable global : globals) {
+            if (ignoreGlobal(global)) {
+                continue;
+            }
             if (global.isExternal()) {
                 externalGlobals.add(global);
             } else {
-                defineGlobal(global);
-                definedGlobals.add(global);
+                defineGlobal(global, definedGlobals, threadLocalGlobals);
             }
         }
     }
@@ -112,18 +133,39 @@ public final class LLVMParser {
         }
     }
 
-    private void defineGlobal(GlobalVariable global) {
+    private void defineGlobal(GlobalVariable global, List<GlobalVariable> definedGlobals, List<GlobalVariable> threadLocalGlobals) {
         assert !global.isExternal();
-        // handle the file scope
-        LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
-                        global.isExternalWeak());
-        runtime.getFileScope().register(globalSymbol);
-        registerInPublicFileScope(globalSymbol);
+        LLVMSymbol symbol;
+        if (global.isThreadLocal()) {
+            symbol = LLVMThreadLocalSymbol.create(global.getName(), global.getSourceSymbol(), runtime.getBitcodeID(), global.getIndex(), global.isExported(), global.isExternalWeak());
+            Type type = global.getType().getPointeeType();
+            if (isSpecialGlobalSlot(type)) {
+                threadLocalGlobalObjectCounter++;
+            }
+            threadLocalGlobals.add(global);
+        } else {
+            symbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
+                            global.isExternalWeak());
+            definedGlobals.add(global);
+        }
+        runtime.getFileScope().register(symbol);
+        registerInPublicFileScope(symbol);
+    }
+
+    /**
+     * Globals of pointer type need to be handles specially because they can potentially contain a
+     * foreign object.
+     */
+    public static boolean isSpecialGlobalSlot(Type type) {
+        if (type instanceof PointerType) {
+            return true;
+        } else {
+            return type == PrimitiveType.I64;
+        }
     }
 
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, DataLayout dataLayout) {
         assert !functionSymbol.isExternal();
-        // handle the file scope
         FunctionDefinition functionDefinition = (FunctionDefinition) functionSymbol;
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor(), dataLayout);

@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.genscavenge.BasicCollectionPolicies.Options.AllocationBeforePhysicalMemorySize;
-import static com.oracle.svm.core.genscavenge.BasicCollectionPolicies.Options.PercentTimeInIncrementalCollection;
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -38,21 +35,11 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 /** Basic/legacy garbage collection policies. */
 final class BasicCollectionPolicies {
-    public static class Options {
-        @Option(help = "Percentage of total collection time that should be spent on young generation collections.")//
-        public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50);
-
-        @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size") //
-        public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
         assert userValue == null || userValue >= 0;
@@ -75,6 +62,11 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
+            return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+        }
+
+        @Override
         public UnsignedWord getCurrentHeapCapacity() {
             return getMaximumHeapSize();
         }
@@ -87,7 +79,7 @@ final class BasicCollectionPolicies {
         @Override
         public void updateSizeParameters() {
             // Sample the physical memory size, before the first GC but after some allocation.
-            UnsignedWord allocationBeforeUpdate = WordFactory.unsigned(AllocationBeforePhysicalMemorySize.getValue());
+            UnsignedWord allocationBeforeUpdate = WordFactory.unsigned(SerialAndEpsilonGCOptions.AllocationBeforePhysicalMemorySize.getValue());
             if (GCImpl.getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
                             HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(allocationBeforeUpdate)) {
                 PhysicalMemory.tryInitialize();
@@ -157,6 +149,21 @@ final class BasicCollectionPolicies {
         @Override
         public UnsignedWord getSurvivorSpacesCapacity() {
             return WordFactory.zero();
+        }
+
+        @Override
+        public UnsignedWord getYoungGenerationCapacity() {
+            return getMaximumYoungGenerationSize();
+        }
+
+        @Override
+        public UnsignedWord getOldGenerationCapacity() {
+            UnsignedWord heapCapacity = getCurrentHeapCapacity();
+            UnsignedWord youngCapacity = getYoungGenerationCapacity();
+            if (youngCapacity.aboveThan(heapCapacity)) {
+                return WordFactory.zero(); // should never happen unless options change in between
+            }
+            return heapCapacity.subtract(youngCapacity);
         }
 
         @Override
@@ -252,7 +259,7 @@ final class BasicCollectionPolicies {
         }
 
         private static boolean enoughTimeSpentOnIncrementalGCs() {
-            int incrementalWeight = PercentTimeInIncrementalCollection.getValue();
+            int incrementalWeight = SerialGCOptions.PercentTimeInIncrementalCollection.getValue();
             assert incrementalWeight >= 0 && incrementalWeight <= 100 : "BySpaceAndTimePercentTimeInIncrementalCollection should be in the range [0..100].";
 
             GCAccounting accounting = GCImpl.getGCImpl().getAccounting();

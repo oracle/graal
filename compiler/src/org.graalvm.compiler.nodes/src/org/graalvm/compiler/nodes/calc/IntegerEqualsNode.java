@@ -32,8 +32,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -41,6 +39,8 @@ import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -69,19 +69,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
         if (x instanceof ConditionalNode) {
             ConditionalNode conditionalNode = (ConditionalNode) x;
-            if (conditionalNode.trueValue() == y) {
-                return conditionalNode.condition();
-            }
-            if (conditionalNode.falseValue() == y) {
-                return LogicNegationNode.create(conditionalNode.condition());
+            // (x op y ? x : y) == x <==> only for op = ==
+            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
+                if (conditionalNode.trueValue() == y) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == y) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
             }
         } else if (y instanceof ConditionalNode) {
             ConditionalNode conditionalNode = (ConditionalNode) y;
-            if (conditionalNode.trueValue() == x) {
-                return conditionalNode.condition();
-            }
-            if (conditionalNode.falseValue() == x) {
-                return LogicNegationNode.create(conditionalNode.condition());
+            // x == (x op y ? x : y) <==> only for op = ==
+            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
+                if (conditionalNode.trueValue() == x) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == x) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
             }
         }
         return new IntegerEqualsNode(x, y).maybeCommuteInputs();

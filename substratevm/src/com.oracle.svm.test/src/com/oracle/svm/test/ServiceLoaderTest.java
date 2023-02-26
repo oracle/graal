@@ -24,7 +24,11 @@
  */
 package com.oracle.svm.test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ServiceLoader;
+
+import javax.tools.JavaCompiler;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -154,5 +158,25 @@ public class ServiceLoaderTest {
         }
 
         Assert.assertTrue(foundZip);
+    }
+
+    @Test
+    public void test03JavaCompiler() {
+        ServiceLoader<JavaCompiler> loader = ServiceLoader.load(JavaCompiler.class, ClassLoader.getSystemClassLoader());
+        boolean foundJavacTool = false;
+        List<JavaCompiler> unexpected = new ArrayList<>();
+
+        for (JavaCompiler javaCompiler : loader) {
+            if (javaCompiler.getClass().getName().equals("com.sun.tools.javac.api.JavacTool")) {
+                foundJavacTool = true;
+            } else {
+                unexpected.add(javaCompiler);
+            }
+        }
+
+        if (!unexpected.isEmpty()) {
+            Assert.fail("Found unexpected JavaCompiler providers: " + unexpected);
+        }
+        Assert.assertTrue("Did not find JavacTool", foundJavacTool);
     }
 }

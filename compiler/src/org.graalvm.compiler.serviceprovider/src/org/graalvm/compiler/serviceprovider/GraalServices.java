@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +24,209 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
+import static java.lang.Thread.currentThread;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import jdk.vm.ci.services.JVMCIPermission;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
  */
 public final class GraalServices {
 
-    private GraalServices() {
+    // NOTE: The use of reflection to access JVMCI API is to support
+    // compiling on JDKs with varying versions of JVMCI.
+
+    private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
+
+    private static final Constructor<? extends SpeculationReason> encodedSpeculationReasonConstructor;
+    private static final Method constantPoolLookupMethodWithCaller;
+    private static final Method constantPoolLookupReferencedType;
+    private static final Method virtualObjectGet;
+    private static final Constructor<? extends Infopoint> implicitExceptionDispatchConstructor;
+
+    static {
+        Method get = null;
+        Method lookupReferencedType = null;
+        Method lookupMethodWithCaller = null;
+        Constructor<? extends SpeculationReason> esrConstructor = null;
+        Constructor<? extends Infopoint> iedConstructor = null;
+
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends SpeculationReason> theClass = (Class<? extends SpeculationReason>) Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+            esrConstructor = theClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
+        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException e) {
+            throw new InternalError("EncodedSpeculationReason exists but constructor is missing or inaccessible", e);
+        }
+
+        try {
+            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
+            lookupReferencedType = ConstantPool.class.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
+        } catch (NoSuchMethodException e) {
+        }
+
+        try {
+            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
+            lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
+        } catch (NoSuchMethodException e) {
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends Infopoint> implicitExceptionDispatch = (Class<? extends Infopoint>) Class.forName("jdk.vm.ci.code.site.ImplicitExceptionDispatch");
+            iedConstructor = implicitExceptionDispatch.getConstructor(int.class, int.class, DebugInfo.class);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            // ImplicitExceptionDispatch isn't available
+        }
+
+        encodedSpeculationReasonConstructor = esrConstructor;
+        virtualObjectGet = get;
+        constantPoolLookupReferencedType = lookupReferencedType;
+        constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
+        implicitExceptionDispatchConstructor = iedConstructor;
     }
 
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay for " + GraalServices.class.getName() + " missing");
+    private GraalServices() {
     }
 
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
-     *
-     * @param service the service whose provider is being requested
-     * @throws SecurityException if on JDK8 and a security manager is present and it denies
-     *             {@link JVMCIPermission}
      */
+    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
-        throw shouldNotReachHere();
+        if (IS_IN_NATIVE_IMAGE || IS_BUILDING_NATIVE_IMAGE) {
+            List<?> list = servicesCache.get(service);
+            if (list != null) {
+                return (Iterable<S>) list;
+            }
+            if (IS_IN_NATIVE_IMAGE) {
+                throw new InternalError(String.format("No %s providers found when building native image", service.getName()));
+            }
+        }
+
+        Iterable<S> providers = load0(service);
+
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            synchronized (servicesCache) {
+                ArrayList<S> providersList = new ArrayList<>();
+                for (S provider : providers) {
+                    Module module = provider.getClass().getModule();
+                    if (isHotSpotGraalModule(module.getName())) {
+                        providersList.add(provider);
+                    }
+                }
+                providers = providersList;
+                servicesCache.put(service, providersList);
+                return providers;
+            }
+        }
+
+        return providers;
+    }
+
+    /**
+     * Determines if the module named by {@code name} is part of Graal when it is configured as a
+     * HotSpot JIT compiler.
+     */
+    private static boolean isHotSpotGraalModule(String name) {
+        if (name != null) {
+            return name.equals("jdk.internal.vm.compiler") ||
+                            name.equals("jdk.internal.vm.compiler.management") ||
+                            name.equals("com.oracle.graal.graal_enterprise");
+        }
+        return false;
+    }
+
+    private static <S> Iterable<S> load0(Class<S> service) {
+        Module module = GraalServices.class.getModule();
+        // Graal cannot know all the services used by another module
+        // (e.g. enterprise) so dynamically register the service use now.
+        if (!module.canUse(service)) {
+            module.addUses(service);
+        }
+
+        ModuleLayer layer = module.getLayer();
+        Iterable<S> iterable = ServiceLoader.load(layer, service);
+        return new Iterable<>() {
+            @Override
+            public Iterator<S> iterator() {
+                Iterator<S> iterator = iterable.iterator();
+                return new Iterator<>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public S next() {
+                        S provider = iterator.next();
+                        // Allow Graal extensions to access JVMCI
+                        openJVMCITo(provider.getClass());
+                        return provider;
+                    }
+
+                    @Override
+                    public void remove() {
+                        iterator.remove();
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * Opens all JVMCI packages to the module of a given class. This relies on JVMCI already having
+     * opened all its packages to the module defining {@link GraalServices}.
+     *
+     * @param other all JVMCI packages will be opened to the module defining this class
+     */
+    static void openJVMCITo(Class<?> other) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return;
+        }
+
+        Module jvmciModule = JVMCI_MODULE;
+        Module otherModule = other.getModule();
+        if (jvmciModule != otherModule) {
+            for (String pkg : jvmciModule.getPackages()) {
+                if (!jvmciModule.isOpen(pkg, otherModule)) {
+                    // JVMCI initialization opens all JVMCI packages
+                    // to Graal which is a prerequisite for Graal to
+                    // open JVMCI packages to other modules.
+                    JVMCI.getRuntime();
+
+                    jvmciModule.addOpens(pkg, otherModule);
+                }
+            }
+        }
     }
 
     /**
@@ -67,33 +236,64 @@ public final class GraalServices {
      * @param required specifies if an {@link InternalError} should be thrown if no provider of
      *            {@code service} is available
      * @return the requested provider if available else {@code null}
-     * @throws SecurityException if on JDK8 and a security manager is present and it denies
-     *             {@link JVMCIPermission}
      */
     public static <S> S loadSingle(Class<S> service, boolean required) {
-        throw shouldNotReachHere();
+        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
+        Iterable<S> providers = load(service);
+        S singleProvider = null;
+        try {
+            for (Iterator<S> it = providers.iterator(); it.hasNext();) {
+                singleProvider = it.next();
+                if (it.hasNext()) {
+                    S other = it.next();
+                    throw new InternalError(String.format("Multiple %s providers found: %s, %s", service.getName(), singleProvider.getClass().getName(), other.getClass().getName()));
+                }
+            }
+        } catch (ServiceConfigurationError e) {
+            // If the service is required we will bail out below.
+        }
+        if (singleProvider == null) {
+            if (required) {
+                throw new InternalError(String.format("No provider for %s found", service.getName()));
+            }
+        }
+        return singleProvider;
     }
 
     /**
      * Gets the class file bytes for {@code c}.
-     *
-     * @param c the class for which class file bytes are being requested
-     * @return an input stream for reading the class file bytes or {@code null} if the class file
-     *         bytes could not be found
-     * @throws IOException if there's an IO error retrieving the class file bytes
      */
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
-        throw shouldNotReachHere();
+        String classfilePath = c.getName().replace('.', '/') + ".class";
+        return c.getModule().getResourceAsStream(classfilePath);
+    }
+
+    private static final Module JVMCI_MODULE = Services.class.getModule();
+
+    /**
+     * A JVMCI package dynamically exported to trusted modules.
+     */
+    private static final String JVMCI_RUNTIME_PACKAGE = "jdk.vm.ci.runtime";
+    static {
+        assert JVMCI_MODULE.getPackages().contains(JVMCI_RUNTIME_PACKAGE);
     }
 
     /**
      * Determines if invoking {@link Object#toString()} on an instance of {@code c} will only run
      * trusted code.
-     *
-     * @param c
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        throw shouldNotReachHere();
+        if (IS_IN_NATIVE_IMAGE) {
+            return true;
+        }
+
+        Module module = c.getModule();
+        Module jvmciModule = JVMCI_MODULE;
+        if (module == jvmciModule || jvmciModule.isOpen(JVMCI_RUNTIME_PACKAGE, module)) {
+            // Can access non-statically-exported package in JVMCI
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -104,23 +304,37 @@ public final class GraalServices {
      * @param context the objects forming a key for the speculation
      */
     static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
-        throw shouldNotReachHere();
+        if (encodedSpeculationReasonConstructor != null) {
+            SpeculationEncodingAdapter adapter = new SpeculationEncodingAdapter();
+            try {
+                Object[] flattened = adapter.flatten(context);
+                return encodedSpeculationReasonConstructor.newInstance(groupId, groupName, flattened);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        return new UnencodedSpeculationReason(groupId, groupName, context);
     }
 
     /**
      * Gets a unique identifier for this execution such as a process ID or a
-     * {@linkplain #getGlobalTimeStamp() fixed time stamp}.
+     * {@linkplain #getGlobalTimeStamp() fixed timestamp}.
      */
     public static String getExecutionID() {
-        throw shouldNotReachHere();
+        return Long.toString(ProcessHandle.current().pid());
     }
+
+    private static final AtomicLong globalTimeStamp = new AtomicLong();
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for
      * the current VM execution.
      */
     public static long getGlobalTimeStamp() {
-        throw shouldNotReachHere();
+        if (globalTimeStamp.get() == 0) {
+            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
+        }
+        return globalTimeStamp.get();
     }
 
     /**
@@ -148,7 +362,11 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        throw shouldNotReachHere();
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            throw new UnsupportedOperationException();
+        }
+        return jmx.getThreadAllocatedBytes(id);
     }
 
     /**
@@ -156,7 +374,27 @@ public final class GraalServices {
      * current thread.
      */
     public static long getCurrentThreadAllocatedBytes() {
-        throw shouldNotReachHere();
+        return getThreadAllocatedBytes(getCurrentThreadId());
+    }
+
+    /**
+     * Gets the identifier of {@code thread}.
+     *
+     * This method abstracts over how the identifier is retrieved in the context of JDK-8284161.
+     */
+    @SuppressWarnings("deprecation" /* JDK-8284161 */)
+    public static long getThreadId(Thread thread) {
+        return thread.getId();
+    }
+
+    /**
+     * Gets the identifier of the current thread.
+     *
+     * This method abstracts over how the identifier is retrieved in the context of JDK-8284161.
+     */
+    @SuppressWarnings("deprecation" /* JDK-8284161 */)
+    public static long getCurrentThreadId() {
+        return getThreadId(currentThread());
     }
 
     /**
@@ -173,7 +411,11 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        throw shouldNotReachHere();
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            throw new UnsupportedOperationException();
+        }
+        return jmx.getCurrentThreadCpuTime();
     }
 
     /**
@@ -181,14 +423,22 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        throw shouldNotReachHere();
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            return false;
+        }
+        return jmx.isThreadAllocatedMemorySupported();
     }
 
     /**
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        throw shouldNotReachHere();
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            return false;
+        }
+        return jmx.isCurrentThreadCpuTimeSupported();
     }
 
     /**
@@ -206,7 +456,11 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        throw shouldNotReachHere();
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            return null;
+        }
+        return jmx.getInputArguments();
     }
 
     /**
@@ -214,9 +468,8 @@ public final class GraalServices {
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
      */
-    @SuppressWarnings("unused")
     public static float fma(float a, float b, float c) {
-        throw shouldNotReachHere();
+        return Math.fma(a, b, c);
     }
 
     /**
@@ -224,9 +477,8 @@ public final class GraalServices {
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code double}.
      */
-    @SuppressWarnings("unused")
     public static double fma(double a, double b, double c) {
-        throw shouldNotReachHere();
+        return Math.fma(a, b, c);
     }
 
     /**
@@ -244,18 +496,24 @@ public final class GraalServices {
      *            needs to be obtained from the box cache instead of creating a new instance.
      * @return a new {@link VirtualObject} instance.
      */
-    @SuppressWarnings("unused")
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
-        throw shouldNotReachHere();
+        if (virtualObjectGet != null) {
+            try {
+                return (VirtualObject) virtualObjectGet.invoke(null, type, id, isAutoBox);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        return VirtualObject.get(type, id);
     }
 
     /**
      * Gets the update-release counter for the current Java runtime.
      *
-     * @see "https://download.java.net/java/GA/jdk14/docs/api/java.base/java/lang/Runtime.Version.html"
+     * @see java.lang.Runtime.Version
      */
     public static int getJavaUpdateVersion() {
-        throw shouldNotReachHere();
+        return Runtime.version().update();
     }
 
     /**
@@ -265,37 +523,95 @@ public final class GraalServices {
      * @param cpi the index of a constant pool entry that references a type
      * @param opcode the opcode of the instruction with {@code cpi} as an operand
      * @return a reference to the compiler interface type
+     * @throws InternalError if {@link #hasLookupReferencedType()} returns {@code false}
      */
-    @SuppressWarnings("unused")
     public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
-        throw shouldNotReachHere();
+        if (constantPoolLookupReferencedType != null) {
+            try {
+                return (JavaType) constantPoolLookupReferencedType.invoke(constantPool, cpi, opcode);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
     }
 
     /**
-     * Returns true if JVMCI supports {@code ConstantPool.lookupReferencedType} API.
+     * Returns true if JVMCI supports the {@code ConstantPool.lookupReferencedType} API.
      */
     public static boolean hasLookupReferencedType() {
-        throw shouldNotReachHere();
+        return constantPoolLookupReferencedType != null;
     }
 
     /**
-     * Returns true if JVMCI supports arbitrary implicit exception dispatch.
+     * Calls {@code ConstantPool#lookupMethod(int, int, ResolvedJavaMethod)}.
+     */
+    public static JavaMethod lookupMethodWithCaller(ConstantPool constantPool, int cpi, int opcode, ResolvedJavaMethod caller) {
+        if (constantPoolLookupMethodWithCaller != null) {
+            try {
+                try {
+                    return (JavaMethod) constantPoolLookupMethodWithCaller.invoke(constantPool, cpi, opcode, caller);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
+    }
+
+    /**
+     * Returns true if JVMCI supports the
+     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)} API.
+     */
+    public static boolean hasLookupMethodWithCaller() {
+        return constantPoolLookupMethodWithCaller != null;
+    }
+
+    /**
+     * Returns whether JVMCI supports arbitrary implicit exception dispatch.
      */
     public static boolean supportsArbitraryImplicitException() {
-        throw shouldNotReachHere();
+        return implicitExceptionDispatchConstructor != null;
     }
 
     /**
-     * Construct an implicit exception dispatch. If this JVMCI does not support arbitrary implicit
-     * exception dispatch, then throws an exception when {@code pcOffset} is not the same as
-     * {@code dispatchOffset}.
+     * Constructs an info point for an implicit exception dispatch.
      *
      * @param pcOffset the exceptional PC offset
      * @param dispatchOffset the continuation PC offset
      * @param debugInfo debugging information at the exceptional PC
+     * @throws InternalError if {@link #supportsArbitraryImplicitException()} returns {@code false}
+     *             and {@code pcOffset != dispatchOffset}
      */
-    @SuppressWarnings("unused")
     public static Infopoint genImplicitException(int pcOffset, int dispatchOffset, DebugInfo debugInfo) {
-        throw shouldNotReachHere();
+        if (implicitExceptionDispatchConstructor == null) {
+            if (pcOffset != dispatchOffset) {
+                throw new InternalError("This JVMCI version doesn't support dispatching implicit exception to an arbitrary address.");
+            }
+            return new Infopoint(pcOffset, debugInfo, InfopointReason.IMPLICIT_EXCEPTION);
+        }
+        try {
+            return implicitExceptionDispatchConstructor.newInstance(pcOffset, dispatchOffset, debugInfo);
+        } catch (Throwable e) {
+            throw new InternalError("Exception when instantiating implicit exception dispatch", e);
+        }
+    }
+
+    /**
+     * Notifies that the compiler is at a point where memory usage is expected to be relatively low
+     * (e.g., just before/after a compilation). The garbage collector might be able to make use of
+     * such a hint to optimize its performance.
+     *
+     * @param fullGC controls whether the hinted GC should be a full GC.
+     */
+    public static void notifyLowMemoryPoint(@SuppressWarnings("unused") boolean fullGC) {
+        // Substituted by
+        // com.oracle.svm.hotspot.libgraal.Target_org_graalvm_compiler_serviceprovider_GraalServices
     }
 }

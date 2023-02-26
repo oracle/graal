@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +36,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 import jdk.vm.ci.code.BailoutException;
-import org.graalvm.polyglot.Context;
 
 public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,18 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Override
     public ValueNode getY() {
         return y;
+    }
+
+    public void setX(ValueNode newX) {
+        assert newX != null;
+        updateUsages(x, newX);
+        this.x = newX;
+    }
+
+    public void setY(ValueNode newY) {
+        assert newY != null;
+        updateUsages(y, newY);
+        this.y = newY;
     }
 
     public BinaryOpLogicNode(NodeClass<? extends BinaryOpLogicNode> c, ValueNode x, ValueNode y) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.libgraal.jni;
 
 import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
 
+import org.graalvm.jniutils.JNICalls;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.jniutils.HotSpotCalls;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JMethodID;
@@ -55,12 +55,12 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     private static final Map<String, JNIClass> classes = new ConcurrentHashMap<>();
 
     private final EnumMap<T, JNIMethodImpl<T>> methods;
-    private final HotSpotCalls hotSpotCalls;
+    private final JNICalls hotSpotCalls;
     private volatile JClass peer;
 
     protected FromLibGraalCalls(Class<T> idType) {
         methods = new EnumMap<>(idType);
-        hotSpotCalls = HotSpotCalls.getDefault();
+        hotSpotCalls = JNICalls.getDefault();
     }
 
     /**
@@ -84,7 +84,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     /**
      * Describes a method in {@link #peer(JNI.JNIEnv) HotSpot peer class}.
      */
-    static final class JNIMethodImpl<T extends Enum<T> & FromLibGraalId> implements HotSpotCalls.JNIMethod {
+    static final class JNIMethodImpl<T extends Enum<T> & FromLibGraalId> implements JNICalls.JNIMethod {
         final T hcId;
         final JMethodID jniId;
 

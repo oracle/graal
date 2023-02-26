@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,15 @@ package org.graalvm.compiler.virtual.phases.ea;
 
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -76,6 +80,11 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return this.canonicalizer.notApplicableTo(graphState);
+    }
+
+    @Override
     protected void run(StructuredGraph graph, CoreProvidersT context) {
         runAnalysis(graph, context);
     }
@@ -99,6 +108,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                     schedule = graph.getLastSchedule();
                     cfg = schedule.getCFG();
                 }
+                boolean postTriggered = false;
                 try (DebugContext.Scope scheduleScope = debug.scope("EffectsPhaseWithSchedule", schedule)) {
                     Closure<?> closure = createEffectsClosure(context, schedule, cfg);
                     ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
@@ -116,10 +126,12 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                             new DeadCodeEliminationPhase(Required).apply(graph);
                         }
                         LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
+                        Graph.Mark before = graph.getMark();
                         postIteration(graph, context, listener.getNodes());
+                        postTriggered = !before.isCurrent();
                     }
 
-                    if (closure.hasChanged()) {
+                    if (closure.hasChanged() || postTriggered) {
                         changed = true;
                     } else {
                         break;

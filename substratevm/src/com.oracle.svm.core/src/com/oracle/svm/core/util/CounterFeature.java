@@ -27,14 +27,14 @@ package com.oracle.svm.core.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.Counter.Group;
 
-@AutomaticFeature
-public class CounterFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class CounterFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

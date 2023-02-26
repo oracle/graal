@@ -40,22 +40,28 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * The defaults for node limits are very conservative. Only small methods should be inlined. The
@@ -65,14 +71,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * method above the limit. On the other hand, the inlining depth is generous because we do do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
- * 
+ *
  * Important: the implementation details of this class are publicly observable API. Since
  * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
  * constant arguments, reducing inlining can break customer code. This means we can never reduce the
  * amount of inlining in a future version without breaking compatibility. This also means that we
  * must be conservative and only inline what is necessary for known use cases.
  */
-public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<InlineBeforeAnalysisPolicyImpl.CountersScope> {
+public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<InlineBeforeAnalysisPolicyImpl.CountersScope> {
 
     public static class Options {
         @Option(help = "Maximum number of computation nodes for method inlined before static analysis")//
@@ -85,11 +91,13 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
 
+    private final SVMHost hostVM;
+
     private final int allowedNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
     private final int allowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
     private final int allowedDepth = Options.InlineBeforeAnalysisAllowedDepth.getValue();
 
-    static final class CountersScope implements InlineBeforeAnalysisPolicy.Scope {
+    protected static final class CountersScope implements InlineBeforeAnalysisPolicy.Scope {
         final CountersScope accumulated;
 
         int numNodes;
@@ -105,8 +113,19 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
         }
     }
 
+    public InlineBeforeAnalysisPolicyImpl(SVMHost hostVM) {
+        this.hostVM = hostVM;
+    }
+
+    protected boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
+    }
+
     @Override
     protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
+            return true;
+        }
         if (b.getDepth() > allowedDepth) {
             return false;
         }
@@ -117,20 +136,17 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
 
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;
-        if (!callee.canBeInlined()) {
+        if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
-            return false;
-        }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, Fold.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
+        if (AnnotationAccess.isAnnotationPresent(callee, Fold.class) || AnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
             /*
              * We should never see a call to such a method. But if we do, do not inline them
              * otherwise we miss the opportunity later to report it as an error.
              */
             return false;
         }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
+        if (AnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
             /*
              * This is conservative. We do not know the caller's heap restriction state yet because
              * that can only be computed after static analysis (it relies on the call graph produced
@@ -170,12 +186,13 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected boolean processNode(CountersScope scope, Node node) {
+    protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, CountersScope scope, Node node) {
         if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode) {
             /* Infrastructure nodes that are not even visible to the policy. */
             throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
         }
-        if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof FrameState || node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
+        if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof ValueAnchorNode || node instanceof FrameState ||
+                        node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
             /*
              * Infrastructure nodes that are never counted. We could look at the NodeSize annotation
              * of a node, but that is a bit unreliable. For example, FrameState and
@@ -190,16 +207,20 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
             return true;
         }
 
+        if (alwaysInlineInvoke(metaAccess, method)) {
+            return true;
+        }
+
         if (node instanceof AbstractNewObjectNode) {
             /*
              * We never allow to inline any kind of allocations, because the machine code size is
              * large.
-             * 
+             *
              * With one important exception: we allow (and do not even count) arrays allocated with
              * length 0. Such allocations occur when a method has a Java vararg parameter but the
              * caller does not provide any vararg. Without this exception, important vararg usages
              * like Class.getDeclaredConstructor would not be considered for inlining.
-             * 
+             *
              * Note that we are during graph decoding, so usages of the node are not decoded yet. So
              * we cannot base the decision on a certain usage pattern of the allocation.
              */
@@ -210,6 +231,21 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
                 }
             }
             return false;
+        } else if (node instanceof VirtualObjectNode) {
+            /*
+             * Same as the explicit allocation nodes above, but this time for the virtualized
+             * allocations created when escape analysis runs immediately after bytecode parsing.
+             */
+            if (node instanceof VirtualArrayNode) {
+                int newArrayLength = ((VirtualArrayNode) node).entryCount();
+                if (newArrayLength == 0) {
+                    return true;
+                }
+            }
+            return false;
+        } else if (node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode) {
+            /* Ignore nodes created by escape analysis in addition to the VirtualInstanceNode. */
+            return true;
         }
 
         if (node instanceof Invoke) {

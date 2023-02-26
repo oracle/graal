@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -62,7 +63,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 public final class SLFunctionLiteralNode extends SLExpressionNode {
 
     /** The name of the function. */
-    private final String functionName;
+    private final TruffleString functionName;
 
     /**
      * The resolved function. During parsing (in the constructor of this node), we do not have the
@@ -72,7 +73,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
      */
     @CompilationFinal private SLFunction cachedFunction;
 
-    public SLFunctionLiteralNode(String functionName) {
+    public SLFunctionLiteralNode(TruffleString functionName) {
         this.functionName = functionName;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,12 +43,16 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
     private static Value testCppLibrary;
     private static Value createA;
     private static Value createB;
+    private static Value createC;
+    private static Value createD;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testCppLibrary = loadTestBitcodeValue("inheritedFieldsTest.cpp");
         createA = testCppLibrary.getMember("prepareA");
         createB = testCppLibrary.getMember("prepareB");
+        createC = testCppLibrary.getMember("prepareC");
+        createD = testCppLibrary.getMember("prepareD");
     }
 
     @Test
@@ -64,7 +68,7 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
     }
 
     @Test
-    public void testInheritedFields() {
+    public void testInheritedFieldsOfClass() {
         Value bObj = createB.execute();
 
         Assert.assertTrue("bObj.hasMember(\"a\")", bObj.hasMember("a"));
@@ -72,9 +76,36 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
     }
 
     @Test
-    public void testUnexistingField() {
+    public void testUnexistingFieldOfClass() {
         Assert.assertFalse(testCppLibrary.hasMember("abc"));
         Value aObj = createA.execute();
         Assert.assertFalse("aObj.hasMember(\"c\")", aObj.hasMember("c"));
+    }
+
+    @Test
+    public void testBasicStructMembers() {
+        Value cObj = createC.execute();
+        Value dObj = createD.execute();
+
+        Assert.assertTrue("cObj.hasMember(\"c\")", cObj.hasMember("c"));
+        Assert.assertEquals(3, cObj.getMember("c").asInt());
+
+        Assert.assertTrue("dObj.hasMember(\"d\")", dObj.hasMember("d"));
+        Assert.assertEquals(4, dObj.getMember("d").asInt());
+    }
+
+    @Test
+    public void testInheritedFieldsOfStruct() {
+        Value dObj = createD.execute();
+
+        Assert.assertTrue("dObj.hasMember(\"c\")", dObj.hasMember("c"));
+        Assert.assertEquals(3, dObj.getMember("c").asInt());
+    }
+
+    @Test
+    public void testUnexistingFieldOfStruct() {
+        Assert.assertFalse(testCppLibrary.hasMember("abc"));
+        Value cObj = createC.execute();
+        Assert.assertFalse("cObj.hasMember(\"e\")", cObj.hasMember("e"));
     }
 }

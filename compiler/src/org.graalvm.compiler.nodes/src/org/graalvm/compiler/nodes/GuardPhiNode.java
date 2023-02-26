@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * Guard {@link PhiNode}s merge guard dependencies at control flow merges.
@@ -63,5 +64,25 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     @Override
     public ProxyNode createProxyFor(LoopExitNode lex) {
         return graph().addWithoutUnique(new GuardProxyNode(this, lex));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (isLoopPhi()) {
+            boolean allBackValuesNull = true;
+            for (int i = 1; i < valueCount(); i++) {
+                ValueNode value = valueAt(i);
+                if (value != null) {
+                    allBackValuesNull = false;
+                    break;
+                }
+            }
+            if (allBackValuesNull) {
+                // all values but the first are null, an allowed value for the guard phi, return the
+                // first value instead
+                return valueAt(0);
+            }
+        }
+        return super.canonical(tool);
     }
 }

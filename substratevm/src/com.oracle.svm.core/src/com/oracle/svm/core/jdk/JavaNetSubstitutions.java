@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -41,7 +39,6 @@ import java.util.Set;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -49,15 +46,16 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -133,17 +131,12 @@ final class DefaultProxySelectorSystemProxiesAccessor {
     }
 }
 
-@AutomaticFeature
-class JavaNetFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(URLProtocolsSupport.class, new URLProtocolsSupport());
-    }
+@AutomaticallyRegisteredFeature
+class JavaNetFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        Set<String> disabledURLProtocols = new HashSet<>(OptionUtils.flatten(",", SubstrateOptions.DisableURLProtocols.getValue()));
+        Set<String> disabledURLProtocols = new HashSet<>(SubstrateOptions.DisableURLProtocols.getValue().values());
 
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {
@@ -152,7 +145,7 @@ class JavaNetFeature implements Feature {
             }
         });
 
-        for (String protocol : OptionUtils.flatten(",", SubstrateOptions.EnableURLProtocols.getValue())) {
+        for (String protocol : SubstrateOptions.EnableURLProtocols.getValue().values()) {
             if (disabledURLProtocols.contains(protocol)) {
                 continue;
             }
@@ -176,12 +169,11 @@ class JavaNetFeature implements Feature {
     }
 
     private static void printWarning(String warningMessage) {
-        // Checkstyle: stop
         System.out.println(warningMessage);
-        // Checkstyle: resume}
     }
 }
 
+@AutomaticallyRegisteredImageSingleton
 class URLProtocolsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)

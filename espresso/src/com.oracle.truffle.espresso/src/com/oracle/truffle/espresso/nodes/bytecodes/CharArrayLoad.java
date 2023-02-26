@@ -22,19 +22,17 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -54,7 +52,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "CALOAD")
-public abstract class CharArrayLoad extends Node {
+public abstract class CharArrayLoad extends EspressoNode {
 
     public abstract char execute(StaticObject receiver, int index);
 
@@ -67,25 +65,20 @@ public abstract class CharArrayLoad extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "CALOAD !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         static final int LIMIT = 2;
 
         public abstract char execute(StaticObject array, int index);
 
-        protected EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
-
         @Specialization(guards = "array.isForeignObject()")
         char doForeign(StaticObject array, int index,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary arrayInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elemInterop,
-                        @Bind("getContext()") EspressoContext context,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            Meta meta = context.getMeta();
-            Object element = ForeignArrayUtils.readForeignArrayElement(array, index, arrayInterop, meta, exceptionProfile);
+            Meta meta = getMeta();
+            Object element = ForeignArrayUtils.readForeignArrayElement(array, index, getLanguage(), meta, arrayInterop, exceptionProfile);
             try {
                 String string1 = elemInterop.asString(element);
                 if (string1.length() == 1) {
@@ -101,7 +94,7 @@ public abstract class CharArrayLoad extends Node {
         @Specialization(guards = "array.isEspressoObject()")
         char doEspresso(StaticObject array, int index) {
             assert !StaticObject.isNull(array);
-            return getContext().getInterpreterToVM().getArrayChar(index, array);
+            return getContext().getInterpreterToVM().getArrayChar(getLanguage(), index, array);
         }
     }
 }

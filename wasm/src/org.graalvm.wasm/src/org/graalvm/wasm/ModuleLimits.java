@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ public final class ModuleLimits {
     private final int moduleSizeLimit;
     private final int typeCountLimit;
     private final int functionCountLimit;
+    private final int tableCountLimit;
     private final int importCountLimit;
     private final int exportCountLimit;
     private final int globalCountLimit;
@@ -60,16 +61,19 @@ public final class ModuleLimits {
     private final int elementSegmentCountLimit;
     private final int functionSizeLimit;
     private final int paramCountLimit;
-    private final int returnCountLimit;
+    private final int resultCountLimit;
+    private final int multiValueResultCountLimit;
     private final int localCountLimit;
     private final int tableInstanceSizeLimit;
     private final int memoryInstanceSizeLimit;
 
-    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit, int dataSegmentCountLimit,
-                    int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int returnCountLimit, int localCountLimit, int tableInstanceSizeLimit, int memoryInstanceSizeLimit) {
+    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit,
+                    int dataSegmentCountLimit, int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int multiValueResultCountLimit, int localCountLimit,
+                    int tableInstanceSizeLimit, int memoryInstanceSizeLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
         this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
         this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);
+        this.tableCountLimit = minUnsigned(tableCountLimit, Integer.MAX_VALUE);
         this.importCountLimit = minUnsigned(importCountLimit, Integer.MAX_VALUE);
         this.exportCountLimit = minUnsigned(exportCountLimit, Integer.MAX_VALUE);
         this.globalCountLimit = minUnsigned(globalCountLimit, Integer.MAX_VALUE);
@@ -77,7 +81,8 @@ public final class ModuleLimits {
         this.elementSegmentCountLimit = minUnsigned(elementSegmentCountLimit, Integer.MAX_VALUE);
         this.functionSizeLimit = minUnsigned(functionSizeLimit, Integer.MAX_VALUE);
         this.paramCountLimit = minUnsigned(paramCountLimit, Integer.MAX_VALUE);
-        this.returnCountLimit = minUnsigned(returnCountLimit, Integer.MAX_VALUE);
+        this.resultCountLimit = minUnsigned(resultCountLimit, Integer.MAX_VALUE);
+        this.multiValueResultCountLimit = minUnsigned(multiValueResultCountLimit, Integer.MAX_VALUE);
         this.localCountLimit = minUnsigned(localCountLimit, Integer.MAX_VALUE);
         this.tableInstanceSizeLimit = minUnsigned(tableInstanceSizeLimit, MAX_TABLE_INSTANCE_SIZE);
         this.memoryInstanceSizeLimit = minUnsigned(memoryInstanceSizeLimit, MAX_MEMORY_INSTANCE_SIZE);
@@ -88,6 +93,8 @@ public final class ModuleLimits {
     }
 
     static final ModuleLimits DEFAULTS = new ModuleLimits(
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
@@ -113,6 +120,10 @@ public final class ModuleLimits {
 
     public void checkFunctionCount(int count) {
         assertUnsignedIntLessOrEqual(count, functionCountLimit, Failure.FUNCTION_COUNT_LIMIT_EXCEEDED);
+    }
+
+    public void checkTableCount(int count) {
+        assertUnsignedIntLessOrEqual(count, tableCountLimit, Failure.TABLE_COUNT_LIMIT_EXCEEDED);
     }
 
     public void checkImportCount(int count) {
@@ -143,8 +154,12 @@ public final class ModuleLimits {
         assertUnsignedIntLessOrEqual(count, paramCountLimit, Failure.PARAMETERS_COUNT_LIMIT_EXCEEDED);
     }
 
-    public void checkReturnCount(int count) {
-        assertUnsignedIntLessOrEqual(count, returnCountLimit, Failure.RETURN_COUNT_LIMIT_EXCEEDED);
+    public void checkResultCount(int count, boolean multiValue) {
+        if (multiValue) {
+            assertUnsignedIntLessOrEqual(count, multiValueResultCountLimit, Failure.RESULT_COUNT_LIMIT_EXCEEDED);
+        } else {
+            assertUnsignedIntLessOrEqual(count, resultCountLimit, Failure.RESULT_COUNT_LIMIT_EXCEEDED);
+        }
     }
 
     public void checkLocalCount(int count) {

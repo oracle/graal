@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.vector;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,14 +53,13 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
 
-    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
-
     protected abstract int getVectorLength();
 
     public abstract static class LLVMShuffleI1VectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI1Vector doI1Vector(LLVMI1Vector leftVector, LLVMI1Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector leftVector, LLVMI1Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             boolean[] newValues = new boolean[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -74,7 +74,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleI8VectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI8Vector doI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             byte[] newValues = new byte[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -89,7 +90,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleI16VectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             short[] newValues = new short[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -104,7 +106,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleI32VectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI32Vector doI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             int[] newValues = new int[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -119,7 +122,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleI64VectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             long[] newValues = new long[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -132,7 +136,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -145,7 +150,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doPointerVector(LLVMI64Vector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMPointerVector doPointerVector(LLVMI64Vector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -158,7 +164,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -173,7 +180,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleFloatVectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMFloatVector doOp(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMFloatVector doOp(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             float[] newValues = new float[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -188,7 +196,8 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     public abstract static class LLVMShuffleDoubleVectorNode extends LLVMShuffleVectorNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMDoubleVector doOp(LLVMDoubleVector leftVector, LLVMDoubleVector rightVector, LLVMI32Vector maskVector) {
+        protected LLVMDoubleVector doOp(LLVMDoubleVector leftVector, LLVMDoubleVector rightVector, LLVMI32Vector maskVector,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             double[] newValues = new double[getVectorLength()];
             int leftVectorLength = leftVector.getLength();

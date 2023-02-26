@@ -32,7 +32,9 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -151,6 +153,7 @@ public class GraalCompiler {
                 throw debug.handle(e);
             }
             checkForRequestedCrash(r.graph);
+            checkForRequestedDelay(r.graph);
             return r.compilationResult;
         }
     }
@@ -176,19 +179,9 @@ public class GraalCompiler {
                 methodPattern = value.substring(0, value.length() - ":PermanentBailout".length());
                 permanentBailout = true;
             }
-            String crashLabel = null;
-            if (graph.name != null && graph.name.contains(methodPattern)) {
-                crashLabel = graph.name;
-            }
-            if (crashLabel == null) {
-                ResolvedJavaMethod method = graph.method();
-                MethodFilter filter = MethodFilter.parse(methodPattern);
-                if (filter.matches(method)) {
-                    crashLabel = method.format("%H.%n(%p)");
-                }
-            }
-            if (crashLabel != null) {
-                String crashMessage = "Forced crash after compiling " + crashLabel;
+            String matchedLabel = match(graph, methodPattern);
+            if (matchedLabel != null) {
+                String crashMessage = "Forced crash after compiling " + matchedLabel;
                 notifyCrash(crashMessage);
                 if (permanentBailout) {
                     throw new PermanentBailoutException(crashMessage);
@@ -199,6 +192,49 @@ public class GraalCompiler {
                 throw new RuntimeException(crashMessage);
             }
         }
+    }
+
+    /**
+     * Checks whether the {@link GraalCompilerOptions#InjectedCompilationDelay} option indicates
+     * that the compilation of {@code graph} should be delayed.
+     *
+     * @param graph a graph currently being compiled
+     */
+    private static void checkForRequestedDelay(StructuredGraph graph) {
+        long delay = Math.max(0, GraalCompilerOptions.InjectedCompilationDelay.getValue(graph.getOptions())) * 1000;
+        if (delay != 0) {
+            String methodPattern = DebugOptions.MethodFilter.getValue(graph.getOptions());
+            String matchedLabel = match(graph, methodPattern);
+            if (matchedLabel != null) {
+                long start = System.currentTimeMillis();
+                TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, delay);
+                while (System.currentTimeMillis() - start < delay) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
+        }
+    }
+
+    private static String match(StructuredGraph graph, String methodPattern) {
+        if (methodPattern == null) {
+            // Absence of methodPattern means match everything
+            return graph.name != null ? graph.name : graph.method().format("%H.%n(%p)");
+        }
+        String label = null;
+        if (graph.name != null && graph.name.contains(methodPattern)) {
+            label = graph.name;
+        }
+        if (label == null) {
+            ResolvedJavaMethod method = graph.method();
+            MethodFilter filter = MethodFilter.parse(methodPattern);
+            if (filter.matches(method)) {
+                label = method.format("%H.%n(%p)");
+            }
+        }
+        return label;
     }
 
     /**

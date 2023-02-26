@@ -47,7 +47,7 @@ public class DAPTestInstrument extends TruffleInstrument {
     protected void onCreate(final Env env) {
         env.registerService(new DAPSessionHandlerProvider() {
             @Override
-            public DAPSessionHandler getSessionHandler(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) throws IOException {
+            public DAPSessionHandler getSessionHandler(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, Runnable prolog) throws IOException {
                 return new DAPSessionHandler() {
 
                     private PipedOutputStream out;
@@ -59,7 +59,11 @@ public class DAPTestInstrument extends TruffleInstrument {
                         this.out = new PipedOutputStream();
                         PipedOutputStream pos = new PipedOutputStream();
                         in = new PipedInputStream(pos, 2048);
-                        DebugProtocolServer.Session.connect(DebugProtocolServerImpl.create(context, suspend, inspectInternal, inspectInitialization), new PipedInputStream(this.out, 2048), pos,
+                        DebugProtocolServerImpl dapServer = DebugProtocolServerImpl.create(context, suspend, inspectInternal, inspectInitialization);
+                        if (prolog != null) {
+                            prolog.run();
+                        }
+                        DebugProtocolServer.Session.connect(dapServer, new PipedInputStream(this.out, 2048), pos,
                                         Executors.newSingleThreadExecutor());
                         return this;
                     }
@@ -81,7 +85,7 @@ public class DAPTestInstrument extends TruffleInstrument {
 }
 
 interface DAPSessionHandlerProvider {
-    DAPSessionHandler getSessionHandler(boolean suspend, boolean inspectInternal, boolean inspectInitialization) throws IOException;
+    DAPSessionHandler getSessionHandler(boolean suspend, boolean inspectInternal, boolean inspectInitialization, Runnable prolog) throws IOException;
 }
 
 interface DAPSessionHandler {

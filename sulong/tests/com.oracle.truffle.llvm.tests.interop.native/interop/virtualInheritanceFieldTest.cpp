@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,18 +28,19 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include <graalvm/llvm/polyglot.h>
 
 class B0 {
 public:
-    long b0_data = 0;
+    int64_t b0_data = 0;
 };
 
 class A0 : public virtual B0 {
 public:
     A0();
-    long aa0_data;
-    long a0_data;
+    int64_t aa0_data;
+    int64_t a0_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A0);
@@ -55,8 +56,8 @@ A0::A0() {
 class A1 : public virtual B0 {
 public:
     A1();
-    long aa1_data;
-    long a1_data;
+    int64_t aa1_data;
+    int64_t a1_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A1);
@@ -72,8 +73,8 @@ A1::A1() {
 class A2 : public virtual B0 {
 public:
     A2();
-    long aa2_data;
-    long a2_data;
+    int64_t aa2_data;
+    int64_t a2_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A2);
@@ -89,8 +90,8 @@ A2::A2() {
 class A3 : public virtual A0, public virtual A1, public A2 {
 public:
     A3();
-    long aa3_data;
-    long a3_data;
+    int64_t aa3_data;
+    int64_t a3_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A3);
@@ -106,8 +107,8 @@ A3::A3() {
 class A4 : public virtual B0 {
 public:
     A4();
-    long aa4_data;
-    long a4_data;
+    int64_t aa4_data;
+    int64_t a4_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A4);
@@ -123,8 +124,8 @@ A4::A4() {
 class A5 : public virtual B0 {
 public:
     A5();
-    long aa5_data;
-    long a5_data;
+    int64_t aa5_data;
+    int64_t a5_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A5);
@@ -140,8 +141,8 @@ A5::A5() {
 class A6 : public virtual B0 {
 public:
     A6();
-    long aa6_data;
-    long a6_data;
+    int64_t aa6_data;
+    int64_t a6_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A6);
@@ -157,8 +158,8 @@ A6::A6() {
 class A7 : public virtual A4, public virtual A5, public A6 {
 public:
     A7();
-    long aa7_data;
-    long a7_data;
+    int64_t aa7_data;
+    int64_t a7_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A7);
@@ -174,8 +175,8 @@ A7::A7() {
 class A8 : public virtual B0 {
 public:
     A8();
-    long aa8_data;
-    long a8_data;
+    int64_t aa8_data;
+    int64_t a8_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A8);
@@ -191,8 +192,8 @@ A8::A8() {
 class A9 : public virtual B0 {
 public:
     A9();
-    long aa9_data;
-    long a9_data;
+    int64_t aa9_data;
+    int64_t a9_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A9);
@@ -208,8 +209,8 @@ A9::A9() {
 class A10 : public virtual B0 {
 public:
     A10();
-    long aa10_data;
-    long a10_data;
+    int64_t aa10_data;
+    int64_t a10_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A10);
@@ -225,8 +226,8 @@ A10::A10() {
 class A11 : public virtual A8, public A9, public virtual A10 {
 public:
     A11();
-    long aa11_data;
-    long a11_data;
+    int64_t aa11_data;
+    int64_t a11_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A11);
@@ -242,8 +243,8 @@ A11::A11() {
 class A12 : public virtual A3, public virtual A7, public A11 {
 public:
     A12();
-    long aa12_data;
-    long a12_data;
+    int64_t aa12_data;
+    int64_t a12_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A12);
@@ -259,8 +260,8 @@ A12::A12() {
 class A13 : public virtual B0 {
 public:
     A13();
-    long aa13_data;
-    long a13_data;
+    int64_t aa13_data;
+    int64_t a13_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A13);
@@ -276,8 +277,8 @@ A13::A13() {
 class A14 : public virtual B0 {
 public:
     A14();
-    long aa14_data;
-    long a14_data;
+    int64_t aa14_data;
+    int64_t a14_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A14);
@@ -293,8 +294,8 @@ A14::A14() {
 class A15 : public virtual B0 {
 public:
     A15();
-    long aa15_data;
-    long a15_data;
+    int64_t aa15_data;
+    int64_t a15_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A15);
@@ -310,8 +311,8 @@ A15::A15() {
 class A16 : public A13, public A14, public A15 {
 public:
     A16();
-    long aa16_data;
-    long a16_data;
+    int64_t aa16_data;
+    int64_t a16_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A16);
@@ -327,8 +328,8 @@ A16::A16() {
 class A17 : public virtual B0 {
 public:
     A17();
-    long aa17_data;
-    long a17_data;
+    int64_t aa17_data;
+    int64_t a17_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A17);
@@ -344,8 +345,8 @@ A17::A17() {
 class A18 : public virtual B0 {
 public:
     A18();
-    long aa18_data;
-    long a18_data;
+    int64_t aa18_data;
+    int64_t a18_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A18);
@@ -361,8 +362,8 @@ A18::A18() {
 class A19 : public virtual B0 {
 public:
     A19();
-    long aa19_data;
-    long a19_data;
+    int64_t aa19_data;
+    int64_t a19_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A19);
@@ -378,8 +379,8 @@ A19::A19() {
 class A20 : public A17, public virtual A18, public virtual A19 {
 public:
     A20();
-    long aa20_data;
-    long a20_data;
+    int64_t aa20_data;
+    int64_t a20_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A20);
@@ -395,8 +396,8 @@ A20::A20() {
 class A21 : public virtual B0 {
 public:
     A21();
-    long aa21_data;
-    long a21_data;
+    int64_t aa21_data;
+    int64_t a21_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A21);
@@ -412,8 +413,8 @@ A21::A21() {
 class A22 : public virtual B0 {
 public:
     A22();
-    long aa22_data;
-    long a22_data;
+    int64_t aa22_data;
+    int64_t a22_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A22);
@@ -429,8 +430,8 @@ A22::A22() {
 class A23 : public virtual B0 {
 public:
     A23();
-    long aa23_data;
-    long a23_data;
+    int64_t aa23_data;
+    int64_t a23_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A23);
@@ -446,8 +447,8 @@ A23::A23() {
 class A24 : public virtual A21, public A22, public A23 {
 public:
     A24();
-    long aa24_data;
-    long a24_data;
+    int64_t aa24_data;
+    int64_t a24_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A24);
@@ -463,8 +464,8 @@ A24::A24() {
 class A25 : public A16, public virtual A20, public virtual A24 {
 public:
     A25();
-    long aa25_data;
-    long a25_data;
+    int64_t aa25_data;
+    int64_t a25_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A25);
@@ -480,8 +481,8 @@ A25::A25() {
 class A26 : public virtual B0 {
 public:
     A26();
-    long aa26_data;
-    long a26_data;
+    int64_t aa26_data;
+    int64_t a26_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A26);
@@ -497,8 +498,8 @@ A26::A26() {
 class A27 : public virtual B0 {
 public:
     A27();
-    long aa27_data;
-    long a27_data;
+    int64_t aa27_data;
+    int64_t a27_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A27);
@@ -514,8 +515,8 @@ A27::A27() {
 class A28 : public virtual B0 {
 public:
     A28();
-    long aa28_data;
-    long a28_data;
+    int64_t aa28_data;
+    int64_t a28_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A28);
@@ -531,8 +532,8 @@ A28::A28() {
 class A29 : public virtual A26, public A27, public A28 {
 public:
     A29();
-    long aa29_data;
-    long a29_data;
+    int64_t aa29_data;
+    int64_t a29_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A29);
@@ -548,8 +549,8 @@ A29::A29() {
 class A30 : public virtual B0 {
 public:
     A30();
-    long aa30_data;
-    long a30_data;
+    int64_t aa30_data;
+    int64_t a30_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A30);
@@ -565,8 +566,8 @@ A30::A30() {
 class A31 : public virtual B0 {
 public:
     A31();
-    long aa31_data;
-    long a31_data;
+    int64_t aa31_data;
+    int64_t a31_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A31);
@@ -582,8 +583,8 @@ A31::A31() {
 class A32 : public virtual B0 {
 public:
     A32();
-    long aa32_data;
-    long a32_data;
+    int64_t aa32_data;
+    int64_t a32_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A32);
@@ -599,8 +600,8 @@ A32::A32() {
 class A33 : public A30, public A31, public A32 {
 public:
     A33();
-    long aa33_data;
-    long a33_data;
+    int64_t aa33_data;
+    int64_t a33_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A33);
@@ -616,8 +617,8 @@ A33::A33() {
 class A34 : public virtual B0 {
 public:
     A34();
-    long aa34_data;
-    long a34_data;
+    int64_t aa34_data;
+    int64_t a34_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A34);
@@ -633,8 +634,8 @@ A34::A34() {
 class A35 : public virtual B0 {
 public:
     A35();
-    long aa35_data;
-    long a35_data;
+    int64_t aa35_data;
+    int64_t a35_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A35);
@@ -650,8 +651,8 @@ A35::A35() {
 class A36 : public virtual B0 {
 public:
     A36();
-    long aa36_data;
-    long a36_data;
+    int64_t aa36_data;
+    int64_t a36_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A36);
@@ -667,8 +668,8 @@ A36::A36() {
 class A37 : public virtual A34, public virtual A35, public virtual A36 {
 public:
     A37();
-    long aa37_data;
-    long a37_data;
+    int64_t aa37_data;
+    int64_t a37_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A37);
@@ -684,8 +685,8 @@ A37::A37() {
 class A38 : public A29, public virtual A33, public virtual A37 {
 public:
     A38();
-    long aa38_data;
-    long a38_data;
+    int64_t aa38_data;
+    int64_t a38_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A38);
@@ -701,8 +702,8 @@ A38::A38() {
 class A39 : public A12, public virtual A25, public A38 {
 public:
     A39();
-    long aa39_data;
-    long a39_data;
+    int64_t aa39_data;
+    int64_t a39_data;
 };
 
 POLYGLOT_DECLARE_TYPE(A39);

@@ -27,15 +27,17 @@ package com.oracle.svm.hosted.code;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.Specialize;
-import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
-import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -51,33 +53,18 @@ public class CompilationInfo {
      */
     protected boolean inCompileQueue;
 
-    protected volatile StructuredGraph graph;
+    private volatile CompilationGraph compilationGraph;
+    private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
 
     protected boolean canDeoptForTesting;
-
-    protected boolean modifiesSpecialRegisters;
 
     /**
      * The constant arguments for a {@link DeoptTest} method called by a {@link Specialize} method.
      * Note: this is only used for testing.
      */
     protected ConstantNode[] specializedArguments;
-
-    /**
-     * A link to the deoptimization target method if this method can deoptimize.
-     */
-    protected HostedMethod deoptTarget;
-
-    /**
-     * A link to the regular compiled method if this method is a deoptimization target.
-     *
-     * Note that it is important that this field is final: the {@link HostedMethod#getName() method
-     * name} depends on this field (to distinguish a regular method from a deoptimization target
-     * method), so mutating this field would mutate the name of a method.
-     */
-    protected final HostedMethod deoptOrigin;
 
     /* Custom parsing and compilation code that is executed instead of that of CompileQueue */
     protected ParseFunction customParseFunction;
@@ -95,64 +82,58 @@ public class CompilationInfo {
     protected final AtomicLong numVirtualCalls = new AtomicLong();
     protected final AtomicLong numEntryPointCalls = new AtomicLong();
 
-    public CompilationInfo(HostedMethod method, HostedMethod deoptOrigin) {
+    public CompilationInfo(HostedMethod method) {
         this.method = method;
-        this.deoptOrigin = deoptOrigin;
-
-        if (deoptOrigin != null) {
-            assert deoptOrigin.compilationInfo.deoptTarget == null;
-            deoptOrigin.compilationInfo.deoptTarget = method;
-        }
-    }
-
-    public boolean isDeoptTarget() {
-        return deoptOrigin != null;
     }
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && (deoptOrigin.compilationInfo.canDeoptForTesting || CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
-    }
-
-    /**
-     * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link CompilationInfoSupport#registerDeoptEntry}.
-     */
-    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && CompilationInfoSupport.singleton().isDeoptTarget(method) && CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+        return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     public boolean canDeoptForTesting() {
         return canDeoptForTesting;
     }
 
-    public HostedMethod getDeoptTargetMethod() {
-        return deoptTarget;
+    public CompilationGraph getCompilationGraph() {
+        return compilationGraph;
     }
 
-    public void setGraph(StructuredGraph graph) {
-        this.graph = graph;
-        if (SubstrateOptions.useLLVMBackend()) {
-            this.modifiesSpecialRegisters = false;
-            for (Node node : graph.getNodes()) {
-                if (node instanceof WriteCurrentVMThreadNode || node instanceof WriteHeapBaseNode) {
-                    this.modifiesSpecialRegisters = true;
-                }
+    @SuppressWarnings("try")
+    public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
+        var graph = new StructuredGraph.Builder(compileOptions, debug)
+                        .method(method)
+                        .recordInlinedMethods(false)
+                        .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
+                        .compilationId(compilationId)
+                        .build();
+
+        if (decode) {
+            try (var s = debug.scope("CreateGraph", graph, method)) {
+                var decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, graph);
+                decoder.decode(getCompilationGraph().getEncodedGraph());
+            } catch (Throwable ex) {
+                throw debug.handle(ex);
             }
         }
-    }
-
-    public void clear() {
-        graph = null;
-        specializedArguments = null;
-    }
-
-    public StructuredGraph getGraph() {
         return graph;
     }
 
-    public boolean modifiesSpecialRegisters() {
-        assert SubstrateOptions.useLLVMBackend();
-        return modifiesSpecialRegisters;
+    public void encodeGraph(StructuredGraph graph) {
+        compilationGraph = CompilationGraph.encode(graph);
+    }
+
+    public void setCompileOptions(OptionValues compileOptions) {
+        this.compileOptions = compileOptions;
+    }
+
+    public OptionValues getCompileOptions() {
+        return compileOptions;
+    }
+
+    public void clear() {
+        compilationGraph = null;
+        specializedArguments = null;
     }
 
     public boolean isTrivialMethod() {

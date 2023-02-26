@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
@@ -63,7 +64,8 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  * Represents a state of a {@link PureNFA}. All {@link PureNFAState}s correspond to a single
  * {@link RegexASTNode}, referenced by {@link #getAstNodeId()}. Initial and final states correspond
  * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
- * to either {@link CharacterClass}es or {@link BackReference}s.
+ * to either {@link CharacterClass}es, {@link BackReference}s, {@link LookAroundAssertion}s or
+ * {@link AtomicGroup}s.
  */
 public final class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
 
@@ -71,12 +73,13 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     public static final byte KIND_INITIAL_OR_FINAL_STATE = 0;
     public static final byte KIND_CHARACTER_CLASS = 1;
-    public static final byte KIND_LOOK_AROUND = 2;
+    public static final byte KIND_SUB_MATCHER = 2;
     public static final byte KIND_BACK_REFERENCE = 3;
     public static final byte KIND_EMPTY_MATCH = 4;
 
-    private static final byte FLAG_IS_LOOK_AROUND_NEGATED = 1 << N_FLAGS;
-    private static final byte FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 1;
+    private static final byte FLAG_IS_LOOK_AROUND = 1 << N_FLAGS;
+    private static final byte FLAG_IS_SUB_MATCHER_NEGATED = 1 << N_FLAGS + 1;
+    private static final byte FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 2;
 
     private final int astNodeId;
     private final int extraId;
@@ -87,12 +90,15 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         super(id, EMPTY_TRANSITIONS);
         this.astNodeId = t.getId();
         this.kind = getKind(t);
-        this.extraId = isLookAround() ? t.asLookAroundAssertion().getSubTreeId() : isBackReference() ? t.asBackReference().getGroupNr() : -1;
+        this.extraId = isSubMatcher() ? t.asSubtreeRootNode().getSubTreeId() : isBackReference() ? t.asBackReference().getGroupNr() : -1;
         this.charSet = isCharacterClass() ? t.asCharacterClass().getCharSet() : null;
-        setLookAroundNegated(isLookAround() && t.asLookAroundAssertion().isNegated());
+        setLookAround(t.isLookAroundAssertion());
+        if (t.isLookAroundAssertion()) {
+            setSubMatcherNegated(t.asLookAroundAssertion().isNegated());
+        }
     }
 
-    public int getAstNodeId() {
+    private int getAstNodeId() {
         return astNodeId;
     }
 
@@ -112,18 +118,22 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     /**
-     * State represents a {@link LookAroundAssertion}.
+     * State represents a {@link LookAroundAssertion} or an {@link AtomicGroup}.
      */
-    public boolean isLookAround() {
-        return kind == KIND_LOOK_AROUND;
+    public boolean isSubMatcher() {
+        return kind == KIND_SUB_MATCHER;
     }
 
     public boolean isLookAhead(RegexAST ast) {
-        return isLookAround() && ast.getLookArounds().get(getLookAroundId()).isLookAheadAssertion();
+        return isSubMatcher() && getAstNode(ast).isLookAheadAssertion();
     }
 
     public boolean isLookBehind(RegexAST ast) {
-        return isLookAround() && ast.getLookArounds().get(getLookAroundId()).isLookBehindAssertion();
+        return isSubMatcher() && getAstNode(ast).isLookBehindAssertion();
+    }
+
+    public boolean isAtomicGroup() {
+        return isSubMatcher() && !isLookAround();
     }
 
     /**
@@ -150,8 +160,8 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         return charSet;
     }
 
-    public int getLookAroundId() {
-        assert isLookAround();
+    public int getSubtreeId() {
+        assert isSubMatcher();
         return extraId;
     }
 
@@ -160,12 +170,20 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         return extraId;
     }
 
-    public boolean isLookAroundNegated() {
-        return getFlag(FLAG_IS_LOOK_AROUND_NEGATED);
+    public boolean isLookAround() {
+        return getFlag(FLAG_IS_LOOK_AROUND);
     }
 
-    public void setLookAroundNegated(boolean value) {
-        setFlag(FLAG_IS_LOOK_AROUND_NEGATED, value);
+    public void setLookAround(boolean value) {
+        setFlag(FLAG_IS_LOOK_AROUND, value);
+    }
+
+    public boolean isSubMatcherNegated() {
+        return getFlag(FLAG_IS_SUB_MATCHER_NEGATED);
+    }
+
+    public void setSubMatcherNegated(boolean value) {
+        setFlag(FLAG_IS_SUB_MATCHER_NEGATED, value);
     }
 
     /**
@@ -256,8 +274,8 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         if (t.isMatchFound() || t.isPositionAssertion()) {
             return KIND_INITIAL_OR_FINAL_STATE;
         }
-        if (t.isLookAroundAssertion()) {
-            return KIND_LOOK_AROUND;
+        if (t.isSubtreeRoot()) {
+            return KIND_SUB_MATCHER;
         }
         if (t.isBackReference()) {
             return KIND_BACK_REFERENCE;
@@ -274,7 +292,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean canMatchZeroWidth() {
-        return isLookAround() || isBackReference() || isEmptyMatch();
+        return isSubMatcher() || isBackReference() || isEmptyMatch();
     }
 
     @TruffleBoundary
@@ -300,8 +318,8 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
                 }
             case KIND_CHARACTER_CLASS:
                 return charSet.toString();
-            case KIND_LOOK_AROUND:
-                return "?=" + getLookAroundId();
+            case KIND_SUB_MATCHER:
+                return "?=" + getSubtreeId();
             case KIND_BACK_REFERENCE:
                 return "\\" + getBackRefNumber();
             case KIND_EMPTY_MATCH:
@@ -317,7 +335,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
                         Json.prop("stateSet", Json.array(new int[]{getAstNodeId()})),
                         Json.prop("sourceSections", RegexAST.sourceSectionsToJson(ast.getSourceSections(getAstNode(ast)))),
                         Json.prop("matcherBuilder", isCharacterClass() ? Json.val(charSet.toString()) : Json.nullValue()),
-                        Json.prop("lookAround", isLookAround() ? Json.val(getLookAroundId()) : Json.nullValue()),
+                        Json.prop("subMatcher", isSubMatcher() ? Json.val(getSubtreeId()) : Json.nullValue()),
                         Json.prop("backReference", isBackReference() ? Json.val(getBackRefNumber()) : Json.nullValue()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState()),

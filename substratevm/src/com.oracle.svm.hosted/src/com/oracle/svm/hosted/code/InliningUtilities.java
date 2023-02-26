@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
-
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
@@ -33,45 +31,21 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class InliningUtilities {
 
-    private static final Class<? extends Annotation> JDK_FORCE_INLINE_ANNOTATION = lookupForceInlineAnnotation();
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Annotation> lookupForceInlineAnnotation() {
-        try {
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                return (Class<? extends Annotation>) Class.forName("java.lang.invoke.ForceInline");
-            } else {
-                return (Class<? extends Annotation>) Class.forName("jdk.internal.vm.annotation.ForceInline");
-            }
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
     public static boolean isTrivialMethod(StructuredGraph graph) {
-        if (graph.method().getAnnotation(JDK_FORCE_INLINE_ANNOTATION) != null) {
-            /*
-             * The method is annotated by the JDK as force inline, hopefully for a good reason.
-             * Treating it as a trivial method means we also inline it everywhere.
-             */
-            return true;
-        }
-
         int numInvokes = 0;
         int numOthers = 0;
         for (Node n : graph.getNodes()) {
-            if (n instanceof StartNode || n instanceof ParameterNode || n instanceof FullInfopointNode || n instanceof ValueProxy) {
+            if (n instanceof StartNode || n instanceof ParameterNode || n instanceof FullInfopointNode || n instanceof ValueProxy || n instanceof ValueAnchorNode || n instanceof FrameState) {
                 continue;
             }
             if (n instanceof MethodCallTargetNode) {

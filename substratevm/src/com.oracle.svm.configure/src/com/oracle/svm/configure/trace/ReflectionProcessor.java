@@ -29,15 +29,16 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
@@ -47,42 +48,33 @@ import jdk.vm.ci.meta.MetaUtil;
 
 class ReflectionProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
-    private final TypeConfiguration configuration;
-    private final ProxyConfiguration proxyConfiguration;
-    private final ResourceConfiguration resourceConfiguration;
 
-    ReflectionProcessor(AccessAdvisor advisor, TypeConfiguration typeConfiguration, ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
+    ReflectionProcessor(AccessAdvisor advisor) {
         this.advisor = advisor;
-        this.configuration = typeConfiguration;
-        this.proxyConfiguration = proxyConfiguration;
-        this.resourceConfiguration = resourceConfiguration;
-    }
-
-    public TypeConfiguration getConfiguration() {
-        return configuration;
-    }
-
-    public ProxyConfiguration getProxyConfiguration() {
-        return proxyConfiguration;
-    }
-
-    public ResourceConfiguration getResourceConfiguration() {
-        return resourceConfiguration;
     }
 
     @Override
     @SuppressWarnings("fallthrough")
-    public void processEntry(Map<String, ?> entry) {
+    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }
+
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
+        ResourceConfiguration resourceConfiguration = configurationSet.getResourceConfiguration();
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
             // always filter based on the caller class.
+            case "findResource":
+            case "findResourceAsStream":
+                expectSize(args, 2);
+                String module = (String) args.get(0);
+                String resource = (String) args.get(1);
+                resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
+                return;
             case "getResource":
             case "getResourceAsStream":
             case "getSystemResource":
@@ -94,6 +86,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addResourcePattern(condition, regex);
                 return;
         }
+        TypeConfiguration configuration = configurationSet.getReflectionConfiguration();
         String callerClass = (String) entry.get("caller_class");
         boolean isLoadClass = function.equals("loadClass");
         if (isLoadClass || function.equals("forName") || function.equals("findClass")) {
@@ -119,7 +112,7 @@ class ReflectionProcessor extends AbstractProcessor {
             return;
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
-        ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
+        ConfigurationMemberAccessibility accessibility = Boolean.TRUE.equals(entry.get("result")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
@@ -185,7 +178,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getMethod": {
-                accessibility = (function.equals("invokeMethod") || function.equals("findMethodHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
+                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeMethod") || function.equals("findMethodHandle"))
+                                ? ConfigurationMemberAccessibility.ACCESSED
+                                : ConfigurationMemberAccessibility.QUERIED;
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
@@ -205,7 +200,8 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getConstructor": {
-                accessibility = (function.equals("invokeConstructor") || function.equals("findConstructorHandle")) ? ConfigurationMemberAccessibility.ACCESSED
+                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeConstructor") || function.equals("findConstructorHandle"))
+                                ? ConfigurationMemberAccessibility.ACCESSED
                                 : ConfigurationMemberAccessibility.QUERIED;
                 List<String> parameterTypes = singleElement(args);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
@@ -219,24 +215,24 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getProxyClass": {
                 expectSize(args, 2);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass));
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configurationSet.getProxyConfiguration());
                 break;
             }
             case "newProxyInstance": {
                 expectSize(args, 3);
-                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass));
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass), configurationSet.getProxyConfiguration());
                 break;
             }
             case "newMethodHandleProxyInstance": {
                 expectSize(args, 1);
-                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass));
+                addDynamicProxyUnchecked((List<?>) args.get(0), Collections.singletonList("sun.invoke.WrapperInstance"), lazyValue(callerClass), configurationSet.getProxyConfiguration());
                 break;
             }
 
             case "getEnclosingConstructor":
             case "getEnclosingMethod": {
                 String result = (String) entry.get("result");
-                addFullyQualifiedDeclaredMethod(result);
+                addFullyQualifiedDeclaredMethod(result, configuration);
                 break;
             }
 
@@ -270,12 +266,16 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
+            case "allocateInstance": {
+                configuration.getOrCreateType(condition, clazz).setUnsafeAllocated();
+                break;
+            }
             default:
                 System.err.println("Unsupported reflection method: " + function);
         }
     }
 
-    private void addFullyQualifiedDeclaredMethod(String descriptor) {
+    private static void addFullyQualifiedDeclaredMethod(String descriptor, TypeConfiguration configuration) {
         int sigbegin = descriptor.indexOf('(');
         int classend = descriptor.lastIndexOf('.', sigbegin - 1);
         String qualifiedClass = descriptor.substring(0, classend);
@@ -284,7 +284,7 @@ class ReflectionProcessor extends AbstractProcessor {
         configuration.getOrCreateType(ConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
-    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass) {
+    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
         @SuppressWarnings("unchecked")
         List<String> interfaces = (List<String>) interfaceList;
         for (String iface : interfaces) {
@@ -295,7 +295,7 @@ class ReflectionProcessor extends AbstractProcessor {
         proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 
-    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass) {
+    private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
         @SuppressWarnings("unchecked")
         List<String> checkedInterfaces = (List<String>) checkedInterfaceList;
         for (String iface : checkedInterfaces) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -32,16 +31,10 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
-    final class Options {
-        @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime.")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive");
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     static String getInitialPolicyName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
@@ -49,7 +42,7 @@ public interface CollectionPolicy {
         } else if (!SubstrateOptions.useRememberedSet()) {
             return "OnlyCompletely";
         }
-        String name = Options.InitialCollectionPolicy.getValue();
+        String name = SerialGCOptions.InitialCollectionPolicy.getValue();
         String legacyPrefix = "com.oracle.svm.core.genscavenge.CollectionPolicy$";
         if (name.startsWith(legacyPrefix)) {
             return name.substring(legacyPrefix.length());
@@ -63,6 +56,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return new AdaptiveCollectionPolicy();
+            case "AggressiveShrink":
+                return new AggressiveShrinkCollectionPolicy();
             case "Proportionate":
                 return new ProportionateSpacesPolicy();
             case "BySpaceAndTime":
@@ -87,7 +82,7 @@ public interface CollectionPolicy {
     }
 
     static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {
-        Boolean optionValue = HeapParameters.Options.CollectYoungGenerationSeparately.getValue();
+        Boolean optionValue = SerialGCOptions.CollectYoungGenerationSeparately.getValue();
         return (optionValue != null) ? optionValue : defaultValue;
     }
 
@@ -114,6 +109,13 @@ public interface CollectionPolicy {
      * called followed by the collection.
      */
     boolean shouldCollectOnAllocation();
+
+    /**
+     * Return true if a user-requested GC (e.g., call to {@link System#gc()} or
+     * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
+     * should be performed.
+     */
+    boolean shouldCollectOnRequest(GCCause cause, boolean fullGC);
 
     /**
      * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an
@@ -156,6 +158,12 @@ public interface CollectionPolicy {
      */
     UnsignedWord getSurvivorSpacesCapacity();
 
+    /** The capacity of the young generation, comprising the eden and survivor spaces. */
+    UnsignedWord getYoungGenerationCapacity();
+
+    /** The capacity of the old generation. */
+    UnsignedWord getOldGenerationCapacity();
+
     /**
      * The maximum number of bytes that should be kept readily available for allocation or copying
      * during collections.
@@ -174,4 +182,5 @@ public interface CollectionPolicy {
 
     /** Called before the end of a collection, in the safepoint operation. */
     void onCollectionEnd(boolean completeCollection, GCCause cause);
+
 }

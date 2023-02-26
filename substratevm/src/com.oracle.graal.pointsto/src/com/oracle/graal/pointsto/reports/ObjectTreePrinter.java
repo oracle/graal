@@ -320,28 +320,30 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         @Override
-        public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+            return false;
         }
 
         @Override
-        public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+        public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
             if (receiver == null) {
                 // static field
-                return;
+                return false;
             }
 
             assert constantToNode.containsKey(receiver);
 
             ObjectNode receiverNode = (ObjectNode) constantToNode.get(receiver);
             receiverNode.addField(field, ObjectNodeBase.forNull());
+            return true;
         }
 
         @Override
-        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
 
             if (receiver == null) {
                 // static field
-                return;
+                return false;
             }
 
             if (constantToNode.containsKey(receiver) && constantToNode.containsKey(fieldValue)) {
@@ -349,23 +351,27 @@ public final class ObjectTreePrinter extends ObjectScanner {
                 ObjectNodeBase valueNode = constantToNode.get(fieldValue);
                 receiverNode.addField(field, valueNode);
             }
+            return true;
         }
 
         @Override
-        public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
+        public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
             assert constantToNode.containsKey(array);
 
             ArrayObjectNode arrayNode = (ArrayObjectNode) constantToNode.get(array);
             arrayNode.addElement(index, ObjectNodeBase.forNull());
+            return true;
         }
 
         @Override
-        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
             if (constantToNode.containsKey(array) && constantToNode.containsKey(elementConstant)) {
                 ArrayObjectNode arrayNode = (ArrayObjectNode) constantToNode.get(array);
                 ObjectNodeBase valueNode = constantToNode.get(elementConstant);
                 arrayNode.addElement(index, valueNode);
+                return true;
             }
+            return false;
         }
 
         @Override
@@ -380,8 +386,8 @@ public final class ObjectTreePrinter extends ObjectScanner {
                     } else {
                         node = ObjectNodeBase.fromConstant(bb, scannedValue);
                     }
-                } else if (reason instanceof MethodScan) {
-                    ResolvedJavaMethod method = ((MethodScan) reason).getMethod();
+                } else if (reason instanceof EmbeddedRootScan) {
+                    ResolvedJavaMethod method = ((EmbeddedRootScan) reason).getMethod();
                     node = ObjectNodeBase.fromConstant(bb, scannedValue, new RootSource(method));
                 } else {
                     node = ObjectNodeBase.fromConstant(bb, scannedValue);

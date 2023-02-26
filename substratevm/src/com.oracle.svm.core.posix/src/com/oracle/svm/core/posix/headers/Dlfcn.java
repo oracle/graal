@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import com.oracle.svm.core.posix.linux.libc.GLibC;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCSpecific;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -72,7 +73,7 @@ public class Dlfcn {
     @CFunction
     public static native int dlclose(PointerBase handle);
 
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native <T extends PointerBase> T dlsym(PointerBase handle, CCharPointer name);
 
     @CFunction

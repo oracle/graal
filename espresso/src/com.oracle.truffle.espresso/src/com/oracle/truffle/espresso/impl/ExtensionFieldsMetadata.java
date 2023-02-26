@@ -30,15 +30,15 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
-public final class ExtensionFieldsMetadata {
+final class ExtensionFieldsMetadata {
     @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
     @CompilationFinal(dimensions = 1) private Field[] addedStaticFields = Field.EMPTY_ARRAY;
 
-    public void addNewStaticFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+    void addNewStaticFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
                     ClassRedefinition classRedefinition) {
         CompilerAsserts.neverPartOfCompilation();
 
@@ -53,7 +53,7 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    public void addNewInstanceFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+    void addNewInstanceFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
                     ClassRedefinition classRedefinition) {
         CompilerAsserts.neverPartOfCompilation();
 
@@ -68,14 +68,26 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
+    void addNewInstanceField(Field toAdd) {
+        int nextIndex = addedInstanceFields.length;
+        addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + 1);
+        addedInstanceFields[nextIndex] = toAdd;
+    }
+
     private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> fields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
                     ClassRedefinition classRedefinition) {
         List<Field> toAdd = new ArrayList<>(fields.size());
         for (ParserField newField : fields) {
             int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
             LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(holder.linkedKlass.getParserKlass());
-            LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode, Constants.FIELD_REDEFINE_ADDED);
-            Field field = new RedefineAddedField(holder, linkedField, pool, false);
+            LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode);
+            Field field;
+            if (holder.getSuperKlass() == holder.getKlass().getMeta().java_lang_Enum &&
+                            newField.getName() != Symbol.Name.$VALUES && newField.getName() != Symbol.Name.ENUM$VALUES) {
+                field = new RedefineAddedEnumField(holder, linkedField, pool);
+            } else {
+                field = new RedefineAddedField(holder, linkedField, pool, false);
+            }
             if (field.isStatic()) {
                 // init constant value if any
                 holder.getKlass().initField(field);
@@ -95,7 +107,7 @@ public final class ExtensionFieldsMetadata {
         return toAdd;
     }
 
-    public Field[] getDeclaredAddedFields() {
+    Field[] getDeclaredAddedFields() {
         int instanceFieldslength = addedInstanceFields.length;
         int staticFieldsLength = addedStaticFields.length;
         Field[] result = new Field[instanceFieldslength + staticFieldsLength];
@@ -104,15 +116,15 @@ public final class ExtensionFieldsMetadata {
         return result;
     }
 
-    public Field[] getAddedStaticFields() {
+    Field[] getAddedStaticFields() {
         return addedStaticFields;
     }
 
-    public Field[] getAddedInstanceFields() {
+    Field[] getAddedInstanceFields() {
         return addedInstanceFields;
     }
 
-    public Field getStaticFieldAtSlot(int slot) {
+    Field getStaticFieldAtSlot(int slot) {
         Field field = binarySearch(addedStaticFields, slot);
         if (field != null) {
             return field;
@@ -122,7 +134,7 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    public Field getInstanceFieldAtSlot(int slot) {
+    Field getInstanceFieldAtSlot(int slot) {
         return binarySearch(addedInstanceFields, slot);
     }
 

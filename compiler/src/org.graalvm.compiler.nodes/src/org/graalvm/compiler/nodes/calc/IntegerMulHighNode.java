@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public final class IntegerMulHighNode extends BinaryArithmeticNode<MulHigh> impl
             Constant c = forY.asConstant();
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long i = ((PrimitiveConstant) c).asLong();
-                if (i == 0 || i == 1) {
+                if (i == 0) {
                     return ConstantNode.forIntegerStamp(self.stamp(NodeView.DEFAULT), 0);
                 }
             }

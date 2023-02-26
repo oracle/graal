@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.tests.runtime;
+
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,7 +122,7 @@ public class RecursiveTypesTest {
                     new TypeFactory("Packed", StructureType.class, (type) -> StructureType.createUnnamed(true, type), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
                     new TypeFactory("PackedNamed", StructureType.class, (type) -> StructureType.createNamed(MYSTRUCT, true, type),
                                     (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
-                    new TypeFactory(FunctionType.class, (type) -> new FunctionType(type, 0, false), (ptr, type) -> ((FunctionType) ptr).setReturnType(type))
+                    new TypeFactory(FunctionType.class, (type) -> new FunctionType(type, 0, FunctionType.NOT_VARARGS), (ptr, type) -> ((FunctionType) ptr).setReturnType(type))
     };
 
     private static final Map<Class<? extends Type>, TypeFactory> TYPE_FACTORY_MAP = new HashMap<>();
@@ -214,8 +216,10 @@ public class RecursiveTypesTest {
     public void getBitSize() throws Type.TypeOverflowException {
         try {
             type.getBitSize();
-        } catch (UnsupportedOperationException e) {
-            Assume.assumeTrue("Unpacked structs do not support getBitSize", false);
+        } catch (AssertionError e) {
+            // Unpacked structs do not support getBitSize
+            assertTrue("Unexpected exception message: " + e.getMessage(),
+                            "TargetDataLayout is necessary to compute Padding information!".equals(e.getMessage()));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.tools.insight.heap.instrument;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -46,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
 import org.graalvm.tools.insight.Insight;
+import org.graalvm.tools.insight.heap.HeapDump.ArrayBuilder;
 
 final class HeapGenerator {
     private final HeapDump.Builder generator;
@@ -66,25 +68,11 @@ final class HeapGenerator {
     }
 
     void dump(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
+        DumpData dumpData = getDumpData(args);
         InteropLibrary iop = InteropLibrary.getUncached();
         try {
-            Object dump = checkDumpParameter(args, iop);
-
-            // format check
-            final String errMessage = "Use as dump({ format: '1.0', events: []})";
-
-            Object format = readMember(iop, dump, "format");
-            if (!iop.isString(format) || !"1.0".equals(iop.asString(format))) {
-                throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
-            }
-
-            Object events = readMember(iop, dump, "events");
-            if (!iop.hasArrayElements(events)) {
-                throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
-            }
-
-            Integer depthOrNull = asIntOrNull(iop, dump, "depth");
-            int defaultDepth = depthOrNull != null ? depthOrNull : Integer.MAX_VALUE;
+            Object events = dumpData.getEvents();
+            int defaultDepth = dumpData.getDepth();
 
             long eventCount = iop.getArraySize(events);
             generator.dumpHeap((data) -> {
@@ -127,7 +115,29 @@ final class HeapGenerator {
         return dump;
     }
 
-    private static String asStringOrNull(InteropLibrary iop, Object from, String key) throws UnsupportedMessageException {
+    static DumpData getDumpData(Object[] args) throws UnsupportedTypeException, UnsupportedMessageException {
+        InteropLibrary iop = InteropLibrary.getUncached();
+        Object dump = checkDumpParameter(args, iop);
+
+        // format check
+        final String errMessage = "Use as dump({ format: '1.0', events: []})";
+
+        Object format = readMember(iop, dump, "format");
+        if (!iop.isString(format) || !"1.0".equals(iop.asString(format))) {
+            throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
+        }
+
+        Object events = readMember(iop, dump, "events");
+        if (!iop.hasArrayElements(events)) {
+            throw UnsupportedTypeException.create(args, errMessage, new HeapException(errMessage));
+        }
+
+        Integer depthOrNull = asIntOrNull(iop, dump, "depth");
+        int defaultDepth = depthOrNull != null ? depthOrNull : Integer.MAX_VALUE;
+        return new DumpData(format, events, defaultDepth);
+    }
+
+    static String asStringOrNull(InteropLibrary iop, Object from, String key) {
         Object value;
         if (key != null) {
             try {
@@ -140,13 +150,17 @@ final class HeapGenerator {
         }
 
         if (iop.isString(value)) {
-            return iop.asString(value);
+            try {
+                return iop.asString(value);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
         } else {
             return null;
         }
     }
 
-    private static Integer asIntOrNull(InteropLibrary iop, Object from, String key) throws UnsupportedMessageException {
+    static Integer asIntOrNull(InteropLibrary iop, Object from, String key) {
         Object value;
         if (key != null) {
             try {
@@ -159,13 +173,17 @@ final class HeapGenerator {
         }
 
         if (iop.fitsInInt(value)) {
-            return iop.asInt(value);
+            try {
+                return iop.asInt(value);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
         } else {
             return null;
         }
     }
 
-    private static Object readMember(InteropLibrary iop, Object obj, String member) {
+    static Object readMember(InteropLibrary iop, Object obj, String member) {
         return readMember(iop, obj, member, (id) -> id);
     }
 
@@ -233,7 +251,9 @@ final class HeapGenerator {
 
             ObjectInstance sourceId = dumpSource(iop, seg, source);
             ObjectInstance sectionId = dumpSourceSection(seg, sourceId, charIndex, charLength);
-            ObjectInstance localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth);
+            // The depth is applied to the variables of the frame's object,
+            // hence the frame object is dumped with depth + 1
+            ObjectInstance localFrame = dumpObject(iop, seg, "frame:" + rootName, frame, depth + 1);
             threadBuilder.addStackFrame(language, rootName, srcName, line == null ? -1 : line, localFrame, sectionId);
         }
         if (threadBuilder != null) {
@@ -256,9 +276,6 @@ final class HeapGenerator {
         if (id != null) {
             return id;
         }
-        if (depth <= 0) {
-            return unreachable;
-        }
         if (iop.isString(obj)) {
             try {
                 return seg.dumpString(iop.asString(obj));
@@ -269,21 +286,55 @@ final class HeapGenerator {
         if (!(obj instanceof TruffleObject)) {
             return seg.dumpPrimitive(obj);
         }
+        if (depth <= 0) {
+            return unreachable;
+        }
         ClassInstance clazz = findClass(iop, seg, metaName, obj);
         if (clazz == null) {
             return unreachable;
         }
-        InstanceBuilder builder = seg.newInstance(clazz);
-        objects.put(obj, builder.id());
-        pending.add(() -> {
-            for (String n : clazz.names()) {
-                final Object v = iop.readMember(obj, n);
-                ObjectInstance vId = dumpObject(iop, seg, null, v, depth - 1);
-                builder.put(n, vId);
+
+        int len = findArrayLength(iop, obj);
+        if (len >= 0) {
+            ArrayBuilder builder = seg.newArray(len);
+            objects.put(obj, builder.id());
+            pending.add(() -> {
+                for (int i = 0; i < len; i++) {
+                    Object v = iop.readArrayElement(obj, i);
+                    ObjectInstance vId = dumpObject(iop, seg, null, v, depth - 1);
+                    builder.put(i, vId);
+                }
+                builder.dumpInstance();
+            });
+            return builder.id();
+        } else {
+            InstanceBuilder builder = seg.newInstance(clazz);
+            objects.put(obj, builder.id());
+            pending.add(() -> {
+                for (String n : clazz.names()) {
+                    final Object v = iop.readMember(obj, n);
+                    ObjectInstance vId = dumpObject(iop, seg, null, v, depth - 1);
+                    builder.put(n, vId);
+                }
+                builder.dumpInstance();
+            });
+            return builder.id();
+        }
+    }
+
+    private static int findArrayLength(InteropLibrary iop, Object obj) {
+        if (!iop.hasArrayElements(obj)) {
+            return -1;
+        }
+        try {
+            long len = iop.getArraySize(obj);
+            if (len > Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
             }
-            builder.dumpInstance();
-        });
-        return builder.id();
+            return (int) len;
+        } catch (UnsupportedMessageException ex) {
+            return -1;
+        }
     }
 
     ClassInstance findClass(InteropLibrary iop, HeapDump seg, String metaHint, Object obj) throws IOException {
@@ -293,7 +344,9 @@ final class HeapGenerator {
             long len = iop.getArraySize(names);
             for (long i = 0; i < len; i++) {
                 final String ithName = iop.asString(iop.readArrayElement(names, i));
-                sortedNames.add(ithName);
+                if (iop.isMemberReadable(obj, ithName) && !iop.hasMemberReadSideEffects(obj, ithName)) {
+                    sortedNames.add(ithName);
+                }
             }
         } catch (UnsupportedMessageException ex) {
             // no names
@@ -390,7 +443,33 @@ final class HeapGenerator {
     }
 
     private interface Dump {
-        void dump() throws UnknownIdentifierException, IOException, UnsupportedMessageException;
+        void dump() throws UnknownIdentifierException, IOException, UnsupportedMessageException, InvalidArrayIndexException;
+    }
+
+    static final class DumpData {
+
+        private final Object format;
+        private final Object events;
+        private final int depth;
+
+        DumpData(Object format, Object events, int depth) {
+            this.format = format;
+            this.events = events;
+            this.depth = depth;
+        }
+
+        Object getFormat() {
+            return format;
+        }
+
+        Object getEvents() {
+            return events;
+        }
+
+        int getDepth() {
+            return depth;
+        }
+
     }
 
     private static final class SourceKey {

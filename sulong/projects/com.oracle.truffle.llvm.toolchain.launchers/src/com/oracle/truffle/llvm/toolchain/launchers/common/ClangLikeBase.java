@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,38 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-
 import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
 import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
 import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
 public abstract class ClangLikeBase extends Driver {
+
+    public enum Tool {
+        Clang,
+        ClangXX,
+        ClangCL;
+
+        public String getToolName() {
+            switch (this) {
+                case Clang:
+                    return "clang";
+                case ClangXX:
+                    return "clang++";
+                case ClangCL:
+                    return "clang-cl";
+                default:
+                    throw new IllegalArgumentException("Unknown Tool " + this.toString());
+            }
+        }
+    }
 
     public static final String NATIVE_PLATFORM = "native";
     public static final String XCRUN = "/usr/bin/xcrun";
@@ -52,18 +72,20 @@ public abstract class ClangLikeBase extends Driver {
     protected final boolean needCompilerFlags;
     protected final boolean verbose;
     protected final boolean help;
-    protected final boolean cxx;
+    protected final Tool tool;
     protected final boolean earlyExit;
     protected final OS os;
+    protected final Arch arch;
     protected final String[] args;
     protected final String platform;
     protected final int outputFlagPos;
     protected final boolean nostdincxx;
 
-    protected ClangLikeBase(String[] args, boolean cxx, OS os, String platform) {
-        super(cxx ? "clang++" : "clang");
-        this.cxx = cxx;
+    protected ClangLikeBase(String[] args, Tool tool, OS os, Arch arch, String platform) {
+        super(tool.getToolName());
+        this.tool = tool;
         this.os = os;
+        this.arch = arch;
         this.platform = platform;
         boolean mayHaveInputFiles = false;
         boolean mayBeLinkerInvocation = true;
@@ -170,9 +192,29 @@ public abstract class ClangLikeBase extends Driver {
         return sulongArgs;
     }
 
-    protected void getCompilerArgs(List<String> sulongArgs) {
+    protected void getDebugCompilerArgs(List<String> sulongArgs) {
         // use -gdwarf-5 instead of -g to enable source file checksums
-        sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
+        sulongArgs.add("-gdwarf-5");
+    }
+
+    protected void getCompilerArgs(List<String> sulongArgs) {
+        sulongArgs.addAll(Arrays.asList("-flto=full", "-O1"));
+        sulongArgs.addAll(getVectorInstructionSetFlags());
+        getDebugCompilerArgs(sulongArgs);
+
+        if (os == OS.WINDOWS) {
+            sulongArgs.add("-stdlib++-isystem");
+            sulongArgs.add(getSulongHome().resolve("include").resolve("c++").resolve("v1").toString());
+        }
+    }
+
+    private List<String> getVectorInstructionSetFlags() {
+        switch (arch) {
+            case X86_64:
+                return Arrays.asList("-mno-sse3", "-mno-avx");
+            default:
+                return Collections.emptyList();
+        }
     }
 
     private boolean isDefaultLinker(String useLdFlag) {

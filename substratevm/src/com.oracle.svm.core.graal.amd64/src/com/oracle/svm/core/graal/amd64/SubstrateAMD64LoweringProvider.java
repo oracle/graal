@@ -31,10 +31,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetCounter;
-import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -52,16 +48,10 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
         super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
     }
 
-    @Override
-    public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
-        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, providers));
-        super.initialize(options, factory, providers);
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n, tool)) {
+        if (lowerAMD64(n)) {
             return;
         }
         @SuppressWarnings("rawtypes")

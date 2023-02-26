@@ -28,6 +28,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.EnumSet;
 
@@ -35,50 +36,21 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Fold
     @Override
     public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
         return SubstrateOptions.SpawnIsolates.getValue() && ImageHeapProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
-    }
-
-    @Override
-    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
-    }
-
-    @Override
-    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, CommittedMemoryProvider.UNALIGNED, false);
-    }
-
-    @Override
-    public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, true);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes, alignment, false);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
-        free(start, nbytes, CommittedMemoryProvider.UNALIGNED, false);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes, alignment, true);
     }
 
     @Uninterruptible(reason = "Still being initialized.")
@@ -113,7 +85,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    public boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
+    public int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
         int vmAccessBits = VirtualMemoryProvider.Access.NONE;
         if (accessFlags.contains(CommittedMemoryProvider.Access.READ)) {
             vmAccessBits |= VirtualMemoryProvider.Access.READ;
@@ -122,9 +94,102 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             vmAccessBits |= VirtualMemoryProvider.Access.WRITE;
         }
         if (accessFlags.contains(CommittedMemoryProvider.Access.EXECUTE)) {
+            if ((vmAccessBits & VirtualMemoryProvider.Access.WRITE) != 0 && !RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                throw VMError.shouldNotReachHere("memory should never be writable and executable at the same time");
+            }
             vmAccessBits |= VirtualMemoryProvider.Access.EXECUTE;
         }
-        int success = VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
-        return success == 0;
+        return VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
+    }
+
+    @Override
+    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
+        return allocate(nbytes, alignment, false);
+    }
+
+    @Override
+    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
+        return allocate(nbytes, WordFactory.unsigned(1), false);
+    }
+
+    @Override
+    public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
+        return allocate(nbytes, alignment, true);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+        Pointer reserved = WordFactory.nullPointer();
+        if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
+            reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
+            if (reserved.isNull()) {
+                return nullPointer();
+            }
+        }
+        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
+        if (executable) {
+            access |= VirtualMemoryProvider.Access.FUTURE_EXECUTE;
+        }
+        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access);
+        if (committed.isNull()) {
+            if (reserved.isNonNull()) {
+                VirtualMemoryProvider.get().free(reserved, size);
+            }
+            return nullPointer();
+        }
+        assert reserved.isNull() || reserved.equal(committed);
+        tracker.track(size);
+        return committed;
+    }
+
+    @Override
+    public boolean areUnalignedChunksZeroed() {
+        return false;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+        free(start, nbytes);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
+        free(start, nbytes);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+        free(start, nbytes);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void free(PointerBase start, UnsignedWord nbytes) {
+        if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
+            tracker.untrack(nbytes);
+        }
+    }
+
+    private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
+
+    public static class VirtualMemoryTracker {
+
+        private UnsignedWord totalAllocated;
+
+        public VirtualMemoryTracker() {
+            this.totalAllocated = WordFactory.zero();
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void track(UnsignedWord size) {
+            totalAllocated = totalAllocated.add(size);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void untrack(UnsignedWord size) {
+            totalAllocated = totalAllocated.subtract(size);
+        }
     }
 }

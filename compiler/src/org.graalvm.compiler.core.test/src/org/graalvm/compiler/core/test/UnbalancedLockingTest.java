@@ -32,10 +32,9 @@ import org.graalvm.compiler.java.BytecodeParserOptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.Label;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
 
 /**
  * Test class exercising irreducible loop duplication logic in {@link BciBlockMapping} in

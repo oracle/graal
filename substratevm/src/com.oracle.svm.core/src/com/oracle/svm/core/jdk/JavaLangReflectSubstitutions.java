@@ -31,6 +31,7 @@ import java.lang.reflect.Array;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -365,7 +366,15 @@ final class Target_java_lang_reflect_Array {
     private static Object multiNewArray(Class<?> componentType, int[] dimensions) {
         if (componentType == null) {
             throw new NullPointerException();
-        } else if (dimensions.length == 0 || componentType == void.class) {
+        }
+        if (dimensions.length == 0 || componentType == void.class) {
+            throw new IllegalArgumentException();
+        }
+        int requestedDimension = dimensions.length;
+        if (componentType.isArray()) {
+            requestedDimension += SubstrateUtil.arrayTypeDimension(componentType);
+        }
+        if (requestedDimension > 255) {
             throw new IllegalArgumentException();
         }
         for (int i = 0; i < dimensions.length; i++) {

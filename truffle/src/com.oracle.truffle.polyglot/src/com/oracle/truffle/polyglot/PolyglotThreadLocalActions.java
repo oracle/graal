@@ -75,7 +75,7 @@ final class PolyglotThreadLocalActions {
 
     private static final Future<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
 
-    private static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
+    static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
     private final PolyglotContextImpl context;
     private final Map<AbstractTLHandshake, Void> activeEvents = new LinkedHashMap<>();
     @CompilationFinal private TruffleLogger logger;
@@ -173,8 +173,8 @@ final class PolyglotThreadLocalActions {
             for (AbstractTLHandshake handshake : activeEventsList) {
                 Future<?> future = handshake.future;
                 if (!future.isDone()) {
-                    if (context.state == PolyglotContextImpl.State.CLOSED_CANCELLED) {
-                        // we allow cancellation for invalid or cancelled contexts
+                    if (context.state == PolyglotContextImpl.State.CLOSED_CANCELLED || context.state == PolyglotContextImpl.State.CLOSED_EXITED) {
+                        // we allow cancellation for cancelled or exited contexts
                         future.cancel(true);
                         pendingThreadLocalAction = true;
                     } else {

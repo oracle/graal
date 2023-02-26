@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
+
 /**
  * A compiler thread is a daemon thread that runs at {@link Thread#MAX_PRIORITY}.
  */
@@ -31,7 +33,7 @@ public class CompilerThread extends Thread {
 
     public CompilerThread(Runnable r, String namePrefix) {
         super(r);
-        this.setName(namePrefix + "-" + this.getId());
+        this.setName(namePrefix + "-" + GraalServices.getThreadId(this));
         this.setPriority(Thread.MAX_PRIORITY);
         this.setDaemon(true);
     }

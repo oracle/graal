@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.ExportSymbolsMapper;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -47,14 +48,16 @@ public final class BinaryParserResult {
     private final ArrayList<String> paths;
     private final ByteSequence bitcode;
     private final LibraryLocator locator;
+    private final ExportSymbolsMapper exportSymbolsMapper;
     private final Source source;
     private final String libraryName;
 
-    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator, Source source, String libraryName) {
+    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator, ExportSymbolsMapper exportSymbolsMapper, Source source, String libraryName) {
         this.libraries = libraries;
         this.paths = paths;
         this.bitcode = bitcode;
         this.locator = locator;
+        this.exportSymbolsMapper = exportSymbolsMapper;
         this.source = source;
         this.libraryName = libraryName;
     }
@@ -73,6 +76,10 @@ public final class BinaryParserResult {
 
     public LibraryLocator getLocator() {
         return locator;
+    }
+
+    public ExportSymbolsMapper getExportSymbolsMapper() {
+        return exportSymbolsMapper;
     }
 
     public Source getSource() {

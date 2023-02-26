@@ -118,6 +118,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public Object value() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
         }
 
@@ -165,16 +166,16 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                  * call-site
                  */
 
-                StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
+                StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
                 StaticObject memberName;
-                if (meta.getJavaVersion().varHandlesEnabled()) {
+                if (meta.getJavaVersion().varHandlesEnabled() && !meta.getJavaVersion().java19OrLater()) {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                                     null,
                                     accessingKlass.mirror(),
                                     thisIndex,
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
                                     appendix);
                 } else {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
@@ -182,10 +183,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     accessingKlass.mirror(),
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
                                     appendix);
                 }
-                StaticObject unboxedAppendix = appendix.get(0);
+                StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 
                 return new CallSiteLink(memberName, unboxedAppendix, parsedInvokeSignature);
             } catch (EspressoException e) {
@@ -195,21 +196,25 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public int getBootstrapMethodAttrIndex() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
 
         @Override
         public Symbol<Signature> getSignature(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
 
         @Override
         public NameAndTypeConstant getNameAndType(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
     }
@@ -272,32 +277,43 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public Object value() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
         }
 
         @Override
         public int getBootstrapMethodAttrIndex() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 
         @Override
         public Symbol<Signature> getSignature(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 
         @Override
         public NameAndTypeConstant getNameAndType(ConstantPool pool) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 
         @Override
         public void dump(ByteBuffer buf) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        }
+
+        @Override
+        public boolean isSuccess() {
+            return false;
         }
     }
 }

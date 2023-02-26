@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -191,8 +193,8 @@ public class InlineableGraph implements Inlineable {
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(trackNodeSourcePosition).useProfilingInfo(
-                        caller.useProfilingInfo()).speculationLog(caller.getSpeculationLog()).build();
+        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(trackNodeSourcePosition).profileProvider(
+                        caller.getProfileProvider()).speculationLog(caller.getSpeculationLog()).build();
         try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();
@@ -206,6 +208,9 @@ public class InlineableGraph implements Inlineable {
 
             canonicalizer.apply(newGraph, context);
 
+            if (GraalOptions.EarlyGVN.getValue(newGraph.getOptions())) {
+                new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(newGraph, context);
+            }
             return newGraph;
         } catch (Throwable e) {
             throw debug.handle(e);

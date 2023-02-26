@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,12 +65,16 @@ public final class Instructions {
 
     public static final int DROP = 0x1A;
     public static final int SELECT = 0x1B;
+    public static final int SELECT_T = 0x1C;
 
     public static final int LOCAL_GET = 0x20;
     public static final int LOCAL_SET = 0x21;
     public static final int LOCAL_TEE = 0x22;
     public static final int GLOBAL_GET = 0x23;
     public static final int GLOBAL_SET = 0x24;
+
+    public static final int TABLE_GET = 0x25;
+    public static final int TABLE_SET = 0x26;
 
     public static final int I32_LOAD = 0x28;
     public static final int I64_LOAD = 0x29;
@@ -245,6 +249,35 @@ public final class Instructions {
     public static final int I64_TRUNC_SAT_F32_U = 0x05;
     public static final int I64_TRUNC_SAT_F64_S = 0x06;
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
+
+    public static final int I32_EXTEND8_S = 0xC0;
+    public static final int I32_EXTEND16_S = 0xC1;
+    public static final int I64_EXTEND8_S = 0xC2;
+    public static final int I64_EXTEND16_S = 0xC3;
+    public static final int I64_EXTEND32_S = 0xC4;
+
+    public static final int REF_NULL = 0xD0;
+    public static final int REF_IS_NULL = 0xD1;
+    public static final int REF_FUNC = 0xD2;
+
+    public static final int MEMORY_INIT = 8;
+    public static final int DATA_DROP = 9;
+    public static final int MEMORY_COPY = 10;
+    public static final int MEMORY_FILL = 11;
+    public static final int TABLE_INIT = 12;
+    public static final int ELEM_DROP = 13;
+    public static final int TABLE_COPY = 14;
+    public static final int TABLE_GROW = 15;
+    public static final int TABLE_SIZE = 16;
+    public static final int TABLE_FILL = 17;
+
+    // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
+    // used in other ways in the future)
+
+    public static final int DROP_REF = 0x19;
+    public static final int LOCAL_GET_REF = 0x1D;
+    public static final int LOCAL_SET_REF = 0x1E;
+    public static final int LOCAL_TEE_REF = 0x1F;
 
     private static String[] decodingTable = new String[256];
 

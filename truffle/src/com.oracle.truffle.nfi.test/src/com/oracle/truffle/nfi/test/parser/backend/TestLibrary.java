@@ -72,6 +72,6 @@ public class TestLibrary implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name) {
-        return NFITestBackend.get(null).tools.createBindableSymbol(new TestSymbol(name));
+        return new TestSymbol(name);
     }
 }

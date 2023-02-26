@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ PyObject *getPyObjectImplicitType() {
     return (PyObject *) obj;
 }
 
-PyObject *getPyObjectExplicitType() {
+polyglot_value getPyObjectExplicitType() {
     PyMemoryViewObject *obj = (PyMemoryViewObject *) getPyObjectImplicitType();
     return polyglot_from_PyMemoryViewObject(obj);
 }

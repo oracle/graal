@@ -265,8 +265,9 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionFromPolyglotExceptionConstructor() {
+        // The IS_EXCEPTION cannot be tested, it is called by the InteropLibrary.Asserts before we
+        // get to the creation of PolyglotExceptionImpl.
         testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, false);
-        testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.IS_EXCEPTION);
         testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.GET_EXCEPTION_TYPE);
         testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.EXIT, true, TruffleExceptionImpl.MessageKind.GET_EXCEPTION_EXIT_STATUS);
         testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.PARSE_ERROR, true, TruffleExceptionImpl.MessageKind.IS_EXCEPTION_INCOMPLETE_SOURCE);
@@ -274,16 +275,23 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType.RUNTIME_ERROR, true, TruffleExceptionImpl.MessageKind.GET_SOURCE_LOCATION);
     }
 
-    private void testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType type, boolean internal, TruffleExceptionImpl.MessageKind... failOn) {
+    private void testExceptionFromPolyglotExceptionConstructorImpl(ExceptionType type, boolean hasInternal, TruffleExceptionImpl.MessageKind... failOn) {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, new InjectException(failOn)));
+                InjectException injectException = new InjectException(failOn);
+                ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, injectException));
                 return new TestRootNode(languageInstance, "test", "unnamed", throwNode).getCallTarget();
             }
         });
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {
-            Assert.assertEquals(internal, pe.isInternalError());
+            Assert.assertFalse(pe.isInternalError());
+            if (hasInternal) {
+                Assert.assertEquals(1, pe.getSuppressed().length);
+                Assert.assertTrue(((PolyglotException) pe.getSuppressed()[0]).isInternalError());
+            } else {
+                Assert.assertEquals(0, pe.getSuppressed().length);
+            }
         });
     }
 

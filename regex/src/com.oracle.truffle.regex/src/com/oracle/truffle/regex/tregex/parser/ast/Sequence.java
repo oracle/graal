@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -145,6 +146,22 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         term.setParent(this);
         term.setSeqIndex(index);
         terms.set(index, term);
+    }
+
+    public void removeTerm(int i, CompilationBuffer compilationBuffer) {
+        ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
+        // stash successors of term to buffer
+        int size = size();
+        for (int j = i + 1; j < size; j++) {
+            buf.add(getLastTerm());
+            removeLastTerm();
+        }
+        // drop term
+        removeLastTerm();
+        // restore the stashed successors
+        for (int j = buf.length() - 1; j >= 0; j--) {
+            add(buf.get(j));
+        }
     }
 
     /**

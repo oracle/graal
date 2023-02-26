@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
 import static com.oracle.svm.jvmtiagentbase.Support.clearException;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
@@ -35,6 +36,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
+import static com.oracle.svm.jvmtiagentbase.Support.getReceiver;
 import static com.oracle.svm.jvmtiagentbase.Support.handleException;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
@@ -44,6 +46,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.ByteBuffer;
@@ -55,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.NumUtil;
@@ -63,6 +67,8 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -70,19 +76,21 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.core.jni.JNIObjectHandles;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNINativeMethod;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIValue;
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.JNIObjectHandles;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIValue;
 import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool;
 import com.oracle.svm.jvmtiagentbase.ConstantPoolTool.MethodReference;
@@ -93,6 +101,7 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
 
 /**
@@ -122,17 +131,27 @@ final class BreakpointInterceptor {
 
     private static Map<Long, Breakpoint> installedBreakpoints;
 
-    /*
-     * NOTE: support for breakpoints in native methods has been removed.
-     *
-     * Restore from version control if needed.
+    /**
+     * A map from {@link JNIMethodId} to entry point addresses for bound Java {@code native}
+     * methods, NOT considering our intercepting functions, i.e., these are the original entry
+     * points for a native method from symbol resolution or {@code registerNatives}.
      */
+    private static Map<Long, Long> boundNativeMethods;
+
+    /**
+     * Map from {@link JNIMethodId} to breakpoints in {@code native} methods. Not all of them may be
+     * installed if the native methods haven't been {@linkplain #bindNativeBreakpoint bound}.
+     */
+    private static Map<Long, NativeBreakpoint> nativeBreakpoints;
 
     /** Enables experimental support for instrumenting class lookups via {@code ClassLoader}. */
     private static boolean experimentalClassLoaderSupport = false;
 
     /** Enables experimental support for class definitions via {@code ClassLoader.defineClass}. */
     private static boolean experimentalClassDefineSupport = false;
+
+    /** Enables experimental support for tracking {@code Unsafe.allocateInstance}. */
+    private static boolean experimentalUnsafeAllocationSupport = false;
 
     /** Enables tracking of reflection queries for fine-tuned configuration. */
     private static boolean trackReflectionMetadata = false;
@@ -142,15 +161,31 @@ final class BreakpointInterceptor {
      */
     private static ConcurrentMap<MethodLocation, Boolean> observedExplicitLoadClassCallSites;
 
+    /**
+     * Guards access to {@link #boundNativeMethods} and {@link #nativeBreakpoints} to avoid races
+     * that cause breakpoints to not be installed.
+     */
+    private static final ReentrantLock nativeBreakpointsInitLock = new ReentrantLock();
+
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     /* Classes from these class loaders are assumed to not be dynamically loaded. */
     private static JNIObjectHandle[] builtinClassLoaders;
 
-    private static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
+    private static void traceReflectBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
                     JNIMethodId[] stackTrace, Object... args) {
+        traceBreakpoint(env, "reflect", clazz, declaringClass, callerClass, function, result, stackTrace, args);
+    }
+
+    private static void traceSerializeBreakpoint(JNIEnvironment env, String function, Object result,
+                    JNIMethodId[] stackTrace, Object... args) {
+        traceBreakpoint(env, "serialization", nullHandle(), nullHandle(), nullHandle(), function, result, stackTrace, args);
+    }
+
+    private static void traceBreakpoint(JNIEnvironment env, String context, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
+                    JNIMethodId[] stackTrace, Object[] args) {
         if (tracer != null) {
-            tracer.traceCall("reflect",
+            tracer.traceCall(context,
                             function,
                             getClassNameOr(env, clazz, null, Tracer.UNKNOWN_VALUE),
                             getClassNameOr(env, declaringClass, null, Tracer.UNKNOWN_VALUE),
@@ -171,15 +206,19 @@ final class BreakpointInterceptor {
         }
     }
 
-    private static boolean forName(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean forName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle name = getObjectArgument(0);
+        JNIObjectHandle name = getObjectArgument(thread, 0);
         String className = fromJniString(jni, name);
+        if (className == null) {
+            return false; /* No point in tracing this. */
+        }
 
         boolean classLoaderValid = true;
         WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
         if (bp.method == agent.handles().javaLangClassForName3) {
-            classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
+            assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+            classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
         } else {
             classLoaderPtr.write(nullHandle());
             if (callerClass.notEqual(nullHandle())) {
@@ -198,86 +237,90 @@ final class BreakpointInterceptor {
              * recursion checks keep us from seeing events of interest during initialization.
              */
             int initialize = 0;
-            JNIObjectHandle loadedClass = Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
-            if (clearException(jni)) {
-                loadedClass = nullHandle();
-            }
-            result = loadedClass.notEqual(nullHandle());
+            Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
+            JNIObjectHandle exception = handleException(jni, true);
+            /*
+             * To throw the right exceptions at run time, we need to ensure that the image builder
+             * sees them, so we trace all calls except those that throw a ClassNotFoundException.
+             */
+            result = exception.equal(nullHandle()) || !jniFunctions().getIsInstanceOf().invoke(jni, exception, agent.handles().javaLangClassNotFoundException);
         }
 
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), className);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), className);
         return true;
     }
 
-    private static boolean getFields(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetFields(jni, bp, state);
+    private static boolean getFields(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetFields(jni, thread, bp, state);
     }
 
-    private static boolean getDeclaredFields(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetFields(jni, bp, state);
+    private static boolean getDeclaredFields(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetFields(jni, thread, bp, state);
     }
 
-    private static boolean handleGetFields(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean handleGetFields(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
+        JNIObjectHandle self = getReceiver(thread);
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
         return true;
     }
 
-    private static boolean getMethods(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethods(jni, bp, state);
+    private static boolean getMethods(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethods(jni, thread, bp, state);
     }
 
-    private static boolean getDeclaredMethods(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethods(jni, bp, state);
+    private static boolean getDeclaredMethods(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethods(jni, thread, bp, state);
     }
 
-    private static boolean getConstructors(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethods(jni, bp, state);
+    private static boolean getConstructors(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethods(jni, thread, bp, state);
     }
 
-    private static boolean getDeclaredConstructors(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethods(jni, bp, state);
+    private static boolean getDeclaredConstructors(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethods(jni, thread, bp, state);
     }
 
-    private static boolean handleGetMethods(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean handleGetMethods(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
+        JNIObjectHandle self = getReceiver(thread);
+        /* When reflection metadata tracking is disabled, all methods are considered invoked */
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, trackReflectionMetadata ? null : true,
+                        state.getFullStackTraceOrNull());
         return true;
     }
 
-    private static boolean getClasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetClasses(jni, bp, state);
+    private static boolean getClasses(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetClasses(jni, thread, bp, state);
     }
 
-    private static boolean getDeclaredClasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetClasses(jni, bp, state);
+    private static boolean getDeclaredClasses(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetClasses(jni, thread, bp, state);
     }
 
-    private static boolean getPermittedSubclasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetClasses(jni, bp, state);
+    private static boolean getPermittedSubclasses(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetClasses(jni, thread, bp, state);
     }
 
-    private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean handleGetClasses(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
+        JNIObjectHandle self = getReceiver(thread);
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
         return true;
     }
 
-    private static boolean getField(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetField(jni, bp, false, state);
+    private static boolean getField(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetField(jni, thread, bp, false, state);
     }
 
-    private static boolean getDeclaredField(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetField(jni, bp, true, state);
+    private static boolean getDeclaredField(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetField(jni, thread, bp, true, state);
     }
 
-    private static boolean handleGetField(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, InterceptedState state) {
+    private static boolean handleGetField(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, boolean declaredOnly, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle name = getObjectArgument(1);
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle name = getObjectArgument(thread, 1);
         JNIObjectHandle result = Support.callObjectMethodL(jni, self, bp.method, name);
         if (clearException(jni)) {
             result = nullHandle();
@@ -289,51 +332,92 @@ final class BreakpointInterceptor {
                 declaring = nullHandle();
             }
         }
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName, result.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName, result.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), fromJniString(jni, name));
         return true;
     }
 
-    private static boolean objectFieldOffsetByName(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static final CEntryPointLiteral<AllocateInstanceFunctionPointer> nativeAllocateInstance = CEntryPointLiteral.create(
+                    BreakpointInterceptor.class, "nativeAllocateInstance", JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
+
+    private static final NativeBreakpointSpecification NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC = new NativeBreakpointSpecification(
+                    "jdk/internal/misc/Unsafe", "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", nativeAllocateInstance);
+
+    private interface AllocateInstanceFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        long invoke(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle field);
+    }
+
+    /** Native breakpoint for the {@code jdk/internal/misc/Unsafe#allocateInstance} method. */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    static long nativeAllocateInstance(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle clazz) {
+        VMError.guarantee(NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed != null &&
+                        NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed.replacedFunction.isNonNull(), "incompletely installed");
+
+        AllocateInstanceFunctionPointer original = (AllocateInstanceFunctionPointer) NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed.replacedFunction;
+        long result = original.invoke(jni, self, clazz);
+        if (!Support.isInitialized()) { // in case of a (very) late call
+            return result;
+        }
+        boolean validResult = !clearException(jni);
+        InterceptedState state = interceptedStateSupplier.get();
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle declaring = getObjectArgument(1);
-        JNIObjectHandle name = getObjectArgument(2);
+        traceAllocateInstance(jni, clazz, validResult, state, callerClass);
+        if (!validResult) { // invoke again for exception--pure function.
+            return original.invoke(jni, self, clazz);
+        }
+        return result;
+    }
+
+    private static void traceAllocateInstance(JNIEnvironment jni, JNIObjectHandle clazz, boolean validResult, InterceptedState state, JNIObjectHandle callerClass) {
+        if (clazz.notEqual(nullHandle())) {
+            if (validResult) {
+                traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, "allocateInstance", true, state.getFullStackTraceOrNull());
+            }
+        }
+    }
+
+    private static boolean objectFieldOffsetByName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle declaring = getObjectArgument(thread, 1);
+        JNIObjectHandle name = getObjectArgument(thread, 2);
         Support.callLongMethodLL(jni, self, bp.method, declaring, name);
         boolean validResult = !clearException(jni);
 
         JNIObjectHandle clazz = getMethodDeclaringClass(bp.method);
-        traceBreakpoint(jni, clazz, declaring, callerClass, "objectFieldOffset", validResult, state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        traceReflectBreakpoint(jni, clazz, declaring, callerClass, "objectFieldOffset", validResult, state.getFullStackTraceOrNull(), fromJniString(jni, name));
         return true;
     }
 
-    private static boolean getConstructor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean getConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle paramTypesHandle = getObjectArgument(1);
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle paramTypesHandle = getObjectArgument(thread, 1);
         JNIObjectHandle result = Support.callObjectMethodL(jni, self, bp.method, paramTypesHandle);
         if (clearException(jni)) {
             result = nullHandle();
         }
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, nullHandle().notEqual(result), state.getFullStackTraceOrNull(),
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, nullHandle().notEqual(result), state.getFullStackTraceOrNull(),
                         paramTypes);
         return true;
     }
 
-    private static boolean getMethod(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethod(jni, bp, false, state);
+    private static boolean getMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethod(jni, thread, bp, false, state);
     }
 
-    private static boolean getDeclaredMethod(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetMethod(jni, bp, true, state);
+    private static boolean getDeclaredMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetMethod(jni, thread, bp, true, state);
     }
 
-    private static boolean handleGetMethod(JNIEnvironment jni, Breakpoint bp, boolean declaredOnly, InterceptedState state) {
+    private static boolean handleGetMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, boolean declaredOnly, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle nameHandle = getObjectArgument(1);
-        JNIObjectHandle paramTypesHandle = getObjectArgument(2);
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle nameHandle = getObjectArgument(thread, 1);
+        JNIObjectHandle paramTypesHandle = getObjectArgument(thread, 2);
         JNIObjectHandle result = Support.callObjectMethodLL(jni, self, bp.method, nameHandle, paramTypesHandle);
         if (clearException(jni)) {
             result = nullHandle();
@@ -347,14 +431,14 @@ final class BreakpointInterceptor {
         }
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName, result.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName, result.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), name, paramTypes);
         return true;
     }
 
-    private static boolean getEnclosingMethod(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean getEnclosingMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
+        JNIObjectHandle self = getReceiver(thread);
         Object result = Tracer.EXPLICIT_NULL;
         JNIObjectHandle enclosing = Support.callObjectMethod(jni, self, bp.method);
         String name;
@@ -380,21 +464,21 @@ final class BreakpointInterceptor {
                 }
             }
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, enclosing.notEqual(nullHandle()) ? result : false, state.getFullStackTraceOrNull());
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, enclosing.notEqual(nullHandle()) ? result : false, state.getFullStackTraceOrNull());
         return true;
     }
 
-    private static boolean invokeMethod(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleInvokeMethod(jni, bp, state, true);
+    private static boolean invokeMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleInvokeMethod(jni, thread, bp, state, true);
     }
 
-    private static boolean unreflectMethod(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleInvokeMethod(jni, bp, state, false);
+    private static boolean unreflectMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleInvokeMethod(jni, thread, bp, state, false);
     }
 
-    private static boolean handleInvokeMethod(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, boolean isInvoke) {
+    private static boolean handleInvokeMethod(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, boolean isInvoke) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle method = getObjectArgument(isInvoke ? 0 : 1);
+        JNIObjectHandle method = getObjectArgument(thread, isInvoke ? 0 : 1);
 
         JNIObjectHandle declaring = Support.callObjectMethod(jni, method, agent.handles().javaLangReflectMemberGetDeclaringClass);
         if (clearException(jni)) {
@@ -413,7 +497,7 @@ final class BreakpointInterceptor {
         }
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
 
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeMethod", declaring.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeMethod", declaring.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), name, paramTypes);
 
         /*
@@ -421,9 +505,9 @@ final class BreakpointInterceptor {
          * instantiation
          */
         if (isInvoke && isClassNewInstance(jni, declaring, name)) {
-            JNIObjectHandle clazz = getObjectArgument(1);
+            JNIObjectHandle clazz = getObjectArgument(thread, 1);
             JNIMethodId result = newInstanceMethodID(jni, clazz);
-            traceBreakpoint(jni, clazz, nullHandle(), callerClass, "newInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
+            traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, "newInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
         }
         return true;
     }
@@ -440,12 +524,12 @@ final class BreakpointInterceptor {
         return "java.lang.Class".equals(className);
     }
 
-    private static boolean invokeConstructor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleInvokeConstructor(jni, bp, state, getObjectArgument(0));
+    private static boolean invokeConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleInvokeConstructor(jni, bp, state, getReceiver(thread));
     }
 
-    private static boolean unreflectConstructor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleInvokeConstructor(jni, bp, state, getObjectArgument(1));
+    private static boolean unreflectConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleInvokeConstructor(jni, bp, state, getObjectArgument(thread, 1));
     }
 
     private static boolean handleInvokeConstructor(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, JNIObjectHandle constructor) {
@@ -462,16 +546,16 @@ final class BreakpointInterceptor {
         }
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
 
-        traceBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeConstructor", declaring.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeConstructor", declaring.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), paramTypes);
         return true;
     }
 
-    private static boolean newInstance(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean newInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
+        JNIObjectHandle self = getReceiver(thread);
         JNIMethodId result = newInstanceMethodID(jni, self);
-        traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
         return true;
     }
 
@@ -490,21 +574,19 @@ final class BreakpointInterceptor {
         return result;
     }
 
-    private static boolean newArrayInstance(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle componentClass = getObjectArgument(0);
-        CIntPointer lengthPtr = StackValue.get(CIntPointer.class);
-        boolean lengthValid = (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, 1, lengthPtr) == JvmtiError.JVMTI_ERROR_NONE);
-
+    private static boolean newArrayInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIValue args = StackValue.get(2, JNIValue.class);
-        args.addressOf(0).setObject(componentClass);
-        args.addressOf(1).setInt(lengthPtr.read());
+        args.addressOf(0).setObject(getObjectArgument(thread, 0));
+        args.addressOf(1).setInt(0);
+        // We ignore the actual array length because we have observed reading it to cause serious
+        // slowdowns in multithreaded programs because it requires full safepoint operations.
 
-        return newArrayInstance0(jni, bp, args, lengthValid, state);
+        return newArrayInstance0(jni, bp, args, true, state);
     }
 
-    private static boolean newArrayInstanceMulti(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle componentClass = getObjectArgument(0);
-        JNIObjectHandle dimensionsArray = getObjectArgument(1);
+    private static boolean newArrayInstanceMulti(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle componentClass = getObjectArgument(thread, 0);
+        JNIObjectHandle dimensionsArray = getObjectArgument(thread, 1);
 
         JNIValue args = StackValue.get(2, JNIValue.class);
         args.addressOf(0).setObject(componentClass);
@@ -530,22 +612,36 @@ final class BreakpointInterceptor {
             }
         }
         String resultClassName = getClassNameOr(jni, resultClass, null, Tracer.UNKNOWN_VALUE);
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), resultClassName);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), resultClassName);
         return true;
     }
 
-    private static boolean getResource(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetResources(jni, bp, false, state);
-    }
-
-    private static boolean getResources(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetResources(jni, bp, true, state);
-    }
-
-    private static boolean handleGetResources(JNIEnvironment jni, Breakpoint bp, boolean returnsEnumeration, InterceptedState state) {
+    private static boolean findResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle name = getObjectArgument(1);
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle module = getObjectArgument(thread, 1);
+        JNIObjectHandle name = getObjectArgument(thread, 2);
+        JNIObjectHandle result = Support.callObjectMethodLL(jni, self, bp.method, module, name);
+        if (clearException(jni)) {
+            result = nullHandle();
+        }
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result.notEqual(nullHandle()), state.getFullStackTraceOrNull(),
+                        fromJniString(jni, module), fromJniString(jni, name));
+        return true;
+    }
+
+    private static boolean getResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetResources(jni, thread, bp, false, state);
+    }
+
+    private static boolean getResources(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetResources(jni, thread, bp, true, state);
+    }
+
+    private static boolean handleGetResources(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, boolean returnsEnumeration, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle name = getObjectArgument(thread, 1);
         boolean result;
         JNIObjectHandle returnValue = Support.callObjectMethodL(jni, self, bp.method, name);
         result = returnValue.notEqual(nullHandle());
@@ -562,7 +658,7 @@ final class BreakpointInterceptor {
                 selfClazz = nullHandle();
             }
         }
-        traceBreakpoint(jni, selfClazz, nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        traceReflectBreakpoint(jni, selfClazz, nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), fromJniString(jni, name));
         return true;
     }
 
@@ -574,17 +670,17 @@ final class BreakpointInterceptor {
         return hasElements;
     }
 
-    private static boolean getSystemResource(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetSystemResources(jni, bp, false, state);
+    private static boolean getSystemResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetSystemResources(jni, thread, bp, false, state);
     }
 
-    private static boolean getSystemResources(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
-        return handleGetSystemResources(jni, bp, true, state);
+    private static boolean getSystemResources(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        return handleGetSystemResources(jni, thread, bp, true, state);
     }
 
-    private static boolean handleGetSystemResources(JNIEnvironment jni, Breakpoint bp, boolean returnsEnumeration, InterceptedState state) {
+    private static boolean handleGetSystemResources(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, boolean returnsEnumeration, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle name = getObjectArgument(0);
+        JNIObjectHandle name = getReceiver(thread);
         JNIObjectHandle returnValue = Support.callStaticObjectMethodL(jni, bp.clazz, bp.method, name);
         boolean result = returnValue.notEqual(nullHandle());
         if (clearException(jni)) {
@@ -593,35 +689,35 @@ final class BreakpointInterceptor {
         if (result && returnsEnumeration) {
             result = hasEnumerationElements(jni, returnValue);
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), fromJniString(jni, name));
         return true;
     }
 
-    private static boolean newProxyInstance(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle classLoader = getObjectArgument(0);
-        JNIObjectHandle ifaces = getObjectArgument(1);
+        JNIObjectHandle classLoader = getObjectArgument(thread, 0);
+        JNIObjectHandle ifaces = getObjectArgument(thread, 1);
         Object ifaceNames = getClassArrayNames(jni, ifaces);
-        JNIObjectHandle invokeHandler = getObjectArgument(2);
+        JNIObjectHandle invokeHandler = getObjectArgument(thread, 2);
         boolean result = nullHandle().notEqual(Support.callStaticObjectMethodLLL(jni, bp.clazz, bp.method, classLoader, ifaces, invokeHandler));
         if (clearException(jni)) {
             result = false;
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, ifaceNames,
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, ifaceNames,
                         Tracer.UNKNOWN_VALUE);
         return true;
     }
 
-    private static boolean getProxyClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean getProxyClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle classLoader = getObjectArgument(0);
-        JNIObjectHandle ifaces = getObjectArgument(1);
+        JNIObjectHandle classLoader = getObjectArgument(thread, 0);
+        JNIObjectHandle ifaces = getObjectArgument(thread, 1);
         Object ifaceNames = getClassArrayNames(jni, ifaces);
         boolean result = nullHandle().notEqual(Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, classLoader, ifaces));
         if (clearException(jni)) {
             result = false;
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, ifaceNames);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, ifaceNames);
         return true;
     }
 
@@ -646,13 +742,13 @@ final class BreakpointInterceptor {
         return classNames;
     }
 
-    private static boolean getBundleImplJDK8OrEarlier(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean getBundleImplJDK8OrEarlier(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         /* actual caller of a getBundle method */
         JNIObjectHandle callerClass = state.getCallerClass(2);
-        JNIObjectHandle baseName = getObjectArgument(0);
-        JNIObjectHandle locale = getObjectArgument(1);
-        JNIObjectHandle loader = getObjectArgument(2);
-        JNIObjectHandle control = getObjectArgument(3);
+        JNIObjectHandle baseName = getObjectArgument(thread, 0);
+        JNIObjectHandle locale = getObjectArgument(thread, 1);
+        JNIObjectHandle loader = getObjectArgument(thread, 2);
+        JNIObjectHandle control = getObjectArgument(thread, 3);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, baseName, locale, loader, control);
         BundleInfo bundleInfo = BundleInfo.NONE;
         if (clearException(jni)) {
@@ -660,12 +756,12 @@ final class BreakpointInterceptor {
         } else {
             bundleInfo = extractBundleInfo(jni, result);
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames, bundleInfo.locales);
         return true;
     }
 
-    private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean getBundleImplJDK11OrLater(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIMethodId intermediateMethod = state.getCallerMethod(2);
         JNIMethodId callerMethod; // caller of getBundle(), not immediate caller
         if (intermediateMethod.equal(agent.handles().tryGetJavaUtilResourceBundleGetBundleImplSLCC(jni))) {
@@ -675,11 +771,11 @@ final class BreakpointInterceptor {
             callerMethod = state.getCallerMethod(3);
         }
         JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
-        JNIObjectHandle callerModule = getObjectArgument(0);
-        JNIObjectHandle module = getObjectArgument(1);
-        JNIObjectHandle baseName = getObjectArgument(2);
-        JNIObjectHandle locale = getObjectArgument(3);
-        JNIObjectHandle control = getObjectArgument(4);
+        JNIObjectHandle callerModule = getObjectArgument(thread, 0);
+        JNIObjectHandle module = getObjectArgument(thread, 1);
+        JNIObjectHandle baseName = getObjectArgument(thread, 2);
+        JNIObjectHandle locale = getObjectArgument(thread, 3);
+        JNIObjectHandle control = getObjectArgument(thread, 4);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
         BundleInfo bundleInfo = BundleInfo.NONE;
         if (clearException(jni)) {
@@ -687,7 +783,7 @@ final class BreakpointInterceptor {
         } else {
             bundleInfo = extractBundleInfo(jni, result);
         }
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
                         state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames,
                         bundleInfo.locales);
         return true;
@@ -755,7 +851,7 @@ final class BreakpointInterceptor {
         return nullHandle();
     }
 
-    private static boolean loadClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean loadClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         assert experimentalClassLoaderSupport;
         /*
          * There is no easy way to tell if it was the virtual machine that called the class loader
@@ -780,14 +876,14 @@ final class BreakpointInterceptor {
                 observedExplicitLoadClassCallSites.put(location, Boolean.TRUE);
             }
         }
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIObjectHandle name = getObjectArgument(1);
+        JNIObjectHandle self = getReceiver(thread);
+        JNIObjectHandle name = getObjectArgument(thread, 1);
         String className = fromJniString(jni, name);
         JNIObjectHandle clazz = Support.callObjectMethodL(jni, self, bp.method, name);
         if (clearException(jni)) {
             clazz = nullHandle();
         }
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, clazz.notEqual(nullHandle()), state.getFullStackTraceOrNull(), className);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, clazz.notEqual(nullHandle()), state.getFullStackTraceOrNull(), className);
         return true;
     }
 
@@ -839,12 +935,12 @@ final class BreakpointInterceptor {
         }
     }
 
-    private static boolean findMethodHandle(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean findMethodHandle(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle declaringClass = getObjectArgument(1);
-        JNIObjectHandle methodName = getObjectArgument(2);
-        JNIObjectHandle methodType = getObjectArgument(3);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle declaringClass = getObjectArgument(thread, 1);
+        JNIObjectHandle methodName = getObjectArgument(thread, 2);
+        JNIObjectHandle methodType = getObjectArgument(thread, 3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, methodName, methodType);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
@@ -852,13 +948,13 @@ final class BreakpointInterceptor {
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result, state.getFullStackTraceOrNull());
     }
 
-    private static boolean findSpecialHandle(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean findSpecialHandle(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle declaringClass = getObjectArgument(1);
-        JNIObjectHandle methodName = getObjectArgument(2);
-        JNIObjectHandle methodType = getObjectArgument(3);
-        JNIObjectHandle specialCaller = getObjectArgument(4);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle declaringClass = getObjectArgument(thread, 1);
+        JNIObjectHandle methodName = getObjectArgument(thread, 2);
+        JNIObjectHandle methodType = getObjectArgument(thread, 3);
+        JNIObjectHandle specialCaller = getObjectArgument(thread, 4);
 
         JNIObjectHandle result = Support.callObjectMethodLLLL(jni, lookup, bp.method, declaringClass, methodName, methodType, specialCaller);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
@@ -866,12 +962,12 @@ final class BreakpointInterceptor {
         return methodMethodHandle(jni, declaringClass, callerClass, methodName, getParamTypes(jni, methodType), result, state.getFullStackTraceOrNull());
     }
 
-    private static boolean bindHandle(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean bindHandle(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle receiver = getObjectArgument(1);
-        JNIObjectHandle methodName = getObjectArgument(2);
-        JNIObjectHandle methodType = getObjectArgument(3);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle receiver = getObjectArgument(thread, 1);
+        JNIObjectHandle methodName = getObjectArgument(thread, 2);
+        JNIObjectHandle methodType = getObjectArgument(thread, 3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, receiver, methodName, methodType);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
@@ -888,21 +984,21 @@ final class BreakpointInterceptor {
                     JNIObjectHandle result, JNIMethodId[] stackTrace) {
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findMethodHandle", result.notEqual(nullHandle()), stackTrace, name, paramTypes);
+        traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findMethodHandle", result.notEqual(nullHandle()), stackTrace, name, paramTypes);
         return true;
     }
 
-    private static boolean findConstructorHandle(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean findConstructorHandle(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle declaringClass = getObjectArgument(1);
-        JNIObjectHandle methodType = getObjectArgument(2);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle declaringClass = getObjectArgument(thread, 1);
+        JNIObjectHandle methodType = getObjectArgument(thread, 2);
 
         JNIObjectHandle result = Support.callObjectMethodLL(jni, lookup, bp.method, declaringClass, methodType);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         Object paramTypes = getClassArrayNames(jni, getParamTypes(jni, methodType));
-        traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), paramTypes);
+        traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findConstructorHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), paramTypes);
         return true;
     }
 
@@ -914,38 +1010,38 @@ final class BreakpointInterceptor {
         return paramTypesHandle;
     }
 
-    private static boolean findFieldHandle(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean findFieldHandle(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle declaringClass = getObjectArgument(1);
-        JNIObjectHandle fieldName = getObjectArgument(2);
-        JNIObjectHandle fieldType = getObjectArgument(3);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle declaringClass = getObjectArgument(thread, 1);
+        JNIObjectHandle fieldName = getObjectArgument(thread, 2);
+        JNIObjectHandle fieldType = getObjectArgument(thread, 3);
 
         JNIObjectHandle result = Support.callObjectMethodLLL(jni, lookup, bp.method, declaringClass, fieldName, fieldType);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         String name = fromJniString(jni, fieldName);
-        traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
+        traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
         return true;
     }
 
-    private static boolean findClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean findClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle className = getObjectArgument(1);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle className = getObjectArgument(thread, 1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, className);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
 
         String name = fromJniString(jni, className);
-        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "findClass", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, "findClass", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
         return true;
     }
 
-    private static boolean unreflectField(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean unreflectField(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle field = getObjectArgument(1);
+        JNIObjectHandle lookup = getReceiver(thread);
+        JNIObjectHandle field = getObjectArgument(thread, 1);
 
         JNIObjectHandle result = Support.callObjectMethodL(jni, lookup, bp.method, field);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
@@ -961,14 +1057,14 @@ final class BreakpointInterceptor {
         }
 
         String fieldName = fromJniString(jni, fieldNameHandle);
-        traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "unreflectField", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), fieldName);
+        traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "unreflectField", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), fieldName);
         return true;
     }
 
-    private static boolean asInterfaceInstance(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean asInterfaceInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle intfc = getObjectArgument(0);
-        JNIObjectHandle methodHandle = getObjectArgument(1);
+        JNIObjectHandle intfc = getObjectArgument(thread, 0);
+        JNIObjectHandle methodHandle = getObjectArgument(thread, 1);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, intfc, methodHandle);
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangInvokeWrongMethodTypeException, agent.handles().javaLangIllegalArgumentException);
@@ -978,18 +1074,18 @@ final class BreakpointInterceptor {
             intfcNameHandle = nullHandle();
         }
         String intfcName = fromJniString(jni, intfcNameHandle);
-        traceBreakpoint(jni, intfc, nullHandle(), callerClass, "asInterfaceInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
+        traceReflectBreakpoint(jni, intfc, nullHandle(), callerClass, "asInterfaceInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull());
         String[] intfcNames = new String[]{intfcName};
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "newMethodHandleProxyInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), (Object) intfcNames);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "newMethodHandleProxyInstance", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), (Object) intfcNames);
         return true;
     }
 
-    private static boolean constantBootstrapGetStaticFinal(JNIEnvironment jni, Breakpoint bp, InterceptedState state, boolean hasDeclaringClass) {
+    private static boolean constantBootstrapGetStaticFinal(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state, boolean hasDeclaringClass) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle lookup = getObjectArgument(0);
-        JNIObjectHandle fieldName = getObjectArgument(1);
-        JNIObjectHandle type = getObjectArgument(2);
-        JNIObjectHandle declaringClass = hasDeclaringClass ? getObjectArgument(3) : type;
+        JNIObjectHandle lookup = getObjectArgument(thread, 0);
+        JNIObjectHandle fieldName = getObjectArgument(thread, 1);
+        JNIObjectHandle type = getObjectArgument(thread, 2);
+        JNIObjectHandle declaringClass = hasDeclaringClass ? getObjectArgument(thread, 3) : type;
 
         JNIObjectHandle result;
         if (hasDeclaringClass) {
@@ -1000,14 +1096,14 @@ final class BreakpointInterceptor {
         result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessError);
 
         String name = fromJniString(jni, fieldName);
-        traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
+        traceReflectBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
         return true;
     }
 
-    private static boolean methodTypeFromDescriptor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean methodTypeFromDescriptor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle descriptor = getObjectArgument(0);
-        JNIObjectHandle classLoader = getObjectArgument(1);
+        JNIObjectHandle descriptor = getObjectArgument(thread, 0);
+        JNIObjectHandle classLoader = getObjectArgument(thread, 1);
 
         JNIObjectHandle result = Support.callStaticObjectMethodLL(jni, bp.clazz, bp.method, descriptor, classLoader);
         if (clearException(jni)) {
@@ -1035,7 +1131,7 @@ final class BreakpointInterceptor {
             }
         }
 
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "methodTypeDescriptor", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), types);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "methodTypeDescriptor", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), types);
         return true;
     }
 
@@ -1057,67 +1153,79 @@ final class BreakpointInterceptor {
         return result;
     }
 
-    private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    /**
+     * We have to find a class that captures a lambda function so it can be registered by the agent.
+     * We have to get a SerializedLambda instance first. After that we get a lambda capturing class
+     * from that instance using JNIHandleSet#getFieldId to get field id and JNIObjectHandle#invoke
+     * on to get that field value. We get a name of the capturing class and tell the agent to
+     * register it.
+     */
+    private static boolean serializedLambdaReadResolve(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle serializedLambdaInstance = getReceiver(thread);
+        JNIObjectHandle capturingClass = jniFunctions().getGetObjectField().invoke(jni, serializedLambdaInstance,
+                        agent.handles().javaLangInvokeSerializedLambdaCapturingClass);
 
-        JNIObjectHandle serializeTargetClass = getObjectArgument(1);
-        String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
+        String capturingClassName = getClassNameOrNull(jni, capturingClass);
+        boolean validCapturingClass = nullHandle().notEqual(capturingClass);
 
-        JNIObjectHandle objectStreamClassInstance = Support.newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
-        boolean validObjectStreamClassInstance = nullHandle().notEqual(objectStreamClassInstance);
-        if (clearException(jni)) {
-            validObjectStreamClassInstance = false;
-        }
+        traceSerializeBreakpoint(jni, "SerializedLambda.readResolve", validCapturingClass, state.getFullStackTraceOrNull(), capturingClassName);
+        return true;
+    }
 
-        // Skip Lambda class serialization
-        if (serializeTargetClassName.contains("$$Lambda$")) {
-            return true;
-        }
+    private static boolean objectStreamClassConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
 
-        List<String> transitiveSerializeTargets = new ArrayList<>();
-        transitiveSerializeTargets.add(serializeTargetClassName);
+        JNIObjectHandle serializeTargetClass = getObjectArgument(thread, 1);
+        if (Support.isSerializable(jni, serializeTargetClass)) {
+            String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
 
-        /*
-         * When the ObjectStreamClass instance is created for the given serializeTargetClass, some
-         * additional ObjectStreamClass instances (usually the super classes) are created
-         * recursively. Call ObjectStreamClass.getClassDataLayout0() can get all of them.
-         */
-        JNIMethodId getClassDataLayout0MId = agent.handles().getJavaIoObjectStreamClassGetClassDataLayout0(jni, bp.clazz);
-        JNIObjectHandle dataLayoutArray = Support.callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
-        if (!clearException(jni) && nullHandle().notEqual(dataLayoutArray)) {
-            int length = jniFunctions().getGetArrayLength().invoke(jni, dataLayoutArray);
-            // If only 1 element is got from getClassDataLayout0(). it is base ObjectStreamClass
-            // instance itself.
-            if (!clearException(jni) && length > 1) {
-                JNIFieldId hasDataFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotHasData(jni);
-                JNIFieldId descFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotDesc(jni);
-                JNIMethodId javaIoObjectStreamClassForClassMId = agent.handles().getJavaIoObjectStreamClassForClass(jni, bp.clazz);
-                for (int i = 0; i < length; i++) {
-                    JNIObjectHandle classDataSlot = jniFunctions().getGetObjectArrayElement().invoke(jni, dataLayoutArray, i);
-                    boolean hasData = jniFunctions().getGetBooleanField().invoke(jni, classDataSlot, hasDataFId);
-                    if (hasData) {
-                        JNIObjectHandle oscInstanceInSlot = jniFunctions().getGetObjectField().invoke(jni, classDataSlot, descFId);
-                        if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
-                            JNIObjectHandle oscClazz = Support.callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
-                            String oscClassName = getClassNameOrNull(jni, oscClazz);
-                            transitiveSerializeTargets.add(oscClassName);
+            JNIObjectHandle objectStreamClassInstance = Support.newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
+            boolean validObjectStreamClassInstance = nullHandle().notEqual(objectStreamClassInstance);
+            if (clearException(jni)) {
+                validObjectStreamClassInstance = false;
+            }
+
+            List<String> transitiveSerializeTargets = new ArrayList<>();
+            transitiveSerializeTargets.add(serializeTargetClassName);
+
+            /*
+             * When the ObjectStreamClass instance is created for the given serializeTargetClass,
+             * some additional ObjectStreamClass instances (usually the super classes) are created
+             * recursively. Call ObjectStreamClass.getClassDataLayout0() can get all of them.
+             */
+            JNIMethodId getClassDataLayout0MId = agent.handles().getJavaIoObjectStreamClassGetClassDataLayout0(jni, bp.clazz);
+            JNIObjectHandle dataLayoutArray = Support.callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
+            if (!clearException(jni) && nullHandle().notEqual(dataLayoutArray)) {
+                int length = jniFunctions().getGetArrayLength().invoke(jni, dataLayoutArray);
+                // If only 1 element is got from getClassDataLayout0(). it is base ObjectStreamClass
+                // instance itself.
+                if (!clearException(jni) && length > 1) {
+                    JNIFieldId hasDataFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotHasData(jni);
+                    JNIFieldId descFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotDesc(jni);
+                    JNIMethodId javaIoObjectStreamClassForClassMId = agent.handles().getJavaIoObjectStreamClassForClass(jni, bp.clazz);
+                    for (int i = 0; i < length; i++) {
+                        JNIObjectHandle classDataSlot = jniFunctions().getGetObjectArrayElement().invoke(jni, dataLayoutArray, i);
+                        boolean hasData = jniFunctions().getGetBooleanField().invoke(jni, classDataSlot, hasDataFId);
+                        if (hasData) {
+                            JNIObjectHandle oscInstanceInSlot = jniFunctions().getGetObjectField().invoke(jni, classDataSlot, descFId);
+                            if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
+                                JNIObjectHandle oscClazz = Support.callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
+                                if (Support.isSerializable(jni, oscClazz)) {
+                                    String oscClassName = getClassNameOrNull(jni, oscClazz);
+                                    transitiveSerializeTargets.add(oscClassName);
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-        for (String className : transitiveSerializeTargets) {
-            if (tracer != null) {
-                tracer.traceCall("serialization",
-                                "ObjectStreamClass.<init>",
-                                null,
-                                null,
-                                null,
-                                validObjectStreamClassInstance,
-                                state.getFullStackTraceOrNull(),
-                                /*- String serializationTargetClass, String customTargetConstructorClass */
-                                className, null);
-
-                guarantee(!testException(jni));
+            for (String className : transitiveSerializeTargets) {
+                if (DynamicProxySupport.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
+                    JNIObjectHandle interfaces = Support.callObjectMethod(jni, serializeTargetClass, agent.handles().javaLangClassGetInterfaces);
+                    Object interfaceNames = getClassArrayNames(jni, interfaces);
+                    traceSerializeBreakpoint(jni, "ProxyClassSerialization", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), interfaceNames);
+                } else {
+                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                }
             }
         }
         return true;
@@ -1131,56 +1239,87 @@ final class BreakpointInterceptor {
      * java.lang.reflect.Constructor) on JDK11. We need to catch constructor class and create entry
      * for that pair (serialization class, custom class constructor) in serialization configuration.
      */
-    private static boolean customTargetConstructorSerialization(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle serializeTargetClass = getObjectArgument(1);
-        String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
+    private static boolean customTargetConstructorSerialization(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle serializeTargetClass = getObjectArgument(thread, 1);
+        if (Support.isSerializable(jni, serializeTargetClass)) {
+            String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
 
-        // Skip Lambda class serialization.
-        if (serializeTargetClassName.contains("$$Lambda$")) {
-            return true;
-        }
-
-        JNIObjectHandle customConstructorObj = getObjectArgument(2);
-        JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
-        JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
-        JNIObjectHandle declaredClassNameObj = Support.callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
-        String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
-
-        if (tracer != null) {
-            tracer.traceCall("serialization",
-                            "ObjectStreamClass.<init>",
-                            null,
-                            null,
-                            null,
-                            true,
-                            state.getFullStackTraceOrNull(),
-                            /*- String serializationTargetClass, String customTargetConstructorClass */
-                            serializeTargetClassName, customConstructorClassName);
-
-            guarantee(!testException(jni));
+            JNIObjectHandle customConstructorObj = getObjectArgument(thread, 2);
+            JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
+            JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
+            JNIObjectHandle declaredClassNameObj = Support.callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
+            String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
+            traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", true, state.getFullStackTraceOrNull(), serializeTargetClassName, customConstructorClassName);
         }
         return true;
     }
 
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
-    private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
-                    @SuppressWarnings("unused") JNIObjectHandle thread, JNIMethodId method, @SuppressWarnings("unused") long location) {
-
+    private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread, JNIMethodId method, @SuppressWarnings("unused") long location) {
         if (recursive.get()) {
             return;
         }
         recursive.set(true);
         try {
+            JNIObjectHandle rectifiedThread = rectifyCurrentThread(thread);
+            if (rectifiedThread.equal(nullHandle())) {
+                return;
+            }
+
             Breakpoint bp = installedBreakpoints.get(method.rawValue());
             InterceptedState state = interceptedStateSupplier.get();
-            if (bp.specification.handler.dispatch(jni, bp, state)) {
+            if (bp.specification.handler.dispatch(jni, rectifiedThread, bp, state)) {
                 guarantee(!testException(jni));
             }
         } catch (Throwable t) {
             VMError.shouldNotReachHere(t);
         } finally {
             recursive.set(false);
+        }
+    }
+
+    /**
+     * The JVMTI implementation of JDK 19 can pass the platform thread as current thread for events
+     * in a virtual thread that happen while temporarily switching to the carrier thread (such as
+     * scheduling an unpark). It also ignores the frames of a virtual thread when passing
+     * {@code NULL} to {@code GetLocal*} to refer to the current thread (JDK-8292657). This method
+     * calls {@code GetCurrentThread}, which seems to always return the virtual thread and can be
+     * used to properly read the locals in the breakpoint.
+     */
+    private static JNIObjectHandle rectifyCurrentThread(JNIObjectHandle thread) {
+        if (Support.jvmtiVersion() < JvmtiInterface.JVMTI_VERSION_19) {
+            return thread;
+        }
+        WordPointer threadPtr = StackValue.get(WordPointer.class);
+        JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
+        if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
+            return nullHandle();
+        }
+
+        check(error);
+        return threadPtr.read();
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    private static void onNativeMethodBind(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
+                    @SuppressWarnings("unused") JNIObjectHandle thread, JNIMethodId method, CodePointer address, WordPointer newAddressPtr) {
+        if (recursive.get()) {
+            return;
+        }
+        nativeBreakpointsInitLock.lock();
+        try {
+            if (nativeBreakpoints != null) {
+                NativeBreakpoint bp = nativeBreakpoints.get(method.rawValue());
+                if (bp != null) {
+                    bindNativeBreakpoint(jni, bp, address, newAddressPtr);
+                }
+            } else { // breakpoints are not yet initialized, remember and install breakpoint later
+                boundNativeMethods.put(method.rawValue(), address.rawValue());
+            }
+        } finally {
+            nativeBreakpointsInitLock.unlock();
         }
     }
 
@@ -1238,6 +1377,9 @@ final class BreakpointInterceptor {
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, long.class);
 
+    private static final CEntryPointLiteral<CFunctionPointer> onNativeMethodBindLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onNativeMethodBind",
+                    JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, CodePointer.class, WordPointer.class);
+
     private static final CEntryPointLiteral<CFunctionPointer> onClassPrepareLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
@@ -1247,18 +1389,26 @@ final class BreakpointInterceptor {
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, Tracer writer, NativeImageAgent nativeImageTracingAgent,
                     Supplier<InterceptedState> currentThreadJavaStackAccessSupplier,
-                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport, boolean trackReflectionData) {
+                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport, boolean exptlUnsafeAllocationSupport, boolean trackReflectionData) {
         BreakpointInterceptor.tracer = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.interceptedStateSupplier = currentThreadJavaStackAccessSupplier;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
         BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
+        BreakpointInterceptor.experimentalUnsafeAllocationSupport = exptlUnsafeAllocationSupport;
         BreakpointInterceptor.trackReflectionMetadata = trackReflectionData;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
+
+        if (exptlUnsafeAllocationSupport) {
+            capabilities.setCanGenerateNativeMethodBindEvents(1);
+            callbacks.setNativeMethodBind(onNativeMethodBindLiteral.getFunctionPointer());
+            BreakpointInterceptor.boundNativeMethods = new HashMap<>();
+        }
+
         if (exptlClassLoaderSupport) {
             capabilities.setCanGetBytecodes(1);
             capabilities.setCanGetConstantPool(1);
@@ -1271,11 +1421,17 @@ final class BreakpointInterceptor {
         UnmanagedMemory.free(capabilities);
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
+
         if (exptlClassDefineSupport) {
             callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
         }
+
         if (exptlClassLoaderSupport) {
             callbacks.setClassPrepare(onClassPrepareLiteral.getFunctionPointer());
+        }
+
+        if (exptlUnsafeAllocationSupport) {
+            Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
         }
     }
 
@@ -1304,9 +1460,9 @@ final class BreakpointInterceptor {
         String lastClassName = null;
         BreakpointSpecification[] breakpointSpecifications = BREAKPOINT_SPECIFICATIONS;
         if (trackReflectionMetadata) {
-            breakpointSpecifications = new BreakpointSpecification[BREAKPOINT_SPECIFICATIONS.length + REFLECTION_QUERIES_BREAKPOINT_SPECIFICATIONS.length];
+            breakpointSpecifications = new BreakpointSpecification[BREAKPOINT_SPECIFICATIONS.length + REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length];
             System.arraycopy(BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, 0, BREAKPOINT_SPECIFICATIONS.length);
-            System.arraycopy(REFLECTION_QUERIES_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, BREAKPOINT_SPECIFICATIONS.length, REFLECTION_QUERIES_BREAKPOINT_SPECIFICATIONS.length);
+            System.arraycopy(REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, BREAKPOINT_SPECIFICATIONS.length, REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length);
         }
         for (BreakpointSpecification br : breakpointSpecifications) {
             JNIObjectHandle clazz = nullHandle();
@@ -1321,6 +1477,10 @@ final class BreakpointInterceptor {
         }
         installedBreakpoints = breakpoints;
 
+        if (experimentalUnsafeAllocationSupport) {
+            setupNativeBreakpoints(jni, lastClass, lastClassName);
+        }
+
         if (experimentalClassDefineSupport) {
             setupClassLoadEvent(jvmti, jni);
         }
@@ -1328,6 +1488,37 @@ final class BreakpointInterceptor {
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
         if (experimentalClassLoaderSupport) {
             check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullHandle()));
+        }
+    }
+
+    private static void setupNativeBreakpoints(JNIEnvironment jni, JNIObjectHandle previousClass, String previousClassName) {
+        JNIObjectHandle lastClass = previousClass;
+        String lastClassName = previousClassName;
+        nativeBreakpointsInitLock.lock();
+        try {
+            nativeBreakpoints = new HashMap<>(NATIVE_BREAKPOINT_SPECIFICATIONS.length);
+            for (NativeBreakpointSpecification br : NATIVE_BREAKPOINT_SPECIFICATIONS) {
+                JNIObjectHandle clazz;
+                if (lastClassName != null && lastClassName.equals(br.className)) {
+                    clazz = lastClass;
+                } else {
+                    clazz = resolveBreakpointClass(jni, br.className, br.optional);
+                    lastClass = clazz;
+                    lastClassName = br.className;
+                }
+                JNIMethodId method = resolveBreakpointMethod(jni, clazz, br.methodName, br.signature, br.optional);
+                if (method.isNonNull()) {
+                    NativeBreakpoint bp = new NativeBreakpoint(br, clazz, method);
+                    nativeBreakpoints.put(method.rawValue(), bp);
+                    Long original = boundNativeMethods.get(method.rawValue());
+                    if (original != null) { // already bound, replace
+                        bindNativeBreakpoint(jni, bp, WordFactory.pointer(original), nullPointer());
+                    }
+                }
+            }
+            boundNativeMethods = null;
+        } finally {
+            nativeBreakpointsInitLock.unlock();
         }
     }
 
@@ -1448,15 +1639,38 @@ final class BreakpointInterceptor {
         return iface;
     }
 
+    private static void bindNativeBreakpoint(JNIEnvironment jni, NativeBreakpoint bp, CodePointer originalAddress, WordPointer newAddressPtr) {
+        assert !recursive.get();
+        bp.replacedFunction = originalAddress;
+        CFunctionPointer breakpointMethod = bp.specification.handlerLiteral.getFunctionPointer();
+        if (newAddressPtr.isNonNull()) {
+            newAddressPtr.write(breakpointMethod);
+        } else {
+            recursive.set(true);
+            try (CCharPointerHolder cname = toCString(bp.specification.methodName);
+                            CCharPointerHolder csignature = toCString(bp.specification.signature)) {
+
+                JNINativeMethod nativeMethod = StackValue.get(JNINativeMethod.class);
+                nativeMethod.setName(cname.get());
+                nativeMethod.setSignature(csignature.get());
+                nativeMethod.setFnPtr(breakpointMethod);
+                checkJni(jni.getFunctions().getRegisterNatives().invoke(jni, bp.clazz, nativeMethod, 1));
+            } finally {
+                recursive.set(false);
+            }
+        }
+    }
+
     public static void onUnload() {
         builtinClassLoaders = null;
         installedBreakpoints = null;
+        nativeBreakpoints = null;
         observedExplicitLoadClassCallSites = null;
         tracer = null;
     }
 
     private interface BreakpointHandler {
-        boolean dispatch(JNIEnvironment jni, Breakpoint bp, InterceptedState state);
+        boolean dispatch(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state);
     }
 
     private static final BreakpointSpecification[] BREAKPOINT_SPECIFICATIONS = {
@@ -1474,12 +1688,23 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "getEnclosingMethod", "()Ljava/lang/reflect/Method;", BreakpointInterceptor::getEnclosingMethod),
                     brk("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getEnclosingMethod),
 
-                    brk("java/lang/reflect/Method", "invoke", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
-                    brk("sun/reflect/misc/MethodUtil", "invoke", "(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
-                    brk("java/lang/reflect/Constructor", "newInstance", "([Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeConstructor),
+                    brk("java/lang/Class", "getMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getMethods),
+                    brk("java/lang/Class", "getConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructors),
+                    brk("java/lang/Class", "getDeclaredMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getDeclaredMethods),
+                    brk("java/lang/Class", "getDeclaredConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getDeclaredConstructors),
+
+                    brk("java/lang/Class", "getMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", BreakpointInterceptor::getMethod),
+                    brk("java/lang/Class", "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructor),
+                    brk("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", BreakpointInterceptor::getDeclaredMethod),
+                    brk("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructor),
+
                     brk("java/lang/Class", "newInstance", "()Ljava/lang/Object;", BreakpointInterceptor::newInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
+
+                    brk("jdk/internal/loader/BuiltinClassLoader", "findResource", "(Ljava/lang/String;Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::findResource),
+                    brk("jdk/internal/loader/BuiltinClassLoader", "findResourceAsStream", "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/InputStream;", BreakpointInterceptor::findResource),
+                    brk("jdk/internal/loader/Loader", "findResource", "(Ljava/lang/String;Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::findResource),
 
                     brk("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::getResource),
                     brk("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getResources),
@@ -1494,8 +1719,9 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
+                    brk("java/lang/invoke/SerializedLambda", "readResolve", "()Ljava/lang/Object;", BreakpointInterceptor::serializedLambdaReadResolve),
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
-                    brk(Package_jdk_internal_reflect.getQualifiedName().replace(".", "/") + "/ReflectionFactory",
+                    brk("jdk/internal/reflect/ReflectionFactory",
                                     "newConstructorForSerialization",
                                     "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::customTargetConstructorSerialization),
                     optionalBrk("java/util/ResourceBundle",
@@ -1509,6 +1735,8 @@ final class BreakpointInterceptor {
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),
+
+                    brk("sun/misc/Unsafe", "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", BreakpointInterceptor::allocateInstance),
 
                     optionalBrk("java/lang/invoke/MethodHandles$Lookup", "findStatic",
                                     "(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/MethodHandle;",
@@ -1564,10 +1792,10 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::asInterfaceInstance),
                     optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
                                     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;",
-                                    (jni, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, bp, state, true)),
+                                    (jni, thread, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, thread, bp, state, true)),
                     optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
                                     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;",
-                                    (jni, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, bp, state, false)),
+                                    (jni, thread, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, thread, bp, state, false)),
                     optionalBrk("java/lang/invoke/MethodType", "fromMethodDescriptorString",
                                     "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
                                     BreakpointInterceptor::methodTypeFromDescriptor),
@@ -1575,19 +1803,24 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getPermittedSubclasses)
     };
 
+    private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle clazz = getObjectArgument(thread, 1);
+        traceAllocateInstance(jni, clazz, !clearException(jni), state, callerClass);
+        return true;
+    }
+
     private static final BreakpointSpecification CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION = optionalBrk("java/lang/ClassLoader", "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;", BreakpointInterceptor::loadClass);
 
-    private static final BreakpointSpecification[] REFLECTION_QUERIES_BREAKPOINT_SPECIFICATIONS = {
-                    brk("java/lang/Class", "getMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getMethods),
-                    brk("java/lang/Class", "getConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructors),
-                    brk("java/lang/Class", "getDeclaredMethods", "()[Ljava/lang/reflect/Method;", BreakpointInterceptor::getDeclaredMethods),
-                    brk("java/lang/Class", "getDeclaredConstructors", "()[Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getDeclaredConstructors),
+    private static final NativeBreakpointSpecification[] NATIVE_BREAKPOINT_SPECIFICATIONS = {
+                    NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC
+    };
 
-                    brk("java/lang/Class", "getMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", BreakpointInterceptor::getMethod),
-                    brk("java/lang/Class", "getConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructor),
-                    brk("java/lang/Class", "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", BreakpointInterceptor::getDeclaredMethod),
-                    brk("java/lang/Class", "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getConstructor),
+    private static final BreakpointSpecification[] REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS = {
+                    brk("java/lang/reflect/Method", "invoke", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
+                    brk("sun/reflect/misc/MethodUtil", "invoke", "(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
+                    brk("java/lang/reflect/Constructor", "newInstance", "([Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeConstructor),
     };
 
     private static BreakpointSpecification brk(String className, String methodName, String signature, BreakpointHandler handler) {
@@ -1596,6 +1829,16 @@ final class BreakpointInterceptor {
 
     private static BreakpointSpecification optionalBrk(String className, String methodName, String signature, BreakpointHandler handler) {
         return new BreakpointSpecification(className, methodName, signature, handler, true);
+    }
+
+    private static class NativeBreakpointSpecification extends AbstractBreakpointSpecification {
+        final CEntryPointLiteral<?> handlerLiteral;
+        NativeBreakpoint installed;
+
+        NativeBreakpointSpecification(String className, String methodName, String signature, CEntryPointLiteral<?> handlerLiteral) {
+            super(className, methodName, signature, true);
+            this.handlerLiteral = handlerLiteral;
+        }
     }
 
     private abstract static class AbstractBreakpointSpecification {
@@ -1646,6 +1889,17 @@ final class BreakpointInterceptor {
     private static class Breakpoint extends AbstractBreakpoint<BreakpointSpecification> {
         Breakpoint(BreakpointSpecification specification, JNIObjectHandle clazz, JNIMethodId method) {
             super(specification, clazz, method);
+        }
+    }
+
+    private static final class NativeBreakpoint extends AbstractBreakpoint<NativeBreakpointSpecification> {
+        CodePointer replacedFunction;
+
+        NativeBreakpoint(NativeBreakpointSpecification specification, JNIObjectHandle clazz, JNIMethodId method) {
+            super(specification, clazz, method);
+
+            assert specification.installed == null : "must be installed exactly once";
+            specification.installed = this;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,12 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
 /**
  * For all lookbehind assertions, mark all states where the assertion may begin. If an assertion may
@@ -84,10 +84,11 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     }
 
     public void run() {
-        for (LookAroundAssertion lb : ast.getLookArounds()) {
-            if (lb instanceof LookAheadAssertion) {
+        for (RegexASTSubtreeRootNode subtreeRootNode : ast.getSubtrees()) {
+            if (!subtreeRootNode.isLookBehindAssertion()) {
                 continue;
             }
+            LookBehindAssertion lb = subtreeRootNode.asLookBehindAssertion();
             run(lb);
             movePastLookAheadBoundaries();
             int curDepth = 1;
@@ -116,7 +117,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
                 movePastLookAheadBoundaries();
             }
             for (CharacterClass t : newEntriesFound) {
-                t.addLookBehindEntry(ast, (LookBehindAssertion) lb);
+                t.addLookBehindEntry(ast, lb);
             }
             curEntriesFound.clear();
             newEntriesFound.clear();

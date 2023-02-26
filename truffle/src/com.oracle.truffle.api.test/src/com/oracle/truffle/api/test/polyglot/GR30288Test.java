@@ -40,15 +40,21 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
+import java.lang.ref.ReferenceQueue;
+import java.util.Map;
 
 /*
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
@@ -78,6 +84,43 @@ public class GR30288Test {
 
                     // materialize all member access
                     v.getMemberKeys().size();
+                }
+            }
+        }
+    }
+
+    /***
+     * Cleans up leaked {@link ClassValue} values on HotSpot after the test. Although the
+     * {@link ClassValue} instances in the {@code HostClassCache} are released, their values are
+     * still strongly reachable from the {@code Class#classValueMap} field. In order to release them
+     * you need to actively use {@code ClassValueMap}. You need to populate the
+     * {@code ClassValueMap#cacheLoadLimit} values. The {@code ClassValueMap#cacheLoadLimit} can be
+     * quite high, so we clean the {@code ClassValueMap} using a reflection. The
+     * {@code ClassValueMap} holds {@link ClassValue} values in three places.
+     * <ol>
+     * <li>{@code ClassValueMap.Entry#value}</li>
+     * <li>Constant folding cache {@code ClassValueMap#cacheArray}</li>
+     * <li>Enqueued {@code ClassValueMap.Entry}s in the {@code ClassValueMap}
+     * {@link ReferenceQueue}</li>
+     * </ol>
+     * We need to clear all these three references.
+     */
+    @AfterClass
+    public static void tearDown() throws Exception {
+        if (!ImageInfo.inImageRuntimeCode()) {
+            // Perform GC to process weak references.
+            System.gc();
+            for (Object value : TEST_VALUES) {
+                // Clean the constants folding cache
+                Map<?, ?> classValueMap = (Map<?, ?>) ReflectionUtils.getField(value.getClass(), "classValueMap");
+                if (classValueMap != null) {
+                    ReflectionUtils.invoke(classValueMap, "removeStaleEntries");
+                    // Clean the ClassValueMap entries with weakly reachable ClassValues from both
+                    // the map and the reference queue.
+                    for (int i = 0; i < 10 && classValueMap.size() > 0; i++) {
+                        // Give a GC a chance to enqueue references into a reference queue.
+                        Thread.sleep(100);
+                    }
                 }
             }
         }

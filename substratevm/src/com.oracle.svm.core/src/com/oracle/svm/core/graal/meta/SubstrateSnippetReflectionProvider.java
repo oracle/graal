@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.word.WordTypes;
 
@@ -32,6 +35,8 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateSnippetReflectionProvider implements SnippetReflectionProvider {
@@ -68,6 +73,16 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
 
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
         throw VMError.shouldNotReachHere();
     }
 }

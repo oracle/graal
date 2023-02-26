@@ -1,0 +1,2 @@
+# Windows native code does not support destructor attributes
+c/stdlib/atexit003.c.dir

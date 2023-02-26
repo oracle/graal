@@ -26,9 +26,8 @@
 
 package com.oracle.svm.common.option;
 
-// Checkstyle: allow reflection
-
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -41,6 +40,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -244,7 +245,7 @@ public class CommonOptionParser {
                 return OptionParseResult.error("Missing value for option " + current);
             }
             try {
-                value = parseValue(optionType, current, valueString);
+                value = parseValue(optionType, optionKey, current, valueString);
                 if (value instanceof OptionParseResult) {
                     return (OptionParseResult) value;
                 }
@@ -302,7 +303,7 @@ public class CommonOptionParser {
     }
 
     @SuppressWarnings("unchecked")
-    static Object parseValue(Class<?> optionType, LocatableOption option, String valueString) throws NumberFormatException, UnsupportedOptionClassException {
+    static Object parseValue(Class<?> optionType, OptionKey<?> optionKey, LocatableOption option, String valueString) throws NumberFormatException, UnsupportedOptionClassException {
         Object value;
         if (optionType == Integer.class) {
             long longValue = parseLong(valueString);
@@ -312,8 +313,6 @@ public class CommonOptionParser {
             value = (int) longValue;
         } else if (optionType == Long.class) {
             value = parseLong(valueString);
-        } else if (optionType == String.class) {
-            value = valueString;
         } else if (optionType == Double.class) {
             value = parseDouble(valueString);
         } else if (optionType == Boolean.class) {
@@ -324,8 +323,29 @@ public class CommonOptionParser {
             } else {
                 return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false'");
             }
+        } else if (optionType == String.class || optionType == Path.class) {
+            Object defaultValue = optionKey.getDefaultValue();
+            String delimiter = defaultValue instanceof MultiOptionValue ? ((MultiOptionValue<?>) defaultValue).getDelimiter() : "";
+            boolean multipleValues = !delimiter.isEmpty() && valueString.contains(delimiter);
+            String[] valueStrings = multipleValues ? StringUtil.split(valueString, delimiter) : null;
+            if (optionType == String.class) {
+                value = valueStrings != null ? valueStrings : valueString;
+            } else {
+                assert optionType == Path.class;
+                if (valueStrings != null) {
+                    Path[] valuePaths = new Path[valueStrings.length];
+                    for (int i = 0; i < valueStrings.length; i++) {
+                        valuePaths[i] = Path.of(valueStrings[i]);
+                    }
+                    value = valuePaths;
+                } else {
+                    value = Path.of(valueString);
+                }
+            }
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
+        } else if (optionType == EconomicSet.class) {
+            value = ((EnumMultiOptionKey<?>) optionKey).valueOf(valueString);
         } else {
             throw new UnsupportedOptionClassException(option + " uses unsupported option value class: " + ClassUtil.getUnqualifiedName(optionType));
         }

@@ -51,10 +51,6 @@ public class CacheWritebackNode extends FixedWithNextNode implements LIRLowerabl
         this.address = address;
     }
 
-    public ValueNode getAddress() {
-        return address;
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         Value operand = gen.operand(address);

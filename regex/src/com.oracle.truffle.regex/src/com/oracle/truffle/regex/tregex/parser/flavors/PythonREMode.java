@@ -52,10 +52,6 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  */
 public enum PythonREMode {
     /**
-     * Derive from encoding.
-     */
-    None,
-    /**
      * String-based patterns, where the Python regular expression was given as a 'str' object.
      */
     Str,
@@ -66,6 +62,6 @@ public enum PythonREMode {
     Bytes;
 
     public static PythonREMode fromEncoding(Encodings.Encoding encoding) {
-        return encoding == Encodings.LATIN_1 ? Bytes : Str;
+        return encoding == Encodings.BYTES || encoding == Encodings.LATIN_1 ? Bytes : Str;
     }
 }

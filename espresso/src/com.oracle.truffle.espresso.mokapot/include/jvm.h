@@ -190,7 +190,10 @@ JNIEXPORT jboolean JNICALL
 JVM_IsUseContainerSupport(void);
 
 JNIEXPORT void * JNICALL
-JVM_LoadLibrary(const char *name);
+JVM_LoadZipLibrary();
+
+JNIEXPORT void * JNICALL
+JVM_LoadLibrary(const char *name /*, jboolean throwException*/);
 
 JNIEXPORT void JNICALL
 JVM_UnloadLibrary(void * handle);
@@ -203,6 +206,12 @@ JVM_IsSupportedJNIVersion(jint version);
 
 JNIEXPORT jobjectArray JNICALL
 JVM_GetVmArguments(JNIEnv *env);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsPreviewEnabled(void);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsContinuationsSupported(void);
 
 JNIEXPORT void JNICALL
 JVM_InitializeFromArchive(JNIEnv* env, jclass cls);
@@ -319,6 +328,9 @@ JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
                   jint frame_count, jint start_index,
                   jobjectArray frames);
 
+JNIEXPORT void JNICALL
+JVM_SetStackWalkContinuation(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
 /*
  * java.lang.Thread
  */
@@ -347,7 +359,13 @@ JNIEXPORT void JNICALL
 JVM_Sleep(JNIEnv *env, jclass threadClass, jlong millis);
 
 JNIEXPORT jobject JNICALL
+JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT jobject JNICALL
 JVM_CurrentThread(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT void JNICALL
+JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread);
 
 JNIEXPORT jint JNICALL
 JVM_CountStackFrames(JNIEnv *env, jobject thread);
@@ -361,6 +379,9 @@ JVM_IsInterrupted(JNIEnv *env, jobject thread, jboolean clearInterrupted);
 JNIEXPORT jboolean JNICALL
 JVM_HoldsLock(JNIEnv *env, jclass threadClass, jobject obj);
 
+JNIEXPORT jobject JNICALL
+JVM_GetStackTrace(JNIEnv *env, jobject thread);
+
 JNIEXPORT void JNICALL
 JVM_DumpAllStacks(JNIEnv *env, jclass unused);
 
@@ -373,6 +394,21 @@ JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jstring name);
 /* getStackTrace() and getAllStackTraces() method */
 JNIEXPORT jobjectArray JNICALL
 JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threads);
+
+JNIEXPORT jobject JNICALL
+JVM_ExtentLocalCache(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT void JNICALL
+JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, jobject theCache);
+
+JNIEXPORT jlong JNICALL
+JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass);
+
+/*
+ * jdk.internal.vm.Continuation
+ */
+JNIEXPORT void JNICALL
+JVM_RegisterContinuationMethods(JNIEnv *env, jclass cls);
 
 /*
  * java.lang.SecurityManager
@@ -899,6 +935,15 @@ JVM_SupportsCX8(void);
 
 JNIEXPORT jboolean JNICALL
 JVM_CX8Field(JNIEnv *env, jobject obj, jfieldID fldID, jlong oldVal, jlong newVal);
+
+/*
+ * java.lang.ref.Finalizer
+ */
+JNIEXPORT void JNICALL
+JVM_ReportFinalizationComplete(JNIEnv *env, jobject finalizee);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsFinalizationEnabled(JNIEnv *env);
 
 /*
  * com.sun.dtrace.jsdt support

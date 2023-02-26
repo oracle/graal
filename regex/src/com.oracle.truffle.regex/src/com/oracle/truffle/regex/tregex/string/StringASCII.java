@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.string;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringASCII implements AbstractString {
 
@@ -84,6 +85,16 @@ public final class StringASCII implements AbstractString {
             }
         }
         return true;
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromByteArrayUncached(str, 0, str.length, TruffleString.Encoding.US_ASCII, false);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.US_ASCII);
     }
 
     @Override

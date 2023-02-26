@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,30 +30,30 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 
+@AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
     @Override
     public String getExecutableName() {
-        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
         WinBase.HMODULE hModule = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
         int result = LibLoaderAPI.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
@@ -61,6 +61,11 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public void exec(Path executable, String[] args) {
+        exec(executable, args, null);
+    }
+
+    @Override
+    public void exec(Path executable, String[] args, Map<String, String> env) {
         if (!Files.isExecutable(executable)) {
             throw new RuntimeException("Path " + executable + " does not point to executable file");
         }
@@ -69,7 +74,13 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
         cmd.addAll(Arrays.asList(args).subList(1, args.length));
         java.lang.Process process = null;
         try {
-            process = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+            ProcessBuilder pb = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT);
+            if (env != null) {
+                // set a new environment
+                pb.environment().clear();
+                pb.environment().putAll(env);
+            }
+            process = pb.start();
         } catch (IOException e) {
             throw VMError.shouldNotReachHere();
         }
@@ -112,13 +123,13 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     }
 
     private static String getObjectFile(PointerBase symbolAddress) {
-        WinBase.HMODULEPointer module = StackValue.get(WinBase.HMODULEPointer.class);
+        WinBase.HMODULEPointer module = UnsafeStackValue.get(WinBase.HMODULEPointer.class);
         if (LibLoaderAPI.GetModuleHandleExA(LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
                         (CCharPointer) symbolAddress, module) == 0) {
             return null;
         }
 
-        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
         int result = LibLoaderAPI.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
     }
@@ -153,14 +164,4 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     public int waitForProcessExit(long processID) {
         throw VMError.unimplemented();
     }
-
-    @AutomaticFeature
-    public static class ImagePropertiesFeature implements Feature {
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(ProcessPropertiesSupport.class, new WindowsProcessPropertiesSupport());
-        }
-    }
-
 }

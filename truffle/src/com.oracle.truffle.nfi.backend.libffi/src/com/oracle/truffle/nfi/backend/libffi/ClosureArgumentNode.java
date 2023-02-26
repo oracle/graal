@@ -100,7 +100,7 @@ abstract class ClosureArgumentNode extends Node {
 
         @Specialization(guards = "arg == null")
         Object doNull(@SuppressWarnings("unused") Object arg) {
-            return NativePointer.create(LibFFILanguage.get(this), 0);
+            return NativePointer.NULL;
         }
 
         @Fallback

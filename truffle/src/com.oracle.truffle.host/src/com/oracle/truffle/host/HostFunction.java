@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,8 +103,11 @@ final class HostFunction implements TruffleObject {
         if (obj == null) {
             return "null";
         }
-        String typeName = obj.getClass().getTypeName();
-        return typeName + "." + method.getName();
+        String declaringClassName = method.getDeclaringClassName();
+        if (declaringClassName == null) {
+            declaringClassName = obj.getClass().getName();
+        }
+        return declaringClassName + "." + method.getName();
     }
 
     @ExportMessage

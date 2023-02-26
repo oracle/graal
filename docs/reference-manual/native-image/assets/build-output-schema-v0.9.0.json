@@ -1,0 +1,540 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json",
+  "type": "object",
+  "default": {},
+  "title": "Schema for the JSON build output of GraalVM Native Image",
+  "required": [
+    "general_info",
+    "analysis_results",
+    "image_details",
+    "resource_usage"
+  ],
+  "properties": {
+    "general_info": {
+      "type": "object",
+      "default": {},
+      "title": "General information about the build process",
+      "required": [
+        "name",
+        "graalvm_version",
+        "java_version",
+        "c_compiler",
+        "garbage_collector"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": "",
+          "title": "The name of the native executable"
+        },
+        "graalvm_version": {
+          "type": "string",
+          "default": "",
+          "title": "The GraalVM Native Image version. This value is also used for the 'java.vm.version' property within the generated image"
+        },
+        "java_version": {
+          "type": ["string", "null"],
+          "default": null,
+          "title": "The Java version of the Native Image build process (or null if not available)"
+        },
+        "c_compiler": {
+          "type": ["string", "null"],
+          "default": null,
+          "title": "The C compiler used by the Native Image build process (or null if not available)"
+        },
+        "garbage_collector": {
+          "type": "string",
+          "default": "",
+          "title": "The garbage collector used within the generated image"
+        }
+      },
+      "examples": [
+        {
+          "name": "helloworld",
+          "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+          "java_version": "17.0.4+5-jvmci-22.2-b03",
+          "c_compiler": "gcc (linux, x86_64, 9.3.0)",
+          "garbage_collector": "Serial GC"
+        }
+      ]
+    },
+    "analysis_results": {
+      "type": "object",
+      "default": {},
+      "title": "Information from the analysis",
+      "required": [
+        "classes",
+        "fields",
+        "methods"
+      ],
+      "properties": {
+        "classes": {
+          "type": "object",
+          "default": {},
+          "title": "Class information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of classes"
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable classes"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of classes registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of classes registered for JNI access (or -1 if unset)"
+            }
+          }
+        },
+        "fields": {
+          "type": "object",
+          "default": {},
+          "title": "Field information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of fields"
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable fields"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of fields registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of fields registered for JNI access (or -1 if unset)"
+            }
+          }
+        },
+        "methods": {
+          "type": "object",
+          "default": {},
+          "title": "Method information from the analysis",
+          "required": [
+            "total",
+            "reachable",
+            "reflection",
+            "jni"
+          ],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of methods"
+            },
+            "reachable": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of reachable methods"
+            },
+            "reflection": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of methods registered for reflection"
+            },
+            "jni": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of methods registered for JNI access (or -1 if unset)"
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "classes": {
+            "total": 3850,
+            "reachable": 2839,
+            "reflection": 28,
+            "jni": 58
+          },
+          "fields": {
+            "total": 6665,
+            "reachable": 3400,
+            "reflection": 0,
+            "jni": 58
+          },
+          "methods": {
+            "total": 29038,
+            "reachable": 12916,
+            "reflection": 332,
+            "jni": 52
+          }
+        }
+      ]
+    },
+    "image_details": {
+      "type": "object",
+      "default": {},
+      "title": "Statistics about the generated native image",
+      "required": [
+        "total_bytes",
+        "code_area",
+        "image_heap"
+      ],
+      "properties": {
+        "total_bytes": {
+          "type": "integer",
+          "default": 0,
+          "title": "The total number of bytes of the image"
+        },
+        "code_area": {
+          "type": "object",
+          "default": {},
+          "title": "Code area statistics",
+          "required": [
+            "bytes",
+            "compilation_units"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for the code area"
+            },
+            "compilation_units": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of compilation units in the image"
+            }
+          }
+        },
+        "image_heap": {
+          "type": "object",
+          "default": {},
+          "title": "Image heap statistics",
+          "required": [
+            "bytes",
+            "resources"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for image heap"
+            },
+            "resources": {
+              "type": "object",
+              "default": {},
+              "title": "Resource statistics",
+              "required": [
+                "count",
+                "bytes"
+              ],
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "Number of resources embedded in the image"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "default": 0,
+                  "title": "The number of bytes used for resource data"
+                }
+              }
+            }
+          }
+        },
+        "debug_info": {
+          "type": "object",
+          "default": {},
+          "title": "Debug info statistics",
+          "required": [
+            "bytes"
+          ],
+          "properties": {
+            "bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for debug info"
+            }
+          }
+        },
+        "runtime_compiled_methods": {
+          "type": "object",
+          "default": {},
+          "title": "Statistics on runtime compiled methods (optional)",
+          "required": [
+            "count",
+            "graph_encoding_bytes"
+          ],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "default": 0,
+              "title": "Number of runtime compiled methods"
+            },
+            "graph_encoding_bytes": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of bytes used for graph encodings bytes"
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "total_bytes": 13057934,
+          "code_area": {
+            "bytes": 4610048,
+            "compilation_units": 67007
+          },
+          "image_heap": {
+            "bytes": 7307264,
+            "resources": {
+              "count": 134,
+              "bytes": 10200
+            }
+          },
+          "debug_info": {
+            "bytes": 1140622
+          }
+        }
+      ]
+    },
+    "resource_usage": {
+      "type": "object",
+      "default": {},
+      "title": "Resource usage statistics",
+      "required": [
+        "cpu",
+        "garbage_collection",
+        "memory"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "object",
+          "default": {},
+          "title": "CPU usage statistics",
+          "required": [
+            "load",
+            "total_cores"
+          ],
+          "properties": {
+            "load": {
+              "type": "number",
+              "default": -1,
+              "title": "The CPU load of the build process before terminating (or -1 if unavailable)"
+            },
+            "total_cores": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of cores of the build machine"
+            }
+          }
+        },
+        "garbage_collection": {
+          "type": "object",
+          "default": {},
+          "title": "Garbage collection usage statistics",
+          "required": [
+            "count",
+            "total_secs"
+          ],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "default": 0,
+              "title": "The number of GC cycles performed during image generation"
+            },
+            "total_secs": {
+              "type": "number",
+              "default": 0.0,
+              "title": "The total number of seconds spent in GC"
+            }
+          }
+        },
+        "memory": {
+          "type": "object",
+          "default": {},
+          "title": "Memory usage statistics",
+          "required": [
+            "system_total",
+            "peak_rss_bytes"
+          ],
+          "properties": {
+            "system_total": {
+              "type": "integer",
+              "default": 0,
+              "title": "The total number of bytes of available system memory"
+            },
+            "peak_rss_bytes": {
+              "type": "integer",
+              "default": -1,
+              "title": "Peak RSS value of the image builder process in bytes (or -1 if unavailable)"
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "cpu": {
+            "load": 8.38,
+            "total_cores": 10
+          },
+          "garbage_collection": {
+            "count": 17,
+            "total_secs": 0.9245
+          },
+          "memory": {
+            "system_total": 33254146048,
+            "peak_rss_bytes": 3506065408
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "general_info": {
+        "name": "helloworld",
+        "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "java_version": "17.0.4+5-jvmci-22.2-b03",
+        "c_compiler": "gcc (linux, x86_64, 9.3.0)",
+        "garbage_collector": "Serial GC"
+      },
+      "analysis_results": {
+        "classes": {
+          "total": 3850,
+          "reachable": 2839,
+          "reflection": 28,
+          "jni": 58
+        },
+        "fields": {
+          "total": 6665,
+          "reachable": 3400,
+          "reflection": 0,
+          "jni": 58
+        },
+        "methods": {
+          "total": 29038,
+          "reachable": 12916,
+          "reflection": 332,
+          "jni": 52
+        }
+      },
+      "image_details": {
+        "total_bytes": 13057934,
+        "code_area": {
+          "bytes": 4610048,
+          "compilation_units": 67007
+        },
+        "image_heap": {
+          "bytes": 7307264,
+          "resources": {
+            "count": 134,
+            "bytes": 10200
+          }
+        },
+        "debug_info": {
+          "bytes": 1140622
+        }
+      },
+      "resource_usage": {
+        "cpu": {
+          "load": 8.38,
+          "total_cores": 10
+        },
+        "garbage_collection": {
+          "count": 17,
+          "total_secs": 0.9245
+        },
+        "memory": {
+          "system_total": 33254146048,
+          "peak_rss_bytes": 3506065408
+        }
+      }
+    },
+    {
+      "general_info": {
+        "name": "helloworld",
+        "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "java_version": null,
+        "c_compiler": null,
+        "garbage_collector": "Serial GC"
+      },
+      "analysis_results": {
+        "classes": {
+          "total": 3850,
+          "reachable": 2839,
+          "reflection": 28,
+          "jni": -1
+        },
+        "fields": {
+          "total": 6665,
+          "reachable": 3400,
+          "reflection": 0,
+          "jni": -1
+        },
+        "methods": {
+          "total": 29038,
+          "reachable": 12916,
+          "reflection": 332,
+          "jni": -1
+        }
+      },
+      "image_details": {
+        "total_bytes": 13057934,
+        "code_area": {
+          "bytes": 4610048,
+          "compilation_units": 67007
+        },
+        "image_heap": {
+          "bytes": 7307264,
+          "resources": {
+            "count": 134,
+            "bytes": 10200
+          }
+        },
+        "runtime_compiled_methods": {
+          "count": 12744,
+          "graph_encoding_bytes": 1440000
+        }
+      },
+      "resource_usage": {
+        "cpu": {
+          "load": -1,
+          "total_cores": 10
+        },
+        "garbage_collection": {
+          "count": 17,
+          "total_secs": 0.9245
+        },
+        "memory": {
+          "system_total": 33254146048,
+          "peak_rss_bytes": -1
+        }
+      }
+    }
+  ]
+}

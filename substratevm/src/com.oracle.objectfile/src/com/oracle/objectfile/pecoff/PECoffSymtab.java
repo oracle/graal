@@ -286,8 +286,8 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
         if (symtabStruct != null) {
             throw new IllegalStateException("Symbol table content is already decided.");
         }
+        entriesByName.compute(entry.getName(), (k, v) -> SymbolTable.tryReplace(v, entry));
         entries.add(entry);
-        entriesByName.put(entry.getName(), entry);
         return entry;
     }
 

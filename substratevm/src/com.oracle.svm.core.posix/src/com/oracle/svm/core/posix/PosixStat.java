@@ -26,11 +26,11 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
@@ -41,10 +41,10 @@ public final class PosixStat {
     public static boolean isOpen(int fd) {
         int result;
         if (Platform.includedIn(Platform.LINUX.class)) {
-            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
+            LinuxStat.stat64 stat = UnsafeStackValue.get(LinuxStat.stat64.class);
             result = LinuxStat.fstat64(fd, stat);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            DarwinStat.stat stat = UnsafeStackValue.get(DarwinStat.stat.class);
             result = DarwinStat.fstat(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
@@ -57,12 +57,12 @@ public final class PosixStat {
     public static SignedWord getSize(int fd) {
         long size = -1;
         if (Platform.includedIn(Platform.LINUX.class)) {
-            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
+            LinuxStat.stat64 stat = UnsafeStackValue.get(LinuxStat.stat64.class);
             if (LinuxStat.NoTransitions.fstat64(fd, stat) == 0) {
                 size = stat.st_size();
             }
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            DarwinStat.stat stat = UnsafeStackValue.get(DarwinStat.stat.class);
             if (DarwinStat.NoTransitions.fstat(fd, stat) == 0) {
                 size = stat.st_size();
             }

@@ -27,9 +27,9 @@ package com.oracle.graal.pointsto.results;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -39,11 +39,12 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 public abstract class AbstractAnalysisResultsBuilder {
 
-    protected final PointsToAnalysis bb;
+    protected final BigBang bb;
 
     /**
      * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
@@ -62,7 +63,7 @@ public abstract class AbstractAnalysisResultsBuilder {
     private final JavaMethodProfile[] methods1;
     private final Map<JavaMethodProfile, JavaMethodProfile> methods;
 
-    protected AbstractAnalysisResultsBuilder(PointsToAnalysis bb, Universe converter) {
+    protected AbstractAnalysisResultsBuilder(BigBang bb, Universe converter) {
         this.bb = bb;
         this.converter = converter;
 
@@ -127,9 +128,12 @@ public abstract class AbstractAnalysisResultsBuilder {
 
     private JavaTypeProfile createTypeProfile(TypeState typeState) {
         double probability = 1d / typeState.typesCount();
-        JavaTypeProfile.ProfiledType[] pitems = typeState.typesStream(bb)
-                        .map(analysisType -> converter == null ? analysisType : converter.lookup(analysisType))
-                        .sorted()
+
+        Stream<? extends ResolvedJavaType> stream = typeState.typesStream(bb);
+        if (converter != null) {
+            stream = stream.map(converter::lookup).sorted(converter.hostVM().getTypeComparator());
+        }
+        JavaTypeProfile.ProfiledType[] pitems = stream
                         .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
                         .toArray(JavaTypeProfile.ProfiledType[]::new);
 

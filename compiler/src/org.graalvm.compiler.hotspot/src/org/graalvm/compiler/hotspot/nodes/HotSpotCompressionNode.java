@@ -35,6 +35,7 @@ import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
@@ -51,12 +52,20 @@ public final class HotSpotCompressionNode extends CompressionNode {
         super(TYPE, op, input, HotSpotNarrowOopStamp.mkStamp(op, input.stamp(NodeView.DEFAULT), encoding), encoding);
     }
 
-    public static HotSpotCompressionNode compress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new HotSpotCompressionNode(CompressionOp.Compress, input, encoding));
+    public static HotSpotCompressionNode compress(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.unique(compress(input, encoding));
     }
 
-    public static CompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new HotSpotCompressionNode(CompressionOp.Uncompress, input, encoding));
+    public static CompressionNode uncompress(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.unique(uncompress(input, encoding));
+    }
+
+    private static HotSpotCompressionNode compress(ValueNode input, CompressEncoding encoding) {
+        return new HotSpotCompressionNode(CompressionOp.Compress, input, encoding);
+    }
+
+    private static CompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
+        return new HotSpotCompressionNode(CompressionOp.Uncompress, input, encoding);
     }
 
     @Override
@@ -76,6 +85,18 @@ public final class HotSpotCompressionNode extends CompressionNode {
             return ((HotSpotConstant) c).uncompress();
         } else {
             throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
+        }
+    }
+
+    @Override
+    public ValueNode reverse(ValueNode input) {
+        switch (op) {
+            case Compress:
+                return uncompress(input, encoding);
+            case Uncompress:
+                return compress(input, encoding);
+            default:
+                throw GraalError.shouldNotReachHere();
         }
     }
 

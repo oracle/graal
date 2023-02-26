@@ -26,8 +26,8 @@
 
 package hello;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -64,8 +64,6 @@ class SubstituteHelperClass {
 
     @NeverInline("For testing purposes")
     private static void nestedGreet() {
-        // Checkstyle: stop
         System.out.println("Hello, substituted world!");
-        // Checkstyle: resume
     }
 }

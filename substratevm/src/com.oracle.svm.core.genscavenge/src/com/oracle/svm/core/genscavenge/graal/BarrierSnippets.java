@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.gc.WriteBarrier;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -55,40 +54,39 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     /** A LocationIdentity to distinguish card locations from other locations. */
     public static final LocationIdentity CARD_REMEMBERED_SET_LOCATION = NamedLocationIdentity.mutable("CardRememberedSet");
 
-    public static class Options {
-        @Option(help = "Instrument write barriers with counters")//
-        public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false);
-
-        @Option(help = "Verify write barriers")//
-        public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false);
-    }
-
     @Fold
     static BarrierSnippetCounters counters() {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
+    private final SnippetInfo postWriteBarrierSnippet;
+
     BarrierSnippets(OptionValues options, Providers providers) {
         super(options, providers);
+
+        this.postWriteBarrierSnippet = snippet(providers, BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
     }
 
-    public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        PostWriteBarrierLowering lowering = new PostWriteBarrierLowering();
+    public void registerLowerings(MetaAccessProvider metaAccess, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        PostWriteBarrierLowering lowering = new PostWriteBarrierLowering(metaAccess);
         lowerings.put(SerialWriteBarrier.class, lowering);
         // write barriers are currently always imprecise
         lowerings.put(SerialArrayRangeWriteBarrier.class, lowering);
@@ -101,14 +99,21 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
 
-        if (Options.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
+        if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*
              * To increase verification coverage, we do the verification before checking if a
              * barrier is needed at all. And in addition to verifying that the object is in an
              * aligned chunk, we also verify that it is not an array at all because most arrays are
              * small and therefore in an aligned chunk.
              */
-            if (ObjectHeaderImpl.isUnalignedHeader(objectHeader) || object == null || object.getClass().isArray()) {
+
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, ObjectHeaderImpl.isUnalignedHeader(objectHeader))) {
+                BreakpointNode.breakpoint();
+            }
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object == null)) {
+                BreakpointNode.breakpoint();
+            }
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, object.getClass().isArray())) {
                 BreakpointNode.breakpoint();
             }
         }
@@ -132,7 +137,11 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
-        private final SnippetInfo postWriteBarrierSnippet = snippet(BarrierSnippets.class, "postWriteBarrierSnippet", CARD_REMEMBERED_SET_LOCATION);
+        private final ResolvedJavaType storedContinuationType;
+
+        PostWriteBarrierLowering(MetaAccessProvider metaAccess) {
+            storedContinuationType = metaAccess.lookupJavaType(StoredContinuation.class);
+        }
 
         @Override
         public void lower(WriteBarrier barrier, LoweringTool tool) {
@@ -140,21 +149,22 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
 
             /*
-             * We know that instances (in contrast to arrays) are always in aligned chunks. There is
-             * no code anywhere that would allocate an instance into an unaligned chunk.
+             * We know that instances (in contrast to arrays) are always in aligned chunks, except
+             * for StoredContinuation objects, but these are immutable and do not need barriers.
              *
              * Note that arrays can be assigned to values that have the type java.lang.Object, so
              * that case is excluded. Arrays can also implement some interfaces, like Serializable.
              * For simplicity, we exclude all interface types.
              */
             ResolvedJavaType baseType = StampTool.typeOrNull(address.getBase());
+            assert baseType == null || !storedContinuationType.isAssignableFrom(baseType) : "StoredContinuation should be effectively immutable and references only be written by GC";
             boolean alwaysAlignedChunk = baseType != null && !baseType.isArray() && !baseType.isJavaLangObject() && !baseType.isInterface();
 
             args.add("object", address.getBase());
             args.addConst("alwaysAlignedChunk", alwaysAlignedChunk);
             args.addConst("verifyOnly", getVerifyOnly(barrier));
 
-            template(barrier, args).instantiate(providers.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
         private boolean getVerifyOnly(WriteBarrier barrier) {
@@ -184,14 +194,14 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 }
 
 class BarrierSnippetCounters {
-    private final Counter.Group counters = new Counter.Group(BarrierSnippets.Options.CountWriteBarriers, "WriteBarriers");
+    private final Counter.Group counters = new Counter.Group(SerialGCOptions.CountWriteBarriers, "WriteBarriers");
     final Counter postWriteBarrier = new Counter(counters, "postWriteBarrier", "post-write barriers");
     final Counter postWriteBarrierAligned = new Counter(counters, "postWriteBarrierAligned", "aligned object path of post-write barriers");
     final Counter postWriteBarrierUnaligned = new Counter(counters, "postWriteBarrierUnaligned", "unaligned object path of post-write barriers");
 }
 
-@AutomaticFeature
-class BarrierSnippetCountersFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class BarrierSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue() && SubstrateOptions.useRememberedSet();

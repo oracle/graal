@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,24 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Test;
 
 public class PythonByteTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonBytes";
+        return "Flavor=Python";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.LATIN_1;
     }
 
     @Test
     public void gr23871() {
-        test("[^:\\s][^:\\r\\n]*", "sy", "\u00a0NonbreakSpace", 0, true, 0, 14);
+        test("[^:\\s][^:\\r\\n]*", "s", "PythonMethod=match", "\u00a0NonbreakSpace", 0, true, 0, 14);
     }
 
     @Test

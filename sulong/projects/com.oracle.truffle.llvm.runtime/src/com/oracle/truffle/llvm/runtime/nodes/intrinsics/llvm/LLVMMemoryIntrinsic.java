@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -204,6 +206,19 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         protected Object doVoid(LLVMNativePointer address) {
             getLanguage().getLLVMMemory().free(this, address);
             return null;
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LLVMFreeOpNode extends LLVMNode implements LLVMMemoryOpNode {
+        @Specialization(guards = "address.isNull()")
+        protected void doNull(@SuppressWarnings("unused") LLVMNativePointer address) {
+            // nothing to do
+        }
+
+        @Specialization
+        protected void doVoid(LLVMNativePointer address) {
+            getLanguage().getLLVMMemory().free(this, address);
         }
     }
 }

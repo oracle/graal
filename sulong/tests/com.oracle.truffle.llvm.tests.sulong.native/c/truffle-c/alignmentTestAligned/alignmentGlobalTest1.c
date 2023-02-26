@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,22 +28,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdint.h>
 
 char a;
-long b;
+int64_t b;
 char c;
 int d;
 char e;
 int f[10];
 
 int main() {
-    if ((long) &b % __alignof__(long) != 0) {
+    if ((int64_t) &b % __alignof__(int64_t) != 0) {
         abort();
     }
-    if ((long) &d % __alignof__(int) != 0) {
+    if ((int64_t) &d % __alignof__(int) != 0) {
         abort();
     }
-    if ((long) &f % __alignof__(int[10]) != 0) {
+    if ((int64_t) &f % __alignof__(int[10]) != 0) {
         abort();
     }
     return 0;

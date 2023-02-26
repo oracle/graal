@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,21 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Test;
+
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 
 public class JsTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
         return "";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16_RAW;
     }
 
     @Test
@@ -104,5 +112,87 @@ public class JsTests extends RegexTestBase {
     public void gr28905() {
         test("\\B", "y", "abc", 0, false);
         test("(?<=[a-z])[A-Z]", "y", "aA", 0, false);
+    }
+
+    @Test
+    public void lastGroupNotSet() {
+        // IndexOf
+        test("(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // StartsWith
+        test("^(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // EndsWith
+        test("(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Equals
+        test("^(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // RegionMatches
+        test("(a)", "y", "a", 0, true, 0, 1, 0, 1, -1);
+        // EmptyIndexOf
+        test("()", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyStartsWith
+        test("^()", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyEndsWith
+        test("()$", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyEquals
+        test("^()$", "", "", 0, true, 0, 0, 0, 0, -1);
+
+        // Single possible CG result: exercises NFA, DFA and backtracker.
+        test("([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // TraceFinder: exercises NFA, DFA and backtracker.
+        test("x?([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
+        // backtracker.
+        test("x*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
+        test(".*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+    }
+
+    @Test
+    public void gr35771() {
+        test("(^\\s*)|(\\s*$)", "", "", 0, true, 0, 0, 0, 0, -1, -1);
+    }
+
+    @Test
+    public void justLookBehind() {
+        test("(?<=\\n)", "", "__\n__", 0, true, 3, 3);
+    }
+
+    @Test
+    public void justLookBehindSticky() {
+        test("(?<=\\n)", "y", "__\n__", 3, true, 3, 3);
+    }
+
+    @Test
+    public void gr21421() {
+        test("(?=(\\3?)|([^\\W\uaa3bt-\ua4b9]){4294967296}|(?=[^]+[\\n-\u4568\\uD3D5\\u00ca-\\u00fF]*)*|(?:\\2|^)?.){33554431}(?:(?:\\S{1,}(?:\\b|\\w{1,}))(?:\\2?)+){4,}", "im",
+                        "\u4568\u4568\u4568\u4568________\\xee0000", 0, true, 0, 20, 0, 0, -1, -1);
+    }
+
+    @Test
+    public void gr37496() {
+        test("(?:(?:" + "a".repeat(TRegexOptions.TRegexMaxParseTreeSizeForDFA) + ")?(?<=a))+", "", "", 0, false);
+    }
+
+    @Test
+    public void gr40877() {
+        test("(?!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?<!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?!([]))(?:(^)\\2)+", "m", "", 0, true, 0, 0, -1, -1, 0, 0);
+    }
+
+    @Test
+    public void gr40879() {
+        // gets optimized away
+        test("(?!(?!(?=(.)|.(?=\\D){1,4}|.|[^\\w\u0091\\d\\\u0001-<]*?|[^].)*))", "y", "\n\n\n\n", 0, true, 0, 0, -1, -1);
+        test("(?!(?!(?=\\b|\\D|\\s|$|\\1|(?!(.))){0})+?)", "yim", "\u009c\u511c\n\u009c\u511c\n", 0, true, 0, 0, -1, -1);
+        test("(?!(\\1)?[\\s\\w\\D])+?", "", "", 0, true, 0, 0, -1, -1);
+        test("(?!(?=((?:[n-\u0e32]*?o+?[^])))*?\\w)", "yim", "_", 0, false);
+    }
+
+    @Test
+    public void gr42266() {
+        // reduced
+        test("(?![^\\d\\D]$)[^]", "", "x", 0, true, 0, 1);
+        // original
+        test("((?:(?!([^\\d\\D\\W\\cU])\\b)(([^]\u11C2)))*?)", "gi", "x", 0, true, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
     }
 }

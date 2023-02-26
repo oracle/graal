@@ -1,0 +1,25 @@
+From a10e06ea318facd0347a301bc18d75cea024d1b3 Mon Sep 17 00:00:00 2001
+From: Roland Schatz <roland.schatz@oracle.com>
+Date: Tue, 12 Apr 2022 16:18:38 +0200
+Subject: [PATCH] Fix check for invalid varargs arguments.
+
+---
+ src/prep_cif.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/prep_cif.c b/src/prep_cif.c
+index c1832b1..2e7b11d 100644
+--- a/src/prep_cif.c
++++ b/src/prep_cif.c
+@@ -240,7 +240,7 @@ ffi_status ffi_prep_cif_var(ffi_cif *cif,
+   if (rc != FFI_OK)
+     return rc;
+ 
+-  for (i = 1; i < ntotalargs; i++)
++  for (i = nfixedargs; i < ntotalargs; i++)
+     {
+       ffi_type *arg_type = atypes[i];
+       if (arg_type == &ffi_type_float
+-- 
+2.33.1
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleCompilerPhases;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 public final class TruffleTierConfiguration {
     private final PartialEvaluatorConfiguration configuration;
@@ -38,14 +39,15 @@ public final class TruffleTierConfiguration {
     private final Suites suites;
     private final LIRSuites lirSuites;
 
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options) {
-        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options), backend.getSuites().getDefaultLIRSuites(options));
+    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options, KnownTruffleTypes knownTruffleTypes) {
+        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options, backend.getTarget().arch), backend.getSuites().getDefaultLIRSuites(options),
+                        knownTruffleTypes);
     }
 
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites) {
+    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {
         this.configuration = configuration;
         this.backend = backend;
-        this.providers = providers;
+        this.providers = providers.copyWith(new TruffleStringConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess(), knownTruffleTypes));
         this.suites = suites;
         this.lirSuites = lirSuites;
         TruffleCompilerPhases.register(providers, suites);

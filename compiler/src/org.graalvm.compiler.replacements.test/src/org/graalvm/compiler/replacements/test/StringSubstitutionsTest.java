@@ -26,16 +26,14 @@ package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests {@link StringSubstitutions}.
+ * Tests String intrinsics.
  */
 public class StringSubstitutionsTest extends MethodSubstitutionTest {
 
@@ -67,11 +65,6 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void testEquals() {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            // StringSubstitutions are disabled in 1.9
-            return;
-        }
-
         final int n = 1000;
         Object[] args1 = new Object[n];
         Object[] args2 = new Object[n];

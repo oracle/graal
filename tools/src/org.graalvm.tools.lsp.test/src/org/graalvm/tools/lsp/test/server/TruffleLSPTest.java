@@ -36,6 +36,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.EnvironmentProvider;
@@ -92,7 +93,7 @@ public abstract class TruffleLSPTest {
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);
-        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
+        contextBuilder.allowIO(IOAccess.newBuilder().fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter)).build());
         contextBuilder.engine(engine);
         context = contextBuilder.build();
         context.enter();

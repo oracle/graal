@@ -24,26 +24,17 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
-import jdk.vm.ci.services.Services;
+import java.lang.Runtime.Version;
 
 /**
  * Interface to query which JDK version Graal is running on.
  */
 public final class JavaVersionUtil {
 
-    private static int getJavaSpecificationVersion() {
-        String value = Services.getSavedProperties().get("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
     /**
-     * The integer value corresponding to the value of the {@code java.specification.version} system
-     * property after any leading {@code "1."} has been stripped.
+     * The value of calling {@link Version#feature()} on {@link Runtime#version()}.
      */
-    public static final int JAVA_SPEC = getJavaSpecificationVersion();
+    public static final int JAVA_SPEC = Runtime.version().feature();
 
     private JavaVersionUtil() {
     }

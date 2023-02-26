@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -564,6 +564,21 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
         SourceSectionFilter.newBuilder().columnIn(3, -1);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail1() {
+        SourceSectionFilter.newBuilder().tagIs((Class<?>[]) null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail2() {
+        SourceSectionFilter.newBuilder().tagIs((Class<?>) null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail3() {
+        SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, null);
+    }
+
     @Test
     public void testMimeType() {
         String src = "line1\nline2\nline3\nline4";
@@ -1032,6 +1047,10 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     @ProvidedTags({StandardTags.RootTag.class})
     public static class ProvidesTagLanguage extends ProxyLanguage {
         static final String ID = "SourceSectionFilterTest_ProvidesTagLanguage";
+
+        public ProvidesTagLanguage() {
+            wrapper = false;
+        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {

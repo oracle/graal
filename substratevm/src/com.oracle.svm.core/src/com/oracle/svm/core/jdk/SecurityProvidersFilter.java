@@ -26,9 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-// Checkstyle: stop
 import sun.security.jca.ProviderList;
-// Checkstyle: resume
 
 public interface SecurityProvidersFilter {
 

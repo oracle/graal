@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,6 +59,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef POLYGLOT_STRICT_MODE
+typedef struct __polyglot_value *polyglot_value;
+#else
+typedef void *polyglot_value;
+#endif
+
 /**
  * Import a value from the global polyglot
  * {@link org::graalvm::polyglot::Context::getPolyglotBindings bindings}.
@@ -66,16 +72,16 @@ extern "C" {
  * @param name The name of the imported value.
  * @return the imported value
  */
-void *polyglot_import(const char *name);
+polyglot_value polyglot_import(const char *name);
 
 /**
  * Export a value to the global polyglot
  * {@link org::graalvm::polyglot::Context::getPolyglotBindings bindings}.
  *
  * @param name the name of the exported value
- * @param value the exported value
+ * @param ... the exported value
  */
-void polyglot_export(const char *name, void *value);
+void polyglot_export(const char *name, ...);
 
 /**
  * Evaluate a source of another language.
@@ -85,7 +91,7 @@ void polyglot_export(const char *name, void *value);
  * @return the result of the evaluation
  * @see org::graalvm::polyglot::Context::eval
  */
-void *polyglot_eval(const char *id, const char *code);
+polyglot_value polyglot_eval(const char *id, const char *code);
 
 /**
  * Evaluate a file containing source of another language.
@@ -98,7 +104,7 @@ void *polyglot_eval(const char *id, const char *code);
  * @return the result of the evaluation
  * @see org::graalvm::polyglot::Context::eval
  */
-void *polyglot_eval_file(const char *id, const char *filename);
+polyglot_value polyglot_eval_file(const char *id, const char *filename);
 
 /**
  * Access a Java class via host interop.
@@ -106,7 +112,7 @@ void *polyglot_eval_file(const char *id, const char *filename);
  * @param classname the name of the Java class
  * @return the Java class, as polyglot value
  */
-void *polyglot_java_type(const char *classname);
+polyglot_value polyglot_java_type(const char *classname);
 
 /**
  * Access an argument of the current function.
@@ -115,7 +121,7 @@ void *polyglot_java_type(const char *classname);
  * index. This function can be used to access varargs arguments without knowing
  * their exact type.
  */
-void *polyglot_get_arg(int i);
+polyglot_value polyglot_get_arg(int i);
 
 /**
  * Get the number of arguments passed to the current function.
@@ -149,7 +155,7 @@ bool polyglot_is_value(const void *value);
  *
  * @see org::graalvm::polyglot::Value::isNull
  */
-bool polyglot_is_null(const void *value);
+bool polyglot_is_null(const polyglot_value value);
 
 /**
  * Check whether a polyglot value is a number.
@@ -159,7 +165,7 @@ bool polyglot_is_null(const void *value);
  *
  * @see org::graalvm::polyglot::Value::isNumber
  */
-bool polyglot_is_number(const void *value);
+bool polyglot_is_number(const polyglot_value value);
 
 /**
  * Check whether a polyglot value is a boolean.
@@ -171,7 +177,7 @@ bool polyglot_is_number(const void *value);
  *
  * @see org::graalvm::polyglot::Value::isBoolean
  */
-bool polyglot_is_boolean(const void *value);
+bool polyglot_is_boolean(const polyglot_value value);
 
 /**
  * Check whether a polyglot value is a string.
@@ -181,7 +187,7 @@ bool polyglot_is_boolean(const void *value);
  *
  * @see org::graalvm::polyglot::Value::isString
  */
-bool polyglot_is_string(const void *value);
+bool polyglot_is_string(const polyglot_value value);
 
 /** @} */
 
@@ -197,7 +203,7 @@ bool polyglot_is_string(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_i8(const void *value);
+bool polyglot_fits_in_i8(const polyglot_value value);
 
 /**
  * Check whether a polyglot number can be losslessly converted to a signed
@@ -206,7 +212,7 @@ bool polyglot_fits_in_i8(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_i16(const void *value);
+bool polyglot_fits_in_i16(const polyglot_value value);
 
 /**
  * Check whether a polyglot number can be losslessly converted to a signed
@@ -215,7 +221,7 @@ bool polyglot_fits_in_i16(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_i32(const void *value);
+bool polyglot_fits_in_i32(const polyglot_value value);
 
 /**
  * Check whether a polyglot number can be losslessly converted to a signed
@@ -224,7 +230,7 @@ bool polyglot_fits_in_i32(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_i64(const void *value);
+bool polyglot_fits_in_i64(const polyglot_value value);
 
 /**
  * Check whether a polyglot number can be losslessly converted to a single
@@ -233,7 +239,7 @@ bool polyglot_fits_in_i64(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_float(const void *value);
+bool polyglot_fits_in_float(const polyglot_value value);
 
 /**
  * Check whether a polyglot number can be losslessly converted to a double
@@ -242,42 +248,77 @@ bool polyglot_fits_in_float(const void *value);
  * Returns false for pointers that do not point to a polyglot number (see
  * {@link polyglot_is_number}).
  */
-bool polyglot_fits_in_double(const void *value);
+bool polyglot_fits_in_double(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive int8_t value.
  */
-int8_t polyglot_as_i8(const void *value);
+int8_t polyglot_as_i8(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive int16_t value.
  */
-int16_t polyglot_as_i16(const void *value);
+int16_t polyglot_as_i16(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive int32_t value.
  */
-int32_t polyglot_as_i32(const void *value);
+int32_t polyglot_as_i32(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive int64_t value.
  */
-int64_t polyglot_as_i64(const void *value);
+int64_t polyglot_as_i64(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive float value.
  */
-float polyglot_as_float(const void *value);
+float polyglot_as_float(const polyglot_value value);
 
 /**
  * Convert a polyglot number to a primitive double value.
  */
-double polyglot_as_double(const void *value);
+double polyglot_as_double(const polyglot_value value);
 
 /**
  * Convert a polyglot boolean to a primitive bool value.
  */
-bool polyglot_as_boolean(const void *value);
+bool polyglot_as_boolean(const polyglot_value value);
+
+/**
+  * Convert a primitive boolean to a polyglot boolean.
+  */
+polyglot_value polyglot_from_boolean(bool value);
+
+/**
+  * Convert a primitive int8_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i8(int8_t value);
+
+/**
+  * Convert a primitive int16_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i16(int16_t value);
+
+/**
+  * Convert a primitive int32_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i32(int32_t value);
+
+/**
+  * Convert a primitive int64_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i64(int64_t value);
+
+/**
+  * Convert a primitive float value to a polyglot byte.
+  */
+polyglot_value polyglot_from_float(float value);
+
+/**
+  * Convert a primitive double value to a polyglot byte.
+  */
+polyglot_value polyglot_from_double(double value);
 
 /** @} */
 
@@ -305,7 +346,7 @@ bool polyglot_as_boolean(const void *value);
  * Returns false for pointers that do not point to a polyglot value (see
  * {@link polyglot_is_value}).
  */
-bool polyglot_can_execute(const void *value);
+bool polyglot_can_execute(const polyglot_value value);
 
 /**
  * Invoke an object oriented method on a polyglot value.
@@ -315,7 +356,7 @@ bool polyglot_can_execute(const void *value);
  * @param ... the arguments of the method
  * @return the return value of the method
  */
-void *polyglot_invoke(void *object, const char *name, ...);
+polyglot_value polyglot_invoke(polyglot_value object, const char *name, ...);
 
 /**
  * Check whether a polyglot value can be instantiated.
@@ -323,7 +364,7 @@ void *polyglot_invoke(void *object, const char *name, ...);
  * Returns false for pointers that do not point to a polyglot value (see
  * {@link polyglot_is_value}).
  */
-bool polyglot_can_instantiate(const void *object);
+bool polyglot_can_instantiate(const polyglot_value object);
 
 /**
  * Instantiate a polyglot value.
@@ -332,7 +373,7 @@ bool polyglot_can_instantiate(const void *object);
  * @param ... the arguments of the constructor
  * @return the new object, as polyglot value
  */
-void *polyglot_new_instance(const void *object, ...);
+polyglot_value polyglot_new_instance(const polyglot_value object, ...);
 
 /** @} */
 
@@ -351,7 +392,7 @@ void *polyglot_new_instance(const void *object, ...);
  * Returns false for pointers that do not point to a polyglot value (see
  * {@link polyglot_is_value}).
  */
-bool polyglot_has_members(const void *value);
+bool polyglot_has_members(const polyglot_value value);
 
 /**
  * Check whether a polyglot value contains a given named member.
@@ -360,7 +401,7 @@ bool polyglot_has_members(const void *value);
  * @param name the name of the member to be checked for existance
  * @return true if the member exists, false otherwise
  */
-bool polyglot_has_member(const void *value, const char *name);
+bool polyglot_has_member(const polyglot_value value, const char *name);
 
 /**
  * Read a named member from a polyglot object.
@@ -372,7 +413,7 @@ bool polyglot_has_member(const void *value, const char *name);
  * @param name the name of the member to be read
  * @return a polyglot value
  */
-void *polyglot_get_member(const void *object, const char *name);
+polyglot_value polyglot_get_member(const polyglot_value object, const char *name);
 
 /**
  * Put a named member into a polyglot object.
@@ -385,7 +426,7 @@ void *polyglot_get_member(const void *object, const char *name);
  * @param name the name of the member to be put
  * @param ... the written value
  */
-void polyglot_put_member(void *object, const char *name, ...);
+void polyglot_put_member(polyglot_value object, const char *name, ...);
 
 /**
  * Remove a named member from a polyglot object.
@@ -394,7 +435,7 @@ void polyglot_put_member(void *object, const char *name, ...);
  * @param name the name of the member to be removed
  * @return true if the member was successfully removed, false otherwise
  */
-bool polyglot_remove_member(void *object, const char *name);
+bool polyglot_remove_member(polyglot_value object, const char *name);
 
 /**
  * Check whether a polyglot value has array elements.
@@ -402,12 +443,12 @@ bool polyglot_remove_member(void *object, const char *name);
  * Returns false for pointers that do not point to a polyglot value (see
  * {@link polyglot_is_value}).
  */
-bool polyglot_has_array_elements(const void *value);
+bool polyglot_has_array_elements(const polyglot_value value);
 
 /**
  * Get the size of the polyglot array.
  */
-uint64_t polyglot_get_array_size(const void *array);
+uint64_t polyglot_get_array_size(const polyglot_value array);
 
 /**
  * Read an array element from a polyglot array.
@@ -419,7 +460,7 @@ uint64_t polyglot_get_array_size(const void *array);
  * @param idx the index of the array element
  * @return a polyglot value
  */
-void *polyglot_get_array_element(const void *array, int idx);
+polyglot_value polyglot_get_array_element(const polyglot_value array, int idx);
 
 /**
  * Write an array element to a polyglot array.
@@ -432,7 +473,7 @@ void *polyglot_get_array_element(const void *array, int idx);
  * @param idx the index of the array element
  * @param ... the written value
  */
-void polyglot_set_array_element(void *array, int idx, ...);
+void polyglot_set_array_element(polyglot_value array, int idx, ...);
 
 /**
  * Remove an array element from a polyglot array.
@@ -441,7 +482,7 @@ void polyglot_set_array_element(void *array, int idx, ...);
  * @param idx the index of the removed array element
  * @return true if the array element was successfully removed, false otherwise
  */
-bool polyglot_remove_array_element(void *array, int idx);
+bool polyglot_remove_array_element(polyglot_value array, int idx);
 
 /** @} */
 
@@ -468,12 +509,18 @@ bool polyglot_remove_array_element(void *array, int idx);
  * multiple bytes per character.
  */
 
+#ifdef _WIN32
+#define POLYGLOT_WCHAR_ENCODING "utf-16le"
+#else
+#define POLYGLOT_WCHAR_ENCODING "utf-32le"
+#endif
+
 /**
  * Get the size of a polyglot string value.
  *
  * @return the size of the string, in unicode characters
  */
-uint64_t polyglot_get_string_size(const void *value);
+uint64_t polyglot_get_string_size(const polyglot_value value);
 
 /**
  * Convert a polyglot value to a C string.
@@ -493,7 +540,7 @@ uint64_t polyglot_get_string_size(const void *value);
  * @return the number of bytes written to the buffer, *excluding* the
  *         zero-terminator
  */
-uint64_t polyglot_as_string(const void *value, char *buffer, uint64_t bufsize, const char *charset);
+uint64_t polyglot_as_string(const polyglot_value value, char *buffer, uint64_t bufsize, const char *charset);
 
 /**
  * Convert a zero-terminated C string to a polyglot string.
@@ -505,7 +552,7 @@ uint64_t polyglot_as_string(const void *value, char *buffer, uint64_t bufsize, c
  * @param charset the character set of the C string
  * @return a polyglot string
  */
-void *polyglot_from_string(const char *string, const char *charset);
+polyglot_value polyglot_from_string(const char *string, const char *charset);
 
 /**
  * Convert a C string with explicit size to a polyglot string.
@@ -518,7 +565,7 @@ void *polyglot_from_string(const char *string, const char *charset);
  * @param charset the character set of the C string
  * @return a polyglot string
  */
-void *polyglot_from_string_n(const char *string, uint64_t size, const char *charset);
+polyglot_value polyglot_from_string_n(const char *string, uint64_t size, const char *charset);
 
 /** @} */
 
@@ -558,7 +605,7 @@ polyglot_typeid polyglot_array_typeid(polyglot_typeid base, uint64_t len);
  * @param typeId the type of the polyglot value
  * @return struct or array view of the polyglot value
  */
-void *polyglot_as_typed(void *value, polyglot_typeid typeId);
+void *polyglot_as_typed(polyglot_value value, polyglot_typeid typeId);
 
 /**
  * Create a polyglot value from a native pointer to a struct or array.
@@ -573,7 +620,7 @@ void *polyglot_as_typed(void *value, polyglot_typeid typeId);
  * @param typeid the type of ptr
  * @return a polyglot value representing ptr
  */
-void *polyglot_from_typed(void *ptr, polyglot_typeid typeId);
+polyglot_value polyglot_from_typed(void *ptr, polyglot_typeid typeId);
 
 /**
  * Internal function. Do not use directly.
@@ -602,10 +649,10 @@ polyglot_typeid __polyglot_as_typeid(void *ptr);
  *
  * \code
  * polyglot_typeid polyglot_MyStruct_typeid();
- * struct MyStruct *polyglot_as_MyStruct(void *value);
- * struct MyStruct *polyglot_as_MyStruct_array(void *value);
- * void *polyglot_from_MyStruct(struct MyStruct *s);
- * void *polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
+ * struct MyStruct *polyglot_as_MyStruct(polyglot_value value);
+ * struct MyStruct *polyglot_as_MyStruct_array(polyglot_value value);
+ * polyglot_value polyglot_from_MyStruct(struct MyStruct *s);
+ * polyglot_value polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
  * \endcode
  */
 #define POLYGLOT_DECLARE_STRUCT(type) __POLYGLOT_DECLARE_GENERIC_TYPE(struct type, type)
@@ -627,10 +674,10 @@ polyglot_typeid __polyglot_as_typeid(void *ptr);
  *
  * \code
  * polyglot_typeid polyglot_MyType_typeid();
- * MyType *polyglot_as_MyType(void *value);
- * MyType *polyglot_as_MyType_array(void *value);
- * void *polyglot_from_MyType(MyType *s);
- * void *polyglot_from_MyType_array(MyType *arr, uint64_t len);
+ * MyType *polyglot_as_MyType(polyglot_value value);
+ * MyType *polyglot_as_MyType_array(polyglot_value value);
+ * polyglot_value polyglot_from_MyType(MyType *s);
+ * polyglot_value polyglot_from_MyType_array(MyType *arr, uint64_t len);
  * \endcode
  */
 #define POLYGLOT_DECLARE_TYPE(type) __POLYGLOT_DECLARE_GENERIC_TYPE(type, type)
@@ -688,7 +735,7 @@ static polyglot_typeid polyglot_double_typeid();
  *
  * \code
  * for (int i = 0; i < polyglot_get_array_size(arrayValue); i++) {
- *   void *elem = polyglot_get_array_element(arrayValue, i);
+ *   polyglot_value elem = polyglot_get_array_element(arrayValue, i);
  *   sum += polyglot_as_i32(elem);
  * }
  * \endcode
@@ -699,7 +746,7 @@ static polyglot_typeid polyglot_double_typeid();
  * \param value a polyglot array value
  * \return array view of the polyglot value
  */
-static int32_t *polyglot_as_i32_array(void *value);
+static int32_t *polyglot_as_i32_array(polyglot_value value);
 
 /**
  * Create a polyglot value from a native pointer to a primitive integer array.
@@ -711,7 +758,7 @@ static int32_t *polyglot_as_i32_array(void *value);
  * \code
  * int32_t *s = calloc(len, sizeof(*s));
  * s[idx] = ...;
- * void *value = polyglot_from_i32_array(s, len);
+ * polyglot_value value = polyglot_from_i32_array(s, len);
  * someJSFunction(value);
  * \endcode
  *
@@ -735,91 +782,91 @@ static int32_t *polyglot_as_i32_array(void *value);
  * \param len the length of the array
  * \return a polyglot value representing arr
  */
-static void *polyglot_from_i32_array(int32_t *arr, uint64_t len);
+static polyglot_value polyglot_from_i32_array(int32_t *arr, uint64_t len);
 
 /**
  * Converts a polyglot value to a bool array.
  *
  * \see polyglot_as_i32_array
  */
-static bool *polyglot_as_boolean_array(void *value);
+static bool *polyglot_as_boolean_array(polyglot_value value);
 
 /**
  * Converts a polyglot value to an integer array.
  *
  * \see polyglot_as_i32_array
  */
-static int8_t *polyglot_as_i8_array(void *value);
+static int8_t *polyglot_as_i8_array(polyglot_value value);
 
 /**
  * Converts a polyglot value to an integer array.
  *
  * \see polyglot_as_i32_array
  */
-static int16_t *polyglot_as_i16_array(void *value);
+static int16_t *polyglot_as_i16_array(polyglot_value value);
 
 /**
  * Converts a polyglot value to an integer array.
  *
  * \see polyglot_as_i32_array
  */
-static int64_t *polyglot_as_i64_array(void *value);
+static int64_t *polyglot_as_i64_array(polyglot_value value);
 
 /**
  * Converts a polyglot value to a float array.
  *
  * \see polyglot_as_i32_array
  */
-static float *polyglot_as_float_array(void *value);
+static float *polyglot_as_float_array(polyglot_value value);
 
 /**
  * Converts a polyglot value to a double array.
  *
  * \see polyglot_as_i32_array
  */
-static double *polyglot_as_double_array(void *value);
+static double *polyglot_as_double_array(polyglot_value value);
 
 /**
  * Create a polyglot value from a native pointer to a primitive bool array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_boolean_array(bool *arr, uint64_t len);
+static polyglot_value polyglot_from_boolean_array(bool *arr, uint64_t len);
 
 /**
  * Create a polyglot value from a native pointer to a primitive integer array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_i8_array(int8_t *arr, uint64_t len);
+static polyglot_value polyglot_from_i8_array(int8_t *arr, uint64_t len);
 
 /**
  * Create a polyglot value from a native pointer to a primitive integer array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_i16_array(int16_t *arr, uint64_t len);
+static polyglot_value polyglot_from_i16_array(int16_t *arr, uint64_t len);
 
 /**
  * Create a polyglot value from a native pointer to a primitive integer array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_i64_array(int64_t *arr, uint64_t len);
+static polyglot_value polyglot_from_i64_array(int64_t *arr, uint64_t len);
 
 /**
  * Create a polyglot value from a native pointer to a primitive float array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_float_array(float *arr, uint64_t len);
+static polyglot_value polyglot_from_float_array(float *arr, uint64_t len);
 
 /**
  * Create a polyglot value from a native pointer to a primitive double array.
  *
  * \see polyglot_from_i32_array
  */
-static void *polyglot_from_double_array(double *arr, uint64_t len);
+static polyglot_value polyglot_from_double_array(double *arr, uint64_t len);
 
 struct MyStruct;
 
@@ -863,7 +910,7 @@ polyglot_typeid polyglot_MyStruct_typeid();
  * is equivalent to
  *
  * \code
- * void *nested = polyglot_get_member(value, "nestedStruct");
+ * polyglot_value nested = polyglot_get_member(value, "nestedStruct");
  * polyglot_put_member(nested, "x", (int) 42);
  * \endcode
  *
@@ -874,7 +921,7 @@ polyglot_typeid polyglot_MyStruct_typeid();
  * \return struct view of the polyglot value
  * \see POLYGLOT_DECLARE_STRUCT
  */
-struct MyStruct *polyglot_as_MyStruct(void *value);
+struct MyStruct *polyglot_as_MyStruct(polyglot_value value);
 
 /**
  * Converts a polyglot value to an array of MyStruct. Accessing the returned
@@ -894,7 +941,7 @@ struct MyStruct *polyglot_as_MyStruct(void *value);
  *
  * \code
  * for (int i = 0; i < polyglot_get_array_size(arrayValue); i++) {
- *   void *elem = polyglot_get_array_element(arrayValue, i);
+ *   polyglot_value elem = polyglot_get_array_element(arrayValue, i);
  *   sum += polyglot_as_i32(polyglot_get_member(elem, "someMember"));
  * }
  * \endcode
@@ -906,7 +953,7 @@ struct MyStruct *polyglot_as_MyStruct(void *value);
  * \return array view of the polyglot value
  * \see POLYGLOT_DECLARE_STRUCT
  */
-struct MyStruct *polyglot_as_MyStruct_array(void *value);
+struct MyStruct *polyglot_as_MyStruct_array(polyglot_value value);
 
 /**
  * Create a polyglot value from a native pointer to MyStruct. The resulting
@@ -917,7 +964,7 @@ struct MyStruct *polyglot_as_MyStruct_array(void *value);
  * \code
  * struct MyStruct *s = malloc(sizeof(*s));
  * s->someMember = ...;
- * void *value = polyglot_from_MyStruct(s);
+ * polyglot_value value = polyglot_from_MyStruct(s);
  * someJSFunction(value);
  * \endcode
  *
@@ -943,7 +990,7 @@ struct MyStruct *polyglot_as_MyStruct_array(void *value);
  * \return a polyglot value representing s
  * \see POLYGLOT_DECLARE_STRUCT
  */
-void *polyglot_from_MyStruct(struct MyStruct *s);
+polyglot_value polyglot_from_MyStruct(struct MyStruct *s);
 
 /**
  * Create a polyglot value from a native pointer to an array of MyStruct. The
@@ -955,7 +1002,7 @@ void *polyglot_from_MyStruct(struct MyStruct *s);
  * \code
  * struct MyStruct *s = calloc(len, sizeof(*s));
  * s[idx].someMember = ...;
- * void *value = polyglot_from_MyStruct_array(s, len);
+ * polyglot_value value = polyglot_from_MyStruct_array(s, len);
  * someJSFunction(value);
  * \endcode
  *
@@ -980,8 +1027,9 @@ void *polyglot_from_MyStruct(struct MyStruct *s);
  * \return a polyglot value representing arr
  * \see POLYGLOT_DECLARE_STRUCT
  */
-void *polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
-#endif
+polyglot_value polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
+
+#endif // DOXYGEN
 
 /** @} */
 

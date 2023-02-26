@@ -1,0 +1,12 @@
+[
+  {
+    "name" : "com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode",
+    "methods" : [
+        { "name" : "isCompactString",
+          "justification" : "Reads value of a coder field from given String instance.",
+          "parameterTypes" : [
+              "java.lang.String"
+        ]}
+    ]
+  }
+]

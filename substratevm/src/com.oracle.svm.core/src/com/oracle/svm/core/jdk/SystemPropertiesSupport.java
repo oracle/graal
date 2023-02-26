@@ -30,14 +30,17 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class maintains the system properties at run time.
@@ -48,7 +51,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * the current working directory is quite expensive. We initialize such a property either when it is
  * explicitly accessed, or when all properties are accessed.
  */
-public abstract class SystemPropertiesSupport {
+public abstract class SystemPropertiesSupport implements RuntimeSystemPropertiesSupport {
 
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
@@ -60,7 +63,7 @@ public abstract class SystemPropertiesSupport {
                      */
                     "line.separator", "path.separator", "file.separator",
                     /* For our convenience for now. */
-                    "file.encoding", "sun.jnu.encoding",
+                    "file.encoding", "sun.jnu.encoding", "native.encoding", "stdout.encoding", "stderr.encoding",
                     "java.class.version",
                     "java.specification.name",
                     "java.specification.vendor",
@@ -87,6 +90,11 @@ public abstract class SystemPropertiesSupport {
 
     private volatile boolean fullyInitialized;
 
+    @Fold
+    public static SystemPropertiesSupport singleton() {
+        return ImageSingletons.lookup(SystemPropertiesSupport.class);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SystemPropertiesSupport() {
         properties = new Properties();
@@ -95,15 +103,19 @@ public abstract class SystemPropertiesSupport {
 
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
-            properties.put(key, value);
-            savedProperties.put(key, value);
+            if (value != null) {
+                properties.put(key, value);
+                savedProperties.put(key, value);
+            }
         }
 
         initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.vm.vendor", "Oracle Corporation");
+        initializeProperty("java.runtime.name", ImageSingletons.lookup(VM.class).runtimeName);
+        initializeProperty("java.vm.vendor", ImageSingletons.lookup(VM.class).vendor);
         initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
-        initializeProperty("java.vendor", "Oracle Corporation");
-        initializeProperty("java.vendor.url", "https://www.graalvm.org/");
+        initializeProperty("java.runtime.version", ImageSingletons.lookup(VM.class).version);
+        initializeProperty("java.vendor", ImageSingletons.lookup(VM.class).vendor);
+        initializeProperty("java.vendor.url", ImageSingletons.lookup(VM.class).vendorUrl);
 
         initializeProperty("java.class.path", "");
         initializeProperty("java.endorsed.dirs", "");
@@ -123,7 +135,7 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.name", this::userName);
         lazyRuntimeValues.put("user.home", this::userHome);
         lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::tmpDir);
+        lazyRuntimeValues.put("java.io.tmpdir", this::javaIoTmpDir);
         lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
 
@@ -188,8 +200,12 @@ public abstract class SystemPropertiesSupport {
      * Initializes a property at startup from external input (e.g., command line arguments). This
      * must only be called while the runtime is single threaded.
      */
+    @Override
     public void initializeProperty(String key, String value) {
-        savedProperties.put(key, value);
+        String prevValue = savedProperties.put(key, value);
+        if (prevValue != null && !prevValue.equals(value)) {
+            VMError.shouldNotReachHere("System property " + key + " is initialized to " + value + " but was previously initialized to " + prevValue + ".");
+        }
         properties.setProperty(key, value);
     }
 
@@ -215,11 +231,9 @@ public abstract class SystemPropertiesSupport {
              */
             String value = lazyRuntimeValues.get(key).get();
             if (properties.putIfAbsent(key, value) == null) {
-                // Checkstyle: stop
                 synchronized (savedProperties) {
                     savedProperties.put(key, value);
                 }
-                // Checkstyle: resume
             }
         }
     }
@@ -251,13 +265,13 @@ public abstract class SystemPropertiesSupport {
         return cachedUserDir;
     }
 
-    private String cachedtmpDir;
+    private String cachedJavaIoTmpdir;
 
-    String tmpDir() {
-        if (cachedtmpDir == null) {
-            cachedtmpDir = tmpdirValue();
+    String javaIoTmpDir() {
+        if (cachedJavaIoTmpdir == null) {
+            cachedJavaIoTmpdir = javaIoTmpdirValue();
         }
-        return cachedtmpDir;
+        return cachedJavaIoTmpdir;
     }
 
     private String cachedJavaLibraryPath;
@@ -277,7 +291,13 @@ public abstract class SystemPropertiesSupport {
 
     protected abstract String userDirValue();
 
-    protected abstract String tmpdirValue();
+    protected String javaIoTmpdirValue() {
+        return tmpdirValue();
+    }
+
+    protected String tmpdirValue() {
+        throw VMError.unimplemented();
+    }
 
     protected String javaLibraryPathValue() {
         /* Default implementation. */

@@ -27,7 +27,8 @@ package com.oracle.svm.core.c.function;
 import java.io.PrintWriter;
 import java.util.List;
 
-import com.oracle.svm.core.c.CHeader;
+import org.graalvm.nativeimage.c.CHeader;
+
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 
 public class GraalIsolateHeader implements CHeader.Header {

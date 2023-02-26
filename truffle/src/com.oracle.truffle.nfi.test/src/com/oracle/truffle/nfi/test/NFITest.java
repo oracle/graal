@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.test;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -48,49 +49,90 @@ import org.junit.ClassRule;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.tck.TruffleRunner;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.junit.Assume;
 
 public class NFITest {
 
     protected static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true));
+    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true).allowIO(IOAccess.ALL));
 
     protected static Object defaultLibrary;
     protected static Object testLibrary;
 
     private static CallTarget lookupAndBind;
 
-    protected static Object loadLibrary(String lib) {
-        String testBackend = System.getProperty("native.test.backend");
-        String sourceString;
-        if (testBackend != null) {
-            sourceString = String.format("with %s %s", testBackend, lib);
+    static final String TEST_BACKEND = System.getProperty("native.test.backend");
+
+    static final boolean IS_LINUX = System.getProperty("os.name").equals("Linux");
+    static final boolean IS_DARWIN = System.getProperty("os.name").equals("Mac OS X") || System.getProperty("os.name").equals("Darwin");
+    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
+
+    static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
+
+    protected static String getLibPath(String lib) {
+        String filename;
+        if (IS_LINUX) {
+            filename = String.format("lib%s.so", lib);
+        } else if (IS_DARWIN) {
+            filename = String.format("lib%s.dylib", lib);
         } else {
-            sourceString = lib;
+            assert IS_WINDOWS;
+            filename = String.format("%s.dll", lib);
         }
 
-        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").internal(true).build();
+        String propName = "native.test.path";
+        if (TEST_BACKEND != null) {
+            propName = propName + "." + TEST_BACKEND;
+        }
+
+        String path = System.getProperty(propName);
+        Path absPath = Paths.get(path, filename).toAbsolutePath();
+        return absPath.toString();
+    }
+
+    protected static Source parseSource(String source) {
+        String sourceString;
+        if (TEST_BACKEND != null) {
+            sourceString = String.format("with %s %s", TEST_BACKEND, source);
+        } else {
+            sourceString = source;
+        }
+
+        return Source.newBuilder("nfi", sourceString, "loadLibrary").internal(true).build();
+    }
+
+    protected static Object loadLibrary(String lib) {
+        Source source = parseSource(lib);
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return target.call();
     }
 
     @BeforeClass
     public static void loadLibraries() {
-        defaultLibrary = loadLibrary("default");
-        testLibrary = loadLibrary("load '" + System.getProperty("native.test.lib") + "'");
+        try {
+            defaultLibrary = loadLibrary("default");
+        } catch (Exception ex) {
+            defaultLibrary = null;
+        }
+        testLibrary = loadLibrary("load '" + getLibPath("nativetest") + "'");
         lookupAndBind = new LookupAndBindNode().getCallTarget();
     }
 
     private static final class LookupAndBindNode extends RootNode {
 
         @Child InteropLibrary libInterop = InteropLibrary.getFactory().createDispatched(5);
-        @Child InteropLibrary symInterop = InteropLibrary.getFactory().createDispatched(5);
+        @Child SignatureLibrary signatures = SignatureLibrary.getFactory().createDispatched(5);
 
         private LookupAndBindNode() {
             super(runWithPolyglot.getTestLanguage());
@@ -104,7 +146,7 @@ public class NFITest {
 
             try {
                 Object symbol = libInterop.readMember(library, symbolName);
-                return symInterop.invokeMember(symbol, "bind", signature);
+                return signatures.bind(signature, symbol);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -169,8 +211,6 @@ public class NFITest {
         return lookupAndBind(testLibrary, name, signature);
     }
 
-    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
-
     protected static Object lookupAndBindDefault(String name, String signature) {
         if (IS_WINDOWS) {
             return lookupAndBind(testLibrary, "reexport_" + name, signature);
@@ -179,7 +219,20 @@ public class NFITest {
         }
     }
 
+    protected static Object parseSignature(String signature) {
+        try {
+            Source sigSource = parseSource(signature);
+            CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
+            return sigTarget.call();
+        } catch (AbstractTruffleException ex) {
+            if (ex.getClass().getSimpleName().equals("NFIUnsupportedTypeException")) {
+                Assume.assumeNoException(ex);
+            }
+            throw ex;
+        }
+    }
+
     protected static Object lookupAndBind(Object library, String name, String signature) {
-        return lookupAndBind.call(library, name, signature);
+        return lookupAndBind.call(library, name, parseSignature(signature));
     }
 }

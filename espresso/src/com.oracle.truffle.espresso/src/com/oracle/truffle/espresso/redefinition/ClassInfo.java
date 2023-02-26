@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,22 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class ClassInfo {
 
+    private final boolean isNewInnerTestKlass;
+    private final boolean isEnumSwitchmapHelper;
+
+    public ClassInfo(boolean isEnumSwitchmapHelper, boolean isNewInnerTestKlass) {
+        this.isEnumSwitchmapHelper = isEnumSwitchmapHelper;
+        this.isNewInnerTestKlass = isNewInnerTestKlass;
+    }
+
+    public boolean isNewInnerTestKlass() {
+        return isNewInnerTestKlass;
+    }
+
+    public boolean isEnumSwitchmapHelper() {
+        return isEnumSwitchmapHelper;
+    }
+
     public static ImmutableClassInfo create(Klass klass, InnerClassRedefiner innerClassRedefiner) {
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();
@@ -54,28 +70,37 @@ public abstract class ClassInfo {
         StringBuilder enclosing = new StringBuilder();
         Symbol<Name> name = klass.getName();
 
+        boolean enumHelper = false;
         Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(name.toString());
         if (matcher.matches()) {
-            // fingerprints are only relevant for inner classes
-            hierarchy.append(klass.getSuperClass().getTypeAsString()).append(";");
-            for (Klass itf : klass.getImplementedInterfaces()) {
-                hierarchy.append(itf.getTypeAsString()).append(";");
+            if (klass.getDeclaredFields().length == 1) {
+                if (klass.getDeclaredFields()[0].getName().toString().startsWith("$SwitchMap$")) {
+                    // filter out enum switchmap helper classes
+                    enumHelper = true;
+                }
             }
+            if (!enumHelper) {
+                // fingerprints are only relevant for inner classes
+                hierarchy.append(klass.getSuperClass().getTypeAsString()).append(";");
+                for (Klass itf : klass.getImplementedInterfaces()) {
+                    hierarchy.append(itf.getTypeAsString()).append(";");
+                }
 
-            for (Method method : klass.getDeclaredMethods()) {
-                methods.append(method.getNameAsString()).append(";");
-                methods.append(method.getSignatureAsString()).append(";");
+                for (Method method : klass.getDeclaredMethods()) {
+                    methods.append(method.getNameAsString()).append(";");
+                    methods.append(method.getSignatureAsString()).append(";");
+                }
+
+                for (Field field : klass.getDeclaredFields()) {
+                    fields.append(field.getTypeAsString()).append(";");
+                    fields.append(field.getNameAsString()).append(";");
+                }
+
+                ObjectKlass objectKlass = (ObjectKlass) klass;
+                ConstantPool pool = klass.getConstantPool();
+                NameAndTypeConstant nmt = pool.nameAndTypeAt(objectKlass.getEnclosingMethod().getMethodIndex());
+                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
             }
-
-            for (Field field : klass.getDeclaredFields()) {
-                fields.append(field.getTypeAsString()).append(";");
-                fields.append(field.getNameAsString()).append(";");
-            }
-
-            ObjectKlass objectKlass = (ObjectKlass) klass;
-            ConstantPool pool = klass.getConstantPool();
-            NameAndTypeConstant nmt = pool.nameAndTypeAt(objectKlass.getEnclosingMethod().getMethodIndex());
-            enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
         }
         // find all currently loaded direct inner classes and create class infos
         ArrayList<ImmutableClassInfo> inners = new ArrayList<>(1);
@@ -88,52 +113,62 @@ public abstract class ClassInfo {
             }
         }
         return new ImmutableClassInfo((ObjectKlass) klass, name, klass.getDefiningClassLoader(), hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(),
-                        inners, null);
+                        inners, null, enumHelper, false);
     }
 
-    public static HotSwapClassInfo create(RedefineInfo redefineInfo, EspressoContext context) {
+    public static HotSwapClassInfo create(RedefineInfo redefineInfo, EspressoContext context, boolean isNewInnerTestKlass) {
         ObjectKlass klass = (ObjectKlass) redefineInfo.getKlass();
-        return create(klass, klass.getName(), redefineInfo.getClassBytes(), klass.getDefiningClassLoader(), context);
+        return create(klass, klass.getName(), redefineInfo.getClassBytes(), klass.getDefiningClassLoader(), context, isNewInnerTestKlass);
     }
 
-    public static HotSwapClassInfo create(Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
-        return create(null, name, bytes, definingLoader, context);
+    public static HotSwapClassInfo create(Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context, boolean isNewInnerTestKlass) {
+        return create(null, name, bytes, definingLoader, context, isNewInnerTestKlass);
     }
 
-    public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
+    public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context, boolean isNewInnerTestKlass) {
         Symbol<Type> type = context.getTypes().fromName(name);
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, type, context);
+        ParserKlass parserKlass = ClassfileParser.parse(context.getClassLoadingEnv(), new ClassfileStream(bytes, null), definingLoader, type);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();
         StringBuilder fields = new StringBuilder();
         StringBuilder enclosing = new StringBuilder();
 
+        boolean enumHelper = false;
         Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(name.toString());
         if (matcher.matches()) {
-            // fingerprints are only relevant for inner classes
-            hierarchy.append(parserKlass.getSuperKlass().toString()).append(";");
-            for (Symbol<Type> itf : parserKlass.getSuperInterfaces()) {
-                hierarchy.append(itf.toString()).append(";");
+            if (parserKlass.getFields().length == 1) {
+                if (parserKlass.getFields()[0].getName().toString().startsWith("$SwitchMap$")) {
+                    // filter out enum switchmap helper classes
+                    enumHelper = true;
+                }
             }
+            if (!enumHelper) {
+                // fingerprints are only relevant for inner classes
+                hierarchy.append(parserKlass.getSuperKlass().toString()).append(";");
+                for (Symbol<Type> itf : parserKlass.getSuperInterfaces()) {
+                    hierarchy.append(itf.toString()).append(";");
+                }
 
-            for (ParserMethod method : parserKlass.getMethods()) {
-                methods.append(method.getName().toString()).append(";");
-                methods.append(method.getSignature().toString()).append(";");
+                for (ParserMethod method : parserKlass.getMethods()) {
+                    methods.append(method.getName().toString()).append(";");
+                    methods.append(method.getSignature().toString()).append(";");
+                }
+
+                for (ParserField field : parserKlass.getFields()) {
+                    fields.append(field.getType().toString()).append(";");
+                    fields.append(field.getName().toString()).append(";");
+                }
+
+                ConstantPool pool = parserKlass.getConstantPool();
+                EnclosingMethodAttribute attr = (EnclosingMethodAttribute) parserKlass.getAttribute(EnclosingMethodAttribute.NAME);
+                NameAndTypeConstant nmt = pool.nameAndTypeAt(attr.getMethodIndex());
+                enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
             }
-
-            for (ParserField field : parserKlass.getFields()) {
-                fields.append(field.getType().toString()).append(";");
-                fields.append(field.getName().toString()).append(";");
-            }
-
-            ConstantPool pool = parserKlass.getConstantPool();
-            EnclosingMethodAttribute attr = (EnclosingMethodAttribute) parserKlass.getAttribute(EnclosingMethodAttribute.NAME);
-            NameAndTypeConstant nmt = pool.nameAndTypeAt(attr.getMethodIndex());
-            enclosing.append(nmt.getName(pool)).append(";").append(nmt.getDescriptor(pool));
         }
 
-        return new HotSwapClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes);
+        return new HotSwapClassInfo(klass, name, definingLoader, hierarchy.toString(), methods.toString(), fields.toString(), enclosing.toString(), new ArrayList<>(1), bytes, enumHelper,
+                        isNewInnerTestKlass);
     }
 
     public static ImmutableClassInfo copyFrom(HotSwapClassInfo info) {
@@ -142,7 +177,7 @@ public abstract class ClassInfo {
             inners.add(copyFrom(innerClass));
         }
         return new ImmutableClassInfo(info.getKlass(), info.getName(), info.getClassLoader(), info.finalClassFingerprint, info.finalMethodFingerprint, info.finalFieldFingerprint,
-                        info.finalEnclosingMethodFingerprint, inners, info.getBytes());
+                        info.finalEnclosingMethodFingerprint, inners, info.getBytes(), info.isEnumSwitchmapHelper(), info.isNewInnerTestKlass());
     }
 
     public abstract String getClassFingerprint();
@@ -165,9 +200,16 @@ public abstract class ClassInfo {
 
     public int match(ClassInfo other) {
         if (!getClassFingerprint().equals(other.getClassFingerprint())) {
-            // always mark super hierachy changes as incompatible
+            // always mark super hierarchy changes as incompatible
             return 0;
         }
+        if (isEnumSwitchmapHelper) {
+            // never match enum switchmap helpers, since we want to
+            // spin a new class that automatically runs clinit when
+            // used from new code.
+            return 0;
+        }
+
         int score = 0;
         score += getMethodFingerprint().equals(other.getMethodFingerprint()) ? InnerClassRedefiner.METHOD_FINGERPRINT_EQUALS : 0;
         score += getEnclosingMethodFingerprint().equals(other.getEnclosingMethodFingerprint()) ? InnerClassRedefiner.ENCLOSING_METHOD_FINGERPRINT_EQUALS : 0;

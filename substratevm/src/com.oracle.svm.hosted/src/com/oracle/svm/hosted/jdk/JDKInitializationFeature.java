@@ -24,60 +24,75 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public class JDKInitializationFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JDKInitializationFeature implements InternalFeature {
+    private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        rci.initializeAtBuildTime("com.sun.java.util.jar.pack", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.management", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.naming.internal", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.net.ssl", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.nio.file", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.nio.sctp", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.nio.zipfs", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("com.sun.java.util.jar.pack", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.management", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.naming.internal", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.net.ssl", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.nio.file", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.nio.sctp", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.nio.zipfs", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("java.io", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.lang", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.math", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.net", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.nio", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.text", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.time", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("java.util", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("java.io", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.lang", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.math", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.net", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.nio", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
+        rci.rerunInitialization("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
-        rci.initializeAtBuildTime("javax.annotation.processing", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.lang.model", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.management", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.naming", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.net", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.tools", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("javax.annotation.processing", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.lang.model", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.management", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("jdk.internal", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
-        rci.initializeAtBuildTime("jdk.net", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("jdk.nio", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
+        rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("sun.invoke", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.launcher", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.management", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.misc", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.net", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.management", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.misc", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("sun.nio", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             rci.rerunInitialization("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 
         rci.rerunInitialization("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
+
+        /*
+         * In the cases that java.io.ObjectInputFilter$Config#serialFilter field is needed, this
+         * class needs to be reinitialized. Field is initialized in the static block of the Config
+         * class in runtime, so we need to reinitialize class in runtime. This change also makes us
+         * create substitution for jdkSerialFilterFactory in the
+         * com.oracle.svm.core.jdk.Target_jdk_internal_util_StaticProperty.
+         */
+        rci.rerunInitialization("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
 
         rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
         rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
@@ -85,53 +100,64 @@ public class JDKInitializationFeature implements Feature {
         rci.rerunInitialization("sun.nio.ch.EventPortSelectorImpl", "Calls IOUtil.fdLimit()");
         rci.rerunInitialization("sun.nio.fs.LinuxWatchService$Poller", "LinuxWatchService.eventSize() and LinuxWatchService.eventOffsets()");
 
-        rci.initializeAtBuildTime("sun.reflect", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.mscapi", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.text", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.util", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("sun.reflect", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.mscapi", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.text", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.util", JDK_CLASS_REASON);
 
         /* Minor fixes to make the list work */
         rci.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
+        rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
+
+        /* XML-related */
+        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
 
         /* Security services */
-        rci.initializeAtBuildTime("com.sun.crypto.provider", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.security.auth", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
-        rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.security.ntlm", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("com.sun.security.sasl", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.security.auth", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.security.jgss", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.security.ntlm", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("java.security", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("java.security", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("javax.crypto", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.security.auth", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.security.cert", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.security.sasl", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("javax.crypto", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.security.auth", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.security.cert", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.security.sasl", JDK_CLASS_REASON);
 
-        rci.initializeAtBuildTime("sun.security.action", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.ec", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.internal.interfaces", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.internal.spec", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.jca", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.jgss", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("org.ietf.jgss.GSSException", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("org.ietf.jgss.GSSName", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.krb5", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.pkcs", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.pkcs10", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.pkcs11", "Core JDK classes are initialized at build time for better performance");
-        rci.initializeAtBuildTime("sun.security.pkcs12", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.provider", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.rsa", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.ssl", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.timestamp", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.tools", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.util", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.validator", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("sun.security.action", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.ec", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.internal.interfaces", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.internal.spec", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.jca", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.jgss", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.ietf.jgss.Oid", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.ietf.jgss.GSSException", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.ietf.jgss.GSSName", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.krb5", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.pkcs", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.pkcs10", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.pkcs12", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.provider", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.rsa", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.ssl", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.timestamp", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.tools", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.util", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.validator", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.x509", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("sun.security.smartcardio", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.jndi", JDK_CLASS_REASON);
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            rci.initializeAtBuildTime("apple.security", JDK_CLASS_REASON);
+        }
 
         rci.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
         rci.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
@@ -144,5 +170,9 @@ public class JDKInitializationFeature implements Feature {
         rci.rerunInitialization("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
         rci.rerunInitialization("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
+
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
+        }
     }
 }

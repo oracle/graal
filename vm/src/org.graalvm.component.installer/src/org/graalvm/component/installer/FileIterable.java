@@ -49,7 +49,7 @@ public class FileIterable extends AbstractIterable {
 
     @Override
     public Iterator<ComponentParam> iterator() {
-        return new Iterator<ComponentParam>() {
+        return new Iterator<>() {
             @Override
             public boolean hasNext() {
                 return input.hasParameter();

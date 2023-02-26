@@ -31,7 +31,6 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -284,10 +284,19 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public void addNode(ValueNode node) {
         if (node instanceof FloatingNode) {
-            effects.addFloatingNode(node, "VirtualizerTool");
+            effects.addFloatingNode(node, "VirtualizerTool.addNode");
         } else {
             effects.addFixedNodeBefore((FixedWithNextNode) node, position);
         }
+    }
+
+    @Override
+    public void ensureAdded(ValueNode node) {
+        if (node.isAlive()) {
+            // nothing to do
+            return;
+        }
+        effects.ensureAdded(node, position);
     }
 
     @Override
@@ -310,6 +319,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         closure.addVirtualAlias(virtualObject, virtualObject);
         PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment(debug);
         effects.addVirtualizationDelta(1);
+        effects.addLog(closure.cfg.graph.getOptimizationLog(), optimizationLog -> optimizationLog.getPartialEscapeLog().allocationRemoved(virtualObject));
         if (sourcePosition != null) {
             assert virtualObject.getNodeSourcePosition() == null || virtualObject.getNodeSourcePosition() == sourcePosition : "unexpected source pos!";
             virtualObject.setNodeSourcePosition(sourcePosition);
@@ -382,5 +392,29 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public boolean supportsRounding() {
         return getLowerer().supportsRounding();
+    }
+
+    @Override
+    public VirtualizerTool createSnapshot() {
+        VirtualizerToolImpl snapshot = new VirtualizerToolImpl(getProviders(), closure, assumptions, options, debug);
+        snapshot.current = this.current;
+        snapshot.position = this.position;
+        snapshot.effects = new GraphEffectList(this.debug);
+        snapshot.state = new PartialEscapeBlockState.Final(this.getOptions(), this.getDebug());
+        for (int i = 0; i < this.state.getStateCount(); i++) {
+            if (this.state.hasObjectState(i)) {
+                snapshot.state.addObject(i, this.state.getObjectState(i).cloneState());
+            }
+        }
+        return snapshot;
+    }
+
+    @Override
+    public boolean divisionOverflowIsJVMSCompliant() {
+        if (getLowerer() != null) {
+            return getLowerer().divisionOverflowIsJVMSCompliant();
+        }
+        // prevent accidental floating of divs if we dont know the target arch
+        return false;
     }
 }

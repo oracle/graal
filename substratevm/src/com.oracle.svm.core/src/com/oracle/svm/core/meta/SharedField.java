@@ -52,6 +52,8 @@ public interface SharedField extends ResolvedJavaField {
 
     boolean isAccessed();
 
+    boolean isReachable();
+
     boolean isWritten();
 
     JavaKind getStorageKind();

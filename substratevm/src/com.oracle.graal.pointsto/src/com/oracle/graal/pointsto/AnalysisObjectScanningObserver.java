@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto;
 
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -42,35 +43,32 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
-    public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+    public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         if (!field.isWritten()) {
-            field.registerAsWritten(null);
+            return field.registerAsWritten(reason);
         }
+        return false;
     }
 
     @Override
-    public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+    public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
         if (!fieldTypeFlow.getState().canBeNull()) {
             /* Signal that the field can contain null. */
-            fieldTypeFlow.addState(getAnalysis(), TypeState.forNull());
+            return fieldTypeFlow.addState(getAnalysis(), TypeState.forNull());
         }
+        return false;
     }
 
     @Override
-    public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+    public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
-        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
-        assert fieldType.isInstantiated() : fieldType;
+        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(fieldValue);
 
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, fieldValue, fieldType);
-        if (!fieldTypeFlow.getState().containsObject(constantObject)) {
-            /* Add the new constant to the field's flow state. */
-            TypeState constantTypeState = TypeState.forNonNullObject(analysis, constantObject);
-            fieldTypeFlow.addState(analysis, constantTypeState);
-        }
+        /* Add the new constant to the field's flow state. */
+        return fieldTypeFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType));
     }
 
     /**
@@ -87,32 +85,28 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
              * constant object.
              */
             PointsToAnalysis analysis = getAnalysis();
-            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, receiver).getClass());
+            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(receiver);
             AnalysisObject constantReceiverObj = analysis.analysisPolicy().createConstantObject(analysis, receiver, receiverType);
             return constantReceiverObj.getInstanceFieldFlow(analysis, field, true);
         }
     }
 
     @Override
-    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex) {
+    public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ScanReason reason) {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         if (!arrayObjElementsFlow.getState().canBeNull()) {
             /* Signal that the constant array can contain null. */
-            arrayObjElementsFlow.addState(getAnalysis(), TypeState.forNull());
+            return arrayObjElementsFlow.addState(getAnalysis(), TypeState.forNull());
         }
+        return false;
     }
 
     @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
-        assert elementType.isInstantiated() : elementType;
+    public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         PointsToAnalysis analysis = getAnalysis();
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, elementConstant, elementType);
-        if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
-            /* Add the constant element to the constant's array type flow. */
-            TypeState elementTypeState = TypeState.forNonNullObject(analysis, constantObject);
-            arrayObjElementsFlow.addState(analysis, elementTypeState);
-        }
+        /* Add the constant element to the constant's array type flow. */
+        return arrayObjElementsFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType));
     }
 
     /**
@@ -125,12 +119,12 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
-    public void forScannedConstant(JavaConstant value, ObjectScanner.ScanReason reason) {
+    public void forScannedConstant(JavaConstant value, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        type.registerAsInHeap();
+        type.registerAsInHeap(reason);
     }
 
     private PointsToAnalysis getAnalysis() {

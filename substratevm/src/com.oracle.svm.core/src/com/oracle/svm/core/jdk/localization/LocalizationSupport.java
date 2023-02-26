@@ -35,14 +35,15 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -96,8 +97,15 @@ public class LocalizationSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
-            String withLocale = control.toBundleName(bundleName, locale);
-            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), withLocale.replace('.', '/') + "\\.properties");
+            String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
+            String resultingPattern;
+            if (bundleNameWithModule.length < 2) {
+                resultingPattern = control.toBundleName(bundleName, locale).replace('.', '/');
+            } else {
+                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+                resultingPattern = bundleNameWithModule[0] + ':' + patternWithLocale;
+            }
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
         } else {
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
@@ -133,6 +141,7 @@ public class LocalizationSupport {
     /**
      * @return locale for given tag or null for invalid ones
      */
+    @SuppressWarnings("deprecation")
     public static Locale parseLocaleFromTag(String tag) {
         try {
             return new Locale.Builder().setLanguageTag(tag).build();

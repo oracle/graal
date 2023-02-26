@@ -63,8 +63,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     private LLVMModuleRef module;
     private LLVMValueRef function;
 
-    private boolean primary;
-    private LLVMHelperFunctions helpers;
+    private final boolean primary;
+    private final LLVMHelperFunctions helpers;
 
     public LLVMIRBuilder(String name) {
         this.context = LLVM.LLVMContextCreate();
@@ -157,7 +157,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         LinkOnce(LLVM.LLVMLinkOnceAnyLinkage),
         LinkOnceODR(LLVM.LLVMLinkOnceODRLinkage);
 
-        private int code;
+        private final int code;
 
         LinkageType(int code) {
             this.code = code;
@@ -177,7 +177,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             String value = "true";
             attr = LLVM.LLVMCreateStringAttribute(context, attribute.name, attribute.name.length(), value, value.length());
         }
-        LLVM.LLVMAddAttributeAtIndex(func, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+        LLVM.LLVMAddAttributeAtIndex(func, LLVM.LLVMAttributeFunctionIndex, attr);
     }
 
     public enum Attribute {
@@ -189,7 +189,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         NoRedZone("noredzone"),
         StatepointID("statepoint-id");
 
-        private String name;
+        private final String name;
 
         Attribute(String name) {
             this.name = name;
@@ -211,7 +211,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     public enum GCStrategy {
         CompressedPointers("compressed-pointer");
 
-        private String name;
+        private final String name;
 
         GCStrategy(String name) {
             this.name = name;
@@ -692,8 +692,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static class InlineAssemblyConstraint {
-        private Type type;
-        private Location location;
+        private final Type type;
+        private final Location location;
 
         public InlineAssemblyConstraint(Type type, Location location) {
             this.type = type;
@@ -717,7 +717,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
 
         public static final class Location {
-            private String repr;
+            private final String repr;
 
             private Location(String repr) {
                 this.repr = repr;
@@ -735,7 +735,7 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public void setCallSiteAttribute(LLVMValueRef call, Attribute attribute, String value) {
         LLVMAttributeRef attr = LLVM.LLVMCreateStringAttribute(context, attribute.name, attribute.name.length(), value, value.length());
-        LLVM.LLVMAddCallSiteAttribute(call, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+        LLVM.LLVMAddCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, attr);
     }
 
     public void setCallSiteAttribute(LLVMValueRef call, Attribute attribute) {
@@ -743,7 +743,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVMAttributeRef attr;
         if (kind != 0) {
             attr = LLVM.LLVMCreateEnumAttribute(context, kind, ENUM_ATTRIBUTE_VALUE);
-            LLVM.LLVMAddCallSiteAttribute(call, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+            LLVM.LLVMAddCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, attr);
         } else {
             setCallSiteAttribute(call, attribute, "true");
         }
@@ -988,6 +988,10 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public LLVMValueRef buildAbs(LLVMValueRef a) {
+        return buildIntrinsicOp("abs", a, constantBoolean(false));
+    }
+
+    public LLVMValueRef buildFabs(LLVMValueRef a) {
         return buildIntrinsicOp("fabs", a);
     }
 
@@ -1207,9 +1211,10 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public void buildPrefetch(LLVMValueRef address) {
-        LLVMTypeRef prefetchType = functionType(voidType(), LLVM.LLVMTypeOf(address), intType(), intType(), intType());
+        LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
+        LLVMTypeRef prefetchType = functionType(voidType(), addressType, intType(), intType(), intType());
         /* llvm.prefetch(address, WRITE, NO_LOCALITY, DATA) */
-        buildIntrinsicCall("llvm.prefetch", prefetchType, address, constantInt(1), constantInt(0), constantInt(1));
+        buildIntrinsicCall("llvm.prefetch." + intrinsicType(addressType), prefetchType, address, constantInt(1), constantInt(0), constantInt(1));
     }
 
     public LLVMValueRef buildReturnAddress(LLVMValueRef level) {
@@ -1219,7 +1224,7 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildFrameAddress(LLVMValueRef level) {
         LLVMTypeRef frameAddressType = functionType(rawPointerType(), intType());
-        return buildIntrinsicCall("llvm.frameaddress", frameAddressType, level);
+        return buildIntrinsicCall("llvm.frameaddress." + intrinsicType(rawPointerType()), frameAddressType, level);
     }
 
     /* Atomic */

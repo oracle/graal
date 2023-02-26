@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -128,7 +129,7 @@ final class HostClassDesc {
         final Map<String, HostFieldDesc> staticFields;
         final HostMethodDesc functionalMethod;
 
-        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc>() {
+        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<>() {
             @Override
             public HostMethodDesc apply(HostMethodDesc m1, HostMethodDesc m2) {
                 return merge(m1, m2);
@@ -140,7 +141,7 @@ final class HostClassDesc {
             Map<String, HostMethodDesc> staticMethodMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> fieldMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> staticFieldMap = new LinkedHashMap<>();
-            HostMethodDesc functionalInterfaceMethod = null;
+            HostMethodDesc functionalInterfaceMethodImpl = null;
 
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap);
             collectPublicFields(hostAccess, type, fieldMap, staticFieldMap);
@@ -148,9 +149,9 @@ final class HostClassDesc {
             HostMethodDesc ctor = collectPublicConstructors(hostAccess, type);
 
             if (!Modifier.isInterface(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) {
-                String functionalInterfaceMethodName = findFunctionalInterfaceMethodName(type);
-                if (functionalInterfaceMethodName != null) {
-                    functionalInterfaceMethod = methodMap.get(functionalInterfaceMethodName);
+                Method implementableAbstractMethod = findFunctionalInterfaceMethod(hostAccess, type);
+                if (implementableAbstractMethod != null) {
+                    functionalInterfaceMethodImpl = lookupAbstractMethodImplementation(implementableAbstractMethod, methodMap);
                 }
             }
 
@@ -159,16 +160,16 @@ final class HostClassDesc {
             this.constructor = ctor;
             this.fields = fieldMap;
             this.staticFields = staticFieldMap;
-            this.functionalMethod = functionalInterfaceMethod;
+            this.functionalMethod = functionalInterfaceMethodImpl;
         }
 
         private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
-            return Modifier.isPublic(declaringClass.getModifiers()) && HostAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+            return Modifier.isPublic(declaringClass.getModifiers()) && HostContext.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
         }
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {
             HostMethodDesc ctor = null;
-            if (isClassAccessible(type, hostAccess)) {
+            if (isClassAccessible(type, hostAccess) && !Modifier.isAbstract(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;
@@ -182,32 +183,30 @@ final class HostClassDesc {
         }
 
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
-            collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashSet<>(), type);
+            collectPublicMethods(hostAccess, type, methodMap, staticMethodMap, new HashMap<>(), type);
         }
 
-        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
+        private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap,
+                        Map<Object, Object> visited,
                         Class<?> startType) {
             boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
-            boolean allMethodsPublic = true;
+            boolean includeInherited = hostAccess.allowsPublicAccess || hostAccess.allowsAccessInheritance;
             List<Method> bridgeMethods = null;
-            if (isPublicType) {
+            /**
+             * If we do not allow inheriting access, we discover all accessible methods through the
+             * public methods of this class. That way, (possibly inaccessible) method overrides hide
+             * inherited, otherwise accessible methods.
+             */
+            if (isPublicType || !includeInherited) {
                 for (Method m : type.getMethods()) {
                     Class<?> declaringClass = m.getDeclaringClass();
                     if (Modifier.isStatic(m.getModifiers()) && (declaringClass != startType && Modifier.isInterface(declaringClass.getModifiers()))) {
                         // do not inherit static interface methods
                         continue;
-                    } else if (!isClassAccessible(declaringClass, hostAccess)) {
-                        /*
-                         * If a public method is declared in a non-public superclass, there should
-                         * be a public bridge method in this class that provides access to it.
-                         *
-                         * In some more elaborate class hierarchies, or if the method is declared in
-                         * an interface (i.e. a default method), no bridge method is generated, so
-                         * search the whole inheritance hierarchy for accessible methods.
-                         */
-                        allMethodsPublic = false;
+                    } else if (!isClassAccessible(declaringClass, hostAccess) && !Proxy.isProxyClass(declaringClass)) {
+                        // the declaring class and the method itself must be public and accessible
                         continue;
-                    } else if (m.isBridge()) {
+                    } else if (m.isBridge() && hostAccess.allowsAccess(m)) {
                         /*
                          * Bridge methods for varargs methods generated by javac may not have the
                          * varargs modifier, so we must not use the bridge method in that case since
@@ -216,15 +215,14 @@ final class HostClassDesc {
                          * As a workaround, stash away all bridge methods and only consider them at
                          * the end if no equivalent public non-bridge method was found.
                          */
-                        allMethodsPublic = false;
                         if (bridgeMethods == null) {
                             bridgeMethods = new ArrayList<>();
                         }
                         bridgeMethods.add(m);
                         continue;
                     }
-                    if (visited.add(methodInfo(m))) {
-                        putMethod(hostAccess, m, methodMap, staticMethodMap);
+                    if (hostAccess.allowsAccess(m)) {
+                        collectPublicMethod(hostAccess, methodMap, staticMethodMap, visited, m);
                     }
                 }
                 if (hostAccess.isArrayAccess() && type.isArray()) {
@@ -232,65 +230,84 @@ final class HostClassDesc {
                     methodMap.put(arrayCloneMethod.getName(), arrayCloneMethod);
                 }
             }
-            /*
-             * Look for inherited public methods if the class/interface is not public or if we have
-             * seen a public method declared in a non-public class (see above).
-             */
-            if (!isPublicType || !allMethodsPublic) {
+            if (includeInherited) {
+                // Look for accessible inherited public methods, if allowed.
                 if (type.getSuperclass() != null) {
                     collectPublicMethods(hostAccess, type.getSuperclass(), methodMap, staticMethodMap, visited, startType);
                 }
                 for (Class<?> intf : type.getInterfaces()) {
-                    if (visited.add(intf)) {
+                    if (visited.put(intf, intf) == null) {
                         collectPublicMethods(hostAccess, intf, methodMap, staticMethodMap, visited, startType);
                     }
                 }
             }
             // Add bridge methods for public methods inherited from non-public superclasses.
+            // See https://bugs.openjdk.java.net/browse/JDK-6342411
             if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
-                    if (visited.add(methodInfo(m))) {
-                        putMethod(hostAccess, m, methodMap, staticMethodMap);
-                    }
+                    assert hostAccess.allowsAccess(m); // already checked above
+                    collectPublicMethod(hostAccess, methodMap, staticMethodMap, visited, m);
                 }
             }
         }
 
-        private static Object methodInfo(Method m) {
-            class MethodInfo {
-                private final boolean isStatic = Modifier.isStatic(m.getModifiers());
-                private final String name = m.getName();
-                private final Class<?>[] parameterTypes = m.getParameterTypes();
-
-                @Override
-                public boolean equals(Object obj) {
-                    if (obj instanceof MethodInfo) {
-                        MethodInfo other = (MethodInfo) obj;
-                        return isStatic == other.isStatic && name.equals(other.name) && Arrays.equals(parameterTypes, other.parameterTypes);
-                    } else {
-                        return false;
-                    }
-                }
-
-                @Override
-                public int hashCode() {
-                    final int prime = 31;
-                    int result = 1;
-                    result = prime * result + (isStatic ? 1 : 0);
-                    result = prime * result + name.hashCode();
-                    result = prime * result + Arrays.hashCode(parameterTypes);
-                    return result;
+        private static void collectPublicMethod(HostClassCache hostAccess, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Map<Object, Object> visited, Method m) {
+            MethodInfo methodInfo = methodInfo(m);
+            if (!visited.containsKey(methodInfo)) {
+                visited.put(methodInfo, methodInfo);
+                putMethod(hostAccess, m, methodMap, staticMethodMap, false);
+            } else {
+                // could be inherited method with different return type
+                // include those for jni-naming scheme lookup too
+                MethodInfo info = (MethodInfo) visited.get(methodInfo);
+                if (info.returnType != methodInfo.returnType) {
+                    putMethod(hostAccess, m, methodMap, staticMethodMap, true);
                 }
             }
-            return new MethodInfo();
         }
 
-        private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
-            if (!hostAccess.allowsAccess(m)) {
-                return;
+        private static MethodInfo methodInfo(Method m) {
+            return new MethodInfo(m);
+        }
+
+        private static class MethodInfo {
+            private final boolean isStatic;
+            private final String name;
+            private final Class<?>[] parameterTypes;
+            private final Class<?> returnType; // only used for jni name lookup
+
+            MethodInfo(Method m) {
+                this.isStatic = Modifier.isStatic(m.getModifiers());
+                this.name = m.getName();
+                this.parameterTypes = m.getParameterTypes();
+                this.returnType = m.getReturnType();
             }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (obj instanceof MethodInfo) {
+                    MethodInfo other = (MethodInfo) obj;
+                    return isStatic == other.isStatic && name.equals(other.name) && Arrays.equals(parameterTypes, other.parameterTypes);
+                } else {
+                    return false;
+                }
+            }
+
+            @Override
+            public int hashCode() {
+                final int prime = 31;
+                int result = 1;
+                result = prime * result + (isStatic ? 1 : 0);
+                result = prime * result + name.hashCode();
+                result = prime * result + Arrays.hashCode(parameterTypes);
+                return result;
+            }
+        }
+
+        private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, boolean onlyVisibleFromJniName) {
+            assert hostAccess.allowsAccess(m);
             boolean scoped = hostAccess.methodScoped(m);
-            SingleMethod method = SingleMethod.unreflect(m, scoped);
+            SingleMethod method = SingleMethod.unreflect(m, scoped, onlyVisibleFromJniName);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
             map.merge(m.getName(), method, MERGE);
         }
@@ -300,7 +317,7 @@ final class HostClassDesc {
             if (existing instanceof SingleMethod) {
                 return new OverloadedMethod(new SingleMethod[]{(SingleMethod) existing, (SingleMethod) other});
             } else {
-                SingleMethod[] oldOverloads = ((OverloadedMethod) existing).getOverloads();
+                SingleMethod[] oldOverloads = existing.getOverloads();
                 SingleMethod[] newOverloads = Arrays.copyOf(oldOverloads, oldOverloads.length + 1);
                 newOverloads[oldOverloads.length] = (SingleMethod) other;
                 return new OverloadedMethod(newOverloads);
@@ -378,12 +395,12 @@ final class HostClassDesc {
             }
         }
 
-        private static String findFunctionalInterfaceMethodName(Class<?> clazz) {
+        private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (Modifier.isPublic(iface.getModifiers()) && iface.isAnnotationPresent(FunctionalInterface.class)) {
+                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
-                            return m.getName();
+                            return m;
                         }
                     }
                 }
@@ -391,7 +408,41 @@ final class HostClassDesc {
 
             Class<?> superclass = clazz.getSuperclass();
             if (superclass != null && superclass != Object.class) {
-                return findFunctionalInterfaceMethodName(superclass);
+                return findFunctionalInterfaceMethod(hostAccess, superclass);
+            }
+            return null;
+        }
+
+        private static HostMethodDesc lookupAbstractMethodImplementation(Method abstractMethod, Map<String, HostMethodDesc> methodMap) {
+            HostMethodDesc accessibleMethodDesc = methodMap.get(abstractMethod.getName());
+            if (accessibleMethodDesc != null) {
+                Class<?>[] searchTypes = abstractMethod.getParameterTypes();
+                SingleMethod[] available = accessibleMethodDesc.getOverloads();
+                List<SingleMethod> candidates = new ArrayList<>(available.length);
+                next: for (SingleMethod candidate : available) {
+                    Class<?>[] candidateTypes = candidate.getParameterTypes();
+                    if (searchTypes.length == candidateTypes.length) {
+                        for (int i = 0; i < searchTypes.length; i++) {
+                            if (candidateTypes[i].isAssignableFrom(searchTypes[i])) {
+                                // allow covariant parameter types
+                                continue;
+                            } else if (searchTypes[i].isAssignableFrom(candidateTypes[i])) {
+                                // allow contravariant generic type parameters
+                                continue;
+                            } else {
+                                continue next;
+                            }
+                        }
+                        candidates.add(candidate);
+                    }
+                }
+                if (candidates.size() == available.length) {
+                    return accessibleMethodDesc;
+                } else if (candidates.size() == 1) {
+                    return candidates.get(0);
+                } else if (candidates.size() > 1) {
+                    return new OverloadedMethod(candidates.toArray(new SingleMethod[candidates.size()]));
+                }
             }
             return null;
         }
@@ -443,7 +494,9 @@ final class HostClassDesc {
                 }
                 for (SingleMethod m : method.getOverloads()) {
                     assert m.isMethod();
-                    methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                    if (!m.isOnlyVisibleFromJniName()) {
+                        methodMap.put(HostInteropReflect.toNameAndSignature((Method) m.getReflectionMethod()), m);
+                    }
                 }
             }
             return methodMap;

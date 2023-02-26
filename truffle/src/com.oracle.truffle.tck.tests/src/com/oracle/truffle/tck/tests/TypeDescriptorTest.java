@@ -1033,7 +1033,7 @@ public class TypeDescriptorTest {
             Assert.assertTrue(TypeDescriptor.NULL.isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(ProxyObject.fromMap(Collections.singletonMap("key", "value")));
             Assert.assertTrue(TypeDescriptor.OBJECT.isAssignable(TypeDescriptor.forValue(v)));
-            v = ctx.asValue(new Function<Object, Object>() {
+            v = ctx.asValue(new Function<>() {
                 @Override
                 public Object apply(Object t) {
                     return null;

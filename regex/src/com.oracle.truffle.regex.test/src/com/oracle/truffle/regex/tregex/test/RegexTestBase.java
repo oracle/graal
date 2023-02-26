@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,15 +42,13 @@ package com.oracle.truffle.regex.tregex.test;
 
 import static org.junit.Assert.assertEquals;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -61,7 +59,7 @@ public abstract class RegexTestBase {
 
     @BeforeClass
     public static void setUp() {
-        context = Context.newBuilder().build();
+        context = Context.newBuilder().allowAllAccess(true).build();
         context.enter();
     }
 
@@ -76,60 +74,74 @@ public abstract class RegexTestBase {
 
     abstract String getEngineOptions();
 
+    abstract Encodings.Encoding getTRegexEncoding();
+
     Value compileRegex(String pattern, String flags) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+        return compileRegex(pattern, flags, "");
     }
 
-    Value compileRegex(Object pattern, Object flags, Encodings.Encoding encoding) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true,Encoding=" + encoding.getName() + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+    Value compileRegex(String pattern, String flags, Encodings.Encoding encoding) {
+        return compileRegex(pattern, flags, "Encoding=" + encoding.getName());
     }
 
-    Value execRegex(Value compiledRegex, Object input, int fromIndex) {
-        return compiledRegex.invokeMember("exec", input, fromIndex);
-    }
-
-    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        Value compiledRegex = compileRegex(pattern, flags);
-        Value result = execRegex(compiledRegex, input, fromIndex);
-        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
-    }
-
-    void testBytes(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        Value compiledRegex = compileRegex(pattern, flags, encoding);
-
-        byte[] bytes = input.getBytes(encodingToCharSet(encoding));
-        Object[] objects = new Object[bytes.length];
-        for (int i = 0; i < bytes.length; i++) {
-            objects[i] = Byte.toUnsignedInt(bytes[i]);
+    Value compileRegex(String pattern, String flags, String options) {
+        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
+        if (getTRegexEncoding() != Encodings.UTF_16_RAW) {
+            combinedOptions.append(",Encoding=" + getTRegexEncoding().getName());
         }
-        ProxyArray proxy = ProxyArray.fromArray(objects);
-
-        Value result = execRegex(compiledRegex, proxy, fromIndex);
-        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
+        if (!getEngineOptions().isEmpty()) {
+            combinedOptions.append("," + getEngineOptions());
+        }
+        if (!options.isEmpty()) {
+            combinedOptions.append("," + options);
+        }
+        return context.eval("regexDummyLang", combinedOptions.toString() + '/' + pattern + '/' + flags);
     }
 
-    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
-        assert captureGroupBounds.length % 2 == 0;
+    Value execRegex(Value compiledRegex, String input, int fromIndex) {
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding());
+        return compiledRegex.invokeMember("exec", tsInput, fromIndex);
+    }
+
+    Value execRegex(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding());
+        return compiledRegex.invokeMember("exec", tsInput, fromIndex);
+    }
+
+    void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void test(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, options);
+        Value result = execRegex(compiledRegex, input, fromIndex);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void test(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, encoding);
+        Value result = execRegex(compiledRegex, encoding, input, fromIndex);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
-            assertEquals(captureGroupBounds.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                if (captureGroupBounds[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBounds[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
-                    fail(result, captureGroupBounds);
+            assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
+            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
+                if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+                    fail(result, captureGroupBoundsAndLastGroup);
                 }
             }
         }
+        int lastGroup = captureGroupBoundsAndLastGroup.length % 2 == 1 ? captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1] : -1;
+        if (lastGroup != result.getMember("lastGroup").asInt()) {
+            fail(result, captureGroupBoundsAndLastGroup);
+        }
     }
 
-    private static Charset encodingToCharSet(Encodings.Encoding encoding) {
-        switch (encoding.getName()) {
-            case "UTF-8":
-                return StandardCharsets.UTF_8;
-            case "LATIN-1":
-                return StandardCharsets.ISO_8859_1;
-            default:
-                throw new UnsupportedOperationException("unexpected encoding");
-        }
+    void testUnsupported(String pattern, String flags) {
+        Assert.assertTrue(compileRegex(pattern, flags).isNull());
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {
@@ -142,15 +154,19 @@ public abstract class RegexTestBase {
         Assert.fail();
     }
 
-    private static void fail(Value result, int... captureGroupBounds) {
-        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBounds)).append(", actual: [");
-        for (int i = 0; i < captureGroupBounds.length / 2; i++) {
+    private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {
+        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
+        for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
             sb.append(result.invokeMember("getStart", i).asInt());
             sb.append(", ");
             sb.append(result.invokeMember("getEnd", i).asInt());
+        }
+        if (captureGroupBoundsAndLastGroup.length % 2 == 1) {
+            sb.append(", ");
+            sb.append(result.getMember("lastGroup").asInt());
         }
         Assert.fail(sb.append("]").toString());
     }

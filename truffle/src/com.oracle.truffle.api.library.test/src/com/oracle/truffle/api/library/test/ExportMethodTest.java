@@ -420,7 +420,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("Class declares @ExportMessage annotations but does not export any libraries. Exported messages cannot be resoved without exported library. Add @ExportLibrary(MyLibrary.class) to the class ot resolve this.")
+    @ExpectError("Class declares @ExportMessage annotations but does not export any libraries. Exported messages cannot be resolved without exported library. Add @ExportLibrary(MyLibrary.class) to the class to fix this.")
     static class ExportsTestObjectError7 {
 
         @ExportMessage
@@ -561,7 +561,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("Class declares @ExportMessage annotations but does not export any libraries. Exported messages cannot be resoved without exported library. Add @ExportLibrary(MyLibrary.class) to the class ot resolve this.")
+    @ExpectError("Class declares @ExportMessage annotations but does not export any libraries. Exported messages cannot be resolved without exported library. Add @ExportLibrary(MyLibrary.class) to the class to fix this.")
     static class ExportsTestObjectError15 {
         @ExportMessage
         public int intArg(int arg) {

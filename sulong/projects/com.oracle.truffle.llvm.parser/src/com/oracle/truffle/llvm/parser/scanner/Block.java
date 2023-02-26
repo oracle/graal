@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ public enum Block {
     USELIST(18, SKIP),
     MODULE_STRTAB(19, SKIP),
     FUNCTION_SUMMARY(20, SKIP),
-    OPERAND_BUNDLE_TAGS(21, SKIP),
+    OPERAND_BUNDLE_TAGS(21),
     METADATA_KIND(22),
     STRTAB(23),
     FULL_LTO_GLOBALVAR_SUMMARY(24, SKIP),

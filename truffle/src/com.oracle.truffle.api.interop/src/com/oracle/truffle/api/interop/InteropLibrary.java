@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,6 +85,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 
 /**
@@ -142,6 +143,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
+ * <li>{@link #hasMetaParents(Object) metaobject parents as array elements}
  * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
  * <li>{@link #hasSourceLocation(Object) source location}
  * <li>{@link #hasIdentity(Object) identity}
@@ -186,6 +188,7 @@ import com.oracle.truffle.api.utilities.TriState;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
+@DefaultExport(DefaultTStringExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -364,7 +367,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asString(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = "asString")
+    @Abstract(ifExported = {"asString", "asTruffleString"})
     public boolean isString(Object receiver) {
         return false;
     }
@@ -381,6 +384,19 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the {@link TruffleString} value if the receiver represents a {@link #isString(Object)
+     * string} like value.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isString(Object)
+     * @since 21.3
+     */
+    public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
     }
 
     // Number Messages
@@ -615,6 +631,13 @@ public abstract class InteropLibrary extends Library {
      * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
      * scope} variables, etc.
      * <p>
+     * The order of member names needs to be:
+     * <ul>
+     * <li>deterministic, assuming the program execution is deterministic,</li>
+     * <li>in the declaration order, when applicable,</li>
+     * <li>multiple invocations of this method must return the same members in the same order as
+     * long as no side-effecting operations were performed.</li>
+     * </ul>
      * If the includeInternal argument is <code>true</code> then internal member names are returned
      * as well. Internal members are implementation specific and should not be exposed to guest
      * language application. An example of internal members are internal slots in ECMAScript.
@@ -1780,7 +1803,7 @@ public abstract class InteropLibrary extends Library {
      * @see #isDate(Object)
      * @since 20.0.0 beta 2
      */
-    @Abstract(ifExported = {"isTime", "asInstant"})
+    @Abstract(ifExported = {"isDate", "asInstant"})
     public LocalDate asDate(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -1859,8 +1882,7 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"throwException"})
     public boolean isException(Object receiver) {
         // A workaround for missing inheritance feature for default exports.
-        return InteropAccessor.EXCEPTION.isException(receiver) ||
-                        LegacyTruffleExceptionSupport.isException(receiver);
+        return InteropAccessor.EXCEPTION.isException(receiver);
     }
 
     /**
@@ -1886,8 +1908,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             throw InteropAccessor.EXCEPTION.throwException(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            throw LegacyTruffleExceptionSupport.throwException(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1910,8 +1930,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return (ExceptionType) InteropAccessor.EXCEPTION.getExceptionType(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionType(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1930,8 +1948,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.isExceptionIncompleteSource(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.isExceptionIncompleteSource(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1955,8 +1971,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionExitStatus(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionExitStatus(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -1976,8 +1990,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionCause(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionCause(receiver);
         } else {
             return false;
         }
@@ -1999,8 +2011,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionCause(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionCause(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2019,8 +2029,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionMessage(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionMessage(receiver);
         } else {
             return false;
         }
@@ -2041,8 +2049,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionMessage(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionMessage(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2061,8 +2067,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasExceptionStackTrace(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasExceptionStackTrace(receiver);
         } else {
             return false;
         }
@@ -2091,8 +2095,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
-        } else if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getExceptionStackTrace(receiver);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2264,9 +2266,6 @@ public abstract class InteropLibrary extends Library {
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
         }
-        if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.hasSourceLocation(receiver);
-        }
         return false;
     }
 
@@ -2289,9 +2288,6 @@ public abstract class InteropLibrary extends Library {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
-        }
-        if (LegacyTruffleExceptionSupport.isException(receiver)) {
-            return LegacyTruffleExceptionSupport.getSourceLocation(receiver);
         }
         throw UnsupportedMessageException.create();
     }
@@ -2512,6 +2508,40 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isMetaObject"})
     public boolean isMetaInstance(Object receiver, Object instance) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value {@link #isMetaObject(Object) is a metaobject}
+     * which has parents (super types).
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaParents(Object)} must be implemented.
+     *
+     * @param receiver a metaobject
+     * @see #getMetaParents(Object)
+     * @since 22.2
+     */
+    @Abstract(ifExported = {"getMetaParents"})
+    public boolean hasMetaParents(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns an array like {@link #hasArrayElements(Object)} of metaobjects that are direct
+     * parents (super types) of this metaobject.
+     * <p>
+     * The returned object is an {@link #hasArrayElements(Object) array} of objects that return
+     * <code>true</code> from {@link #isMetaObject(Object)}.
+     *
+     * @param receiver a metaobject
+     * @throws UnsupportedMessageException if and only if {@link #hasMetaParents(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #hasMetaParents(Object)
+     * @since 22.2
+     */
+    @Abstract(ifExported = {"hasMetaParents"})
+    public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2867,7 +2897,8 @@ public abstract class InteropLibrary extends Library {
                         || receiver instanceof Long //
                         || receiver instanceof Float //
                         || receiver instanceof Double //
-                        || receiver instanceof String;
+                        || receiver instanceof String //
+                        || receiver instanceof TruffleString;
     }
 
     /**
@@ -3071,6 +3102,24 @@ public abstract class InteropLibrary extends Library {
                 String result = delegate.asString(receiver);
                 assert wasString : violationInvariant(receiver);
                 assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasString : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.asTruffleString(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasString = delegate.isString(receiver);
+            try {
+                TruffleString result = delegate.asTruffleString(receiver);
+                assert wasString : violationInvariant(receiver);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3428,7 +3477,7 @@ public abstract class InteropLibrary extends Library {
                 assert validInteropReturn(receiver, result);
                 assert validProtocolArgument(receiver, internal);
                 assert isMultiThreaded(receiver) || assertMemberKeys(receiver, result, internal);
-                assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, delegate.getMembers(delegate.getScopeParent(receiver), internal));
+                assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, getUncached().getMembers(delegate.getScopeParent(receiver), internal));
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
@@ -4474,7 +4523,7 @@ public abstract class InteropLibrary extends Library {
             }
             assert preCondition(receiver);
             boolean wasException = delegate.isException(receiver);
-            boolean wasTruffleException = false;
+            boolean wasAbstractTruffleException = false;
             boolean unsupported = false;
             try {
                 throw delegate.throwException(receiver);
@@ -4484,12 +4533,12 @@ public abstract class InteropLibrary extends Library {
                 unsupported = true;
                 throw e;
             } catch (Throwable e) {
-                wasTruffleException = LegacyTruffleExceptionSupport.isTruffleException(e);
+                wasAbstractTruffleException = InteropAccessor.EXCEPTION.isException(e);
                 throw e;
             } finally {
                 if (!unsupported) {
                     assert wasException : violationInvariant(receiver);
-                    assert wasTruffleException : violationInvariant(receiver);
+                    assert wasAbstractTruffleException : violationInvariant(receiver);
                 }
             }
         }
@@ -4938,6 +4987,11 @@ public abstract class InteropLibrary extends Library {
                 assert false : violationInvariant(receiver);
             } catch (UnsupportedMessageException e) {
             }
+            try {
+                delegate.getMetaParents(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+            }
             return true;
         }
 
@@ -5016,6 +5070,40 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !wasMetaObject : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasMetaParents(Object receiver) {
+            assert preCondition(receiver);
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean result = delegate.hasMetaParents(receiver);
+            if (result) {
+                assert wasMetaObject : violationInvariant(receiver);
+            } else if (!wasMetaObject) {
+                assert assertNoMetaObject(receiver);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getMetaParents(receiver);
+            }
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean hadMetaParents = delegate.hasMetaParents(receiver);
+            try {
+                Object result = delegate.getMetaParents(receiver);
+                assert wasMetaObject : violationInvariant(receiver);
+                assert hadMetaParents : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hadMetaParents : violationInvariant(receiver);
                 throw e;
             }
         }
@@ -5178,13 +5266,16 @@ class InteropLibrarySnippets {
         }
     }
 
+    @SuppressWarnings("serial")
+    private abstract static class AbstractTruffleException extends RuntimeException {
+    }
+
     // BEGIN: InteropLibrarySnippets.TryCatchNode
     static final class TryCatchNode extends StatementNode {
 
         @Node.Child private BlockNode block;
         @Node.Child private BlockNode catchBlock;
         @Node.Child private BlockNode finallyBlock;
-        @Node.Child private InteropLibrary exceptions;
         private final BranchProfile exceptionProfile;
 
         TryCatchNode(BlockNode block, BlockNode catchBlock,
@@ -5192,17 +5283,31 @@ class InteropLibrarySnippets {
             this.block = block;
             this.catchBlock = catchBlock;
             this.finallyBlock = finallyBlock;
-            this.exceptions = InteropLibrary.getFactory().createDispatched(5);
             this.exceptionProfile = BranchProfile.create();
         }
 
         @Override
         void executeVoid(VirtualFrame frame) {
-            Throwable exception = null;
+            RuntimeException rethrowException = null;
             try {
                 block.executeVoid(frame);
-            } catch (Throwable ex) {
-                exception = executeCatchBlock(frame, ex, catchBlock);
+            } catch (AbstractTruffleException ex) {
+                exceptionProfile.enter();
+                try {
+                    if (catchBlock != null) {
+                        catchBlock.executeVoid(frame);
+                        // do not rethrow if handled
+                        rethrowException = null;
+                    } else {
+                        // rethrow if not handled
+                        rethrowException = ex;
+                    }
+                } catch (AbstractTruffleException e) {
+                    rethrowException = e;
+                }
+            } catch (ControlFlowException cfe) {
+                // run finally blocks for control flow
+                rethrowException = cfe;
             }
             // Java finally blocks that execute nodes are not allowed for
             // compilation as code in finally blocks is duplicated
@@ -5211,43 +5316,8 @@ class InteropLibrarySnippets {
             if (finallyBlock != null) {
                 finallyBlock.executeVoid(frame);
             }
-            if (exception != null) {
-                if (exception instanceof ControlFlowException) {
-                    throw (ControlFlowException) exception;
-                }
-                try {
-                    throw exceptions.throwException(exception);
-                } catch (UnsupportedMessageException ie) {
-                    throw CompilerDirectives.shouldNotReachHere(ie);
-                }
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T extends Throwable> Throwable executeCatchBlock(
-                        VirtualFrame frame,
-                        Throwable ex,
-                        BlockNode catchBlk) throws T {
-            if (ex instanceof ControlFlowException) {
-                // run finally blocks for control flow
-                return ex;
-            }
-            exceptionProfile.enter();
-            if (exceptions.isException(ex)) {
-                if (catchBlk != null) {
-                    try {
-                        catchBlk.executeVoid(frame);
-                        return null;
-                    } catch (Throwable catchEx) {
-                        return executeCatchBlock(frame, catchEx, null);
-                    }
-                } else {
-                    // run finally blocks for any interop exception
-                    return ex;
-                }
-            } else {
-                // do not run finally blocks for internal errors or unwinds
-                throw (T) ex;
+            if (rethrowException != null) {
+                throw rethrowException;
             }
         }
     }

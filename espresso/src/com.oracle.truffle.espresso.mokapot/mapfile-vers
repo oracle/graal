@@ -215,6 +215,7 @@ SUNWprivate_1.1 {
                 JVM_LatestUserDefinedLoader;
                 JVM_Listen;
                 JVM_LoadClass0;
+                JVM_LoadZipLibrary;
                 JVM_LoadLibrary;
                 JVM_Lseek;
                 JVM_MaxObjectInspectionAge;
@@ -324,6 +325,24 @@ SUNWprivate_1.1 {
                 # JDK 17
                 JVM_DumpClassListToFile;
                 JVM_DumpDynamicArchive;
+
+                # JDK 19
+                JVM_CurrentCarrierThread;
+                JVM_SetCurrentThread;
+                JVM_GetStackTrace;
+                JVM_ExtentLocalCache;
+                JVM_SetExtentLocalCache;
+                JVM_GetNextThreadIdOffset;
+                JVM_RegisterContinuationMethods;
+                JVM_IsPreviewEnabled;
+                JVM_IsContinuationsSupported;
+                JVM_SetStackWalkContinuation;
+                JVM_ReportFinalizationComplete;
+                JVM_IsFinalizationEnabled;
+                JVM_VirtualThreadMountBegin;
+                JVM_VirtualThreadMountEnd;
+                JVM_VirtualThreadUnmountBegin;
+                JVM_VirtualThreadUnmountEnd;
 
                 # miscellaneous functions
                 jio_fprintf;

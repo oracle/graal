@@ -32,6 +32,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -42,7 +44,7 @@ public class NoSuchFileTest {
         nonExisting.delete();
         Assume.assumeFalse("File is missing", nonExisting.exists());
 
-        try (Context c = Context.newBuilder().allowIO(true).allowExperimentalOptions(true).option("agentscript", nonExisting.getAbsolutePath()).build()) {
+        try (Context c = Context.newBuilder().allowIO(IOAccess.ALL).allowExperimentalOptions(true).option("agentscript", nonExisting.getAbsolutePath()).build()) {
             Object initializeTheAgent = InsightObjectFactory.readInsight(c, null);
             assertNotNull(initializeTheAgent);
             fail("Error: Expecting exception");

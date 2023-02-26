@@ -68,7 +68,7 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
 
     private static boolean onlyIntrinsics(Replacements replacements, InlineInfo info) {
         for (int i = 0; i < info.numberOfMethods(); i++) {
-            if (!replacements.hasSubstitution(info.methodAt(i))) {
+            if (!replacements.hasSubstitution(info.methodAt(i), info.graph().getOptions())) {
                 return false;
             }
         }
@@ -90,9 +90,11 @@ public abstract class AbstractInliningPolicy implements InliningPolicy {
         for (int i = 0; i < info.numberOfMethods(); i++) {
             ResolvedJavaMethod m = info.methodAt(i);
             ProfilingInfo profile = info.graph().getProfilingInfo(m);
-            int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
-            if (compiledGraphSize > 0) {
-                size += compiledGraphSize;
+            if (profile != null) {
+                int compiledGraphSize = profile.getCompilerIRSize(StructuredGraph.class);
+                if (compiledGraphSize > 0) {
+                    size += compiledGraphSize;
+                }
             }
         }
         return size;

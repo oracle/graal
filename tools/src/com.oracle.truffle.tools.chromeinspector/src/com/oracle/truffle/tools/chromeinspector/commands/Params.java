@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package com.oracle.truffle.tools.chromeinspector.commands;
 
 import java.util.Optional;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -59,12 +61,17 @@ public final class Params {
         JSONArray args = new JSONArray();
         if (text != null) {
             JSONObject outObject = new JSONObject();
-            if (text instanceof String) {
+            Object value = text;
+            if (InteropLibrary.getUncached().isString(text)) {
                 outObject.put("type", "string");
+                try {
+                    value = InteropLibrary.getUncached().asString(text);
+                } catch (UnsupportedMessageException e) {
+                }
             } else if (text instanceof Number) {
                 outObject.put("type", "number");
             }
-            outObject.put("value", text);
+            outObject.put("value", value);
             args.put(outObject);
         }
         params.put("args", args);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,10 @@ import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -39,6 +41,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -107,6 +110,29 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         }
     }
 
+    @Override
+    public void exec(Path executable, String[] args, Map<String, String> env) {
+        if (!Files.isExecutable(executable)) {
+            throw new RuntimeException("Path " + executable + " does not point to executable file");
+        }
+
+        String[] envArray = new String[env.size()];
+        int i = 0;
+        for (Entry<String, String> e : env.entrySet()) {
+            envArray[i++] = e.getKey() + "=" + e.getValue();
+        }
+
+        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
+                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args);
+                        CTypeConversion.CCharPointerPointerHolder envpHolder = CTypeConversion.toCStrings(envArray)) {
+            if (Unistd.execve(pathHolder.get(), argvHolder.get(), envpHolder.get()) != 0) {
+                String envString = env.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(" "));
+                String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " and environment " + envString + " failed");
+                throw new RuntimeException(msg);
+            }
+        }
+    }
+
     static String getObjectPathDefiningSymbol(String symbol) {
         try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
             PointerBase symbolAddress = Dlfcn.dlsym(Dlfcn.RTLD_DEFAULT(), symbolHolder.get());
@@ -118,7 +144,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
     }
 
     static String getObjectPathDefiningAddress(PointerBase symbolAddress) {
-        Dlfcn.Dl_info info = StackValue.get(Dlfcn.Dl_info.class);
+        Dlfcn.Dl_info info = UnsafeStackValue.get(Dlfcn.Dl_info.class);
         if (Dlfcn.dladdr(symbolAddress, info) == 0) {
             return null;
         }

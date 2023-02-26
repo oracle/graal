@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.Invoke;
@@ -37,11 +38,15 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,48 +56,56 @@ final class GraphManager {
     private final PartialEvaluator partialEvaluator;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining;
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
-    private final PartialEvaluator.Request rootRequest;
+    private final TruffleTierContext rootContext;
+    private final PostPartialEvaluationSuite postPartialEvaluationSuite;
+    private final boolean useSize;
 
-    GraphManager(PartialEvaluator partialEvaluator, PartialEvaluator.Request rootRequest) {
+    GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
         this.partialEvaluator = partialEvaluator;
-        this.rootRequest = rootRequest;
+        this.postPartialEvaluationSuite = postPartialEvaluationSuite;
+        this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
+        this.useSize = rootContext.options.get(PolyglotCompilerOptions.InliningUseSize);
     }
 
     Entry pe(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-            final PartialEvaluator.Request request = newRequest(truffleAST, false);
-            request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
-            partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            partialEvaluator.truffleTier(request);
-            entry = new Entry(request.graph, plugin);
+            final TruffleTierContext context = newContext(truffleAST, false);
+            partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
+            context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
+            StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
+            postPartialEvaluationSuite.apply(context.graph, context);
+            entry = new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
             irCache.put(truffleAST, entry);
         }
         return entry;
     }
 
-    private PartialEvaluator.Request newRequest(CompilableTruffleAST truffleAST, boolean finalize) {
-        return partialEvaluator.new Request(
-                        rootRequest.options,
-                        rootRequest.debug,
+    private TruffleTierContext newContext(CompilableTruffleAST truffleAST, boolean finalize) {
+        return new TruffleTierContext(
+                        partialEvaluator,
+                        rootContext.options,
+                        rootContext.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootRequest.compilationId,
-                        rootRequest.log,
-                        rootRequest.task);
+                        rootContext.compilationId,
+                        rootContext.log,
+                        rootContext.task,
+                        rootContext.handler);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(rootRequest.task.inliningData(), partialEvaluator);
+        return new PEAgnosticInlineInvokePlugin(rootContext.task.inliningData(), partialEvaluator);
     }
 
     Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
-        partialEvaluator.truffleTier(rootRequest);
-        return new Entry(rootRequest.graph, plugin);
+        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
+        StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
+        postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
+        return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -101,23 +114,34 @@ final class GraphManager {
     }
 
     void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {
-        final PartialEvaluator.Request request = newRequest(truffleAST, true);
-        partialEvaluator.doGraphPE(request, new InlineInvokePlugin() {
+        final TruffleTierContext context = newContext(truffleAST, true);
+        partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
                 return PartialEvaluator.asInlineInfo(method);
             }
         }, graphCacheForInlining);
-        InliningUtil.inline(invoke, request.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
+        InliningUtil.inline(invoke, context.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());
     }
 
-    static class Entry {
+    private static StructuredGraph copyGraphForDebugDump(TruffleTierContext context) {
+        if (context.debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
+            return (StructuredGraph) context.graph.copy(context.debug);
+        }
+        return null;
+    }
+
+    static final class Entry {
         final StructuredGraph graph;
         final EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode;
         final List<Invoke> indirectInvokes;
         final boolean trivial;
+        // Populated only when debug dump is enabled with debug dump level >= info.
+        final StructuredGraph graphAfterPEForDebugDump;
+        // Only populated if PolyglotCompilerOptions.InliningUseSize is true
+        final int graphSize;
 
-        Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin) {
+        Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {
             this.graph = graph;
             this.invokeToTruffleCallNode = plugin.getInvokeToTruffleCallNode();
             this.indirectInvokes = plugin.getIndirectInvokes();
@@ -125,6 +149,8 @@ final class GraphManager {
                             indirectInvokes.isEmpty() &&
                             graph.getNodes(LoopBeginNode.TYPE).count() == 0 &&
                             graph.getNodeCount() < TRIVIAL_NODE_COUNT_LIMIT;
+            this.graphAfterPEForDebugDump = graphAfterPEForDebugDump;
+            this.graphSize = graphSize;
         }
     }
 

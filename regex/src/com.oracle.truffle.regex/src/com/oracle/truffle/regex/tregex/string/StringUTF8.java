@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringUTF8 implements AbstractString {
 
@@ -76,6 +77,16 @@ public final class StringUTF8 implements AbstractString {
     @Override
     public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
         return ArrayUtils.regionEqualsWithOrMask(str, offset, ((StringUTF8) other).str, ooffset, encodedLength, null);
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromByteArrayUncached(str, 0, str.length, TruffleString.Encoding.UTF_8, false);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.UTF_8);
     }
 
     @Override

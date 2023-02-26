@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     CoreAllocator(LayoutImpl layout) {
         super(layout);
-        advance(layout.getPrimitiveArrayLocation());
     }
 
     CoreAllocator(ShapeImpl shape) {
@@ -117,7 +116,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     @SuppressWarnings("unused")
     private Location newObjectArrayLocation(boolean useFinal, boolean nonNull) {
-        return advance(new ObjectArrayLocation(objectArraySize, getLayout().getObjectArrayLocation()));
+        return advance(new ObjectArrayLocation(objectArraySize));
     }
 
     @Override
@@ -130,8 +129,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.IntegerLocations) {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new IntLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
-            } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
-                return advance(new IntLocationDecorator(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation())));
+            } else if (getLayout().hasPrimitiveExtensionArray()) {
+                return advance(new IntLocationDecorator(new LongArrayLocation(primitiveArraySize)));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -146,8 +145,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.DoubleLocations) {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new DoubleLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToDouble));
-            } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
-                return advance(new DoubleLocationDecorator(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation()), allowedIntToDouble));
+            } else if (getLayout().hasPrimitiveExtensionArray()) {
+                return advance(new DoubleLocationDecorator(new LongArrayLocation(primitiveArraySize), allowedIntToDouble));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -162,8 +161,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.LongLocations) {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance((Location) CoreLocations.createLongLocation(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToLong));
-            } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
-                return advance(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation(), allowedIntToLong));
+            } else if (getLayout().hasPrimitiveExtensionArray()) {
+                return advance(new LongArrayLocation(primitiveArraySize, allowedIntToLong));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -177,10 +176,6 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             }
         }
         return newObjectLocation(useFinal, true);
-    }
-
-    private boolean isPrimitiveExtensionArrayAvailable() {
-        return hasPrimitiveArray;
     }
 
     @Override
@@ -227,9 +222,9 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
-        assert !oldLocation.canSet(value);
+        assert !oldLocation.canStore(value);
 
-        if (oldLocation instanceof ConstantLocation && (Flags.isConstant(putFlags) || getLayout().isLegacyLayout())) {
+        if (oldLocation instanceof ConstantLocation && Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (oldLocation instanceof ValueLocation) {
             return locationForValue(value, false, value != null);

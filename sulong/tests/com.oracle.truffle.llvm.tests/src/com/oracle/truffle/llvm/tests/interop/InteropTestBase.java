@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,11 +36,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
@@ -49,9 +44,17 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 
 public class InteropTestBase {
 
@@ -71,10 +74,51 @@ public class InteropTestBase {
     }
 
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
-    public static final String TEST_FILE_NAME = "toolchain-plain.so";
+    public static final String TEST_FILE_NAME = "toolchain-plain";
+
+    protected static String getLibrary(String library) {
+        runWithPolyglot.getPolyglotContext().initialize("llvm");
+        return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
+    }
+
+    public static OS getOS(Context context) {
+        context.initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        return platform.getOS();
+    }
+
+    public static OS getOS() {
+        return getOS(runWithPolyglot.getPolyglotContext());
+    }
+
+    static String getLibrarySuffixName(Context context, String fileName) {
+        context.initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        // TODO: GR-41902 remove this platform dependent code
+        if (platform.getOS() == OS.Darwin) {
+            return fileName + ".so";
+        }
+        return fileName + "." + platform.getLibrarySuffix();
+    }
+
+    public static String getTestLibraryName(Context context) {
+        return getLibrarySuffixName(context, TEST_FILE_NAME);
+    }
+
+    public static String getTestLibraryName() {
+        return getTestLibraryName(runWithPolyglot.getPolyglotContext());
+    }
+
+    public static File getTestBitcodeFile(Context context, String name) {
+        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, getTestLibraryName(context)).toFile();
+    }
+
+    protected static File getTestBitcodeFile(String name) {
+        return getTestBitcodeFile(runWithPolyglot.getPolyglotContext(), name);
+    }
 
     protected static Object loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = getTestBitcodeFile(name);
         CallTarget target = getTestBitcodeCallTarget(file);
         return target.call();
     }
@@ -90,7 +134,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = getTestBitcodeFile(name);
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

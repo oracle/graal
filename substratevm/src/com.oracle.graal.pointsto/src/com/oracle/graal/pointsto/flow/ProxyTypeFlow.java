@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -44,10 +42,6 @@ import jdk.vm.ci.code.BytecodePosition;
 public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected TypeFlow<?> input;
-
-    public ProxyTypeFlow(Node source, TypeFlow<?> input) {
-        this(source.getNodeSourcePosition(), input);
-    }
 
     public ProxyTypeFlow(BytecodePosition source, TypeFlow<?> input) {
         super(source, null);

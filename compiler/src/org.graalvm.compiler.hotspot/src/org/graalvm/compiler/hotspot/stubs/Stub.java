@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,12 @@ import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMO
 import static org.graalvm.util.CollectionsUtil.allMatch;
 
 import java.util.ListIterator;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.target.Backend;
@@ -50,10 +52,14 @@ import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.profiling.MoveProfilingPhase;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
@@ -113,7 +119,7 @@ public abstract class Stub {
 
     /**
      * Gets the registers destroyed by this stub from a caller's perspective. These are the
-     * temporaries of this stub and must thus be caller saved by a callers of this stub.
+     * temporaries of this stub and must thus be caller saved by a caller of this stub.
      */
     public EconomicSet<Register> getDestroyedCallerRegisters() {
         assert destroyedCallerRegisters != null : "not yet initialized";
@@ -192,8 +198,11 @@ public abstract class Stub {
         if (code == null) {
             try (DebugContext debug = openDebugContext(DebugContext.forCurrentThread())) {
                 try (DebugContext.Scope d = debug.scope("CompilingStub", providers.getCodeCache(), debugScopeContext())) {
+                    CompilationIdentifier compilationId = getStubCompilationId();
+                    final StructuredGraph graph = getGraph(debug, compilationId);
+                    CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, linkage.getDescriptor().getSignature(), -1);
                     CodeCacheProvider codeCache = providers.getCodeCache();
-                    CompilationResult compResult = buildCompilationResult(debug, backend);
+                    CompilationResult compResult = buildCompilationResult(debug, backend, graph, compilationId);
                     try (DebugContext.Scope s = debug.scope("CodeInstall", compResult);
                                     DebugContext.Activation a = debug.activate()) {
                         assert destroyedCallerRegisters != null;
@@ -202,6 +211,7 @@ public abstract class Stub {
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }
+                    printer.finish(compResult);
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -213,9 +223,7 @@ public abstract class Stub {
     }
 
     @SuppressWarnings("try")
-    private CompilationResult buildCompilationResult(DebugContext debug, final Backend backend) {
-        CompilationIdentifier compilationId = getStubCompilationId();
-        final StructuredGraph graph = getGraph(debug, compilationId);
+    private CompilationResult buildCompilationResult(DebugContext debug, final Backend backend, StructuredGraph graph, CompilationIdentifier compilationId) {
         CompilationResult compResult = new CompilationResult(compilationId, toString());
 
         // Stubs cannot be recompiled so they cannot be compiled with assumptions
@@ -237,18 +245,6 @@ public abstract class Stub {
             throw debug.handle(e);
         }
         return compResult;
-    }
-
-    /**
-     * Gets a {@link CompilationResult} that can be used for code generation. Required for AOT.
-     */
-    @SuppressWarnings("try")
-    public CompilationResult getCompilationResult(DebugContext debug, final Backend backend) {
-        try (DebugContext.Scope d = debug.scope("CompilingStub", providers.getCodeCache(), debugScopeContext())) {
-            return buildCompilationResult(debug, backend);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
     }
 
     public CompilationIdentifier getStubCompilationId() {
@@ -294,9 +290,33 @@ public abstract class Stub {
         assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
     }
 
+    private static class EmptyHighTier extends BasePhase<HighTierContext> {
+        @Override
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+            return ALWAYS_APPLICABLE;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph, HighTierContext context) {
+        }
+
+        @Override
+        public void updateGraphState(GraphState graphState) {
+            super.updateGraphState(graphState);
+            if (graphState.isBeforeStage(StageFlag.HIGH_TIER_LOWERING)) {
+                graphState.setAfterStage(StageFlag.HIGH_TIER_LOWERING);
+            }
+        }
+
+    }
+
     protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites(options);
-        return new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
+        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+
+        PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
+        emptyHighTier.appendPhase(new EmptyHighTier());
+
+        return new Suites(emptyHighTier, defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }
 
     protected LIRSuites createLIRSuites() {

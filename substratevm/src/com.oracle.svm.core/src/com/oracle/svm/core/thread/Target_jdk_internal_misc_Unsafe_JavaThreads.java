@@ -24,12 +24,18 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.concurrent.locks.LockSupport;
+
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.ThreadParkEvent;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
+@TargetClass(className = "jdk.internal.misc.Unsafe")
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 
@@ -42,15 +48,24 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      * strange to place it elsewhere.
      */
     @Substitute
-    private void park(boolean isAbsolute, long time) {
+    void park(boolean isAbsolute, long time) {
+        long startTicks = JfrTicks.elapsedTicks();
+        Thread t = Thread.currentThread();
+        Object parkBlocker = LockSupport.getBlocker(t);
+
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
-            JavaThreads.park();
+            PlatformThreads.parkCurrentPlatformOrCarrierThread();
+            ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, Long.MIN_VALUE);
         } else {
             /* Park with deadline. */
-            final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            JavaThreads.park(delayNanos);
+            PlatformThreads.parkCurrentPlatformOrCarrierThread(isAbsolute, time);
+            if (isAbsolute) {
+                ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, time);
+            } else {
+                ThreadParkEvent.emit(startTicks, parkBlocker, time, Long.MIN_VALUE);
+            }
         }
         /*
          * Unsafe.park does not distinguish between timing out, being unparked, and being
@@ -69,13 +84,15 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      * @param threadObj the thread to unpark.
      */
     @Substitute
-    private void unpark(Object threadObj) {
-        if (threadObj == null) {
-            throw new NullPointerException("Unsafe.unpark(thread == null)");
-        } else if (!(threadObj instanceof Thread)) {
-            throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
+    void unpark(Object threadObj) {
+        if (threadObj != null) {
+            if (!(threadObj instanceof Thread)) {
+                throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
+            }
+            Thread thread = (Thread) threadObj;
+            if (!VirtualThreads.isSupported() || !VirtualThreads.singleton().isVirtual(thread)) {
+                PlatformThreads.unpark(thread);
+            }
         }
-        Thread thread = (Thread) threadObj;
-        JavaThreads.unpark(thread);
     }
 }

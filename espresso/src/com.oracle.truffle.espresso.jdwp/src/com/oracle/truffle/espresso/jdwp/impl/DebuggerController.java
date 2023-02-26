@@ -149,7 +149,7 @@ public final class DebuggerController implements ContextsListener {
 
     /**
      * Installs a line breakpoint within a given method.
-     * 
+     *
      * @param command the command that represents the breakpoint
      */
     public void submitLineBreakpoint(DebuggerCommand command) {
@@ -411,7 +411,7 @@ public final class DebuggerController implements ContextsListener {
     /**
      * Immediately suspend the current guest thread at its current location. Typically, this method
      * is used in response to class prepare events.
-     * 
+     *
      * @param eventThread the guest thread which must correspond to the current host thread
      * @param suspendPolicy the policy for which threads to suspend
      * @param callBack a callback that is to be run when threads have been marked as suspended
@@ -634,7 +634,7 @@ public final class DebuggerController implements ContextsListener {
         }
 
         checkThreadJobsAndRun(thread);
-
+        getGCPrevention().releaseActiveWhileSuspended(thread);
         JDWP.LOGGER.fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
@@ -685,7 +685,7 @@ public final class DebuggerController implements ContextsListener {
 
     public CallFrame[] captureCallFramesBeforeBlocking(Object guestThread) {
         List<CallFrame> callFrames = new ArrayList<>();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
                 KlassRef klass;
@@ -836,7 +836,7 @@ public final class DebuggerController implements ContextsListener {
                     // check if breakpoint request limited to a specific thread
                     Object thread = info.getThread();
                     if (thread == null || thread == currentThread) {
-                        jobs.add(new Callable<Void>() {
+                        jobs.add(new Callable<>() {
                             @Override
                             public Void call() {
                                 eventListener.breakpointHit(info, callFrames[0], currentThread);
@@ -883,7 +883,7 @@ public final class DebuggerController implements ContextsListener {
                     if (hit) {
                         JDWP.LOGGER.fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
 
-                        jobs.add(new Callable<Void>() {
+                        jobs.add(new Callable<>() {
                             @Override
                             public Void call() {
                                 eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
@@ -904,7 +904,7 @@ public final class DebuggerController implements ContextsListener {
             if (fieldEvent != null) {
                 FieldBreakpointInfo info = fieldEvent.getInfo();
                 if (info.isAccessBreakpoint()) {
-                    jobs.add(new Callable<Void>() {
+                    jobs.add(new Callable<>() {
                         @Override
                         public Void call() {
                             eventListener.fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
@@ -912,7 +912,7 @@ public final class DebuggerController implements ContextsListener {
                         }
                     });
                 } else if (info.isModificationBreakpoint()) {
-                    jobs.add(new Callable<Void>() {
+                    jobs.add(new Callable<>() {
                         @Override
                         public Void call() {
                             eventListener.fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
@@ -924,7 +924,7 @@ public final class DebuggerController implements ContextsListener {
             // check if suspended for a method breakpoint
             MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
             if (methodEvent != null) {
-                jobs.add(new Callable<Void>() {
+                jobs.add(new Callable<>() {
                     @Override
                     public Void call() {
                         eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);

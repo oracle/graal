@@ -30,21 +30,19 @@ import java.security.cert.X509Certificate;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-// Checkstyle: stop
 import sun.security.ssl.SSLLogger;
-// Checkstyle: resume
 
 /**
  * Root certificates in native image are fixed/embedded into the image, at image build time, based
@@ -55,15 +53,15 @@ import sun.security.ssl.SSLLogger;
  * Users are also allowed to override the embedded root certificate at run time by setting the
  * `javax.net.ssl.trustStore*` system properties. For more details about both buildtime and runtime
  * certificate management, please refer to <a href=
- * "https://www.graalvm.org/reference-manual/native-image/CertificateManagement/">CertificateManagement.md</a>.
+ * "https://www.graalvm.org/dev/reference-manual/native-image/dynamic-features/CertificateManagement/">CertificateManagement.md</a>.
  *
  * <p>
  * For embedding the build time root certificates, the implementation "freezes" the return values of
  * TrustStoreManager managers by invoking them at image build time (using reflection because the
  * class is non-public) and returning the frozen values using a substitution.
  */
-@AutomaticFeature
-final class TrustStoreManagerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class TrustStoreManagerFeature implements InternalFeature {
 
     static final String TRUST_STORE_MANAGER_CLASS_NAME = "sun.security.ssl.TrustStoreManager";
 
@@ -89,13 +87,15 @@ final class TrustStoreManagerFeature implements Feature {
          * Note when a runtime certificate file is specified, we still honor/use the build time
          * lib/security/blacklisted.certs file
          */
-        RuntimeClassInitialization.initializeAtBuildTime(sun.security.util.UntrustedCertificates.class);
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtBuildTime("sun.security.util.UntrustedCertificates", "Required for TrustStoreManager");
         /*
          * All security providers must be registered (and initialized) at buildtime (see
          * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from
          * certificate files while generating X509Certificates.
          */
-        RuntimeClassInitialization.initializeAtBuildTime(org.jcp.xml.dsig.internal.dom.XMLDSigRI.class);
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for TrustStoreManager");
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI$ProviderService", "Required for TrustStoreManager");
     }
 }
 
@@ -131,7 +131,7 @@ final class TrustStoreManagerSupport {
         if (storePropName == null) {
             throw VMError.unsupportedFeature(
                             "System property javax.net.ssl.trustStore must be also set if any of javax.net.ssl.trustStore(Type|Provider|Password) are set." +
-                                            "See https://www.graalvm.org/reference-manual/native-image/CertificateManagement#runtime-options for more details about runtime certificate management.");
+                                            "See https://www.graalvm.org/dev/reference-manual/native-image/dynamic-features/CertificateManagement/#runtime-options for more details about runtime certificate management.");
         }
 
         /* Setting remaining properties to defaults if unset. */
@@ -154,7 +154,7 @@ final class TrustStoreManagerSupport {
          */
         if (descriptor == null) {
             throw VMError.unsupportedFeature("Inaccessible trust store: " + storePropName +
-                            " See https://www.graalvm.org/reference-manual/native-image/CertificateManagement#runtime-options for more details about runtime certificate management.");
+                            "See https://www.graalvm.org/dev/reference-manual/native-image/dynamic-features/CertificateManagement/#runtime-options for more details about runtime certificate management.");
         }
 
         return descriptor;

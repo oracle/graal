@@ -32,12 +32,14 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -228,14 +230,9 @@ public class FrameInfoDecoder {
          * Complement of FrameInfoEncode.encodeCompressedSourceLineNumber.
          */
         private static int decodeSourceLineNumber(int sourceLineNumber) {
-            return Math.abs(sourceLineNumber) - COMPRESSED_SOURCE_LINE_ADDEND;
+            return UninterruptibleUtils.Math.abs(sourceLineNumber) - COMPRESSED_SOURCE_LINE_ADDEND;
         }
 
-    }
-
-    protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
-                    FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator) {
-        return decodeFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, new CodeInfoAccess.FrameInfoState());
     }
 
     protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
@@ -256,7 +253,7 @@ public class FrameInfoDecoder {
     }
 
     /*
-     * See (FrameInfoEncoder.CompressedFrameInfoEncodingMedata) for more information about the
+     * See (FrameInfoEncoder.CompressedFrameInfoEncodingMetadata) for more information about the
      * compressed encoding format.
      */
     private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
@@ -332,6 +329,7 @@ public class FrameInfoDecoder {
         int sourceMethodNameIndex = CompressedFrameDecoderHelper.decodeMethodIndex(encodedSourceMethodNameIndex);
         int encodedSourceLineNumber = readBuffer.getSVInt();
         int sourceLineNumber = CompressedFrameDecoderHelper.decodeSourceLineNumber(encodedSourceLineNumber);
+        int methodId = readBuffer.getSVInt();
 
         queryResult.sourceClassIndex = sourceClassIndex;
         queryResult.sourceMethodNameIndex = sourceMethodNameIndex;
@@ -339,6 +337,7 @@ public class FrameInfoDecoder {
         queryResult.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
         queryResult.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
         queryResult.sourceLineNumber = sourceLineNumber;
+        queryResult.methodId = methodId;
 
         if (CompressedFrameDecoderHelper.hasEncodedUniqueSharedFrameSuccessor(encodedSourceMethodNameIndex)) {
             state.successorIndex = readBuffer.getSVInt();
@@ -417,6 +416,7 @@ public class FrameInfoDecoder {
                 final int sourceClassIndex = readBuffer.getSVInt();
                 final int sourceMethodNameIndex = readBuffer.getSVInt();
                 final int sourceLineNumber = readBuffer.getSVInt();
+                final int sourceMethodId = readBuffer.getUVInt();
 
                 cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
@@ -424,6 +424,7 @@ public class FrameInfoDecoder {
                 cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
                 cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
                 cur.sourceLineNumber = sourceLineNumber;
+                cur.methodId = sourceMethodId;
             }
 
             if (prev == null) {
@@ -461,7 +462,6 @@ public class FrameInfoDecoder {
                     valueInfo.data = valueInfoData;
                 }
             }
-
             valueInfoAllocator.decodeConstant(valueInfo, frameInfoObjectConstants);
         }
         return valueInfos;
@@ -471,8 +471,11 @@ public class FrameInfoDecoder {
         return SubstrateOptions.StackTrace.getValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static int decodeBci(long encodedBci) {
-        return TypeConversion.asS4(encodedBci >> BCI_SHIFT);
+        long value = encodedBci >> BCI_SHIFT;
+        assert value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
+        return (int) value;
     }
 
     protected static boolean decodeDuringCall(long encodedBci) {

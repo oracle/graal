@@ -25,7 +25,13 @@
 package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
@@ -36,9 +42,31 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 @CContext(PosixDirectives.class)
 public class DarwinVirtualMemory {
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int mach_task_self();
+    @CStruct("vm_region_basic_info_data_64_t")
+    public interface vm_region_basic_info_data_64_t extends PointerBase {
+        @CField
+        int protection();
+    }
+
+    @CConstant
+    public static native int VM_PROT_READ();
+
+    @CConstant
+    public static native int VM_PROT_WRITE();
+
+    @CConstant
+    public static native int VM_REGION_BASIC_INFO_64();
+
+    @CConstant
+    public static native int VM_REGION_SUBMAP_INFO_COUNT_64();
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int vm_copy(int targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
+    public static native WordPointer mach_task_self();
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int vm_copy(WordPointer targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int mach_vm_region(WordPointer task, WordPointer address, WordPointer size, int flavor, vm_region_basic_info_data_64_t info, CIntPointer infoCnt,
+                    WordPointer object_name);
 }

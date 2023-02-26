@@ -30,16 +30,43 @@ import sun.misc.Unsafe;
 public class VolatileArrayAccess {
     private static final Unsafe U = UnsafeAccess.get();
 
-    @SuppressWarnings("unused")
-    private static long offsetFor(byte[] array, int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-    }
-
     public static void volatileWrite(byte[] array, int index, byte value) {
         U.putByteVolatile(array, offsetFor(array, index), value);
     }
 
     public static byte volatileRead(byte[] array, int index) {
         return U.getByteVolatile(array, offsetFor(array, index));
+    }
+
+    public static void volatileWrite(int[] array, int index, int value) {
+        U.putIntVolatile(array, offsetFor(array, index), value);
+    }
+
+    public static int volatileRead(int[] array, int index) {
+        return U.getIntVolatile(array, offsetFor(array, index));
+    }
+
+    public static <T> void volatileWrite(T[] array, int index, Object value) {
+        U.putObjectVolatile(array, offsetFor(array, index), value);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T volatileRead(T[] array, int index) {
+        return (T) U.getObjectVolatile(array, offsetFor(array, index));
+    }
+
+    @SuppressWarnings("unused")
+    private static long offsetFor(byte[] array, int index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + ((long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+    }
+
+    @SuppressWarnings("unused")
+    private static long offsetFor(int[] array, int index) {
+        return Unsafe.ARRAY_INT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_INT_INDEX_SCALE);
+    }
+
+    @SuppressWarnings("unused")
+    private static <T> long offsetFor(T[] array, int index) {
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
     }
 }

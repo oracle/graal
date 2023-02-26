@@ -33,8 +33,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * A context sensitive analysis object that represents a constant. The context for this analysis
- * object is the constant it wraps.
+ * A context-sensitive analysis object that represents a constant. The implicit context for this
+ * analysis object is the constant that it wraps.
  */
 public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObject {
 
@@ -76,9 +76,11 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
         super(bb.getUniverse(), type, AnalysisObjectKind.ConstantContextSensitive);
         assert bb.trackConcreteAnalysisObjects(type);
         this.constant = constant;
+        bb.profileConstantObject(type);
     }
 
-    public JavaConstant getConstant() {
+    @Override
+    public JavaConstant asConstant() {
         return constant;
     }
 
@@ -127,7 +129,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
             return false;
         }
 
-        return AnalysisObject.isEmptyObjectArrayConstant(bb, getConstant());
+        return AnalysisObject.isEmptyObjectArrayConstant(bb, asConstant());
     }
 
     @Override
@@ -137,7 +139,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
         if (constant == null) {
             result.append("MERGED CONSTANT");
         } else {
-            // result.append(constant);
+            result.append(constant);
         }
         return result.toString();
     }

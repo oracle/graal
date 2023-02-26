@@ -26,16 +26,17 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -54,7 +55,7 @@ public class Containers {
 
         @Option(help = "Calculate the container CPU availability based on the value of quotas (if set), when true. " +
                         "Otherwise, use the CPU shares value, provided it is less than quota.")//
-        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true);
+        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
     }
 
     /** Sentinel used when the value is unknown. */
@@ -156,6 +157,17 @@ public class Containers {
     }
 
     /**
+     * Returns {@code true} if containerized execution was detected.
+     */
+    public static boolean isContainerized() {
+        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
+            ContainerInfo info = new ContainerInfo();
+            return info.isContainerized();
+        }
+        return false;
+    }
+
+    /**
      * Returns the limit of available memory for this process.
      *
      * @return memory limit in bytes or {@link Containers#UNKNOWN}
@@ -200,9 +212,9 @@ final class ContainerInfo {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.LINUX.class)
-class ContainersFeature implements Feature {
+class ContainersFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);

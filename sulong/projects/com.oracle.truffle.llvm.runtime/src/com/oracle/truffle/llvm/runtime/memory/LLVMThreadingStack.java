@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,19 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 
 /**
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
  */
 public final class LLVMThreadingStack {
     // we are not able to clean up a thread local properly, so we are using a map instead
-    private final Map<Thread, LLVMStack> threadMap;
     private final long stackSize;
     private final Thread mainThread;
     @CompilationFinal private LLVMStack mainThreadStack;
@@ -50,32 +49,42 @@ public final class LLVMThreadingStack {
     public LLVMThreadingStack(Thread mainTread, long stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
-        this.threadMap = new ConcurrentHashMap<>();
     }
 
-    public LLVMStack getStack() {
-        LLVMStack s = getCurrentStack();
+    public LLVMStack getStack(LLVMLanguage language) {
+        LLVMStack s = getCurrentStack(language);
         if (s == null) {
             s = createNewStack();
         }
         return s;
     }
 
-    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile) {
+    public LLVMStack getStack(Node node) {
+        LLVMStack s = getCurrentStack(node);
+        if (s == null) {
+            s = createNewStack();
+        }
+        return s;
+    }
+
+    public LLVMStack getStackProfiled(Thread thread, ConditionProfile profile, Node node) {
         if (profile.profile(thread == mainThread)) {
             assert mainThreadStack != null;
             return mainThreadStack;
         }
-        LLVMStack s = getCurrentStack();
+        LLVMStack s = getCurrentStack(node);
         if (s == null) {
             s = createNewStack();
         }
         return s;
     }
 
-    @TruffleBoundary
-    private LLVMStack getCurrentStack() {
-        return threadMap.get(Thread.currentThread());
+    private static LLVMStack getCurrentStack(Node node) {
+        return LLVMLanguage.get(node).contextThreadLocal.get().getLLVMStack();
+    }
+
+    private static LLVMStack getCurrentStack(LLVMLanguage language) {
+        return language.contextThreadLocal.get().getLLVMStack();
     }
 
     @TruffleBoundary
@@ -85,8 +94,7 @@ public final class LLVMThreadingStack {
         if (currentThread == mainThread) {
             mainThreadStack = s;
         }
-        Object previous = threadMap.putIfAbsent(currentThread, s);
-        assert previous == null;
+        LLVMLanguage.get(null).contextThreadLocal.get().setLLVMStack(s);
         return s;
     }
 
@@ -107,10 +115,14 @@ public final class LLVMThreadingStack {
         free(memory, mainThread);
     }
 
-    private void free(LLVMMemory memory, Thread thread) {
-        LLVMStack s = threadMap.remove(thread);
-        if (s != null) {
-            s.free(memory);
+    private static void free(LLVMMemory memory, Thread thread) {
+        ContextThreadLocal<LLVMThreadLocalValue> context = LLVMLanguage.get(null).contextThreadLocal;
+        LLVMThreadLocalValue value = context.get(thread);
+        if (value != null) {
+            LLVMStack s = value.removeLLVMStack();
+            if (s != null) {
+                s.free(memory);
+            }
         }
     }
 }

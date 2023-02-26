@@ -70,7 +70,7 @@ public final class CoverageEventNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        if (entered || creatorThreadId != Thread.currentThread().getId()) {
+        if (entered || creatorThreadId != ThreadId.getCurrent()) {
             // We had problems with a finalizer thread, so we filter only for the thread which
             // created the node
             // TODO ?
@@ -126,50 +126,12 @@ public final class CoverageEventNode extends ExecutionEventNode {
      * @param frame to copy
      * @return the copy
      */
-    @SuppressWarnings("deprecation")
     private static MaterializedFrame copyFrame(MaterializedFrame frame) {
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
         FrameDescriptor descriptorCopy = frameDescriptor.copy();
-        for (com.oracle.truffle.api.frame.FrameSlot slotCopy : descriptorCopy.getSlots()) {
-            FrameSlotKind frameSlotKind = frameDescriptor.getFrameSlotKind(frameDescriptor.findFrameSlot(slotCopy.getIdentifier()));
-            descriptorCopy.setFrameSlotKind(slotCopy, frameSlotKind);
-        }
         Object[] arguments = frame.getArguments();
         MaterializedFrame frameCopy = Truffle.getRuntime().createMaterializedFrame(Arrays.copyOf(arguments, arguments.length), descriptorCopy);
-        for (com.oracle.truffle.api.frame.FrameSlot slot : frameDescriptor.getSlots()) {
-            FrameSlotKind slotKind = frameDescriptor.getFrameSlotKind(slot);
-            com.oracle.truffle.api.frame.FrameSlot id = descriptorCopy.findFrameSlot(slot.getIdentifier());
 
-            try {
-                switch (slotKind) {
-                    case Illegal:
-                        break;
-                    case Object:
-                        frameCopy.setObject(id, frame.getObject(slot));
-                        break;
-                    case Boolean:
-                        frameCopy.setBoolean(id, frame.getBoolean(slot));
-                        break;
-                    case Int:
-                        frameCopy.setInt(id, frame.getInt(slot));
-                        break;
-                    case Byte:
-                        frameCopy.setByte(id, frame.getByte(slot));
-                        break;
-                    case Long:
-                        frameCopy.setLong(id, frame.getLong(slot));
-                        break;
-                    case Double:
-                        frameCopy.setDouble(id, frame.getDouble(slot));
-                        break;
-                    case Float:
-                        frameCopy.setFloat(id, frame.getFloat(slot));
-                        break;
-                }
-            } catch (FrameSlotTypeException e) {
-                // ignore
-            }
-        }
         for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
             FrameSlotKind slotKind = frameDescriptor.getSlotKind(slot);
 

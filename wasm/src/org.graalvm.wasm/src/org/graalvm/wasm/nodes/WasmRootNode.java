@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,17 +44,17 @@ import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.popReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -70,25 +70,16 @@ import com.oracle.truffle.api.source.SourceSection;
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
 
-    protected final WasmInstance instance;
-    private final WasmCodeEntry codeEntry;
-    private final SourceSection sourceSection;
-    @Child private WasmNode body;
+    private SourceSection sourceSection;
+    @Child private WasmFunctionNode function;
 
-    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstance instance, WasmCodeEntry codeEntry) {
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
         super(language, frameDescriptor);
-        this.instance = instance;
-        this.codeEntry = codeEntry;
-        this.body = null;
-        this.sourceSection = instance.module().source().createUnavailableSection();
+        this.function = function;
     }
 
     protected final WasmContext getContext() {
         return WasmContext.get(this);
-    }
-
-    public void setBody(WasmNode body) {
-        this.body = insert(body);
     }
 
     @Override
@@ -100,7 +91,7 @@ public class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(instance);
+        context.linker().tryLink(function.getInstance());
     }
 
     @Override
@@ -122,7 +113,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int numLocals = body.codeEntry().numLocals();
+        final int localCount = function.getLocalCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -130,44 +121,85 @@ public class WasmRootNode extends RootNode {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        try {
-            body.execute(context, frame);
-        } catch (StackOverflowError e) {
-            errorBranch();
-            throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
+        final int resultCount = function.getResultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount > 1) {
+            context.resizeMultiValueStack(resultCount);
         }
 
-        final byte returnTypeId = body.returnTypeId();
-        CompilerAsserts.partialEvaluationConstant(returnTypeId);
-        switch (returnTypeId) {
-            case 0x00:
-            case WasmType.VOID_TYPE:
-                return WasmVoidResult.getInstance();
-            case WasmType.I32_TYPE:
-                return popInt(frame, numLocals);
-            case WasmType.I64_TYPE:
-                return popLong(frame, numLocals);
-            case WasmType.F32_TYPE:
-                return popFloat(frame, numLocals);
-            case WasmType.F64_TYPE:
-                return popDouble(frame, numLocals);
-            default:
-                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", returnTypeId);
+        try {
+            function.execute(context, frame);
+        } catch (StackOverflowError e) {
+            function.enterErrorBranch();
+            throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
+        }
+        if (resultCount == 0) {
+            return WasmConstant.VOID;
+        } else if (resultCount == 1) {
+            final byte resultType = function.getResultType(0);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.VOID_TYPE:
+                    return WasmConstant.VOID;
+                case WasmType.I32_TYPE:
+                    return popInt(frame, localCount);
+                case WasmType.I64_TYPE:
+                    return popLong(frame, localCount);
+                case WasmType.F32_TYPE:
+                    return popFloat(frame, localCount);
+                case WasmType.F64_TYPE:
+                    return popDouble(frame, localCount);
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    return popReference(frame, localCount);
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
+            }
+        } else {
+            moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
+            return WasmConstant.MULTI_VALUE;
         }
     }
 
-    protected final void errorBranch() {
-        codeEntry().errorBranch();
+    @ExplodeLoop
+    private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        final long[] multiValueStack = context.primitiveMultiValueStack();
+        final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
+        for (int i = 0; i < resultCount; i++) {
+            final int resultType = function.getResultType(i);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.I32_TYPE:
+                    multiValueStack[i] = popInt(frame, localCount + i);
+                    break;
+                case WasmType.I64_TYPE:
+                    multiValueStack[i] = popLong(frame, localCount + i);
+                    break;
+                case WasmType.F32_TYPE:
+                    multiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, localCount + i));
+                    break;
+                case WasmType.F64_TYPE:
+                    multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    referenceMultiValueStack[i] = popReference(frame, localCount + i);
+                    break;
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
+            }
+        }
     }
 
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
-        for (int i = 0; i != numArgs; ++i) {
+        int paramCount = function.getParamCount();
+        assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        for (int i = 0; i != paramCount; ++i) {
             final Object arg = args[i];
-            byte type = body.codeEntry().localType(i);
+            byte type = function.getLocalType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -181,15 +213,19 @@ public class WasmRootNode extends RootNode {
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, (double) arg);
                     break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, arg);
+                    break;
             }
         }
     }
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
-            byte type = body.codeEntry().localType(i);
+        int paramCount = function.getParamCount();
+        for (int i = paramCount; i != function.getLocalCount(); ++i) {
+            byte type = function.getLocalType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
@@ -203,12 +239,12 @@ public class WasmRootNode extends RootNode {
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, 0D);
                     break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, WasmConstant.NULL);
+                    break;
             }
         }
-    }
-
-    public final WasmCodeEntry codeEntry() {
-        return codeEntry;
     }
 
     @Override
@@ -218,22 +254,29 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public String getName() {
-        if (codeEntry == null) {
+        if (function == null) {
             return "function";
         }
-        return codeEntry.function().name();
+        return function.getName();
     }
 
     @Override
     public final String getQualifiedName() {
-        if (codeEntry == null) {
+        if (function == null) {
             return getName();
         }
-        return codeEntry.function().moduleName() + "." + getName();
+        return function.getQualifiedName();
     }
 
     @Override
     public final SourceSection getSourceSection() {
-        return sourceSection;
+        if (function == null) {
+            return null;
+        } else {
+            if (sourceSection == null) {
+                sourceSection = function.getInstance().module().source().createUnavailableSection();
+            }
+            return sourceSection;
+        }
     }
 }

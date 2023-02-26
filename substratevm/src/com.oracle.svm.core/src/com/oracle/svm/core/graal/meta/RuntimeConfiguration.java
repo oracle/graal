@@ -36,7 +36,6 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -54,15 +53,6 @@ public final class RuntimeConfiguration {
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
     private final WordTypes wordTypes;
 
-    private int vtableBaseOffset;
-    private int vtableEntrySize;
-    private int typeIDSlotsOffset;
-    private int componentHubOffset;
-    private int javaFrameAnchorLastSPOffset;
-    private int javaFrameAnchorLastIPOffset;
-    private int vmThreadStatusOffset;
-    private int imageCodeInfoCodeStartOffset;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes) {
         this.providers = providers;
@@ -74,27 +64,6 @@ public final class RuntimeConfiguration {
         for (SubstrateBackend backend : backends.values()) {
             backend.setRuntimeConfiguration(this);
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int typeIDSlotsOffset, int componentHubOffset,
-                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset, int vmThreadStatusOffset, int imageCodeInfoCodeStartOffset) {
-        assert !isFullyInitialized();
-
-        this.vtableBaseOffset = vtableBaseOffset;
-        this.vtableEntrySize = vtableEntrySize;
-        this.typeIDSlotsOffset = typeIDSlotsOffset;
-        this.componentHubOffset = componentHubOffset;
-        this.javaFrameAnchorLastSPOffset = javaFrameAnchorLastSPOffset;
-        this.javaFrameAnchorLastIPOffset = javaFrameAnchorLastIPOffset;
-        this.vmThreadStatusOffset = vmThreadStatusOffset;
-        this.imageCodeInfoCodeStartOffset = imageCodeInfoCodeStartOffset;
-
-        assert isFullyInitialized();
-    }
-
-    public boolean isFullyInitialized() {
-        return vtableEntrySize > 0;
     }
 
     public Iterable<DebugHandlersFactory> getDebugHandlersFactories() {
@@ -119,41 +88,6 @@ public final class RuntimeConfiguration {
 
     public SubstrateBackend getBackendForNormalMethod() {
         return backends.get(ConfigKind.NORMAL);
-    }
-
-    public int getVTableOffset(int vTableIndex) {
-        assert isFullyInitialized();
-        return vtableBaseOffset + vTableIndex * vtableEntrySize;
-    }
-
-    public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized();
-        return typeIDSlotsOffset;
-    }
-
-    public int getComponentHubOffset() {
-        assert isFullyInitialized();
-        return componentHubOffset;
-    }
-
-    public int getJavaFrameAnchorLastSPOffset() {
-        assert isFullyInitialized();
-        return javaFrameAnchorLastSPOffset;
-    }
-
-    public int getJavaFrameAnchorLastIPOffset() {
-        assert isFullyInitialized();
-        return javaFrameAnchorLastIPOffset;
-    }
-
-    public int getVMThreadStatusOffset() {
-        assert SubstrateOptions.MultiThreaded.getValue() && vmThreadStatusOffset != -1;
-        return vmThreadStatusOffset;
-    }
-
-    public int getImageCodeInfoCodeStartOffset() {
-        assert isFullyInitialized();
-        return imageCodeInfoCodeStartOffset;
     }
 
     public SnippetReflectionProvider getSnippetReflection() {

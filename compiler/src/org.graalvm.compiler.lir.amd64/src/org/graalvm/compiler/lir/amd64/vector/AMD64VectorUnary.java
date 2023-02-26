@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -47,6 +48,7 @@ import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -73,6 +75,32 @@ public class AMD64VectorUnary {
                 opcode.emit(masm, size, asRegister(result), asRegister(input));
             } else {
                 opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
+            }
+        }
+    }
+
+    public static final class AVXUnaryRVMOp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXUnaryRVMOp> TYPE = LIRInstructionClass.create(AVXUnaryRVMOp.class);
+
+        @Opcode private final VexRVMOp opcode;
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue input;
+
+        public AVXUnaryRVMOp(VexRVMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+            super(TYPE, size);
+            this.opcode = opcode;
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (isRegister(input)) {
+                opcode.emit(masm, size, asRegister(result), asRegister(input), asRegister(input));
+            } else {
+                VexRVMOp.VXORPD.emit(masm, size, asRegister(result), asRegister(result), asRegister(result));
+                opcode.emit(masm, size, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
             }
         }
     }
@@ -177,11 +205,11 @@ public class AMD64VectorUnary {
     public static final class AVXConvertOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AVXConvertOp> TYPE = LIRInstructionClass.create(AVXConvertOp.class);
 
-        @Opcode private final VexRVMOp opcode;
+        @Opcode private final VexRVMConvertOp opcode;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue input;
 
-        public AVXConvertOp(VexRVMOp opcode, AllocatableValue result, AllocatableValue input) {
+        public AVXConvertOp(VexRVMConvertOp opcode, AllocatableValue result, AllocatableValue input) {
             super(TYPE);
             this.opcode = opcode;
             this.result = result;
@@ -193,11 +221,13 @@ public class AMD64VectorUnary {
             // Note that we assume only XMM-size instructions are emitted here. Loosening this
             // restriction would require informing AMD64HotSpotReturnOp when emitting vzeroupper.
             if (isRegister(input)) {
-                if (!asRegister(input).equals(asRegister(result))) {
+                if (AMD64.XMM.equals(asRegister(input).getRegisterCategory())) {
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
+                } else {
                     // clear result register to avoid unnecessary dependency
                     VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
                 }
-                opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
             } else {
                 VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));

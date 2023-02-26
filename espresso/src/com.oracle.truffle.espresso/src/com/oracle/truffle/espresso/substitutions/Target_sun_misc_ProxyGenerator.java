@@ -50,7 +50,7 @@ public final class Target_sun_misc_ProxyGenerator {
             // for class redefinition we need to collect details about generated JDK Dynamic proxies
             JDKProxyRedefinitionPlugin plugin = context.lookup(JDKProxyRedefinitionPlugin.class);
             if (plugin != null) {
-                plugin.collectProxyArguments(proxyName, interfaces, classModifier, original);
+                plugin.collectProxyArguments(getLanguage(), context.getMeta(), proxyName, interfaces, classModifier, original);
             }
             // call original method
             return (StaticObject) original.call(proxyName, interfaces, classModifier);

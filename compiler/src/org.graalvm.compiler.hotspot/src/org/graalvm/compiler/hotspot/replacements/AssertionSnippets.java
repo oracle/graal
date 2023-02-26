@@ -85,11 +85,14 @@ public class AssertionSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo assertion = snippet(AssertionSnippets.class, "assertion");
-        private final SnippetInfo stubAssertion = snippet(AssertionSnippets.class, "stubAssertion");
+        private final SnippetInfo assertion;
+        private final SnippetInfo stubAssertion;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.assertion = snippet(providers, AssertionSnippets.class, "assertion");
+            this.stubAssertion = snippet(providers, AssertionSnippets.class, "stubAssertion");
         }
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
@@ -101,7 +104,7 @@ public class AssertionSnippets implements Snippets {
                                             StampFactory.pointer())));
             args.add("l1", assertionNode.getL1());
             args.add("l2", assertionNode.getL2());
-            template(assertionNode, args).instantiate(providers.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);
+            template(tool, assertionNode, args).instantiate(tool.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);
         }
     }
 }

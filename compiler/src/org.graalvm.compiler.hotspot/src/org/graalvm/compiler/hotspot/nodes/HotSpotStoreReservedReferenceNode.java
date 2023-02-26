@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.nodes;
 
+import static org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode.JVMCI_RESERVED_REFERENCE;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -33,12 +35,14 @@ import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -46,7 +50,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Stores {@code JavaThread::_jvmci_reserved_oop0} of the current thread.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public final class HotSpotStoreReservedReferenceNode extends AbstractStateSplit implements Lowerable {
+public final class HotSpotStoreReservedReferenceNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<HotSpotStoreReservedReferenceNode> TYPE = NodeClass.create(HotSpotStoreReservedReferenceNode.class);
 
@@ -66,10 +70,15 @@ public final class HotSpotStoreReservedReferenceNode extends AbstractStateSplit 
     public void lower(LoweringTool tool) {
         CurrentJavaThreadNode thread = graph().unique(new CurrentJavaThreadNode(wordTypes));
         AddressNode address = graph().unique(new OffsetAddressNode(thread, graph().unique(ConstantNode.forLong(jvmciReservedReference0Offset))));
-        JavaWriteNode write = graph().add(new JavaWriteNode(JavaKind.Object, address, HotSpotLoadReservedReferenceNode.JVMCI_RESERVED_REFERENCE, value, BarrierType.NONE, false));
+        JavaWriteNode write = graph().add(new JavaWriteNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, value, BarrierType.NONE, false));
         write.setStateAfter(stateAfter());
         graph().replaceFixedWithFixed(this, write);
         tool.getLowerer().lower(write, tool);
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return JVMCI_RESERVED_REFERENCE;
     }
 
 }

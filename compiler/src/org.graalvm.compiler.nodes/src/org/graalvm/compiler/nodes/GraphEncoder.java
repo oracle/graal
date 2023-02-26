@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,14 @@ import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.TypeWriter;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 
@@ -166,10 +168,17 @@ public class GraphEncoder {
      * Utility method that does everything necessary to encode a single graph.
      */
     public static EncodedGraph encodeSingleGraph(StructuredGraph graph, Architecture architecture) {
+        return encodeSingleGraph(graph, architecture, null);
+    }
+
+    /**
+     * Utility method that does everything necessary to encode a single graph.
+     */
+    public static EncodedGraph encodeSingleGraph(StructuredGraph graph, Architecture architecture, Iterable<EncodedNodeReference> nodeReferences) {
         GraphEncoder encoder = new GraphEncoder(architecture);
         encoder.prepare(graph);
         encoder.finishPrepare();
-        int startOffset = encoder.encode(graph);
+        int startOffset = encoder.encode(graph, nodeReferences);
         return new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph);
     }
 
@@ -190,6 +199,7 @@ public class GraphEncoder {
      */
     public void prepare(StructuredGraph graph) {
         addObject(graph.getGuardsStage());
+        addObject(graph.getGraphState().getStageFlags());
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
             nodeClasses.addObject(nodeClass);
@@ -229,12 +239,26 @@ public class GraphEncoder {
      * @param graph The graph to encode
      */
     public int encode(StructuredGraph graph) {
+        return encode(graph, null);
+    }
+
+    protected int encode(StructuredGraph graph, Iterable<EncodedNodeReference> nodeReferences) {
         assert objectsArray != null && nodeClassesArray != null : "finishPrepare() must be called before encode()";
 
         NodeOrder nodeOrder = new NodeOrder(graph);
         int nodeCount = nodeOrder.nextOrderId;
         assert nodeOrder.orderIds.get(graph.start()) == START_NODE_ORDER_ID;
         assert nodeOrder.orderIds.get(graph.start().next()) == FIRST_NODE_ORDER_ID;
+
+        if (nodeReferences != null) {
+            for (var nodeReference : nodeReferences) {
+                if (nodeReference.orderId != EncodedNodeReference.DECODED) {
+                    throw GraalError.shouldNotReachHere("EncodedNodeReference is not in 'decoded' state");
+                }
+                nodeReference.orderId = nodeOrder.orderIds.get(nodeReference.node);
+                nodeReference.node = null;
+            }
+        }
 
         long[] nodeStartOffsets = new long[nodeCount];
         UnmodifiableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
@@ -308,6 +332,7 @@ public class GraphEncoder {
         int metadataStart = TypeConversion.asS4(writer.getBytesWritten());
         writer.putUV(nodeOrder.maxFixedNodeOrderId);
         writeObjectId(graph.getGuardsStage());
+        writeObjectId(graph.getGraphState().getStageFlags());
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
@@ -470,6 +495,7 @@ public class GraphEncoder {
         // @formatter:off
         StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debugContext, AllowAssumptions.YES).
                         method(originalGraph.method()).
+                        profileProvider(originalGraph.getProfileProvider()).
                         setIsSubstitution(originalGraph.isSubstitution()).
                         trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
                         build();

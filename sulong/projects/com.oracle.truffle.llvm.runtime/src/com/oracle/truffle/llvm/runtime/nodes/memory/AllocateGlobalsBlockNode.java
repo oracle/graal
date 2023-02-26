@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,40 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
-import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public abstract class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
 
     private final long size;
+    @Child LLVMToNativeNode toNative;
 
     protected AllocateGlobalsBlockNode(long size) {
         this.size = size;
+        this.toNative = LLVMToNativeNode.createToNativeWithTarget();
     }
 
     @Specialization
-    LLVMPointer doAllocate() {
-        return getLanguage().getLLVMMemory().allocateMemory(this, size);
+    @GenerateAOT.Exclude
+    public LLVMPointer executeWithTarget(@Bind("getContext().getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
+                    @CachedLibrary("allocateGlobalsBlock") InteropLibrary interop) {
+        try {
+            Object ret = interop.execute(allocateGlobalsBlock, size);
+            return toNative.executeWithTarget(ret);
+        } catch (InteropException ex) {
+            throw new OutOfMemoryError("could not allocate globals block");
+        }
     }
 
-    public static AllocateGlobalsBlockNode create(StructureType type, DataLayout dataLayout) throws TypeOverflowException {
-        return AllocateGlobalsBlockNodeGen.create(type.getSize(dataLayout));
+    public static AllocateGlobalsBlockNode create(long size) {
+        return AllocateGlobalsBlockNodeGen.create(size);
     }
 }

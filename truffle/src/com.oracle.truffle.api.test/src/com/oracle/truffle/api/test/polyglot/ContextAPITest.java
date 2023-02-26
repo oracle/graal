@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.parseTestLanguage;
+import static com.oracle.truffle.api.test.common.TestUtils.getDefaultLanguageId;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -72,6 +75,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -87,26 +94,21 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
-import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
-import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
@@ -114,16 +116,12 @@ import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 public class ContextAPITest extends AbstractPolyglotTest {
     private static HostAccess CONFIG;
 
-    static LanguageContext langContext;
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     @BeforeClass
     public static void initHostAccess() throws Exception {
-        CONFIG = HostAccess.newBuilder().allowAccess(Runnable.class.getMethod("run")).allowAccessAnnotatedBy(HostAccess.Export.class).build();
+        CONFIG = HostAccess.newBuilder().//
+                        allowAccess(Runnable.class.getMethod("run")).//
+                        allowAccessAnnotatedBy(HostAccess.Export.class).//
+                        allowAccessInheritance(true).build();
     }
 
     public ContextAPITest() {
@@ -151,7 +149,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         setupEnv();
 
         assertFails(() -> context.parse(null, null), NullPointerException.class);
-        assertFails(() -> context.parse(ProxyLanguage.ID, null), NullPointerException.class);
+        assertFails(() -> parseTestLanguage(context, ParseLang.class, (CharSequence) null), NullPointerException.class);
         assertFails(() -> context.parse(null, ""), NullPointerException.class);
         assertFails(() -> context.parse("<<unknown-language>>", null), NullPointerException.class);
         assertFails(() -> context.parse("<<unknown-language>>", ""), IllegalArgumentException.class);
@@ -194,24 +192,24 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public void testParseBasic() {
         AtomicInteger parseCalls = new AtomicInteger();
         AtomicInteger executeCalls = new AtomicInteger();
-        setupParseLang(Context.create(), parseCalls, executeCalls);
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.ALL).build());
 
         assertEquals(0, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        context.parse(ProxyLanguage.ID, "42");
+        parseTestLanguage(context, ParseLang.class, "42", parseCalls, executeCalls);
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        context.parse(ProxyLanguage.ID, "42");
+        parseTestLanguage(context, ParseLang.class, "42", parseCalls, executeCalls);
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        context.eval(ProxyLanguage.ID, "42");
+        evalTestLanguage(context, ParseLang.class, "42", parseCalls, executeCalls);
         assertEquals(1, parseCalls.get());
         assertEquals(1, executeCalls.get());
 
-        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "42", "uncached").cached(false).buildLiteral();
+        Source uncachedSource = Source.newBuilder(ParseLang.ID, "42", "uncached").cached(false).buildLiteral();
         context.parse(uncachedSource);
         assertEquals(2, parseCalls.get());
         assertEquals(1, executeCalls.get());
@@ -224,7 +222,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(4, parseCalls.get());
         assertEquals(2, executeCalls.get());
 
-        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1", parseCalls, executeCalls), PolyglotException.class,
                         (e) -> {
                             assertTrue(e.isSyntaxError());
                             assertEquals("error", e.getSourceLocation().getCharacters());
@@ -232,7 +230,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(5, parseCalls.get());
         assertEquals(2, executeCalls.get());
 
-        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+        assertFails(() -> parseTestLanguage(context, ParseLang.class, "error-1", parseCalls, executeCalls), PolyglotException.class,
                         (e) -> {
                             assertTrue(e.isSyntaxError());
                             assertEquals("error", e.getSourceLocation().getCharacters());
@@ -246,13 +244,13 @@ public class ContextAPITest extends AbstractPolyglotTest {
         AtomicInteger parseCalls = new AtomicInteger();
         AtomicInteger executeCalls = new AtomicInteger();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        setupParseLang(Context.newBuilder().out(out).build(), parseCalls, executeCalls);
+        setupEnv(Context.newBuilder().out(out).allowHostAccess(HostAccess.ALL).build());
 
         assertEquals(0, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        Source source = Source.newBuilder(ProxyLanguage.ID, "42", "interactive").interactive(true).buildLiteral();
-        Value v = context.parse(source);
+        Source source = Source.newBuilder(ParseLang.ID, "42", "interactive").interactive(true).buildLiteral();
+        Value v = parseTestLanguage(context, ParseLang.class, source, parseCalls, executeCalls);
 
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
@@ -275,20 +273,20 @@ public class ContextAPITest extends AbstractPolyglotTest {
         AtomicInteger parseCalls = new AtomicInteger();
         AtomicInteger executeCalls = new AtomicInteger();
         StringBuilder callArguments = new StringBuilder();
-        setupParseLang(Context.create(), parseCalls, executeCalls, callArguments);
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.ALL).build());
 
         assertEquals(0, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
-        Source source = Source.create(ProxyLanguage.ID, "42");
-        Value parseResult = context.parse(source);
+        Source source = Source.create(ParseLang.ID, "42");
+        Value parseResult = parseTestLanguage(context, ParseLang.class, source, parseCalls, executeCalls, callArguments);
         assertEquals(1, parseCalls.get());
         assertEquals(0, executeCalls.get());
 
         assertTrue(parseResult.canExecute());
         assertEquals(parseResult, context.parse(source));
         assertNotSame(parseResult, context.parse(source));
-        assertNotEquals(parseResult, context.parse(ProxyLanguage.ID, "43"));
+        assertNotEquals(parseResult, context.parse(ParseLang.ID, "43"));
         assertEquals("Parsed[Source=" + source.toString() + "]", parseResult.toString());
         ValueAssert.assertValue(parseResult);
 
@@ -316,35 +314,32 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     }
 
-    private void setupParseLang(Context context, AtomicInteger parseCalls, AtomicInteger executeCalls) {
-        setupParseLang(context, parseCalls, executeCalls, null);
-    }
+    @TruffleLanguage.Registration
+    static class ParseLang extends AbstractExecutableTestLanguage {
+        static final String ID = getDefaultLanguageId(ParseLang.class);
 
-    private void setupParseLang(Context context, AtomicInteger parseCalls, AtomicInteger executeCalls, StringBuilder callArguments) {
-        setupEnv(context, new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                parseCalls.incrementAndGet();
+        @Override
+        protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) throws Exception {
+            Object parseCalls = contextArguments[0];
+            InteropLibrary.getUncached().invokeMember(parseCalls, "incrementAndGet");
 
-                if (request.getSource().getCharacters().toString().startsWith("error-")) {
-                    throw new SyntaxError(request.getSource().createSection(0, 5));
-                }
-
-                return new RootNode(ProxyLanguage.get(null)) {
-                    private final com.oracle.truffle.api.source.Source source = request.getSource();
-
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        executeCalls.incrementAndGet();
-                        if (callArguments != null) {
-                            CompilerDirectives.transferToInterpreter();
-                            callArguments.append(Arrays.toString(frame.getArguments()));
-                        }
-                        return source.getCharacters();
-                    }
-                }.getCallTarget();
+            if (request.getSource().getCharacters().toString().startsWith("error-")) {
+                throw new SyntaxError(request.getSource().createSection(0, 5));
             }
-        });
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object executeCalls = contextArguments[1];
+            interop.invokeMember(executeCalls, "incrementAndGet");
+            if (contextArguments.length > 2) {
+                Object callArguments = contextArguments[2];
+                interop.invokeMember(callArguments, "append", Arrays.toString(frameArguments));
+            }
+            return node.getSourceSection().getSource().getCharacters();
+        }
+
     }
 
     @Test
@@ -447,47 +442,67 @@ public class ContextAPITest extends AbstractPolyglotTest {
         contextBuilder.build().close();
     }
 
+    @TruffleLanguage.Registration
+    public static class TestOptionLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = getDefaultLanguageId(TestOptionLanguage.class);
+
+        @Option(help = "Stable Option Help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        public static final OptionKey<String> StableOption = new OptionKey<>("stable");
+
+        @Option(help = "StringOption help%nwith newline", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+        public static final OptionKey<String> StringOption = new OptionKey<>("defaultValue");
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            int assertToExecute = (Integer) contextArguments[0];
+            switch (assertToExecute) {
+                case 0:
+                    assertEquals("Hello", env.getOptions().get(StableOption));
+                    break;
+                case 1:
+                    assertEquals("Allow", env.getOptions().get(StringOption));
+                    break;
+                case 2:
+                    assertEquals("All access", env.getOptions().get(StringOption));
+                    break;
+                default:
+                    fail();
+                    break;
+            }
+            return null;
+        }
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new TestOptionLanguageOptionDescriptors();
+        }
+    }
+
     @Test
     public void testStableOption() {
-        try (Context c = Context.newBuilder().option("optiontestlang1.StableOption", "Hello").build()) {
-            c.initialize("optiontestlang1");
-            c.enter();
-            try {
-                assertEquals("Hello", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StableOption));
-            } finally {
-                c.leave();
-            }
+        try (Context c = Context.newBuilder().option(TestOptionLanguage.ID + ".StableOption", "Hello").build()) {
+            evalTestLanguage(c, TestOptionLanguage.class, "", 0);
         }
     }
 
     @Test
     public void testExperimentalOption() {
-        try (Context c = Context.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption2", "Allow").build()) {
-            c.initialize("optiontestlang1");
-            c.enter();
-            try {
-                assertEquals("Allow", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
-            } finally {
-                c.leave();
-            }
+        try (Context c = Context.newBuilder().allowExperimentalOptions(true).option(TestOptionLanguage.ID + ".StringOption", "Allow").build()) {
+            evalTestLanguage(c, TestOptionLanguage.class, "", 1);
         }
 
-        try (Context c = Context.newBuilder().allowAllAccess(true).option("optiontestlang1.StringOption2", "All access").build()) {
-            c.initialize("optiontestlang1");
-            c.enter();
-            try {
-                assertEquals("All access", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
-            } finally {
-                c.leave();
-            }
+        try (Context c = Context.newBuilder().allowAllAccess(true).option(TestOptionLanguage.ID + ".StringOption", "All access").build()) {
+            evalTestLanguage(c, TestOptionLanguage.class, "", 2);
         }
     }
 
     @Test
     public void testExperimentalOptionException() {
         Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
-        AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
-            assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(boolean) in Context.Builder or Engine.Builder. Do not use experimental options in production environments.",
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option(TestOptionLanguage.ID + ".StringOption", "Hello").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Option '" + TestOptionLanguage.ID +
+                            ".StringOption' is experimental and must be enabled with allowExperimentalOptions(boolean) in Context.Builder or Engine.Builder. Do not use experimental options in production environments.",
                             e.getMessage());
         });
     }
@@ -596,13 +611,17 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         service.shutdown();
-        service.awaitTermination(1000, TimeUnit.MILLISECONDS);
+        assertTrue("Executor threads did not finish in time.", service.awaitTermination(10, TimeUnit.SECONDS));
+        for (Reference<Thread> threadRef : threads) {
+            Thread t = threadRef.get();
+            if (t != null) {
+                t.join(10000);
+            }
+        }
         Reference<ExecutorService> ref = new WeakReference<>(service);
         service = null;
         GCUtils.assertGc("Nobody holds on the executor anymore", ref);
-        for (Reference<Thread> t : threads) {
-            GCUtils.assertGc("Nobody holds on the thread anymore", t);
-        }
+        GCUtils.assertGc("Nobody holds on the thread anymore", threads);
         c.close();
     }
 
@@ -649,25 +668,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
         c1.close();
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    @SuppressWarnings({"static-method", "unused"})
-    static final class ContextTestFunction implements TruffleObject {
-
-        @ExportMessage
-        boolean isExecutable() {
-            return true;
-        }
-
-        @ExportMessage
-        Object execute(Object[] arguments) {
-            return 42;
-        }
-
-    }
-
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new ContextTestFunction();
-        Value executable = context.eval(ContextAPITestLanguage.ID, "");
+        Value executable = evalTestLanguage(context, ContextAPITestLanguage.class, "", "return test function");
         assertEquals(42, executable.execute().asInt());
         assertEquals(42, executable.execute(42).asInt());
         executable.executeVoid();
@@ -675,7 +677,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     }
 
     private static void testPolyglotBindings(Context context) {
-        assertSame("is stable", context.getPolyglotBindings(), context.getPolyglotBindings());
+        assertEquals("is stable", context.getPolyglotBindings(), context.getPolyglotBindings());
 
         Value bindings = context.getPolyglotBindings();
         testWritableBindings(bindings);
@@ -711,88 +713,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertEquals(42, bindings.getMember("obj").getMember("bazz").execute().asInt());
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class TopScope implements TruffleObject {
-
-        Map<String, Object> values = new HashMap<>();
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return ProxyLanguage.class;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean isScope() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readMember(String key) {
-            return values.get(key);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object writeMember(String key, Object value) {
-            values.put(key, value);
-            return value;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return values.containsKey(member);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberModifiable(String member) {
-            return values.containsKey(member);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberInsertable(String member) {
-            return !values.containsKey(member);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return "top scope";
-        }
-    }
-
     private static void testBindings(Context context) {
-        TopScope values = new TopScope();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext env) {
-                return values;
-            }
-        });
-        Value bindings = context.getBindings(ProxyLanguage.ID);
+        Value bindings = context.getBindings(ContextAPITestLanguage.ID);
 
         testWritableBindings(bindings);
 
@@ -819,22 +741,30 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
+    static class TestGetContextRunnable implements Runnable {
+        private final Context c;
+        private final boolean executeNested;
+
+        TestGetContextRunnable(Context c, boolean executeNested) {
+            this.c = c;
+            this.executeNested = executeNested;
+        }
+
+        @Override
+        public void run() {
+            testGetContext(c);
+            if (executeNested) {
+                Value.asValue(new TestGetContextRunnable(c, false)).execute();
+            }
+        }
+    }
+
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Value v = c.asValue(new Runnable() {
-            public void run() {
-                testGetContext(c);
-
-                Value.asValue(new Runnable() {
-                    public void run() {
-                        testGetContext(c);
-                    }
-                }).execute();
-            }
-        });
+        Value v = c.asValue(new TestGetContextRunnable(c, true));
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         v.execute();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
@@ -887,31 +817,24 @@ public class ContextAPITest extends AbstractPolyglotTest {
         assertFails(() -> context.getEngine().close(false), IllegalStateException.class);
     }
 
+    @TruffleLanguage.Registration
+    static class TestTransferControlLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            try {
+                Object o = interop.readMember(env.getPolyglotBindings(), "test");
+                return interop.execute(o);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        setupEnv(Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build(),
-                        new ProxyLanguage() {
-                            @Override
-                            protected CallTarget parse(ParsingRequest request) throws Exception {
-                                return new RootNode(ProxyLanguage.get(null)) {
-                                    @Override
-                                    public Object execute(VirtualFrame frame) {
-                                        try {
-                                            return boundary();
-                                        } catch (Exception e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                    }
-
-                                    @TruffleBoundary
-                                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-                                        Object o = InteropLibrary.getUncached().readMember(com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).env.getPolyglotBindings(),
-                                                        "test");
-                                        return InteropLibrary.getUncached().execute(o);
-                                    }
-                                }.getCallTarget();
-                            }
-                        });
+        setupEnv(Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build());
         context.enter();
         AtomicInteger depth = new AtomicInteger(0);
         context.getPolyglotBindings().putMember("test", new Runnable() {
@@ -924,7 +847,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         try {
                             context.enter();
                             if (depth.get() < 3) {
-                                context.eval(ProxyLanguage.ID, "");
+                                evalTestLanguage(context, TestTransferControlLanguage.class, "");
                             }
                             context.leave();
                         } catch (Throwable t) {
@@ -945,10 +868,25 @@ public class ContextAPITest extends AbstractPolyglotTest {
                 }
             }
         });
-        context.eval(ProxyLanguage.ID, "");
+        evalTestLanguage(context, TestTransferControlLanguage.class, "");
         context.leave();
         context.close();
         assertEquals(3, depth.get());
+    }
+
+    @TruffleLanguage.Registration
+    static class ContextBuilderAllAccessLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            Boolean testValid = (Boolean) contextArguments[0];
+
+            assertEquals(testValid, env.isHostLookupAllowed());
+            assertEquals(testValid, env.isNativeAccessAllowed());
+            assertEquals(testValid, env.isCreateThreadAllowed());
+            return null;
+        }
     }
 
     @Test
@@ -956,45 +894,40 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
         try (Context c = builder.build()) {
-            c.initialize(ProxyLanguage.ID);
-            c.enter();
-            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
-            assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
-            assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
-            assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
-            c.leave();
+            evalTestLanguage(c, ContextBuilderAllAccessLanguage.class, "", Boolean.TRUE);
         }
         builder.allowAllAccess(false);
         try (Context c = builder.build()) {
-            c.initialize(ProxyLanguage.ID);
-            c.enter();
-            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
-            assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
-            assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
-            assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
-            c.leave();
+            evalTestLanguage(c, ContextBuilderAllAccessLanguage.class, "", Boolean.FALSE);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class TestTimeZoneLanguage extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            String zoneId = (String) contextArguments[0];
+            assertEquals(ZoneId.of(zoneId), env.getTimeZone());
+            return null;
         }
     }
 
     @Test
     public void testTimeZone() {
-        ZoneId zone = ZoneId.of("UTC+1");
-        Context c = Context.newBuilder().timeZone(zone).build();
-        c.initialize(ProxyLanguage.ID);
-        c.enter();
-        assertEquals(zone, com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
-        c.leave();
-        c.close();
+        String zoneId = "UTC+1";
+        ZoneId zone = ZoneId.of(zoneId);
+        try (Context c = Context.newBuilder().timeZone(zone).build()) {
+            evalTestLanguage(c, TestTimeZoneLanguage.class, "", zoneId);
+        }
     }
 
     @Test
     public void testDefaultTimeZone() {
-        Context c = Context.create();
-        c.initialize(ProxyLanguage.ID);
-        c.enter();
-        assertEquals(ZoneId.systemDefault(), com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
-        c.leave();
-        c.close();
+        try (Context c = Context.create()) {
+            evalTestLanguage(c, TestTimeZoneLanguage.class, "", ZoneId.systemDefault().getId());
+        }
     }
 
     @Test
@@ -1034,6 +967,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testDefaultContextClassLoader() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader cc = new URLClassLoader(new URL[0]);
@@ -1051,6 +986,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testExplicitContextClassLoader() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoader = new URLClassLoader(new URL[0]);
@@ -1067,6 +1004,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testExplicitContextClassLoaderMultipleContexts() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
@@ -1092,6 +1031,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testExplicitContextClassLoaderNestedContexts() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
@@ -1129,6 +1070,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testExplicitContextClassLoaderNestedContexts2() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
@@ -1174,6 +1117,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testExplicitContextClassLoaderNestedContexts3() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
@@ -1219,10 +1164,14 @@ public class ContextAPITest extends AbstractPolyglotTest {
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 return new RootNode(this.languageInstance) {
                     @Override
-                    @TruffleBoundary
                     public Object execute(VirtualFrame frame) {
-                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
+                        executeSlowPath();
                         return true;
+                    }
+
+                    @TruffleBoundary
+                    private void executeSlowPath() {
+                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
                     }
                 }.getCallTarget();
             }
@@ -1258,12 +1207,14 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testGetCurrentContextEnteredRaceCondition() throws ExecutionException, InterruptedException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         for (int i = 0; i < 10000; i++) {
             AtomicBoolean checkCompleted = new AtomicBoolean();
             ExecutorService executorService = Executors.newFixedThreadPool(1);
 
             try (Context ctx = Context.create()) {
-                ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
+                ctx.initialize(ValidExclusiveLanguage.ID);
                 ctx.enter();
                 try {
                     ValidExclusiveLanguage lang = ValidExclusiveLanguage.REFERENCE.get(null);
@@ -1285,10 +1236,9 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
     }
 
-    static final String VALID_EXCLUSIVE_LANGUAGE = "ContextAPITest_ValidExclusiveLanguage";
-
-    @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
+    @TruffleLanguage.Registration
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        static final String ID = getDefaultLanguageId(ValidExclusiveLanguage.class);
 
         final ContextLocal<Env> contextLocal = createContextLocal((e) -> e);
 
@@ -1306,44 +1256,52 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     }
 
+    @TruffleLanguage.Registration
+    static class TestPermittedLanguagesLanguage extends TruffleLanguage<Object> {
+        static final String ID = getDefaultLanguageId(TestPermittedLanguagesLanguage.class);
+
+        @Override
+        protected Object createContext(Env env) {
+            return new Object();
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return RootNode.createConstantNode(42).getCallTarget();
+        }
+    }
+
     @Test
     public void testPermittedLanguages() {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return RootNode.createConstantNode(42).getCallTarget();
-            }
-        });
-
-        try (Context c = Context.create()) {
+        try (Context c = Context.newBuilder().build()) {
             c.eval(ContextAPITestLanguage.ID, "");
-            c.eval(ProxyLanguage.ID, "");
+            c.eval(TestPermittedLanguagesLanguage.ID, "");
             AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
         }
 
         try (Context c = Context.create(ContextAPITestLanguage.ID)) {
             c.eval(ContextAPITestLanguage.ID, "");
-            AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+            AbstractPolyglotTest.assertFails(() -> c.eval(TestPermittedLanguagesLanguage.ID, ""), IllegalArgumentException.class);
             AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
         }
 
-        try (Context c = Context.create(ProxyLanguage.ID)) {
-            c.eval(ProxyLanguage.ID, "");
+        try (Context c = Context.newBuilder(TestPermittedLanguagesLanguage.ID).build()) {
+            c.eval(TestPermittedLanguagesLanguage.ID, "");
             AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
             AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
         }
 
         try (Engine e = Engine.create()) {
-            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+            try (Context c = Context.newBuilder(TestPermittedLanguagesLanguage.ID).engine(e).build()) {
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
             }
         }
 
         try (Engine e = Engine.create()) {
             try (Context c = Context.newBuilder(ContextAPITestLanguage.ID).engine(e).build()) {
-                AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(TestPermittedLanguagesLanguage.ID, ""), IllegalArgumentException.class);
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
                 c.eval(ContextAPITestLanguage.ID, "");
             }
@@ -1352,52 +1310,52 @@ public class ContextAPITest extends AbstractPolyglotTest {
         try (Engine e = Engine.create()) {
             try (Context c = Context.newBuilder().engine(e).build()) {
                 c.eval(ContextAPITestLanguage.ID, "");
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
             }
         }
 
-        try (Engine e = Engine.create(ProxyLanguage.ID)) {
-            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+        try (Engine e = Engine.create(TestPermittedLanguagesLanguage.ID)) {
+            try (Context c = Context.newBuilder(TestPermittedLanguagesLanguage.ID).engine(e).build()) {
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
             }
         }
 
         // restricted languages are inherited from the engine if not further specified in the
         // context
-        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+        try (Engine e = Engine.create(TestPermittedLanguagesLanguage.ID)) {
             try (Context c = Context.newBuilder().engine(e).build()) {
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
             }
         }
 
-        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
+        try (Engine e = Engine.newBuilder(TestPermittedLanguagesLanguage.ID, ContextAPITestLanguage.ID).build()) {
             try (Context c = Context.newBuilder().engine(e).build()) {
                 c.eval(ContextAPITestLanguage.ID, "");
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
             }
         }
 
-        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
-            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+        try (Engine e = Engine.newBuilder(TestPermittedLanguagesLanguage.ID, ContextAPITestLanguage.ID).build()) {
+            try (Context c = Context.newBuilder(TestPermittedLanguagesLanguage.ID).engine(e).build()) {
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
                 AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
-                c.eval(ProxyLanguage.ID, "");
+                c.eval(TestPermittedLanguagesLanguage.ID, "");
             }
         }
 
-        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+        try (Engine e = Engine.newBuilder(TestPermittedLanguagesLanguage.ID).build()) {
             Context.Builder b = Context.newBuilder(ContextAPITestLanguage.ID).engine(e);
             // fails language id is nost specified by the engine
             AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
         }
 
-        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+        try (Engine e = Engine.newBuilder(TestPermittedLanguagesLanguage.ID).build()) {
             Context.Builder b = Context.newBuilder(ContextAPITestInternalLanguage.ID).engine(e);
             AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
         }

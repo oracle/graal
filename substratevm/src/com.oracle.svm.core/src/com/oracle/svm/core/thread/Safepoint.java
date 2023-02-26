@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -33,28 +35,29 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.StubCallingConvention;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.nodes.KillMemoryNode;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
+import com.oracle.svm.core.jfr.events.SafepointEndEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -66,6 +69,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.VMThreads.ActionOnExitSafepointSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -74,6 +78,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -115,7 +120,7 @@ import com.oracle.svm.core.util.VMError;
  * not be created (or attached) during the safepoint.
  * <p>
  * A safepoint check is implemented as a check of {@link #safepointRequested} <= 0, which, if true,
- * triggers a call to {@link #slowPathSafepointCheck}. {@link ThreadingSupportFeature} implements an
+ * triggers a call to {@link #slowPathSafepointCheck}. {@link ThreadingSupportImpl} implements an
  * optional per-thread timer on top of the safepoint mechanism. If that timer feature is
  * {@linkplain ThreadingSupportImpl.Options#SupportRecurringCallback supported in the image}, each
  * safepoint check decrements {@link #safepointRequested} before the comparison, which will cause it
@@ -144,7 +149,7 @@ public final class Safepoint {
      * other foreign calls because the call target may contain a safepoint.
      */
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathSafepointCheck", true);
-    private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
+    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(Safepoint.class,
                     "enterSlowPathTransitionFromNativeToNewStatus", true);
     private static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA = SnippetRuntime.findForeignCall(Safepoint.class, "enterSlowPathTransitionFromVMToJava", true);
 
@@ -161,10 +166,10 @@ public final class Safepoint {
 
     public static class Options {
         @Option(help = "Print a warning if I can not come to a safepoint in this many nanoseconds. 0 implies forever.")//
-        public static final RuntimeOptionKey<Long> SafepointPromptnessWarningNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L));
+        public static final RuntimeOptionKey<Long> SafepointPromptnessWarningNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L), RelevantForCompilationIsolates);
 
         @Option(help = "Exit the VM if I can not come to a safepoint in this many nanoseconds. 0 implies forever.")//
-        public static final RuntimeOptionKey<Long> SafepointPromptnessFailureNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L));
+        public static final RuntimeOptionKey<Long> SafepointPromptnessFailureNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L), RelevantForCompilationIsolates);
     }
 
     private static long getSafepointPromptnessWarningNanos() {
@@ -197,7 +202,7 @@ public final class Safepoint {
      * </ul>
      **/
     @Uninterruptible(reason = "Must not contain safepoint checks.")
-    private static void slowPathSafepointCheck(int newStatus, boolean callerHasJavaFrameAnchor) {
+    private static void slowPathSafepointCheck(int newStatus, boolean callerHasJavaFrameAnchor, boolean popFrameAnchor) {
         final IsolateThread myself = CurrentIsolate.getCurrentThread();
 
         if (Master.singleton().getRequestingThread() == myself) {
@@ -221,8 +226,18 @@ public final class Safepoint {
                  */
             } while (StatusSupport.getStatusVolatile() != newStatus && !StatusSupport.compareAndSetNativeToNewStatus(newStatus));
         }
-
         VMError.guarantee(StatusSupport.getStatusVolatile() == newStatus, "Transition to the new thread status must have been successful.");
+
+        if (popFrameAnchor) {
+            /*
+             * Pop the frame anchor immediately after changing status to make stack walks safe
+             * again, especially for the recurring callback and any other slow-path actions which
+             * might throw an exception.
+             */
+            assert newStatus == StatusSupport.STATUS_IN_JAVA;
+            JavaFrameAnchors.popFrameAnchor();
+        }
+
         if (newStatus == StatusSupport.STATUS_IN_JAVA) {
             // Resetting the safepoint counter or executing the recurring callback must only be done
             // if the thread is in Java state.
@@ -237,7 +252,6 @@ public final class Safepoint {
      */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void slowPathRunJavaStateActions() {
-        ThreadingSupportImpl.onSafepointCheckSlowpath();
         if (ActionOnTransitionToJavaSupport.isActionPending()) {
             if (ActionOnTransitionToJavaSupport.isSynchronizeCode()) {
                 CodeSynchronizationNode.synchronizeCode();
@@ -246,6 +260,9 @@ public final class Safepoint {
             }
             ActionOnTransitionToJavaSupport.clearActions();
         }
+
+        // Do this last so an exception cannot skip the above
+        ThreadingSupportImpl.onSafepointCheckSlowpath();
     }
 
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
@@ -399,7 +416,7 @@ public final class Safepoint {
              * Block on mutex held by thread that requested safepoint, i.e., transition to native
              * code.
              */
-            slowPathSafepointCheck(StatusSupport.STATUS_IN_JAVA, false);
+            slowPathSafepointCheck(StatusSupport.STATUS_IN_JAVA, false, false);
 
         } catch (SafepointException se) {
             /* This exception is intended to be thrown from safepoint checks, at one's own risk */
@@ -425,7 +442,7 @@ public final class Safepoint {
         if (ActionOnExitSafepointSupport.isActionPending()) {
             // LLVM Backend do not support `FarReturnNode`,
             // we explicit specify Loom JDK here.
-            if (JavaContinuations.useLoom() && ActionOnExitSafepointSupport.getSwitchStack()) {
+            if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.isSwitchStackPending()) {
                 ActionOnExitSafepointSupport.clearActions();
                 KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
             } else {
@@ -435,24 +452,32 @@ public final class Safepoint {
     }
 
     /**
-     * Transition from native to Java.
+     * Transition from native to Java, checking for safepoint.
      *
      * Can only be called from snippets. The fast path is inlined, the slow path is a method call.
      */
-    public static void transitionNativeToJava() {
-        // Transition from C to Java, checking for safepoint.
+    public static void transitionNativeToJava(boolean popFrameAnchor) {
+        /*
+         * At this point the JavaFrameAnchor (if any) still needs to remain pushed: a concurrently
+         * running safepoint code can start a stack traversal at any time.
+         */
         StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_JAVA;
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, ThreadingSupportImpl.needsNativeToJavaSlowpath()) ||
-                        BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, !StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
-            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus);
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY, !ThreadingSupportImpl.needsNativeToJavaSlowpath()) &&
+                        BranchProbabilityNode.probability(BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY, StatusSupport.compareAndSetNativeToNewStatus(newStatus))) {
+            if (popFrameAnchor) {
+                // The thread is now back in the Java state, it is safe to pop the JavaFrameAnchor.
+                JavaFrameAnchors.popFrameAnchor();
+            }
+        } else {
+            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, popFrameAnchor);
         }
 
         /*
          * Kill all memory locations to ensure that no floating reads are scheduled before the
          * thread is properly transitioned into the Java state.
          */
-        KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
     }
 
     @Uninterruptible(reason = "Must not contain safepoint checks")
@@ -467,16 +492,19 @@ public final class Safepoint {
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
-            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus);
+            callSlowPathNativeToNewStatus(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS, newStatus, false);
         }
     }
 
     @Uninterruptible(reason = "Must not contain safepoint checks")
-    public static void transitionVMToJava() {
+    public static void transitionVMToJava(boolean popFrameAnchor) {
         // We can directly change the thread status as no other thread will touch the status field
         // as long as we are in VM status.
         StatusSupport.assertStatusVM();
         StatusSupport.setStatusJavaUnguarded();
+        if (popFrameAnchor) {
+            JavaFrameAnchors.popFrameAnchor();
+        }
         boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
             callSlowPathSafepointCheck(Safepoint.ENTER_SLOW_PATH_TRANSITION_FROM_VM_TO_JAVA);
@@ -515,21 +543,21 @@ public final class Safepoint {
      */
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Must not contain safepoint checks")
-    private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus) {
+    private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus, boolean popFrameAnchor) {
         VMError.guarantee(StatusSupport.isStatusNativeOrSafepoint(), "Must either be at a safepoint or in native mode");
         VMError.guarantee(!SafepointBehavior.ignoresSafepoints(),
                         "The safepoint handling doesn't change the status of threads that ignore safepoints. So, the fast path transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
         try {
-            slowPathSafepointCheck(newStatus, true);
+            slowPathSafepointCheck(newStatus, true, popFrameAnchor);
         } finally {
             Statistics.incSlowPathThawed();
         }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus);
+    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus, boolean popFrameAnchor);
 
     /**
      * Transitions from VM to Java do not need a safepoint check. We only need to make sure that any
@@ -550,14 +578,11 @@ public final class Safepoint {
     }
 
     /** Methods for the thread that brings the system to a safepoint. */
+    @AutomaticallyRegisteredImageSingleton
     public static final class Master {
         @DuplicatedInNativeCode private static final int NOT_AT_SAFEPOINT = 0;
         @DuplicatedInNativeCode private static final int SYNCHRONIZING = 1;
         @DuplicatedInNativeCode private static final int AT_SAFEPOINT = 2;
-
-        static void initialize() {
-            ImageSingletons.add(Master.class, new Master());
-        }
 
         @Fold
         public static Master singleton() {
@@ -571,7 +596,7 @@ public final class Safepoint {
         private volatile IsolateThread requestingThread;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Master() {
+        Master() {
             this.safepointState = NOT_AT_SAFEPOINT;
         }
 
@@ -586,6 +611,7 @@ public final class Safepoint {
         protected boolean freeze(String reason) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only freeze for a safepoint when multi-threaded.";
             assert VMOperationControl.mayExecuteVmOperations();
+            long startTicks = JfrTicks.elapsedTicks();
 
             /* the current thread may already own the lock for non-safepoint reasons */
             boolean lock = !VMThreads.THREAD_MUTEX.isOwner();
@@ -598,11 +624,12 @@ public final class Safepoint {
             Statistics.setStartNanos();
             ImageSingletons.lookup(Heap.class).prepareForSafepoint();
             safepointState = SYNCHRONIZING;
-            requestSafepoints(reason);
+            int numJavaThreads = requestSafepoints(reason);
             waitForSafepoints(reason);
             Statistics.setFrozenNanos();
             safepointState = AT_SAFEPOINT;
             safepointId = safepointId.add(1);
+            SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
             return lock;
         }
 
@@ -611,9 +638,10 @@ public final class Safepoint {
         protected void thaw(String reason, boolean unlock) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only thaw from a safepoint when multi-threaded.";
             assert VMOperationControl.mayExecuteVmOperations();
-
+            long startTicks = JfrTicks.elapsedTicks();
             safepointState = NOT_AT_SAFEPOINT;
             releaseSafepoints(reason);
+            SafepointEndEvent.emit(getSafepointId(), startTicks);
             ImageSingletons.lookup(Heap.class).endSafepoint();
             Statistics.setThawedNanos();
             requestingThread = WordFactory.nullPointer();
@@ -631,12 +659,14 @@ public final class Safepoint {
         }
 
         /** Send each of the threads (except myself) a request to come to a safepoint. */
-        private static void requestSafepoints(String reason) {
+        private static int requestSafepoints(String reason) {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while requesting a safepoint.");
             final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
+            int numOfThreads = 0;
 
             // Walk the threads list and ask each thread (except myself) to come to a safepoint.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                numOfThreads++;
                 if (isMyself(vmThread)) {
                     continue;
                 }
@@ -651,6 +681,7 @@ public final class Safepoint {
                 trace.string(" with requests: ").signed(Statistics.getRequested());
             }
             trace.string("]").newline();
+            return numOfThreads;
         }
 
         /**
@@ -804,7 +835,7 @@ public final class Safepoint {
                 }
 
                 // Wait for requested threads to come to a safepoint.
-                if (VMThreads.singleton().supportsPatientSafepoints()) {
+                if (VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (nanosSinceStart < TimeUtils.nanosPerMilli) {
                         VMThreads.singleton().yield();
                     } else {
@@ -856,7 +887,7 @@ public final class Safepoint {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected UnsignedWord getSafepointId() {
+        public UnsignedWord getSafepointId() {
             return safepointId;
         }
 
@@ -1092,13 +1123,5 @@ public final class Safepoint {
             }
             return log;
         }
-    }
-}
-
-@AutomaticFeature
-class SafepointFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        Safepoint.Master.initialize();
     }
 }

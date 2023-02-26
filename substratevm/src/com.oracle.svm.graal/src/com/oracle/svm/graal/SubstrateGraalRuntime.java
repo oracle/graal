@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.util.ClassUtil;
 
@@ -70,5 +71,10 @@ public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider {
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
         assert arch.isInstance(GraalSupport.getRuntimeConfig().getBackendForNormalMethod().getTarget().arch);
         return GraalSupport.getRuntimeConfig().getBackendForNormalMethod();
+    }
+
+    @Override
+    public String getCompilerConfigurationName() {
+        return GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 }

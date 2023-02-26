@@ -1,0 +1,3 @@
+# typedef long issue
+nwcc_0.8.3/tests/constexprbug7.c
+nwcc_0.8.3/tests/strlol.c

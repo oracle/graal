@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.PrintStream;
 import java.util.List;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
@@ -39,11 +39,12 @@ import com.oracle.truffle.api.TruffleFile;
  * Encapsulates logic for locating libraries.
  */
 public abstract class LibraryLocator {
+    private static final Level LOADER_LOGGING_LEVEL = Level.FINER;
 
     @CompilerDirectives.TruffleBoundary
     public final TruffleFile locate(LLVMContext context, String lib, Object reason) {
-        if (context != null && context.loaderTraceStream() != null) {
-            LibraryLocator.traceLoader(context, "\n");
+        if (loggingEnabled()) {
+            LibraryLocator.traceLoader(context, "");
         }
         traceFind(context, lib, reason);
         return locateLibrary(context, lib, reason);
@@ -52,50 +53,50 @@ public abstract class LibraryLocator {
     protected abstract TruffleFile locateLibrary(LLVMContext context, String lib, Object reason);
 
     public static void traceFind(LLVMContext context, Object lib, Object reason) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "find external library=%s; needed by %s\n", lib, reason);
+        if (loggingEnabled()) {
+            traceLoader(context, "find external library=%s; needed by %s", lib, reason);
         }
     }
 
     public static void traceTry(LLVMContext context, Object file) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "  trying file=%s\n", file);
+        if (loggingEnabled()) {
+            traceLoader(context, "  trying file=%s", file);
         }
     }
 
     public static void traceDelegateNative(LLVMContext context, Object file) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "  delegating to native=%s\n", file);
+        if (loggingEnabled()) {
+            traceLoader(context, "  delegating to native=%s", file);
         }
     }
 
     public static void traceLoadNative(LLVMContext context, Object file) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "load library natively=%s\n", file);
+        if (loggingEnabled()) {
+            traceLoader(context, "load library natively=%s", file);
         }
     }
 
     public static void traceSearchPath(LLVMContext context, List<?> paths) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, " search path=%s\n", paths);
+        if (loggingEnabled()) {
+            traceLoader(context, " search path=%s", paths);
         }
     }
 
     public static void traceSearchPath(LLVMContext context, List<?> paths, Object reason) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, " search path=%s (local path from %s)\n", paths, reason);
+        if (loggingEnabled()) {
+            traceLoader(context, " search path=%s (local path from %s)", paths, reason);
         }
     }
 
     public static void traceParseBitcode(LLVMContext context, Object path) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "parse bitcode=%s\n", path);
+        if (loggingEnabled()) {
+            traceLoader(context, "parse bitcode=%s", path);
         }
     }
 
     public static void traceAlreadyLoaded(LLVMContext context, Object path) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "library already located: %s\n", path);
+        if (loggingEnabled()) {
+            traceLoader(context, "library already located: %s", path);
         }
     }
 
@@ -104,40 +105,42 @@ public abstract class LibraryLocator {
     }
 
     public static void traceStaticInits(LLVMContext context, Object prefix, Object module, Object details) {
-        if (context != null && context.loaderTraceStream() != null) {
-            traceLoader(context, "calling %s: %s %s\n", prefix, module, details);
+        if (loggingEnabled()) {
+            traceLoader(context, "calling %s: %s %s", prefix, module, details);
         }
+    }
+
+    private static final boolean isLoggingEnabled = LLVMContext.loaderLogger().isLoggable(LOADER_LOGGING_LEVEL);
+
+    public static boolean loggingEnabled() {
+        return isLoggingEnabled;
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void traceLoader(LLVMContext context, String str) {
-        PrintStream stream = context.loaderTraceStream();
-        printPrefix(stream, context);
-        stream.print(str);
+        LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
+                        String.format("lli(%x): %s", prefix(context), str));
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void traceLoader(LLVMContext context, String format, Object arg0) {
-        PrintStream stream = context.loaderTraceStream();
-        printPrefix(stream, context);
-        stream.printf(format, arg0);
+        LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
+                        String.format("lli(%x): " + format, prefix(context), arg0));
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1) {
-        PrintStream stream = context.loaderTraceStream();
-        printPrefix(stream, context);
-        stream.printf(format, arg0, arg1);
+        LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
+                        String.format("lli(%x): " + format, prefix(context), arg0, arg1));
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1, Object arg2) {
-        PrintStream stream = context.loaderTraceStream();
-        printPrefix(stream, context);
-        stream.printf(format, arg0, arg1, arg2);
+        LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
+                        String.format("lli(%x): " + format, prefix(context), arg0, arg1, arg2));
     }
 
-    private static void printPrefix(PrintStream stream, LLVMContext context) {
-        stream.printf("lli(%x): ", System.identityHashCode(context));
+    private static int prefix(LLVMContext context) {
+        return System.identityHashCode(context);
     }
 }

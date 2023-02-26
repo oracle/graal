@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.AnnotatedType;
 
 import org.graalvm.nativeimage.Platform;

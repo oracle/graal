@@ -30,6 +30,8 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -47,10 +49,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -67,7 +69,8 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     static {
         long fieldOffset = 0;
         try {
-            fieldOffset = UNSAFE.objectFieldOffset(CheckedObject.class.getDeclaredField("field"));
+            Field field = CheckedObject.class.getDeclaredField("field");
+            fieldOffset = getObjectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             e.printStackTrace();
         }
@@ -113,7 +116,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
         // lower unsafe load
         CoreProviders context = getProviders();
-        LoweringPhase lowering = new LoweringPhase(createCanonicalizerPhase(), StandardLoweringStage.HIGH_TIER);
+        LoweringPhase lowering = new HighTierLoweringPhase(createCanonicalizerPhase());
         lowering.apply(graph, context);
 
         unsafeNodes = graph.getNodes().filter(RawLoadNode.class);
@@ -124,10 +127,9 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         assertThat(reads, hasCount(2 * ids + 1)); // 2 * ids id reads, 1 'field' access
 
         // float reads and canonicalize to give a chance to conditions to GVN
-        FloatingReadPhase floatingReadPhase = new FloatingReadPhase();
-        floatingReadPhase.apply(graph);
         CanonicalizerPhase canonicalizerPhase = createCanonicalizerPhase();
-        canonicalizerPhase.apply(graph, context);
+        FloatingReadPhase floatingReadPhase = new FloatingReadPhase(canonicalizerPhase);
+        floatingReadPhase.apply(graph, context);
 
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access

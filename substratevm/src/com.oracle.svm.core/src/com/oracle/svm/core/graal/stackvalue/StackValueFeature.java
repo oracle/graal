@@ -25,8 +25,11 @@
 package com.oracle.svm.core.graal.stackvalue;
 
 import java.util.ListIterator;
+import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
@@ -35,11 +38,14 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 
-@AutomaticFeature
-public class StackValueFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+public class StackValueFeature implements InternalFeature {
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
         ListIterator<BasePhase<? super MidTierContext>> midTierPos = suites.getMidTier().findPhase(FrameStateAssignmentPhase.class);
@@ -49,5 +55,18 @@ public class StackValueFeature implements GraalFeature {
         ListIterator<BasePhase<? super LowTierContext>> lowTierPos = suites.getLowTier().findPhase(LoweringPhase.class);
         lowTierPos.next();
         lowTierPos.add(new StackValueSlotAssignmentPhase());
+    }
+
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(StackValueSnippets.FOREIGN_CALLS);
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        if (hosted) {
+            new StackValueSnippets(options, providers, lowerings);
+        }
     }
 }

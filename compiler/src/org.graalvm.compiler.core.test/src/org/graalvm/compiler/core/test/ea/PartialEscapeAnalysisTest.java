@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test.ea;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.TypeSystemTest;
@@ -290,9 +291,87 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         assertTrue(executedDeoptimizeDirective);
     }
 
+    public static int virtualPhiLoop(int var4) {
+        TestObject var2 = new TestObject(0, 0);
+
+        int var3 = 100;
+        for (int i = 0; i < var4; i++) {
+            var2.x++;
+            if (var2.x >= var3) {
+                var2 = new TestObject(0, 0);
+            }
+        }
+        return var2.x;
+    }
+
+    @Test
+    public void testVirtualPhiLoop() {
+        for (int size = 0; size < 100; size++) {
+            test("virtualPhiLoop", size);
+        }
+        testPartialEscapeAnalysis("virtualPhiLoop", true, 0, 0);
+    }
+
+    private static int virtualPhiLoop2(Object[] var4) {
+        ArrayList<Object> var1 = new ArrayList<>();
+        ArrayList<Object> var2 = new ArrayList<>();
+
+        int var3 = (int) Math.pow(10.0D, Math.floor(Math.log(var4.length - 0.01D) / Math.log(10.0D)));
+        for (int i = 0; i < var4.length; i++) {
+            Object var5 = var4[i];
+            var2.add(var5);
+            if (var2.size() >= var3) {
+                var1.add(var2.size());
+                var2 = new ArrayList<>();
+            }
+        }
+        if (!var2.isEmpty()) {
+            var1.add(-42);
+        }
+        return var1.size();
+    }
+
+    @Test
+    public void testVirtualPhiLoop2() {
+        for (int size = 0; size < 100; size++) {
+            test("virtualPhiLoop2", (Object) new Object[size]);
+        }
+    }
+
+    private static int virtualPhiLoop3(Object[] var4) {
+        ArrayList<Object> var1 = new ArrayList<>();
+        ArrayList<Object> var2 = new ArrayList<>();
+
+        int var3 = 100;
+        for (int i = 0; i < var4.length; i++) {
+            Object var5 = var4[i];
+            var2.add(var5);
+            if (var2.size() >= var3) {
+                var1.add(var2.size());
+                var2 = new ArrayList<>();
+            }
+        }
+        if (!var2.isEmpty()) {
+            var1.add(-42);
+        }
+        return var1.size();
+    }
+
+    @Test
+    public void testVirtualPhiLoop3() {
+        for (int size = 0; size < 100; size++) {
+            test("virtualPhiLoop2", (Object) new Object[size]);
+        }
+    }
+
     @SafeVarargs
     protected final void testPartialEscapeAnalysis(String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
-        prepareGraph(snippet, false);
+        testPartialEscapeAnalysis(snippet, false, expectedProbability, expectedCount, invalidNodeClasses);
+    }
+
+    @SafeVarargs
+    protected final void testPartialEscapeAnalysis(String snippet, boolean removeIdentity, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
+        prepareGraph(snippet, removeIdentity);
         graph.clearAllStateAfterForTestingOnly();
         new DeadCodeEliminationPhase().apply(graph);
         createCanonicalizerPhase().apply(graph, context);

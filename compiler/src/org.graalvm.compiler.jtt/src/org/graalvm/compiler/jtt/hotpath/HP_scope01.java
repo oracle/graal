@@ -44,15 +44,15 @@ public class HP_scope01 extends JTTTest {
             }
             {
                 float f = 3;
-                sum += f;
+                sum += (int) f;
             }
             {
                 long l = 7;
-                sum += l;
+                sum += (int) l;
             }
             {
                 double d = 11;
-                sum += d;
+                sum += (int) d;
             }
         }
 
@@ -62,7 +62,7 @@ public class HP_scope01 extends JTTTest {
                 sum += i;
             } else {
                 float f = 3;
-                sum += f;
+                sum += (int) f;
             }
         }
 
@@ -70,14 +70,14 @@ public class HP_scope01 extends JTTTest {
             int i = 3;
             for (int j = 0; j < count; j++) {
                 float f = 7;
-                sum += i + f;
+                sum += (int) (i + f);
             }
         }
 
         for (int k = 0; k < count; k++) {
             for (int j = 0; j < count; j++) {
                 float f = 7;
-                sum += j + f;
+                sum += (int) (j + f);
             }
             int i = 3;
             sum += i;

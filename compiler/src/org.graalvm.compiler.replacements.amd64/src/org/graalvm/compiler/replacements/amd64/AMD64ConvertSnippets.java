@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,12 @@ package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -61,10 +62,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static int f2i(float input, int result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (Float.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0f) {
+            } else if (unknownProbability(input > 0.0f)) {
                 // input is > 0 -> return max int
                 return Integer.MAX_VALUE;
             }
@@ -86,10 +87,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static long f2l(float input, long result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (Float.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0f) {
+            } else if (unknownProbability(input > 0.0f)) {
                 // input is > 0 -> return max int
                 return Long.MAX_VALUE;
             }
@@ -111,10 +112,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static int d2i(double input, int result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (Double.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0d) {
+            } else if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Integer.MAX_VALUE;
             }
@@ -136,10 +137,10 @@ public class AMD64ConvertSnippets implements Snippets {
     @Snippet
     public static long d2l(double input, long result) {
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (Double.isNaN(input)) {
+            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
                 // input is NaN -> return 0
                 return 0;
-            } else if (input > 0.0d) {
+            } else if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Long.MAX_VALUE;
             }
@@ -157,10 +158,10 @@ public class AMD64ConvertSnippets implements Snippets {
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 
-            f2i = snippet(AMD64ConvertSnippets.class, "f2i");
-            f2l = snippet(AMD64ConvertSnippets.class, "f2l");
-            d2i = snippet(AMD64ConvertSnippets.class, "d2i");
-            d2l = snippet(AMD64ConvertSnippets.class, "d2l");
+            f2i = snippet(providers, AMD64ConvertSnippets.class, "f2i");
+            f2l = snippet(providers, AMD64ConvertSnippets.class, "f2l");
+            d2i = snippet(providers, AMD64ConvertSnippets.class, "d2i");
+            d2l = snippet(providers, AMD64ConvertSnippets.class, "d2l");
         }
 
         public void lower(FloatConvertNode convert, LoweringTool tool) {
@@ -192,9 +193,9 @@ public class AMD64ConvertSnippets implements Snippets {
             args.add("input", convert.getValue());
             args.add("result", graph.unique(new AMD64FloatConvertNode(convert.getFloatConvert(), convert.getValue())));
 
-            SnippetTemplate template = template(convert, args);
+            SnippetTemplate template = template(tool, convert, args);
             convert.getDebug().log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getFloatConvert(), graph, convert, template, args);
-            template.instantiate(providers.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
+            template.instantiate(tool.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
             convert.safeDelete();
         }
     }

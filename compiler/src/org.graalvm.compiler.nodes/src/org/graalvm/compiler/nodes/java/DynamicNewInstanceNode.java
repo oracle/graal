@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.java;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -87,8 +89,16 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
         return this;
     }
 
-    public static boolean throwsInstantiationException(Class<?> type, Class<?> classClass) {
-        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type == classClass;
+    public static boolean throwsInstantiationExceptionInjectedProbability(double probability, Class<?> type, Class<?> classClass) {
+        /*
+         * This method is for use in a snippet and therefore injects probabilities for each
+         * disjunct.
+         */
+        return probability(probability, type.isPrimitive()) ||
+                        probability(probability, type.isArray()) ||
+                        probability(probability, type.isInterface()) ||
+                        probability(probability, Modifier.isAbstract(type.getModifiers())) ||
+                        probability(probability, type == classClass);
     }
 
     public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {

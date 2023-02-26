@@ -24,19 +24,18 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,16 +44,14 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
 
-    public boolean isEncodedGraphCacheEnabled() {
-        return encodedGraphCacheCapacity != 0;
-    }
-
-    private int encodedGraphCacheCapacity;
     private int jvmciReservedReference0Offset = -1;
 
-    public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
-        super(config, configForRoot, new HotSpotKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
+    private boolean disableEncodedGraphCachePurges;
+
+    public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownTruffleTypes) {
+        super(config, configForRoot, knownTruffleTypes);
         this.graphCacheRef = new AtomicReference<>();
+        this.disableEncodedGraphCachePurges = false;
     }
 
     void setJvmciReservedReference0Offset(int jvmciReservedReference0Offset) {
@@ -68,7 +65,6 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
-        encodedGraphCacheCapacity = options.get(PolyglotCompilerOptions.EncodedGraphCacheCapacity);
     }
 
     @Override
@@ -78,28 +74,9 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
                         (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
     }
 
-    @SuppressWarnings("serial")
-    private Map<ResolvedJavaMethod, EncodedGraph> createEncodedGraphMap() {
-        if (encodedGraphCacheCapacity < 0) {
-            // Unbounded cache.
-            return new ConcurrentHashMap<>();
-        }
-
-        // Access-based LRU bounded cache. The overhead of the synchronized map is negligible
-        // compared to the cost of re-parsing the graphs.
-        return Collections.synchronizedMap(
-                        new LinkedHashMap<ResolvedJavaMethod, EncodedGraph>(16, 0.75f, true) {
-                            @Override
-                            protected boolean removeEldestEntry(Map.Entry<ResolvedJavaMethod, EncodedGraph> eldest) {
-                                // encodedGraphCacheCapacity < 0 => unbounded capacity
-                                return (encodedGraphCacheCapacity >= 0) && size() > encodedGraphCacheCapacity;
-                            }
-                        });
-    }
-
     @Override
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
-        if (encodedGraphCacheCapacity == 0) {
+        if (!persistentEncodedGraphCache) {
             // The encoded graph cache is disabled across different compilations. The returned map
             // can still be used and propagated within the same compilation unit.
             return super.getOrCreateEncodedGraphCache();
@@ -108,12 +85,48 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         do {
             cache = graphCacheRef.get();
         } while (cache == null &&
-                        !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(createEncodedGraphMap())));
+                        !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(new ConcurrentHashMap<>())));
         assert cache != null;
         return cache;
     }
 
+    /**
+     * Called in unit-tests via reflection.
+     */
     public void purgeEncodedGraphCache() {
-        graphCacheRef.set(null);
+        // Disabling purges only for tests.
+        if (!disableEncodedGraphCachePurges) {
+            graphCacheRef.set(null);
+        }
+    }
+
+    /**
+     * Used only in unit-tests, to avoid transient failures caused by multiple compiler threads
+     * racing to purge the cache. Called reflectively from EncodedGraphCacheTest.
+     */
+    public boolean disableEncodedGraphCachePurges(boolean value) {
+        boolean oldValue = disableEncodedGraphCachePurges;
+        disableEncodedGraphCachePurges = value;
+        return oldValue;
+    }
+
+    /**
+     * Used only in unit-tests. Called reflectively from EncodedGraphCacheTest.
+     */
+    public boolean persistentEncodedGraphCache(boolean value) {
+        boolean oldValue = persistentEncodedGraphCache;
+        persistentEncodedGraphCache = value;
+        return oldValue;
+    }
+
+    @Override
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
+        if (persistentEncodedGraphCache) {
+            // The interpreter graphs may be cached across compilations, keep JavaConstants
+            // references to the application heap alive in the libgraal global scope.
+            return HotSpotGraalServices::enterGlobalCompilationContext;
+        } else {
+            return super.getCreateCachedGraphScope();
+        }
     }
 }

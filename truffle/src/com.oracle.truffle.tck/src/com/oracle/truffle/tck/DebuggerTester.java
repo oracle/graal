@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.io.PrintStream;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,6 +61,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -585,6 +587,10 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.33
      */
     public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) {
+        assertColumnBreakpointsResolution(sourceWithMarks, breakpointMarkName, resolvedMarkName, language, null);
+    }
+
+    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language, URI bpURI) {
         Pattern br = Pattern.compile("([" + breakpointMarkName + resolvedMarkName + "]\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, int[]> bps = new HashMap<>();
         String sourceString = sourceWithMarks;
@@ -635,27 +641,34 @@ public final class DebuggerTester implements AutoCloseable {
             try (DebuggerSession session = startSession()) {
 
                 startEval(source);
-                int[] resolvedIndexPtr = new int[]{0};
+                int[] resolvedLineColumn = new int[]{0, 0};
+                Breakpoint.Builder bpBuilder = (bpURI != null) ? Breakpoint.newBuilder(bpURI) : Breakpoint.newBuilder(DebuggerTester.getSourceImpl(source));
                 Breakpoint breakpoint = session.install(
-                                Breakpoint.newBuilder(DebuggerTester.getSourceImpl(source)).lineIs(line).columnIs(column).oneShot().resolveListener(new Breakpoint.ResolveListener() {
+                                bpBuilder.lineIs(line).columnIs(column).oneShot().resolveListener(new Breakpoint.ResolveListener() {
                                     @Override
                                     public void breakpointResolved(Breakpoint brkp, SourceSection section) {
-                                        resolvedIndexPtr[0] = section.getCharIndex() + 1;
+                                        resolvedLineColumn[0] = section.getStartLine();
+                                        resolvedLineColumn[1] = section.getStartColumn();
                                         if (TRACE) {
-                                            trace("  resolved: " + (resolvedIndexPtr[0]));
+                                            trace("  resolved: " + resolvedLineColumn[0] + ":" + resolvedLineColumn[1]);
                                         }
                                     }
                                 }).build());
 
+                int bpLine = source.getLineNumber(bp[1] - 1);
+                int bpColumn = source.getColumnNumber(bp[1] - 1);
+                Pair<Integer, Integer> breakpointPosition = Pair.create(bpLine, bpColumn);
                 expectSuspended((SuspendedEvent event) -> {
-                    Assert.assertEquals("B" + bpId + ": Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
-                                    bp[1], event.getSourceSection().getCharIndex() + 1);
+                    Pair<Integer, Integer> eventPosition = Pair.create(event.getSourceSection().getStartLine(), event.getSourceSection().getStartColumn());
+                    Assert.assertEquals("B" + bpId + ": Expected " + bp[0] + " => " + breakpointPosition + ", event at " + eventPosition,
+                                    breakpointPosition, eventPosition);
                     Assert.assertSame(breakpoint, event.getBreakpoints().iterator().next());
                     event.prepareContinue();
                 });
                 expectDone();
+                Pair<Integer, Integer> resolvedPosition = Pair.create(resolvedLineColumn[0], resolvedLineColumn[1]);
                 Assert.assertEquals("B" + bpId + ": Expected resolved " + bp[0] + " => " + bp[1],
-                                bp[1], resolvedIndexPtr[0]);
+                                breakpointPosition, resolvedPosition);
             }
         }
     }
@@ -786,13 +799,9 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private static void setAccessible(Field field, boolean flag) {
-        if (!Java8OrEarlier) {
-            openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
-        }
+        openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
         field.setAccessible(flag);
     }
-
-    private static final boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     /**
      * Opens {@code declaringClass}'s package to allow a method declared in {@code accessor} to call
@@ -827,7 +836,7 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private void putEvent(Object event) {
-        trace("Put event " + this + ": " + Thread.currentThread());
+        trace("Put event " + event + " to " + this + ": " + Thread.currentThread());
         if (event instanceof SuspendedEvent) {
             try {
                 if (handler == null) {
@@ -852,6 +861,7 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private void onSuspend(SuspendedEvent event) {
+        trace("On SUSPEND " + event + " of " + this + ": " + Thread.currentThread());
         if (closed) {
             return;
         }
@@ -888,6 +898,11 @@ public final class DebuggerTester implements AutoCloseable {
 
         ExecutingSource(Function<Context, Value> function) {
             this.function = function;
+        }
+
+        @Override
+        public String toString() {
+            return "ExecutingSource[" + function + "], error = " + error + ", returnValue = " + returnValue;
         }
 
     }
@@ -946,18 +961,24 @@ public final class DebuggerTester implements AutoCloseable {
                     }
                     ExecutingSource s = executingSource;
                     try {
-                        trace("Start executing " + this);
+                        trace("Start executing " + s + " on " + DebuggerTester.this + ": " + Thread.currentThread());
                         s.returnValue = s.function.apply(context).toString();
-                        trace("Done executing " + this);
                     } catch (Throwable e) {
                         s.error = e;
                     } finally {
+                        trace("Done executing " + s + " on " + DebuggerTester.this + ": " + Thread.currentThread());
                         putEvent(s);
                     }
                 }
             } finally {
                 if (context != null) {
-                    context.close();
+                    try {
+                        context.close();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled() && !pe.isExit()) {
+                            throw pe;
+                        }
+                    }
                 }
             }
         }

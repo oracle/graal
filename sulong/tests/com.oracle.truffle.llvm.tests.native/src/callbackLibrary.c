@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,18 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#if defined(_WIN32)
+#define EXPORT_FUNCTION __declspec(dllexport)
+#else
+#define EXPORT_FUNCTION
+#endif
+
 struct container {
     int (*callback)(int p1, int p2);
     int p1;
 };
 
-void printPointerToArray(int **a) {
+EXPORT_FUNCTION void printPointerToArray(int **a) {
 
     fprintf(stderr, "Native: a = %p\n", a);
     fprintf(stderr, "Native: *a = %p\n", *a);
@@ -46,7 +52,7 @@ void printPointerToArray(int **a) {
     fprintf(stderr, "Native: *a[2] = %i\n", (*a)[2]);
 }
 
-void printArray(int *a) {
+EXPORT_FUNCTION void printArray(int *a) {
 
     fprintf(stderr, "Native: a = %p\n", a);
 
@@ -55,42 +61,42 @@ void printArray(int *a) {
     fprintf(stderr, "Native: a[2] = %i\n", a[2]);
 }
 
-void *create_container(int (*callback)(int p1, int p2), int p1) {
+EXPORT_FUNCTION void *create_container(int (*callback)(int p1, int p2), int p1) {
     struct container *c = malloc(sizeof(struct container));
     c->callback = callback;
     c->p1 = p1;
     return c;
 }
 
-int add(int a, int b) {
+EXPORT_FUNCTION int add(int a, int b) {
     return a + b;
 }
 
-int (*get_callback_function())(int, int) {
+EXPORT_FUNCTION int (*get_callback_function())(int, int) {
     return &add;
 }
 
-void store_native_function(void *container) {
+EXPORT_FUNCTION void store_native_function(void *container) {
     struct container *c = (struct container *) container;
     c->callback = add;
 }
 
-int call_callback(void *container, int p2) {
+EXPORT_FUNCTION int call_callback(void *container, int p2) {
     struct container *c = (struct container *) container;
     return c->callback(c->p1, p2);
 }
 
-int call_callback2(void *container) {
+EXPORT_FUNCTION int call_callback2(void *container) {
     struct container *c = (struct container *) container;
     return c->callback(20, 22);
 }
 
-int call_typecast(int (*fn)(void)) {
+EXPORT_FUNCTION int call_typecast(int (*fn)(void)) {
     int (*fn_cast)(int) = (int (*)(int)) fn;
     return fn_cast(42);
 }
 
-int nullPointerFunctionTest(void (*foo)()) {
+EXPORT_FUNCTION int nullPointerFunctionTest(void (*foo)()) {
     if (foo == 0) {
         return 42;
     } else {
@@ -98,10 +104,10 @@ int nullPointerFunctionTest(void (*foo)()) {
     }
 }
 
-int callbackPointerArgTest(int (*callback)(void *), void *arg) {
+EXPORT_FUNCTION int callbackPointerArgTest(int (*callback)(void *), void *arg) {
     return callback(arg);
 }
 
-bool nativeInvert(bool value) {
+EXPORT_FUNCTION bool nativeInvert(bool value) {
     return !value;
 }

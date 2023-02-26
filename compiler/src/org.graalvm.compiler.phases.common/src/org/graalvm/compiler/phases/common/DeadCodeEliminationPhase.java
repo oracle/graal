@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.debug.CounterKey;
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
@@ -45,8 +47,6 @@ public class DeadCodeEliminationPhase extends Phase {
         public static final OptionKey<Boolean> ReduceDCE = new OptionKey<>(true);
         // @formatter:on
     }
-
-    private static final CounterKey counterNodesRemoved = DebugContext.counter("NodesRemoved");
 
     public enum Optionality {
         Optional,
@@ -70,6 +70,11 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private final boolean optional;
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
     @Override
     public void run(StructuredGraph graph) {
@@ -135,12 +140,11 @@ public class DeadCodeEliminationPhase extends Phase {
             }
         };
 
-        DebugContext debug = graph.getDebug();
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.markDeleted();
                 node.applyInputs(consumer);
-                counterNodesRemoved.increment(debug);
+                graph.getOptimizationLog().report(DebugContext.VERY_DETAILED_LEVEL, DeadCodeEliminationPhase.class, "NodeRemoval", node);
             }
         }
     }

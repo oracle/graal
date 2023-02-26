@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +34,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,6 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
@@ -508,5 +511,50 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         // Gets split
         callNode1.call(args[3]);
         Assert.assertTrue(callNode1.isCallTargetCloned());
+    }
+
+    @TruffleLanguage.Registration(id = SplittingLimitTestLanguage.ID, name = SplittingLimitTestLanguage.ID)
+    static class SplittingLimitTestLanguage extends ProxyLanguage {
+        static final String ID = "SplittingLimitTestLanguage";
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(null) {
+
+                final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(
+                                NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+
+                final OptimizedDirectCallNode callNode1 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+                final OptimizedDirectCallNode callNode2 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    // Target turns monomorphic on 1
+                    callNode1.call(1);
+                    // Target turns polymorphic on 0
+                    callNode2.call(0);
+                    // Give each a chance to split
+                    callNode1.call(0);
+                    callNode2.call(0);
+                    assertExpectations();
+                    return 42;
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void assertExpectations() {
+                    // First is split because we have the budget
+                    Assert.assertTrue(callNode1.isCallTargetCloned());
+                    // Second is not because we don't have the budget
+                    Assert.assertFalse(callNode2.isCallTargetCloned());
+                }
+            }.getCallTarget();
+        }
+    }
+
+    @Test
+    public void testSplittingBudgetLimit() {
+        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).build()) {
+            c.eval(SplittingLimitTestLanguage.ID, "");
+        }
     }
 }

@@ -38,18 +38,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -62,38 +63,44 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.vm.annotation.Contended;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
@@ -138,21 +145,30 @@ public class UniverseBuilder {
             for (AnalysisType aType : aUniverse.getTypes()) {
                 makeType(aType);
             }
-            for (AnalysisType aType : aUniverse.getTypes()) {
-                /*
-                 * Set enclosing type lazily to avoid cyclic dependency between interfaces and
-                 * enclosing types. For example, in Scala an interface can extends its inner type.
-                 */
-                if (aType.getEnclosingType() != null) {
-                    lookupType(aType).setEnclosingType(Objects.requireNonNull(lookupType(aType.getEnclosingType())));
-                }
-            }
-
             for (AnalysisField aField : aUniverse.getFields()) {
                 makeField(aField);
             }
             for (AnalysisMethod aMethod : aUniverse.getMethods()) {
-                makeMethod(aMethod);
+                assert aMethod.isOriginalMethod();
+                Collection<MultiMethod> allMethods = aMethod.getAllMultiMethods();
+                HostedMethod origHMethod = null;
+                if (allMethods.size() == 1) {
+                    origHMethod = makeMethod(aMethod);
+                } else {
+                    ConcurrentHashMap<MultiMethod.MultiMethodKey, MultiMethod> multiMethodMap = new ConcurrentHashMap<>();
+                    for (MultiMethod method : aMethod.getAllMultiMethods()) {
+                        HostedMethod hMethod = makeMethod((AnalysisMethod) method);
+                        hMethod.setMultiMethodMap(multiMethodMap);
+                        MultiMethod previous = multiMethodMap.put(hMethod.getMultiMethodKey(), hMethod);
+                        assert previous == null : "Overwriting multimethod key";
+                        if (method.equals(aMethod)) {
+                            origHMethod = hMethod;
+                        }
+                    }
+                }
+                assert origHMethod != null;
+                HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
+                assert previous == null : "Overwriting analysis key";
             }
 
             Collection<HostedType> allTypes = hUniverse.types.values();
@@ -178,9 +194,9 @@ public class UniverseBuilder {
             processFieldLocations();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
-            Collections.sort(hUniverse.orderedMethods);
+            Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            Collections.sort(hUniverse.orderedFields);
+            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
             profilingInformationBuildTask.join();
         }
     }
@@ -272,7 +288,7 @@ public class UniverseBuilder {
         return x == y;
     }
 
-    private void makeMethod(AnalysisMethod aMethod) {
+    private HostedMethod makeMethod(AnalysisMethod aMethod) {
         HostedType holder;
         holder = lookupType(aMethod.getDeclaringClass());
         Signature signature = makeSignature(aMethod.getSignature(), holder);
@@ -291,9 +307,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
-        assert !hUniverse.methods.containsKey(aMethod);
-        hUniverse.methods.put(aMethod, sMethod);
+        HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
         boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
@@ -307,9 +321,12 @@ public class UniverseBuilder {
                 unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
                                 "Method annotated with @" + CFunction.class.getSimpleName() + " must be declared native");
             }
-        } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && !(aMethod.getWrapped() instanceof CustomSubstitutionMethod) &&
+                        aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, AnnotationSubstitutionProcessor.deleteErrorMessage(aMethod, DeletedMethod.NATIVE_MESSAGE, true));
         }
+
+        return hMethod;
     }
 
     private Signature makeSignature(Signature aSignature, WrappedJavaType defaultAccessingClass) {
@@ -350,8 +367,14 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
-        hUniverse.methods.entrySet().parallelStream()
-                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(entry.getKey()));
+        hUniverse.methods.values().parallelStream()
+                        .forEach(method -> {
+                            assert method.isOriginalMethod();
+                            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
+                                HostedMethod hMethod = (HostedMethod) multiMethod;
+                                hMethod.staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(hMethod.getWrapped());
+                            }
+                        });
 
         staticAnalysisResultsBuilder = null;
     }
@@ -368,21 +391,10 @@ public class UniverseBuilder {
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
                     FunctionPointerHolder.class,
+                    StoredContinuation.class,
+                    SubstrateMethodAccessor.class,
+                    SubstrateConstructorAccessor.class,
                     FillerObject.class));
-
-    static {
-        try {
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateMethodAccessorJDK11"));
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateConstructorAccessorJDK11"));
-            } else {
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateMethodAccessorJDK8"));
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateConstructorAccessorJDK8"));
-            }
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -407,10 +419,22 @@ public class UniverseBuilder {
     }
 
     private void layoutInstanceFields() {
-        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
+        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0], false);
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
+    private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
+        if (PodSupport.isPresent() && PodSupport.singleton().mustReserveLengthField(clazz.getJavaClass())) {
+            return true;
+        }
+        if (HybridLayout.isHybrid(clazz)) {
+            // A pod ancestor subclassing Object must have already reserved a length field, unless
+            // the pod subclasses Object itself, in which case we would have returned true earlier.
+            return !PodSupport.isPresent() || !PodSupport.singleton().isPodClass(clazz.getJavaClass());
+        }
+        return false;
+    }
+
+    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields, boolean superFieldsContendedPadding) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -423,15 +447,14 @@ public class UniverseBuilder {
             startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
-        if (HybridLayout.isHybrid(clazz)) {
-            /* Set start after array length field */
-            assert startSize == layout.getArrayLengthOffset();
+        if (mustReserveLengthField(clazz)) {
+            VMError.guarantee(startSize == layout.getArrayLengthOffset());
             int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
             /*
              * Set start after typecheck slots field, if the hybrid class has one. For now, only
-             * DynamicHubs can this field(s).
+             * DynamicHubs can have such field(s).
              */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
                 /* Each type check id slot is 2 bytes. */
@@ -439,30 +462,45 @@ public class UniverseBuilder {
             }
         }
 
-        // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(rawFields);
-
         int nextOffset = startSize;
-        while (rawFields.size() > 0) {
-            boolean progress = false;
-            for (int i = 0; i < rawFields.size(); i++) {
-                HostedField field = rawFields.get(i);
-                int fieldSize = layout.sizeInBytes(field.getStorageKind());
 
-                if (nextOffset % fieldSize == 0) {
-                    field.setLocation(nextOffset);
-                    nextOffset += fieldSize;
+        boolean hasLeadingPadding = superFieldsContendedPadding;
+        boolean isClassContended = clazz.isAnnotationPresent(Contended.class);
+        if (!hasLeadingPadding && (isClassContended || (clazz.getSuperclass() != null && clazz.getSuperclass().isAnnotationPresent(Contended.class)))) {
+            nextOffset += getContendedPadding();
+            hasLeadingPadding = true;
+        }
 
-                    rawFields.remove(i);
-                    orderedFields.add(field);
-                    progress = true;
-                    break;
-                }
+        int beginOfFieldsOffset = nextOffset;
+
+        /*
+         * Sort and group fields so that fields marked @Contended(tag) are grouped by their tag,
+         * placing unannotated fields first in the object, and so that within groups, a) all Object
+         * fields are consecutive, and b) bigger types come first.
+         */
+        Object uncontendedSentinel = new Object();
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class)).<Object> map(Contended::value).orElse(uncontendedSentinel);
+        Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
+                        .sorted(HostedUniverse.FIELD_COMPARATOR_RELAXED)
+                        .collect(Collectors.groupingBy(getAnnotationGroup, Collectors.toCollection(ArrayList::new)));
+
+        ArrayList<HostedField> uncontendedFields = contentionGroups.remove(uncontendedSentinel);
+        if (uncontendedFields != null) {
+            assert !uncontendedFields.isEmpty();
+            nextOffset = placeFields(uncontendedFields, nextOffset, orderedFields, layout);
+        }
+
+        for (ArrayList<HostedField> groupFields : contentionGroups.values()) {
+            boolean placedFieldsBefore = (nextOffset != beginOfFieldsOffset);
+            if (placedFieldsBefore || !hasLeadingPadding) {
+                nextOffset += getContendedPadding();
             }
-            if (!progress) {
-                // Insert padding byte and try again.
-                nextOffset++;
-            }
+            nextOffset = placeFields(groupFields, nextOffset, orderedFields, layout);
+        }
+
+        boolean fieldsTrailingPadding = !contentionGroups.isEmpty();
+        if (fieldsTrailingPadding) {
+            nextOffset += getContendedPadding();
         }
 
         int endOfFieldsOffset = nextOffset;
@@ -471,8 +509,6 @@ public class UniverseBuilder {
          * Compute the offsets of the "synthetic" fields for this class (but not subclasses).
          * Synthetic fields are put after all the instance fields. They are included in the instance
          * size, but not in the offset passed to subclasses.
-         *
-         * TODO: Should there be a list of synthetic fields for a class?
          */
 
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
@@ -482,6 +518,11 @@ public class UniverseBuilder {
             nextOffset = NumUtil.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
+        }
+
+        boolean placedSyntheticFields = (nextOffset != endOfFieldsOffset);
+        if (isClassContended && (contentionGroups.isEmpty() || placedSyntheticFields)) {
+            nextOffset += getContendedPadding();
         }
 
         clazz.instanceFieldsWithoutSuper = orderedFields.toArray(new HostedField[orderedFields.size()]);
@@ -505,9 +546,40 @@ public class UniverseBuilder {
                  * possible because each class that needs a synthetic field gets its own synthetic
                  * field at the end of its instance fields.
                  */
-                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper);
+                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper, fieldsTrailingPadding);
             }
         }
+    }
+
+    private static int getContendedPadding() {
+        Integer value = SubstrateOptions.ContendedPaddingWidth.getValue();
+        return (value > 0) ? value : 0; // no alignment required, placing fields takes care of it
+    }
+
+    private static int placeFields(ArrayList<HostedField> fields, int firstOffset, ArrayList<HostedField> orderedFields, ObjectLayout layout) {
+        int nextOffset = firstOffset;
+        while (!fields.isEmpty()) {
+            boolean progress = false;
+            for (int i = 0; i < fields.size(); i++) {
+                HostedField field = fields.get(i);
+                int fieldSize = layout.sizeInBytes(field.getStorageKind());
+
+                if (nextOffset % fieldSize == 0) {
+                    field.setLocation(nextOffset);
+                    nextOffset += fieldSize;
+
+                    fields.remove(i);
+                    orderedFields.add(field);
+                    progress = true;
+                    break;
+                }
+            }
+            if (!progress) {
+                // Insert padding byte and try again.
+                nextOffset++;
+            }
+        }
+        return nextOffset;
     }
 
     private void layoutStaticFields() {
@@ -519,7 +591,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields);
+        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
@@ -580,14 +652,13 @@ public class UniverseBuilder {
             list.add(method);
         }
 
-        HostedMethod[] noMethods = new HostedMethod[0];
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                Collections.sort(list);
-                type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
+                Collections.sort(list, HostedUniverse.METHOD_COMPARATOR);
+                type.allDeclaredMethods = list.toArray(HostedMethod.EMPTY_ARRAY);
             } else {
-                type.allDeclaredMethods = noMethods;
+                type.allDeclaredMethods = HostedMethod.EMPTY_ARRAY;
             }
         }
     }
@@ -597,7 +668,7 @@ public class UniverseBuilder {
 
             // Reuse the implementations from the analysis method.
             method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
-            Arrays.sort(method.implementations);
+            Arrays.sort(method.implementations, HostedUniverse.METHOD_COMPARATOR);
         }
     }
 
@@ -691,7 +762,7 @@ public class UniverseBuilder {
             }
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
-                type.vtable = new HostedMethod[0];
+                type.vtable = HostedMethod.EMPTY_ARRAY;
             }
 
             HostedMethod[] vtableArray = type.vtable;
@@ -745,8 +816,11 @@ public class UniverseBuilder {
                  * Methods with 1 implementations do not need a vtable because invokes can be done
                  * as direct calls without the need for a vtable. Methods with 0 implementations are
                  * unreachable.
+                 *
+                 * Methods manually registered as virtual root methods always need a vtable slot,
+                 * even if there are 0 or 1 implementations.
                  */
-                if (method.implementations.length > 1) {
+                if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
                     /*
                      * Find a suitable vtable slot for the method, taking the existing vtable
                      * assignments into account.
@@ -812,27 +886,28 @@ public class UniverseBuilder {
          * implementation method can have multiple slots because of interfaces. We compute the
          * intersection of the slot sets for all implementation methods.
          */
-        Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
-        for (HostedMethod impl : method.implementations) {
-            Set<Integer> implSlots = vtablesSlots.get(impl);
-            if (implSlots == null) {
-                resultSlots = null;
-                break;
+        if (method.implementations.length > 0) {
+            Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
+            for (HostedMethod impl : method.implementations) {
+                Set<Integer> implSlots = vtablesSlots.get(impl);
+                if (implSlots == null) {
+                    resultSlots = null;
+                    break;
+                }
+                resultSlots.retainAll(implSlots);
             }
-            resultSlots.retainAll(implSlots);
-        }
-        if (resultSlots != null && !resultSlots.isEmpty()) {
-            /*
-             * All implementations already have the same vtable slot assigned, so we can re-use
-             * that. If we have multiple candidates, we use the slot with the lowest number.
-             */
-            int resultSlot = Integer.MAX_VALUE;
-            for (int slot : resultSlots) {
-                resultSlot = Math.min(resultSlot, slot);
+            if (resultSlots != null && !resultSlots.isEmpty()) {
+                /*
+                 * All implementations already have the same vtable slot assigned, so we can re-use
+                 * that. If we have multiple candidates, we use the slot with the lowest number.
+                 */
+                int resultSlot = Integer.MAX_VALUE;
+                for (int slot : resultSlots) {
+                    resultSlot = Math.min(resultSlot, slot);
+                }
+                return resultSlot;
             }
-            return resultSlot;
         }
-
         /*
          * No slot found, we need to compute a new one. Check the whole subtype hierarchy for
          * constraints using bitset union, and then use the lowest slot number that is available in
@@ -896,20 +971,21 @@ public class UniverseBuilder {
             hUniverse.bb.getHeartbeatCallback().run();
 
             int layoutHelper;
+            boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
                     layoutHelper = LayoutEncoding.forAbstract();
                 } else if (HybridLayout.isHybrid(type)) {
-                    HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
+                    HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol, hMetaAccess);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
-                } else if (instanceClass.getJavaClass().equals(StoredContinuation.class)) {
-                    layoutHelper = LayoutEncoding.forStoredContinuation();
+                    layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                    canInstantiateAsInstance = type.isInstantiated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
-                    layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
             } else if (type.isArray()) {
@@ -941,24 +1017,15 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex;
-            if (referenceMap == SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP) {
-                referenceMapIndex = ReferenceMapIndex.STORED_CONTINUATION;
-            } else {
-                referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
-            }
+            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
-                            vtable, referenceMapIndex, type.isInstantiated());
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(),
+                            type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
         }
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
-        if (type.getJavaClass().equals(StoredContinuation.class)) {
-            return SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP;
-        }
-
         HostedField[] fields = type.getInstanceFields(true);
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
@@ -1002,12 +1069,12 @@ public class UniverseBuilder {
     }
 }
 
-@AutomaticFeature
-final class InvalidVTableEntryFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class InvalidVTableEntryFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
     }
 }

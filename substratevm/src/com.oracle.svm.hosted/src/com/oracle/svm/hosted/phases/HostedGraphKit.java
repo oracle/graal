@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.phases;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -43,15 +42,10 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
@@ -70,7 +64,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier());
+        this(debug, providers, method, false);
+    }
+
+    public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, boolean forceTrackNodeSourcePosition) {
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), forceTrackNodeSourcePosition);
+        graph.getGraphState().configureExplicitExceptionsNoDeopt();
     }
 
     @Override
@@ -78,23 +77,10 @@ public class HostedGraphKit extends SubstrateGraphKit {
         ResolvedJavaMethod method = graph.method();
         if (method instanceof HostedMethod) {
             StaticAnalysisResults profilingInfo = ((HostedMethod) method).getProfilingInfo();
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci));
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp,
+                            profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci), profilingInfo.getStaticTypeProfile(bci));
         } else {
             return super.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, bci);
-        }
-    }
-
-    @Override
-    protected Instance createGraphBuilderInstance(GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    IntrinsicContext initialIntrinsicContext) {
-
-        ResolvedJavaMethod method = graph.method();
-        if (method instanceof AnalysisMethod) {
-            return new AnalysisGraphBuilderPhase(getProviders(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
-        } else if (method instanceof HostedMethod) {
-            return new HostedGraphBuilderPhase(getProviders(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
-        } else {
-            throw VMError.shouldNotReachHere();
         }
     }
 
@@ -115,10 +101,6 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public LoadFieldNode createLoadFieldNode(ConstantNode receiver, Class<BoxedRelocatedPointer> clazz, String fieldName) {
         try {
-            ResolvedJavaType type = getMetaAccess().lookupJavaType(clazz);
-            if (type instanceof AnalysisType) {
-                ((AnalysisType) type).registerAsReachable();
-            }
             ResolvedJavaField field = getMetaAccess().lookupJavaField(clazz.getDeclaredField(fieldName));
             return LoadFieldNode.createOverrideStamp(StampPair.createSingle(wordStamp((ResolvedJavaType) field.getType())), receiver, field);
         } catch (NoSuchFieldException e) {

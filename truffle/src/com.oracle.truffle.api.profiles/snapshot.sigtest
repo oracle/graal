@@ -7,19 +7,26 @@ intf java.lang.Cloneable
 meth protected java.lang.Object clone()
 supr java.lang.Object
 
-CLSS public abstract com.oracle.truffle.api.profiles.BranchProfile
-meth public abstract void enter()
+CLSS public final com.oracle.truffle.api.profiles.BranchProfile
+meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.BranchProfile create()
 meth public static com.oracle.truffle.api.profiles.BranchProfile getUncached()
+meth public void disable()
+meth public void enter()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,visited
 
-CLSS public abstract com.oracle.truffle.api.profiles.ByteValueProfile
-meth public abstract byte profile(byte)
+CLSS public final com.oracle.truffle.api.profiles.ByteValueProfile
+meth public byte profile(byte)
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.ByteValueProfile create()
 meth public static com.oracle.truffle.api.profiles.ByteValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ByteValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedValue,state
 
 CLSS public abstract com.oracle.truffle.api.profiles.ConditionProfile
 meth public abstract boolean profile(boolean)
@@ -30,58 +37,81 @@ meth public static com.oracle.truffle.api.profiles.ConditionProfile getUncached(
 supr com.oracle.truffle.api.profiles.Profile
 hcls Binary,Counting,Disabled
 
-CLSS public abstract com.oracle.truffle.api.profiles.DoubleValueProfile
-meth public abstract double profile(double)
+CLSS public final com.oracle.truffle.api.profiles.DoubleValueProfile
+meth public double profile(double)
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.DoubleValueProfile create()
 meth public static com.oracle.truffle.api.profiles.DoubleValueProfile createRawIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.DoubleValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedRawValue,cachedValue,state
 
-CLSS public abstract com.oracle.truffle.api.profiles.FloatValueProfile
-meth public abstract float profile(float)
+CLSS public final com.oracle.truffle.api.profiles.FloatValueProfile
+meth public float profile(float)
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.FloatValueProfile create()
 meth public static com.oracle.truffle.api.profiles.FloatValueProfile createRawIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.FloatValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedRawValue,cachedValue,state
 
-CLSS public abstract com.oracle.truffle.api.profiles.IntValueProfile
-meth public abstract int profile(int)
+CLSS public final com.oracle.truffle.api.profiles.IntValueProfile
+meth public int profile(int)
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.IntValueProfile create()
 meth public static com.oracle.truffle.api.profiles.IntValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.IntValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedValue,state
 
-CLSS public abstract com.oracle.truffle.api.profiles.LongValueProfile
-meth public abstract long profile(long)
+CLSS public final com.oracle.truffle.api.profiles.LongValueProfile
+meth public java.lang.String toString()
+meth public long profile(long)
+meth public static com.oracle.truffle.api.profiles.LongValueProfile create()
 meth public static com.oracle.truffle.api.profiles.LongValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.LongValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedValue,state
 
-CLSS public abstract com.oracle.truffle.api.profiles.LoopConditionProfile
-meth public abstract boolean inject(boolean)
-meth public abstract boolean profile(boolean)
-meth public abstract void profileCounted(long)
+CLSS public final com.oracle.truffle.api.profiles.LoopConditionProfile
+meth public boolean inject(boolean)
+meth public boolean profile(boolean)
+meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile create()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile createCountingProfile()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile getUncached()
+meth public void disable()
+meth public void profileCounted(long)
+meth public void reset()
 supr com.oracle.truffle.api.profiles.ConditionProfile
-hcls Disabled,Enabled
+hfds DISABLED,falseCount,trueCount
 
-CLSS public abstract com.oracle.truffle.api.profiles.PrimitiveValueProfile
-meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
-meth public abstract boolean profile(boolean)
-meth public abstract byte profile(byte)
-meth public abstract char profile(char)
-meth public abstract double profile(double)
-meth public abstract float profile(float)
-meth public abstract int profile(int)
-meth public abstract long profile(long)
-meth public abstract short profile(short)
+CLSS public final com.oracle.truffle.api.profiles.PrimitiveValueProfile
+meth public <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public boolean profile(boolean)
+meth public byte profile(byte)
+meth public char profile(char)
+meth public double profile(double)
+meth public float profile(float)
+meth public int profile(int)
+meth public java.lang.String toString()
+meth public long profile(long)
+meth public short profile(short)
+meth public static com.oracle.truffle.api.profiles.PrimitiveValueProfile create()
 meth public static com.oracle.truffle.api.profiles.PrimitiveValueProfile createEqualityProfile()
 meth public static com.oracle.truffle.api.profiles.PrimitiveValueProfile getUncached()
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.ValueProfile
-hcls Disabled,Enabled
+hfds DISABLED,GENERIC,UNINITIALIZED,cachedValue
 
 CLSS public abstract com.oracle.truffle.api.profiles.Profile
 meth public void disable()
@@ -91,12 +121,10 @@ supr com.oracle.truffle.api.nodes.NodeCloneable
 CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
 meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
-meth public static com.oracle.truffle.api.profiles.ValueProfile createEqualityProfile()
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Disabled,Equality,ExactClass,Identity
+hcls Disabled,ExactClass,Identity
 
 CLSS public abstract interface java.lang.Cloneable
 
@@ -104,6 +132,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()

@@ -25,10 +25,10 @@
 package com.oracle.svm.agent.tracing.core;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 
 public abstract class Tracer {
     /** Value to explicitly express {@code null} in a trace, instead of omitting the value. */
@@ -59,7 +59,7 @@ public abstract class Tracer {
     }
 
     public void traceInitialization() {
-        Map<String, Object> entry = new HashMap<>();
+        EconomicMap<String, Object> entry = EconomicMap.create();
         entry.put("tracer", "meta");
         entry.put("event", "initialization");
         entry.put("version", "1");
@@ -67,7 +67,7 @@ public abstract class Tracer {
     }
 
     public void tracePhaseChange(String phase) {
-        Map<String, Object> entry = new HashMap<>();
+        EconomicMap<String, Object> entry = EconomicMap.create();
         entry.put("tracer", "meta");
         entry.put("event", "phase_change");
         entry.put("phase", phase);
@@ -93,7 +93,7 @@ public abstract class Tracer {
      * @param args Arguments to the call, which may contain arrays (which can contain more arrays)
      */
     public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, JNIMethodId[] stackTrace, Object... args) {
-        Map<String, Object> entry = new HashMap<>();
+        EconomicMap<String, Object> entry = EconomicMap.create();
         entry.put("tracer", tracer);
         entry.put("function", function);
         if (clazz != null) {
@@ -117,5 +117,5 @@ public abstract class Tracer {
         traceEntry(entry);
     }
 
-    protected abstract void traceEntry(Map<String, Object> entry);
+    protected abstract void traceEntry(EconomicMap<String, Object> entry);
 }

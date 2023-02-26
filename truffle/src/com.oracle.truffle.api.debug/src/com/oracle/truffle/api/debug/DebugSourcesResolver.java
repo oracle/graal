@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,9 +53,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -142,7 +145,11 @@ final class DebugSourcesResolver {
         try {
             Source.SourceBuilder builder = null;
             if ("file".equals(uri.getScheme())) {
-                TruffleFile file = env.getTruffleFile(uri);
+                TruffleContext context = env.getEnteredContext();
+                if (context == null) {
+                    context = findAnyTruffleContext();
+                }
+                TruffleFile file = env.getTruffleFile(context, uri);
                 builder = Source.newBuilder(source.getLanguage(), file);
             } else {
                 URL url;
@@ -169,6 +176,48 @@ final class DebugSourcesResolver {
             } catch (IOException ioe) {
             }
         }
+    }
+
+    private TruffleContext findAnyTruffleContext() {
+        class ContextFinder implements ContextsListener {
+
+            TruffleContext truffleContext;
+
+            @Override
+            public void onContextCreated(TruffleContext context) {
+                this.truffleContext = context;
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+            }
+        }
+        ContextFinder finder = new ContextFinder();
+        env.getInstrumenter().attachContextsListener(finder, true).dispose();
+        TruffleContext context = finder.truffleContext;
+        if (context != null) {
+            // Find the top most one:
+            while (context.getParent() != null) {
+                context = context.getParent();
+            }
+        }
+        return context;
     }
 
     // We can not use URI.resolve(URI), as it does not resolve URIs from ZIP files.

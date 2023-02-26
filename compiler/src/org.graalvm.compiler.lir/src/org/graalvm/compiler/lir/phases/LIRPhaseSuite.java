@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,12 @@ import java.util.ListIterator;
 
 import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.TargetDescription;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<C>> {
     private List<LIRPhase<C>> phases;
-    private boolean immutable;
 
     public LIRPhaseSuite() {
         phases = new ArrayList<>();
@@ -97,6 +97,9 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<
     @Override
     protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
         for (LIRPhase<C> phase : phases) {
+            // Notify the runtime that most objects allocated in previous LIR phase are dead and can
+            // be reclaimed. This will lower the chance of allocation failure in the next LIR phase.
+            GraalServices.notifyLowMemoryPoint(false);
             phase.apply(target, lirGenRes, context);
         }
     }
@@ -105,17 +108,6 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<
         LIRPhaseSuite<C> suite = new LIRPhaseSuite<>();
         suite.phases.addAll(phases);
         return suite;
-    }
-
-    public boolean isImmutable() {
-        return immutable;
-    }
-
-    public synchronized void setImmutable() {
-        if (!immutable) {
-            phases = Collections.unmodifiableList(phases);
-            immutable = true;
-        }
     }
 
     @Override

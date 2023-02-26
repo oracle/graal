@@ -29,9 +29,10 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -60,7 +61,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateUncached
 @NodeInfo(shortName = "boolean[] BASTORE")
-public abstract class BooleanArrayStore extends Node {
+public abstract class BooleanArrayStore extends EspressoNode {
 
     public abstract void execute(StaticObject receiver, int index, byte value);
 
@@ -74,34 +75,30 @@ public abstract class BooleanArrayStore extends Node {
     @GenerateUncached
     @ImportStatic(Utils.class)
     @NodeInfo(shortName = "boolean[] BASTORE !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
         static final int LIMIT = 2;
 
         public abstract void execute(StaticObject receiver, int index, byte value);
-
-        protected EspressoContext getContext() {
-            return EspressoContext.get(this);
-        }
 
         @Specialization(guards = "array.isEspressoObject()")
         void doEspresso(StaticObject array, int index, byte value) {
             assert !StaticObject.isNull(array);
             assert array.getKlass() == EspressoContext.get(this).getMeta()._boolean_array;
-            getContext().getInterpreterToVM().setArrayByte(value, index, array);
+            getContext().getInterpreterToVM().setArrayByte(getLanguage(), value, index, array);
         }
 
         @Specialization(guards = {
                         "array.isForeignObject()",
-                        "isArrayLike(interop, array.rawForeignObject())"
+                        "isArrayLike(interop, array.rawForeignObject(language))"
         })
         void doArrayLike(StaticObject array, int index, byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Bind("getContext()") EspressoContext context,
+                        @Bind("getLanguage()") EspressoLanguage language,
                         @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
-            assert array.getKlass() == context.getMeta()._boolean_array;
+            assert array.getKlass() == getMeta()._boolean_array;
             boolean booleanValue = value != 0;
-            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, interop, context.getMeta(), exceptionProfile);
+            ForeignArrayUtils.writeForeignArrayElement(array, index, booleanValue, language, getMeta(), interop, exceptionProfile);
         }
     }
 }

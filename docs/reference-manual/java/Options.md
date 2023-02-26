@@ -7,15 +7,15 @@ permalink: /reference-manual/java/options/
 
 # Compiler Configuration on JVM
 
-The options for configuring the GraalVM compiler on the JVM are in 3 categories.
+The options for configuring the Graal compiler on the JVM are in 3 categories.
 
 ### General Options
 
 These are general options for setting/getting configuration details.
 
-* `-XX:-UseJVMCICompiler`: This disables use of the GraalVM compiler as the top tier JIT.
-This is useful when wanting to compare performance of the GraalVM compiler against the native JIT compilers.
-* `-Dgraal.CompilerConfiguration=<name>`: Selects the GraalVM compiler configuration to use. If omitted, the compiler
+* `-XX:-UseJVMCICompiler`: This disables use of the Graal compiler as the top tier JIT.
+This is useful when wanting to compare performance of the Graal compiler against the native JIT compilers.
+* `-Dgraal.CompilerConfiguration=<name>`: Selects the Graal compiler configuration to use. If omitted, the compiler
 configuration with the highest auto-selection priority is used. To see the set
 of available configurations, supply the value help to this option.
 
@@ -24,15 +24,15 @@ of available configurations, supply the value help to this option.
     * `community`: To produce reasonably optimized code with a faster compilation time.
     * `economy`: To compile as fast as possible with less optimal throughput of the generated code.
 
-* `-Dgraal.ShowConfiguration=none`: Prints information about the GraalVM compiler configuration selected.
-    This option only produces output when the compiler is initialized. By default, the GraalVM compiler is
+* `-Dgraal.ShowConfiguration=none`: Prints information about the Graal compiler configuration selected.
+    This option only produces output when the compiler is initialized. By default, the Graal compiler is
     initialized on the first top-tier compilation. For this reason, the way to use this option
     is as follows: `java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version`.
 
     The accepted values for this option are:
     * `none`: To show no information.
-    * `info`: To print one line of output showing the name of the compiler configuration in use
-       and the location it is loaded from.
+    * `info`: To print one line of output describing the compiler configuration in use
+       and whether it is loaded from a Native Image ("libgraal") or from class files ("jargraal").
     * `verbose`: To print detailed compiler configuration information.
 
 * `-Dgraal.MitigateSpeculativeExecutionAttacks=None`: Selects a strategy to mitigate speculative
@@ -121,7 +121,7 @@ HotSpotCompilation-136 Lsun/nio/cs/UTF_8$Encoder;                    encode     
 
 ## Setting Compiler Options with Language Launchers
 
-The GraalVM compiler properties above are usable with some other GraalVM launchers such as
+The Graal compiler properties above are usable with some other GraalVM launchers such as
 `node`, `js` and `lli`. The prefix for specifying the properties is slightly different.
 For example:
 ```shell

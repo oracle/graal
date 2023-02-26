@@ -26,7 +26,6 @@ package com.oracle.svm.core.os;
 
 import java.util.EnumSet;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -35,7 +34,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.heap.Heap;
 
@@ -90,22 +89,6 @@ public interface CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
-    /**
-     * Allocate a block of committed memory.
-     *
-     * @param nbytes The number of bytes to allocate, which is rounded up to the next multiple of
-     *            the {@linkplain #getGranularity() granularity} if required.
-     * @param alignment The required alignment of the block start, or {@link #UNALIGNED}.
-     * @param executable Whether the block must be executable.
-     * @return The start of the allocated block, or {@link WordFactory#nullPointer()} in case of an
-     *         error.
-     */
-    default Pointer allocate(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        // We need this default method temporarily so that we can remove the methods allocate and
-        // free from all subclasses in GR-34236.
-        throw VMError.shouldNotReachHere("Subclasses must overwrite this method");
-    }
-
     Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment);
 
     Pointer allocateUnalignedChunk(UnsignedWord nbytes);
@@ -117,23 +100,6 @@ public interface CommittedMemoryProvider {
      * guaranteed to be zeroed.
      */
     boolean areUnalignedChunksZeroed();
-
-    /**
-     * Release a block of committed memory that was allocated with {@link #allocate}, requiring the
-     * exact same parameter values that were originally passed to {@link #allocate}.
-     *
-     * @param start The start of the memory block, as returned by {@link #allocate}.
-     * @param nbytes The originally requested size in bytes.
-     * @param alignment The originally requested alignment.
-     * @param executable Whether the block was requested to be executable.
-     * @return true on success, or false otherwise.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        // We need this default method temporarily so that we can remove the methods allocate and
-        // free from all subclasses in GR-34236.
-        throw VMError.shouldNotReachHere("Subclasses must overwrite this method");
-    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
@@ -165,15 +131,15 @@ public interface CommittedMemoryProvider {
     }
 
     /**
-     * Change access permissions for a block of committed memory that was allocated with
-     * {@link #allocate}.
+     * Change access permissions for a block of committed memory that was allocated with one of the
+     * allocation methods.
      *
      * @param start The start of the address range to be protected, which must be a multiple of the
      *            {@linkplain #getGranularity() granularity}.
      * @param nbytes The size in bytes of the address range to be protected, which will be rounded
      *            up to a multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
-     * @return true on success, or false otherwise.
+     * @return 0 when successful, or a non-zero implementation-specific error code.
      */
-    boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
+    int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

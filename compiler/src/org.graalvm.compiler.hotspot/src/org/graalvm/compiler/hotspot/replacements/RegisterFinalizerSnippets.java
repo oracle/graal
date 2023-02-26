@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,10 +64,12 @@ public class RegisterFinalizerSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo registerFinalizerSnippet = snippet(RegisterFinalizerSnippets.class, "registerFinalizerSnippet", HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION);
+        private final SnippetInfo registerFinalizerSnippet;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.registerFinalizerSnippet = snippet(providers, RegisterFinalizerSnippets.class, "registerFinalizerSnippet", HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION);
         }
 
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {
@@ -75,8 +77,8 @@ public class RegisterFinalizerSnippets implements Snippets {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(registerFinalizerSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.getValue());
-            SnippetTemplate template = template(node, args);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, node, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }

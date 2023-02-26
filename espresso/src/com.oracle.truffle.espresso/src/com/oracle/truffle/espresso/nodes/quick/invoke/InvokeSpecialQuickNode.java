@@ -23,55 +23,25 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InvokeSpecialQuickNode extends QuickNode {
+public final class InvokeSpecialQuickNode extends InvokeQuickNode {
 
-    final Method.MethodVersion method;
-    final int resultAt;
-    final boolean returnsPrimitiveType;
     @Child InvokeSpecial.WithoutNullCheck invokeSpecial;
 
     public InvokeSpecialQuickNode(Method method, int top, int callerBCI) {
-        super(top, callerBCI);
-        this.method = method.getMethodVersion();
-        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
-        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
-        this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method);
+        super(method, top, callerBCI);
+        assert !method.isStatic();
+        this.invokeSpecial = insert(InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method));
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        /*
-         * Method signature does not change across methods. Can safely use the constant signature
-         * from `method` instead of the non-constant signature from the lookup.
-         */
-        Object[] args = BytecodeNode.popArguments(frame, top, true, method.getMethod().getParsedSignature());
+        Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
-        Object result = invokeSpecial.execute(args);
-        if (!returnsPrimitiveType) {
-            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
-        }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
-    }
-
-    private int getResultAt() {
-        return resultAt;
-    }
-
-    @Override
-    public boolean removedByRedefintion() {
-        if (method.getRedefineAssumption().isValid()) {
-            return false;
-        } else {
-            return method.getMethod().isRemovedByRedefition();
-        }
+        return pushResult(frame, invokeSpecial.execute(args));
     }
 }

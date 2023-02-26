@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,11 @@
 package org.graalvm.compiler.core.common.util;
 
 import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.compiler.debug.TTY;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -40,14 +37,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * compiler.
  */
 public class Util {
-
-    /**
-     * Statically cast an object to an arbitrary Object type. Dynamically checked.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T uncheckedCast(@SuppressWarnings("unused") Class<T> type, Object object) {
-        return (T) object;
-    }
 
     /**
      * Statically cast an object to an arbitrary Object type. Dynamically checked.
@@ -96,58 +85,6 @@ public class Util {
     }
 
     /**
-     * Returns the zero value for a given numeric kind.
-     */
-    public static JavaConstant zero(JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.FALSE;
-            case Byte:
-                return JavaConstant.forByte((byte) 0);
-            case Char:
-                return JavaConstant.forChar((char) 0);
-            case Double:
-                return JavaConstant.DOUBLE_0;
-            case Float:
-                return JavaConstant.FLOAT_0;
-            case Int:
-                return JavaConstant.INT_0;
-            case Long:
-                return JavaConstant.LONG_0;
-            case Short:
-                return JavaConstant.forShort((short) 0);
-            default:
-                throw new IllegalArgumentException(kind.toString());
-        }
-    }
-
-    /**
-     * Returns the one value for a given numeric kind.
-     */
-    public static JavaConstant one(JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.TRUE;
-            case Byte:
-                return JavaConstant.forByte((byte) 1);
-            case Char:
-                return JavaConstant.forChar((char) 1);
-            case Double:
-                return JavaConstant.DOUBLE_1;
-            case Float:
-                return JavaConstant.FLOAT_1;
-            case Int:
-                return JavaConstant.INT_1;
-            case Long:
-                return JavaConstant.LONG_1;
-            case Short:
-                return JavaConstant.forShort((short) 1);
-            default:
-                throw new IllegalArgumentException(kind.toString());
-        }
-    }
-
-    /**
      * Print a HotSpot-style inlining message to the console.
      */
     public static void printInlining(final ResolvedJavaMethod method, final int bci, final int inliningDepth, final boolean success, final String msg, final Object... args) {
@@ -180,14 +117,6 @@ public class Util {
     }
 
     /**
-     * Calls {@link AccessibleObject#setAccessible(boolean)} on {@code executable} with the value
-     * {@code flag}.
-     */
-    public static void setAccessible(Executable executable, boolean flag) {
-        executable.setAccessible(flag);
-    }
-
-    /**
      * Converts a hex string to a byte array. Two characters are converted to a byte at a time.
      *
      * @param hex the hex string
@@ -205,5 +134,16 @@ public class Util {
             bytes[i] = (byte) val;
         }
         return bytes;
+    }
+
+    /**
+     * Formats the stack trace represented by {@code ste} to a string.
+     */
+    public static String toString(StackTraceElement[] ste) {
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement e : ste) {
+            sb.append('\t').append(e).append(System.lineSeparator());
+        }
+        return sb.toString();
     }
 }

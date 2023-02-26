@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
@@ -40,11 +41,12 @@ public final class InlineMethodSubstitutionsPolicy extends InlineEverythingPolic
 
     @Override
     public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, InlineInfo calleeInfo, int inliningDepth, boolean fullyProcessed) {
-        final boolean isTracing = GraalOptions.TraceInlining.getValue(calleeInfo.graph().getOptions()) || calleeInfo.graph().getDebug().hasCompilationListener();
+        OptionValues options = calleeInfo.graph().getOptions();
+        final boolean isTracing = GraalOptions.TraceInlining.getValue(options) || calleeInfo.graph().getDebug().hasCompilationListener();
         CallTargetNode callTarget = invocation.callee().invoke().callTarget();
         if (callTarget instanceof MethodCallTargetNode) {
             ResolvedJavaMethod calleeMethod = callTarget.targetMethod();
-            if (replacements.hasSubstitution(calleeMethod)) {
+            if (replacements.hasSubstitution(calleeMethod, options)) {
                 return Decision.YES.withReason(isTracing, "has a method subtitution");
             }
         }

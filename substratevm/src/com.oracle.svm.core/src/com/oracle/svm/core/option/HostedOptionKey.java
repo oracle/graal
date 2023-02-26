@@ -31,16 +31,24 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
+import java.util.function.Consumer;
+
 /**
  * Defines a hosted {@link Option} that is used during native image generation, in contrast to a
  * {@link RuntimeOptionKey runtime option}.
  *
  * @see com.oracle.svm.core.option
  */
-public class HostedOptionKey<T> extends OptionKey<T> {
+public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
+    private final Consumer<HostedOptionKey<T>> validation;
 
     public HostedOptionKey(T defaultValue) {
+        this(defaultValue, null);
+    }
+
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> validation) {
         super(defaultValue);
+        this.validation = validation;
     }
 
     /**
@@ -50,6 +58,7 @@ public class HostedOptionKey<T> extends OptionKey<T> {
      * {@link Fold} annotation.
      */
     @Fold
+    @Override
     public T getValue() {
         return getValue(HostedOptionValues.singleton());
     }
@@ -61,6 +70,7 @@ public class HostedOptionKey<T> extends OptionKey<T> {
      * {@link Fold} annotation.
      */
     @Fold
+    @Override
     public boolean hasBeenSet() {
         return hasBeenSet(HostedOptionValues.singleton());
     }
@@ -85,6 +95,13 @@ public class HostedOptionKey<T> extends OptionKey<T> {
             super.update(values, value);
         } else {
             super.update(values, LocatableOption.rawValue(boxedValue));
+        }
+    }
+
+    @Override
+    public void validate() {
+        if (validation != null) {
+            validation.accept(this);
         }
     }
 }

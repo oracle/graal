@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,11 @@ import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisC
 import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
+
+import jdk.vm.ci.code.Architecture;
 
 public interface CompilerConfiguration {
 
@@ -38,7 +41,7 @@ public interface CompilerConfiguration {
 
     PhaseSuite<MidTierContext> createMidTier(OptionValues options);
 
-    PhaseSuite<LowTierContext> createLowTier(OptionValues options);
+    PhaseSuite<LowTierContext> createLowTier(OptionValues options, Architecture arch);
 
     LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage(OptionValues options);
 
@@ -47,4 +50,8 @@ public interface CompilerConfiguration {
     LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options);
 
     LIRPhaseSuite<FinalCodeAnalysisContext> createFinalCodeAnalysisStage(OptionValues options);
+
+    @SuppressWarnings("unused")
+    default void registerGraphBuilderPlugins(Plugins plugins, OptionValues options) {
+    }
 }

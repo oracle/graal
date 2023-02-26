@@ -53,7 +53,7 @@ import com.oracle.svm.core.util.UserError;
  * Every node tracks a list of reasons for the set configuration. This list helps the users debug
  * conflicts in the configuration.
  */
-public class ClassInitializationConfiguration {
+final class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 10;
 
@@ -91,6 +91,7 @@ public class ClassInitializationConfiguration {
             if (node.kind == null) {
                 node.kind = kind;
                 node.strict = strict;
+                node.reasons.add(reason);
             } else if (node.kind == kind) {
                 if (node.reasons.size() < MAX_NUMBER_OF_REASONS) {
                     node.reasons.add(reason);
@@ -110,7 +111,7 @@ public class ClassInitializationConfiguration {
             tail.remove(0);
             String nextQualifier = tail.get(0);
             if (!node.children.containsKey(nextQualifier)) {
-                node.children.put(nextQualifier, new InitializationNode(nextQualifier, node, null, false, reason));
+                node.children.put(nextQualifier, new InitializationNode(nextQualifier, node, null, false));
                 assert node.children.containsKey(nextQualifier);
             }
             insertRec(node.children.get(nextQualifier), tail, kind, reason, strict);

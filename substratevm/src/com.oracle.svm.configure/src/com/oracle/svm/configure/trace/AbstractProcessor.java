@@ -27,13 +27,16 @@ package com.oracle.svm.configure.trace;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.svm.configure.config.ConfigurationSet;
 
 public abstract class AbstractProcessor {
     AbstractProcessor() {
     }
 
-    abstract void processEntry(Map<String, ?> entry);
+    abstract void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet);
 
     void setInLivePhase(@SuppressWarnings("unused") boolean live) {
     }

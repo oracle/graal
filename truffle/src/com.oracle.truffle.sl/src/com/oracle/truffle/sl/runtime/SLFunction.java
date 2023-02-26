@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.sl.SLLanguage;
@@ -90,7 +91,7 @@ public final class SLFunction implements TruffleObject {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(SLLanguage.ID, SLFunction.class);
 
     /** The name of the function. */
-    private final String name;
+    private final TruffleString name;
 
     /** The current implementation of this function. */
     private RootCallTarget callTarget;
@@ -102,17 +103,17 @@ public final class SLFunction implements TruffleObject {
      */
     private final CyclicAssumption callTargetStable;
 
-    protected SLFunction(SLLanguage language, String name) {
-        this(language.getOrCreateUndefinedFunction(name));
+    protected SLFunction(SLLanguage language, TruffleString name) {
+        this(name, language.getOrCreateUndefinedFunction(name));
     }
 
-    protected SLFunction(RootCallTarget callTarget) {
-        this.name = callTarget.getRootNode().getName();
-        this.callTargetStable = new CyclicAssumption(name);
+    protected SLFunction(TruffleString name, RootCallTarget callTarget) {
+        this.name = name;
+        this.callTargetStable = new CyclicAssumption(name.toJavaStringUncached());
         setCallTarget(callTarget);
     }
 
-    public String getName() {
+    public TruffleString getName() {
         return name;
     }
 
@@ -143,7 +144,7 @@ public final class SLFunction implements TruffleObject {
      */
     @Override
     public String toString() {
-        return name;
+        return name.toJavaStringUncached();
     }
 
     @ExportMessage

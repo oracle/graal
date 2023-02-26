@@ -81,8 +81,7 @@ public class RegexOptionsTest {
         assertTrue(parse(setBool(RegexOptions.UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME)).isUTF16ExplodeAstralSymbols());
         assertTrue(parse(setBool(RegexOptions.VALIDATE_NAME)).isValidate());
         assertEquals(ECMAScriptFlavor.INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_ECMASCRIPT)).getFlavor());
-        assertEquals(PythonFlavor.BYTES_INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_PYTHON_BYTES)).getFlavor());
-        assertEquals(PythonFlavor.STR_INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_PYTHON_STR)).getFlavor());
+        assertEquals(PythonFlavor.INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_PYTHON)).getFlavor());
         assertEquals(RubyFlavor.INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_RUBY)).getFlavor());
         RegexOptions opt = parse(setBool(RegexOptions.ALWAYS_EAGER_NAME, RegexOptions.DUMP_AUTOMATA_NAME, RegexOptions.REGRESSION_TEST_MODE_NAME));
         assertTrue(opt.isAlwaysEager());

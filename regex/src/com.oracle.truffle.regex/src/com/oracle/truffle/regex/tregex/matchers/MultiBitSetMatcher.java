@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,8 @@ public final class MultiBitSetMatcher extends InvertibleCharMatcher {
 
     @Override
     public boolean match(int c) {
-        return result(BitSets.get(bitSets[highByte(c)], lowByte(c)));
+        int highByte = highByte(c);
+        return result(highByte < bitSets.length && BitSets.get(bitSets[highByte], lowByte(c)));
     }
 
     @Override

@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.coverage.impl;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Locale;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.coverage.RootCoverage;
@@ -48,7 +49,7 @@ final class CoverageCLI {
         this.strictLines = strictLines;
         sortCoverage();
         format = getHistogramLineFormat(coverage);
-        summaryHeader = String.format(format, "Path", "Statements", "Lines", "Roots");
+        summaryHeader = format(format, "Path", "Statements", "Lines", "Roots");
         summaryHeaderLen = summaryHeader.length();
     }
 
@@ -70,7 +71,7 @@ final class CoverageCLI {
     }
 
     private static String percentFormat(double val) {
-        return String.format("%.2f%%", val);
+        return format("%.2f%%", val);
     }
 
     private static String statementCoverage(SourceCoverage coverage) {
@@ -84,8 +85,8 @@ final class CoverageCLI {
         return percentFormat(100 * (double) covered / loaded);
     }
 
-    private static long getCoveredCount(SectionCoverage[] sectionCoverage) {
-        return Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
+    private static int getCoveredCount(SectionCoverage[] sectionCoverage) {
+        return (int) Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
     }
 
     private static String rootCoverage(SourceCoverage coverage) {
@@ -115,7 +116,7 @@ final class CoverageCLI {
             printLine();
             printSummaryHeader();
             final LineCoverage lineCoverage = new LineCoverage(sourceCoverage, strictLines);
-            out.println(String.format(format, name, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
+            out.println(format(format, name, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
             out.println();
             if (source.hasCharacters() || source.hasBytes()) {
                 printLinesOfSource(source, lineCoverage);
@@ -130,7 +131,7 @@ final class CoverageCLI {
         for (int i = 1; i <= source.getLineCount(); i++) {
             CharSequence characters = source.getCharacters(i);
             char covered = onlyWhiteSpace(characters) ? ' ' : lineCoverage.getStatementCoverageCharacter(i);
-            out.println(String.format("%s %s", covered, characters));
+            out.println(format("%s %s", covered, characters));
         }
     }
 
@@ -162,7 +163,7 @@ final class CoverageCLI {
         printLine();
         for (SourceCoverage sourceCoverage : coverage) {
             final String name = getName(sourceCoverage.getSource());
-            final String line = String.format(format, name,
+            final String line = format(format, name,
                             statementCoverage(sourceCoverage),
                             lineCoverage(new LineCoverage(sourceCoverage, strictLines)),
                             rootCoverage(sourceCoverage));
@@ -185,7 +186,11 @@ final class CoverageCLI {
     }
 
     private void printLine() {
-        out.println(String.format("%" + summaryHeaderLen + "s", "").replace(' ', '-'));
+        out.println(format("%" + summaryHeaderLen + "s", "").replace(' ', '-'));
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.ENGLISH, format, args);
     }
 
 }

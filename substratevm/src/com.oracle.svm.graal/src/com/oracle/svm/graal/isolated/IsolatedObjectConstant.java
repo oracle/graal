@@ -26,8 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -63,8 +62,7 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         return cachedClass;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ImageHeapRef<Class<?>> getObjectClass0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> h) {
         Object target = IsolatedCompileClient.get().unhand(h);
         return ImageHeapObjects.ref(target.getClass());
@@ -98,8 +96,7 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         return h;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static int getIdentityHashCode0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> h) {
         Object target = IsolatedCompileClient.get().unhand(h);
         return computeIdentityHashCode(target);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,16 @@ package com.oracle.truffle.regex.tregex.string;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringLATIN1 implements AbstractString {
 
     @CompilationFinal(dimensions = 1) private final byte[] str;
+    private final Encodings.Encoding encoding;
 
-    public StringLATIN1(byte[] str) {
+    public StringLATIN1(byte[] str, Encodings.Encoding encoding) {
         this.str = str;
+        this.encoding = encoding;
     }
 
     @Override
@@ -69,7 +72,7 @@ public final class StringLATIN1 implements AbstractString {
 
     @Override
     public StringLATIN1 substring(int start, int end) {
-        return new StringLATIN1(Arrays.copyOfRange(str, start, end));
+        return new StringLATIN1(Arrays.copyOfRange(str, start, end), encoding);
     }
 
     @Override
@@ -84,6 +87,16 @@ public final class StringLATIN1 implements AbstractString {
             }
         }
         return true;
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromByteArrayUncached(str, 0, str.length, encoding.getTStringEncoding(), false);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUncached(pattern, str, encoding.getTStringEncoding());
     }
 
     @Override

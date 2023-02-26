@@ -59,6 +59,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -355,9 +356,7 @@ public class GradualInstrumentationTest {
          * via parents.
          */
         listener2.clearEnteredNodes();
-        for (WeakReference<Node> retiredStatementNodeWeakReference : retiredStatementNodes) {
-            GCUtils.assertGc("Retired node is was not collected!", retiredStatementNodeWeakReference);
-        }
+        GCUtils.assertGc("Retired node is was not collected!", retiredStatementNodes);
         binding.dispose();
         context.eval(source);
         for (Node enteredNode : enteredMaterializedStatementNodes) {
@@ -477,6 +476,11 @@ public class GradualInstrumentationTest {
 
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
+            onEnterBoundary(context);
+        }
+
+        @TruffleBoundary
+        private void onEnterBoundary(EventContext context) {
             String stepId = getStepId("+", context);
             waitBeforeStep(stepId);
             sb.append(stepId);
@@ -484,6 +488,11 @@ public class GradualInstrumentationTest {
 
         @Override
         public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+            onReturnValueBoundary(context);
+        }
+
+        @TruffleBoundary
+        private void onReturnValueBoundary(EventContext context) {
             String stepId = getStepId("-", context);
             waitBeforeStep(stepId);
             sb.append(stepId);
@@ -491,6 +500,11 @@ public class GradualInstrumentationTest {
 
         @Override
         public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+            onReturnExceptionalBoundary(context);
+        }
+
+        @TruffleBoundary
+        private void onReturnExceptionalBoundary(EventContext context) {
             String stepId = getStepId("*", context);
             waitBeforeStep(stepId);
             sb.append(stepId);

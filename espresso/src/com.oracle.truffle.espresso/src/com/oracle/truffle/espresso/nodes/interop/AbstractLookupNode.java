@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,21 +26,25 @@ package com.oracle.truffle.espresso.nodes.interop;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
-import java.util.BitSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public abstract class AbstractLookupNode extends Node {
+public abstract class AbstractLookupNode extends EspressoNode {
     public static final char METHOD_SELECTION_SEPARATOR = '/';
 
     abstract Method.MethodVersion[] getMethodArray(Klass k);
 
     @TruffleBoundary
-    Method doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+    Method[] doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+        ArrayList<Method> result = new ArrayList<>();
         String methodName;
         String signature = null;
         int separatorIndex = key.indexOf(METHOD_SELECTION_SEPARATOR);
@@ -50,30 +54,24 @@ public abstract class AbstractLookupNode extends Node {
         } else {
             methodName = key;
         }
-        Method result = null;
+
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
+        boolean skipArityCheck = arity == -1;
         for (Method.MethodVersion m : getMethodArray(klass)) {
             if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
                 int matchArity = m.getMethod().getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
-                if (matchArity == arity) {
-                    if (result != null) {
-                        /*
-                         * Multiple methods with the same name and arity (if specified), cannot
-                         * disambiguate
-                         */
-                        return null;
-                    }
-                    result = m.getMethod();
+                if (matchArity == arity || skipArityCheck) {
+                    result.add(m.getMethod());
                 }
             }
         }
-        if (result == null && maxOverallArity >= 0) {
+        if (!skipArityCheck && result.isEmpty() && maxOverallArity >= 0) {
             throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
-        return result;
+        return result.isEmpty() ? null : result.toArray(new Method[0]);
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {
@@ -96,17 +94,94 @@ public abstract class AbstractLookupNode extends Node {
         } else {
             methodName = key;
         }
-        BitSet seenArity = new BitSet();
-        // we will disambiguate overloads with arity
+        Map<Integer, List<Method>> methodsByArity = new HashMap<>();
+        // we will first disambiguate overloads with arity
+        // then proceed to check if the parameter types are
+        // incompatible, if not we don't support invoking
+        // ambiguous members
         for (Method.MethodVersion m : getMethodArray(klass)) {
             if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
-                int arity = m.getMethod().getParameterCount();
-                if (seenArity.get(arity)) {
-                    return false;
+                Integer arity = m.getMethod().getParameterCount();
+                List<Method> methods = methodsByArity.get(arity);
+                if (methods == null) {
+                    methods = new ArrayList<>();
+                    methodsByArity.put(arity, methods);
                 }
-                seenArity.set(arity);
+                methods.add(m.getMethod());
             }
         }
-        return !seenArity.isEmpty();
+        if (methodsByArity.isEmpty()) {
+            return false;
+        }
+        // do a run through to see if there's an arity
+        // with a single overloaded method
+        for (List<Method> overloads : methodsByArity.values()) {
+            if (overloads.size() == 1) {
+                return true;
+            }
+        }
+
+        // OK, Type checking required to disambiguate!
+        // a member is invocable if one or more
+        // overloaded methods can be called
+        for (List<Method> overloads : methodsByArity.values()) {
+            Map<Method, Klass[]> parameterTypeCache = new HashMap<>(overloads.size());
+            // cache parameter types to avoid resolving multiple times
+            // in comparator
+            for (Method overload : overloads) {
+                Klass[] parameterTypes = overload.resolveParameterKlasses();
+                parameterTypeCache.put(overload, parameterTypes);
+            }
+
+            Outer: for (int i = 0; i < overloads.size(); i++) {
+                Method m1 = overloads.get(i);
+                Klass[] m1Types = parameterTypeCache.get(m1);
+                boolean canInvoke = true;
+                for (int j = 0; j < overloads.size(); j++) {
+                    if (i == j) {
+                        continue;
+                    }
+                    Method m2 = overloads.get(j);
+                    Klass[] m2Types = parameterTypeCache.get(m2);
+                    for (int k = 0; k < m1Types.length; k++) {
+                        canInvoke &= !canConvert(m1Types[k], m2Types[k]);
+                        if (!canInvoke) {
+                            continue Outer;
+                        }
+                    }
+                }
+                if (canInvoke) {
+                    // found one overloaded method that can be called
+                    // given the right set of arguments
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean canConvert(Klass m1Type, Klass m2Type) {
+        if (m1Type.isPrimitive()) {
+            if (m2Type.isPrimitive()) {
+                // char and boolean are the only types
+                // that are not numbers, all others can
+                // be converted in one direction
+                if (m1Type == m2Type) {
+                    return true;
+                } else if (m1Type == getMeta()._boolean ||
+                                m2Type == getMeta()._boolean ||
+                                m1Type == getMeta()._char ||
+                                m2Type == getMeta()._char) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            // isAssignableFrom in either direction qualifies
+            return m1Type.isAssignable(m2Type) || m2Type.isAssignable(m1Type);
+        }
     }
 }

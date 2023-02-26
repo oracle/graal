@@ -32,16 +32,14 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
@@ -52,6 +50,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(ThreadingSupport.class)
 public class ThreadingSupportImpl implements ThreadingSupport {
     public static class Options {
         @Option(help = "Support a per-thread timer that is called at a specific interval.") //
@@ -59,10 +58,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
         @Option(help = "Test whether a thread's recurring callback is pending on each transition from native code to Java.") //
         public static final HostedOptionKey<Boolean> CheckRecurringCallbackOnNativeToJavaTransition = new HostedOptionKey<>(false);
-    }
-
-    static void initialize() {
-        ImageSingletons.add(ThreadingSupport.class, new ThreadingSupportImpl());
     }
 
     /**
@@ -285,7 +280,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
-        return ActionOnTransitionToJavaSupport.isActionPending() || (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null);
+        return ActionOnTransitionToJavaSupport.isActionPending() ||
+                        (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
+                                        activeTimer.get() != null && !isRecurringCallbackPaused());
     }
 
     /**
@@ -367,13 +364,5 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> void throwUnchecked(Throwable exception) throws T {
         throw (T) exception; // T is inferred as RuntimeException, but doesn't have to be
-    }
-}
-
-@AutomaticFeature
-class ThreadingSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ThreadingSupportImpl.initialize();
     }
 }

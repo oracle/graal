@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
@@ -51,16 +50,14 @@ import com.oracle.graal.pointsto.flow.ArrayCopyTypeFlow;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.BoxTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow;
@@ -78,6 +75,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -417,13 +415,10 @@ class PointsToJsonObject extends JsonObject {
             names.put(StoreFieldTypeFlow.StoreInstanceFieldTypeFlow.class, "instanceFieldStore");
             names.put(StoreFieldTypeFlow.StoreStaticFieldTypeFlow.class, "staticFieldStore");
             names.put(FieldTypeFlow.class, "field");
-            names.put(OffsetLoadTypeFlow.AtomicReadTypeFlow.class, "atomicRead");
-            names.put(OffsetStoreTypeFlow.AtomicWriteTypeFlow.class, "atomicWrite");
             names.put(NullCheckTypeFlow.class, "nullCheck");
             names.put(ArrayCopyTypeFlow.class, "arrayCopy");
             names.put(BoxTypeFlow.class, "box");
             names.put(CloneTypeFlow.class, "clone");
-            names.put(OffsetStoreTypeFlow.CompareAndSwapTypeFlow.class, "compareAndSwap");
             names.put(FilterTypeFlow.class, "filter");
             names.put(FormalReceiverTypeFlow.class, "formalReceiver");
             names.put(InstanceOfTypeFlow.class, "instanceOf");
@@ -441,9 +436,7 @@ class PointsToJsonObject extends JsonObject {
             names.put(AllSynchronizedTypeFlow.class, "allSynchronized");
             names.put(ArrayElementsTypeFlow.class, "arrayElements");
             names.put(FieldFilterTypeFlow.class, "fieldFilter");
-            names.put(FieldSinkTypeFlow.class, "fieldSink");
-            names.put(InitialParamTypeFlow.class, "initialParam");
-            names.put(InitialReceiverTypeFlow.class, "initialReceiver");
+            names.put(ContextInsensitiveFieldTypeFlow.class, "fieldSink");
         }
 
         /**
@@ -616,7 +609,7 @@ class PointsToJsonObject extends JsonObject {
         }
 
         // Serialize all type flows of this method, recursively serialize their inputs and uses.
-        for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+        for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
             if (flow == null) {
                 // Can have null-nodes - skip them.
                 continue;
@@ -654,7 +647,7 @@ class PointsToJsonObject extends JsonObject {
         // Perform flow-type specific tasks for certain flow-types.
         if (flow instanceof InvokeTypeFlow) {
             // A callsite gets its callees as uses.
-            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
+            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getAllCallees();
             flowWrapper.calleeNames = new ArrayList<>();
             for (AnalysisMethod callee : callees) {
                 int calleeId = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().id();
@@ -709,7 +702,7 @@ class PointsToJsonObject extends JsonObject {
                 // field is null in that case. Can skip them.
                 continue;
             }
-            for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+            for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
                 if (flow != null) {
                     connectFlowToEnclosingMethod(flow.id(), methodWrapper.id);
                 }

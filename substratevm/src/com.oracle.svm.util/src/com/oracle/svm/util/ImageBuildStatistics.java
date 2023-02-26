@@ -98,14 +98,20 @@ public class ImageBuildStatistics {
             for (Map.Entry<String, AtomicLong> entry : counters.entrySet()) {
                 json.append(INDENT + "\"").append(entry.getKey()).append("\":").append(entry.getValue().get()).append(",").append(System.lineSeparator());
             }
-            json.append("}").append(System.lineSeparator());
-            out.print(fixLast(json));
+            out.print(json);
+            printTimerStats(out);
+            out.format("}%n");
+        }
+
+        private void printTimerStats(PrintWriter out) {
+            TimerCollectionPrinter dumper = ImageSingletons.lookup(TimerCollectionPrinter.class);
+            dumper.printTimerStats(out);
         }
 
         static final String INDENT = "   ";
+    }
 
-        protected String fixLast(StringBuilder json) {
-            return json.toString().replace("," + System.lineSeparator() + "}", System.lineSeparator() + "}");
-        }
+    public interface TimerCollectionPrinter {
+        void printTimerStats(PrintWriter out);
     }
 }

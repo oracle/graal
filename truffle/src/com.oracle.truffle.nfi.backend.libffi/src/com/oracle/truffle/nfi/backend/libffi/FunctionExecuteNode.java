@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.lang.ref.Reference;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,18 +61,24 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
+@GenerateAOT
 abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
     @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, LibFFISignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
                     @Cached("createCachedSignatureCall(cachedInfo)") DirectCallNode execute) {
         try {
             return execute.call(receiver, args, signature);
         } finally {
-            assert keepAlive(args);
+            /*
+             * Ensure that the GC can not free the objects as long as they might still be in use by
+             * the native code (maybe indirectly via an embedded native pointer).
+             */
+            Reference.reachabilityFence(args);
         }
     }
 
@@ -85,7 +94,11 @@ abstract class FunctionExecuteNode extends Node {
         try {
             return execute.call(signature.signatureInfo.callTarget, receiver, args, signature);
         } finally {
-            assert keepAlive(args);
+            /*
+             * Ensure that the GC can not free the objects as long as they might still be in use by
+             * the native code (maybe indirectly via an embedded native pointer).
+             */
+            Reference.reachabilityFence(args);
         }
     }
 
@@ -136,15 +149,5 @@ abstract class FunctionExecuteNode extends Node {
         static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
             throw (E) ex;
         }
-    }
-
-    /**
-     * Helper method to keep the argument array alive. The method itself does nothing, but it keeps
-     * the value alive in a FrameState. That way, the GC can not free the objects as long as they
-     * might still be in use by the native code (maybe indirectly via an embedded native pointer),
-     * but the escape analysis can still virtualize the objects if the allocation is visible.
-     */
-    private static boolean keepAlive(@SuppressWarnings("unused") Object args) {
-        return true;
     }
 }

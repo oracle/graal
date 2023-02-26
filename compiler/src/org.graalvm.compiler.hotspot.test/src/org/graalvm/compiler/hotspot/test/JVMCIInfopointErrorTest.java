@@ -198,7 +198,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
     private static LIRFrameState modifyTopFrame(LIRFrameState state, VirtualObject[] vobj, JavaValue[] values, JavaKind[] slotKinds, int locals, int stack, int locks) {
         BytecodeFrame top = state.topFrame;
         top = new BytecodeFrame(top.caller(), top.getMethod(), top.getBCI(), top.rethrowException, top.duringCall, values, slotKinds, locals, stack, locks);
-        return new LIRFrameState(top, vobj, state.exceptionEdge);
+        return new LIRFrameState(top, vobj, state.exceptionEdge, true);
     }
 
     @Test(expected = JVMCIError.class)
@@ -238,7 +238,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         test((tool, state, safepoint) -> {
             Variable var = tool.newVariable(LIRKind.fromJavaKind(tool.target().arch, JavaKind.Int));
             tool.append(new ValueDef(var));
-            LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Illegal}, 1, 0, 0);
+            LIRFrameState newState = modifyTopFrame(state, new JavaValue[]{var}, new JavaKind[]{JavaKind.Void}, 1, 0, 0);
             safepoint.accept(newState);
         });
     }
@@ -314,7 +314,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
             VirtualObject o = VirtualObject.get(obj, 5);
             o.setValues(new JavaValue[0], new JavaKind[0]);
 
-            safepoint.accept(new LIRFrameState(state.topFrame, new VirtualObject[]{o}, state.exceptionEdge));
+            safepoint.accept(new LIRFrameState(state.topFrame, new VirtualObject[]{o}, state.exceptionEdge, true));
         });
     }
 
@@ -328,7 +328,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
             VirtualObject o2 = VirtualObject.get(obj, 0);
             o2.setValues(new JavaValue[0], new JavaKind[0]);
 
-            safepoint.accept(new LIRFrameState(state.topFrame, new VirtualObject[]{o1, o2}, state.exceptionEdge));
+            safepoint.accept(new LIRFrameState(state.topFrame, new VirtualObject[]{o1, o2}, state.exceptionEdge, true));
         });
     }
 

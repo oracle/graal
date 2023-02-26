@@ -31,6 +31,7 @@ public class MockMain {
         try (Context ctx = Context.create(args)) {
             for (String languageId : args) {
                 ctx.initialize(languageId);
+                ctx.eval(languageId, "");
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,19 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.llvm.tests.Platform;
+import com.oracle.truffle.llvm.tests.interop.values.BoxedStringValue;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
+
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.llvm.tests.interop.values.BoxedStringValue;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 
 @RunWith(TruffleRunner.class)
 public class StringTest extends InteropTestBase {
@@ -49,9 +51,13 @@ public class StringTest extends InteropTestBase {
 
     private static final String UNICODE_STRING = "test unicode \u00e4\u00e1\u00e7\u20ac";
     private static final int UNICODE_LENGTH_UTF8 = StandardCharsets.UTF_8.encode(UNICODE_STRING).limit();
-    private static final int UNICODE_LENGTH_UTF32 = Charset.forName("utf-32").encode(UNICODE_STRING).limit();
+    private static final int UNICODE_LENGTH_WCHAR = Charset.forName(getWCharEncodingName()).encode(UNICODE_STRING).limit();
 
     private static Object testLibrary;
+
+    public static String getWCharEncodingName() {
+        return Platform.getOS() == Platform.OS.Windows ? "utf-16le" : "utf-32";
+    }
 
     @BeforeClass
     public static void loadTestBitcode() {
@@ -118,17 +124,17 @@ public class StringTest extends InteropTestBase {
         Assert.assertEquals(UNICODE_LENGTH_UTF8, ret);
     }
 
-    public class TestAsStringUTF32Node extends SulongTestNode {
+    public class TestAsStringWCharNode extends SulongTestNode {
 
-        public TestAsStringUTF32Node() {
-            super(testLibrary, "test_as_string_utf32");
+        public TestAsStringWCharNode() {
+            super(testLibrary, "test_as_string_wchar");
         }
     }
 
     @Test
-    public void testAsStringUTF32(@Inject(TestAsStringUTF32Node.class) CallTarget asString) {
+    public void testAsStringWChar(@Inject(TestAsStringWCharNode.class) CallTarget asString) {
         Object ret = asString.call(UNICODE_STRING);
-        Assert.assertEquals(UNICODE_LENGTH_UTF32, ret);
+        Assert.assertEquals(UNICODE_LENGTH_WCHAR, ret);
     }
 
     public class TestAsStringOverflowNode extends SulongTestNode {
@@ -176,14 +182,14 @@ public class StringTest extends InteropTestBase {
     }
 
     @Test
-    public void testFromStringUTF32(@Inject(TestFromStringNode.class) CallTarget fromString) {
+    public void testFromStringWChar(@Inject(TestFromStringNode.class) CallTarget fromString) {
         Object ret = fromString.call(5);
-        Assert.assertEquals("utf-32 works too \u263a", ret);
+        Assert.assertEquals("wide char encoding works too \u263a", ret);
     }
 
     @Test
-    public void testFromStringNUTF32(@Inject(TestFromStringNode.class) CallTarget fromString) {
+    public void testFromStringNWChar(@Inject(TestFromStringNode.class) CallTarget fromString) {
         Object ret = fromString.call(6);
-        Assert.assertEquals("utf-32 works too \u263a\0also with zero \u2639\0", ret);
+        Assert.assertEquals("wide char encoding works too \u263a\0also with zero \u2639\0", ret);
     }
 }

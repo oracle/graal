@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Array;
+import java.util.function.ObjIntConsumer;
 
 import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -79,6 +78,30 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
             return SubstrateObjectConstant.forObject(element);
         } else {
             return JavaConstant.forBoxedPrimitive(Array.get(a, index));
+        }
+    }
+
+    public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return;
+        }
+
+        Object obj = SubstrateObjectConstant.asObject(array);
+
+        if (!obj.getClass().isArray()) {
+            return;
+        }
+
+        if (obj instanceof Object[]) {
+            Object[] a = (Object[]) obj;
+            for (int index = 0; index < a.length; index++) {
+                consumer.accept((SubstrateObjectConstant.forObject(a[index])), index);
+            }
+        } else {
+            for (int index = 0; index < Array.getLength(obj); index++) {
+                Object element = Array.get(obj, index);
+                consumer.accept(JavaConstant.forBoxedPrimitive((element)), index);
+            }
         }
     }
 

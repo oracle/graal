@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -190,7 +190,7 @@ public abstract class LLVMIVarBit {
             byte[] value = new byte[(bits + 7) >> 3];
             for (int i = 0; i < bits; i++) {
                 if (from.getValue(i)) {
-                    value[value.length - 1 - (i >> 3)] |= 1 << (i & 7);
+                    value[value.length - 1 - (i >> 3)] |= (byte) (1 << (i & 7));
                 }
             }
             return LLVMIVarBitLarge.create(bits, value, bits, false);

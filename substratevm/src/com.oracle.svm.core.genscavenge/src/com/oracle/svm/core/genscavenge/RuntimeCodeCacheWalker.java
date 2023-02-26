@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
@@ -65,7 +65,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
 
         /*
          * Before this method is called, the GC already visited *all* CodeInfo objects that are
-         * reachable from the stack as strong roots. This is is an essential prerequisite for the
+         * reachable from the stack as strong roots. This is an essential prerequisite for the
          * reachability analysis that is done below. Otherwise, we would wrongly invalidate too much
          * code.
          */
@@ -78,9 +78,10 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
             if (state == CodeInfo.STATE_PARTIALLY_FREED) {
                 /*
                  * The tether object is not reachable and the CodeInfo was already invalidated, so
-                 * we don't need to visit any references and will free the unmanaged memory during
-                 * this garbage collection.
+                 * we only need to visit references that will be accessed before the unmanaged
+                 * memory is freed during this garbage collection.
                  */
+                RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
                 CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_UNREACHABLE);
                 return true;
             }

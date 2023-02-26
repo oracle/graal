@@ -24,20 +24,15 @@
  */
 package com.oracle.svm.core.jni;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.ReflectionRegistry;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
+import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
 /**
  * Support for registering classes, methods and fields before and during the analysis so they are
@@ -49,28 +44,18 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(Class<?>... classes) {
-        getSupport().register(ConfigurationCondition.alwaysTrue(), classes);
+        RuntimeJNIAccess.register(classes);
     }
 
     public static void register(Executable... methods) {
-        getSupport().register(ConfigurationCondition.alwaysTrue(), false, methods);
+        RuntimeJNIAccess.register(methods);
     }
 
     public static void register(Field... fields) {
-        register(false, fields);
+        RuntimeJNIAccess.register(fields);
     }
 
     public static void register(boolean finalIsWritable, Field... fields) {
-        getSupport().register(ConfigurationCondition.alwaysTrue(), finalIsWritable, fields);
-    }
-
-    private static JNIRuntimeAccessibilitySupport getSupport() {
-        if (!ImageSingletons.contains(JNIRuntimeAccessibilitySupport.class)) {
-            throw UserError.abort("Support for JNI is not enabled. The option %s must be set.", SubstrateOptionsParser.commandArgument(SubstrateOptions.JNI, "+"));
-        }
-        return ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
-    }
-
-    public interface JNIRuntimeAccessibilitySupport extends ReflectionRegistry {
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), finalIsWritable, fields);
     }
 }

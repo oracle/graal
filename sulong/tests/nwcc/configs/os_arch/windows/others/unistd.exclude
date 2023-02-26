@@ -1,0 +1,16 @@
+# exclude tests that require unistd.h
+nwcc_0.8.3/test2/tls1-main.c
+nwcc_0.8.3/tests/check80.c
+nwcc_0.8.3/tests/misc.c
+nwcc_0.8.3/tests/m.c
+nwcc_0.8.3/tests/n_libc.c
+
+# missing sync function
+nwcc_0.8.3/tests/aaa_BUGAMD64fp.c
+nwcc_0.8.3/tests/aaa_BUGbitfield_promo.c
+nwcc_0.8.3/tests/bf_init22.c
+nwcc_0.8.3/tests/bug.c
+nwcc_0.8.3/tests/builtin_va_copy.c
+nwcc_0.8.3/tests/condopstructbug.c
+nwcc_0.8.3/tests/condop_bug4.c
+nwcc_0.8.3/tests/structassbug.c

@@ -31,6 +31,8 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.compiler.core.common.type.TypedConstant;
+
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -45,14 +47,14 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
-public class UniverseMetaAccess implements WrappedMetaAccess {
-    private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<Class<?>, ResolvedJavaType>() {
+public abstract class UniverseMetaAccess implements WrappedMetaAccess {
+    private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<>() {
         @Override
         public ResolvedJavaType apply(Class<?> clazz) {
             return universe.lookup(wrapped.lookupJavaType(clazz));
         }
     };
-    private final Universe universe;
+    protected final Universe universe;
     private final MetaAccessProvider wrapped;
 
     public UniverseMetaAccess(Universe universe, MetaAccessProvider wrapped) {
@@ -74,7 +76,10 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
         if (constant.getJavaKind() != JavaKind.Object || constant.isNull()) {
             return null;
         }
-        return lookupJavaType(universe.getSnippetReflection().asObject(Object.class, constant).getClass());
+        if (constant instanceof TypedConstant) {
+            return ((TypedConstant) constant).getType(this);
+        }
+        return universe.lookup(wrapped.lookupJavaType(constant));
     }
 
     private final ConcurrentHashMap<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>(AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES);
@@ -82,6 +87,20 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
         return typeCache.computeIfAbsent(clazz, computeJavaType);
+    }
+
+    public boolean isInstanceOf(JavaConstant constant, Class<?> clazz) {
+        if (constant == null || constant.isNull()) {
+            return false;
+        }
+        return lookupJavaType(clazz).isAssignableFrom(lookupJavaType(constant));
+    }
+
+    public boolean isInstanceOf(JavaConstant constant, ResolvedJavaType type) {
+        if (constant == null || constant.isNull()) {
+            return false;
+        }
+        return type.isAssignableFrom(lookupJavaType(constant));
     }
 
     protected ResolvedJavaType getTypeCacheEntry(Class<?> clazz) {
@@ -121,16 +140,6 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
     @Override
     public int decodeDebugId(JavaConstant constant) {
         throw unimplemented();
-    }
-
-    @Override
-    public int getArrayBaseOffset(JavaKind elementKind) {
-        return wrapped.getArrayBaseOffset(elementKind);
-    }
-
-    @Override
-    public int getArrayIndexScale(JavaKind elementKind) {
-        return wrapped.getArrayIndexScale(elementKind);
     }
 
     @Override

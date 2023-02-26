@@ -50,4 +50,9 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw GraalError.shouldNotReachHere();
     }
+
+    @Override
+    public boolean canVirtualize(ResolvedJavaType instanceType) {
+        return true;
+    }
 }

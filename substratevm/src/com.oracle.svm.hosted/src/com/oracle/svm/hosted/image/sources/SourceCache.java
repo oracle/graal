@@ -23,7 +23,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.hosted.image.sources;
 
 import java.io.File;
@@ -40,16 +39,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.ModuleSupport;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -67,7 +62,11 @@ public class SourceCache {
      */
     protected static final List<Path> classPathEntries = new ArrayList<>();
     /**
-     * A list of all entries in the classpath used by the native image classloader.
+     * A list of all entries in the module path used by the native image classloader.
+     */
+    protected static final List<Path> modulePathEntries = new ArrayList<>();
+    /**
+     * A list of all entries in the source search path specified by the user on the command line.
      */
     protected static final List<String> sourcePathEntries = new ArrayList<>();
 
@@ -106,16 +105,7 @@ public class SourceCache {
         String javaHome = System.getProperty("java.home");
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
-        Path srcZipPath;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            Path srcZipDir = javaHomePath.getParent();
-            if (srcZipDir == null) {
-                VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
-            }
-            srcZipPath = srcZipDir.resolve("src.zip");
-        } else {
-            srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
-        }
+        Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
         if (!srcZipPath.toFile().exists()) {
             return;
         }
@@ -123,14 +113,12 @@ public class SourceCache {
             FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, (ClassLoader) null);
             for (Path root : srcFileSystem.getRootDirectories()) {
                 srcRoots.add(new SourceRoot(root, true));
-                if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                    // add dirs named "src" as extra roots for special modules
-                    for (String specialRootModule : specialRootModules) {
-                        ArrayList<Path> rootsList = new ArrayList<>();
-                        specialSrcRoots.put(specialRootModule, rootsList);
-                        Path specialModuleRoot = root.resolve(specialRootModule);
-                        Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
-                    }
+                // add dirs named "src" as extra roots for special modules
+                for (String specialRootModule : specialRootModules) {
+                    ArrayList<Path> rootsList = new ArrayList<>();
+                    specialSrcRoots.put(specialRootModule, rootsList);
+                    Path specialModuleRoot = root.resolve(specialRootModule);
+                    Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
                 }
             }
         } catch (IOException | FileSystemNotFoundException ioe) {
@@ -141,6 +129,8 @@ public class SourceCache {
     private void addGraalSources() {
         classPathEntries.stream()
                         .forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
+        modulePathEntries.stream()
+                        .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addGraalSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -158,14 +148,21 @@ public class SourceCache {
                     fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
                 }
                 Path srcPath = sourcePath.getParent().resolve(fileNameString);
-                if (srcPath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            srcRoots.add(new SourceRoot(root));
+                File srcFile = srcPath.toFile();
+                if (srcFile.exists()) {
+                    if (srcFile.isFile()) {
+                        try {
+                            FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
+                            for (Path root : fileSystem.getRootDirectories()) {
+                                srcRoots.add(new SourceRoot(root));
+                            }
+                        } catch (IOException | FileSystemNotFoundException ioe) {
+                            /* ignore this entry */
                         }
-                    } catch (IOException | FileSystemNotFoundException ioe) {
-                        /* ignore this entry */
+                    } else if (srcFile.isDirectory()) { /* Support for `MX_BUILD_EXPLODED=true` */
+                        srcRoots.add(new SourceRoot(srcPath));
+                    } else {
+                        throw VMError.shouldNotReachHere();
                     }
                 }
             } else {
@@ -187,6 +184,8 @@ public class SourceCache {
     private void addApplicationSources() {
         classPathEntries.stream()
                         .forEach(classPathEntry -> addApplicationSourceRoot(classPathEntry, true));
+        modulePathEntries.stream()
+                        .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addApplicationSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -279,7 +278,7 @@ public class SourceCache {
     /**
      * Given a prototype path for a file to be resolved return a File identifying a cached candidate
      * for for that Path or null if no cached candidate exists.
-     * 
+     *
      * @param filePath a prototype path for a file to be included in the cache derived from the name
      *            of some associated class.
      * @return a File identifying a cached candidate or null.
@@ -299,7 +298,7 @@ public class SourceCache {
     /**
      * Attempt to copy a source file from one of this cache's source roots to the local sources
      * directory storing it in the subdirectory that belongs to this cache.
-     * 
+     *
      * @param filePath a path appended to each of the cache's source roots in turn until an
      *            acceptable source file is found and copied to the local source directory.
      * @return the supplied path if the file has been located and copied to the local sources
@@ -308,9 +307,9 @@ public class SourceCache {
     protected Path tryCacheFile(Path filePath, Class<?> clazz) {
         final Path targetPath = cachedPath(filePath);
         String moduleName = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && clazz != null) {
-            /* JDK11+ paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+        if (clazz != null) {
+            /* Paths require the module name as prefix */
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {
@@ -363,7 +362,7 @@ public class SourceCache {
      * Check whether the copy of a given source file in the local source cache is up to date with
      * respect to any original located in this cache's and if not copy the original to the
      * subdirectory that belongs to this cache.
-     * 
+     *
      * @param filePath a path appended to each of the cache's source roots in turn until an matching
      *            original source is found for comparison against the local source directory.
      * @return the supplied path if the file is up to date or if an updated version has been copied
@@ -372,9 +371,9 @@ public class SourceCache {
     protected Path checkCacheFile(Path filePath, Class<?> clazz) {
         Path targetPath = cachedPath(filePath);
         String moduleName = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && clazz != null) {
-            /* JDK11+ paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+        if (clazz != null) {
+            /* Paths require the module name as prefix */
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {
@@ -443,7 +442,7 @@ public class SourceCache {
      * Extend a root path form one file system using a path potentially derived from another file
      * system by converting he latter to a text string and replacing the file separator if
      * necessary.
-     * 
+     *
      * @param root the path to be extended
      * @param filePath the subpath to extend it with
      * @return the extended path
@@ -460,7 +459,7 @@ public class SourceCache {
 
     /**
      * Convert a potential resolved candidate path to the corresponding local Path in this cache.
-     * 
+     *
      * @param candidate a resolved candidate path for some given resolution request
      * @return the corresponding local Path
      */
@@ -470,7 +469,7 @@ public class SourceCache {
 
     /**
      * Convert a potential resolved candidate path to the corresponding local File in this cache.
-     * 
+     *
      * @param candidate a resolved candidate path for some given resolution request
      * @return the corresponding local File
      */
@@ -480,7 +479,7 @@ public class SourceCache {
 
     /**
      * Indicate whether a source path identifies a file in the associated file system.
-     * 
+     *
      * @param sourcePath the path to check
      * @return true if the path identifies a file or false if no such file can be found.
      */
@@ -490,7 +489,7 @@ public class SourceCache {
 
     /**
      * Ensure the directory hierarchy for a path exists creating any missing directories if needed.
-     * 
+     *
      * @param targetDir a path to the desired directory
      */
     protected static void ensureTargetDirs(Path targetDir) {
@@ -504,41 +503,53 @@ public class SourceCache {
 
     /**
      * Add a path to the list of classpath entries.
-     * 
+     *
      * @param path The path to add.
      */
-    private static void addClassPathEntry(Path path) {
+    static void addClassPathEntry(Path path) {
         classPathEntries.add(path);
     }
 
     /**
-     * Add a path to the list of source path entries.
-     * 
+     * Add a path to the list of module path entries.
+     *
      * @param path The path to add.
      */
-    private static void addSourcePathEntry(String path) {
-        sourcePathEntries.add(path);
+    static void addModulePathEntry(Path path) {
+        modulePathEntries.add(path);
     }
 
     /**
-     * An automatic feature class which acquires the image loader class path via the afterAnalysis
-     * callback.
+     * Add a path to the list of source path entries.
+     *
+     * @param path The path to add.
      */
-    @AutomaticFeature
-    @SuppressWarnings("unused")
-    public static class SourceCacheFeature implements Feature {
-        @Override
-        public void afterAnalysis(AfterAnalysisAccess access) {
-            FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
-            ImageClassLoader loader = accessImpl.getImageClassLoader();
-            for (Path entry : loader.classpath()) {
-                addClassPathEntry(entry);
-            }
-            // also add any necessary source path entries
-            if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-                for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
-                    addSourcePathEntry(searchPathEntry);
-                }
+    static void addSourcePathEntry(String path) {
+        sourcePathEntries.add(path);
+    }
+}
+
+/**
+ * An automatic feature class which acquires the image loader class path via the afterAnalysis
+ * callback.
+ */
+@AutomaticallyRegisteredFeature
+@SuppressWarnings("unused")
+class SourceCacheFeature implements InternalFeature {
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+        ImageClassLoader loader = accessImpl.getImageClassLoader();
+        for (Path entry : loader.classpath()) {
+            SourceCache.addClassPathEntry(entry);
+        }
+        for (Path entry : loader.modulepath()) {
+            SourceCache.addModulePathEntry(entry);
+        }
+        // also add any necessary source path entries
+        if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
+            for (String searchPathEntry : SubstrateOptions.DebugInfoSourceSearchPath.getValue().values()) {
+                SourceCache.addSourcePathEntry(searchPathEntry);
             }
         }
     }
@@ -549,8 +560,7 @@ class SourceRoot {
     boolean isJDK;
 
     SourceRoot(Path path) {
-        this.path = path;
-        this.isJDK = false;
+        this(path, false);
     }
 
     SourceRoot(Path path, boolean isJDK) {

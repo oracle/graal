@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -59,9 +60,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -88,65 +90,83 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostExceptionTest {
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     private Context context;
+    private boolean entered;
+    ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     private Env env;
     private Class<? extends Throwable> expectedException;
     private Consumer<Throwable> customExceptionVerfier;
     private boolean checkHostExceptionElements;
 
+    private static final String INSTRUMENTATION_TEST_LANGUAGE = "instrumentation-test-language";
+
+    @Test
+    public void testExceptionFromExecutionListener() {
+        ExecutionListener.newBuilder().statements(true).onEnter(new Consumer<ExecutionEvent>() {
+            @Override
+            public void accept(ExecutionEvent executionEvent) {
+                throw new RuntimeException("ExceptionFromExecutionListener");
+            }
+        }).attach(context.getEngine());
+        context.eval(INSTRUMENTATION_TEST_LANGUAGE, "TRY(STATEMENT, CATCH(RuntimeException, ex, PRINT(OUT, INVOKE_MEMBER(getMessage, READ_VAR(ex)))))");
+        assertEquals("ExceptionFromExecutionListener", outStream.toString());
+    }
+
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(Env contextEnv) {
-                env = contextEnv;
-                return super.createContext(contextEnv);
-            }
-
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                RootNode rootNode;
-                switch (request.getSource().getCharacters().toString()) {
-                    case "catcher":
-                        rootNode = new CatcherRootNode();
-                        break;
-                    case "runner":
-                        rootNode = new RunnerRootNode();
-                        break;
-                    case "rethrower":
-                        rootNode = new RethrowerRootNode();
-                        break;
-                    default:
-                        throw new IllegalArgumentException();
+        context = Context.newBuilder().allowAllAccess(true).out(outStream).build();
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            ProxyLanguage.setDelegate(new ProxyLanguage() {
+                @Override
+                protected LanguageContext createContext(Env contextEnv) {
+                    env = contextEnv;
+                    return super.createContext(contextEnv);
                 }
-                return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
-            }
-        });
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
-        assertNotNull(env);
+
+                @Override
+                protected CallTarget parse(ParsingRequest request) throws Exception {
+                    RootNode rootNode;
+                    switch (request.getSource().getCharacters().toString()) {
+                        case "catcher":
+                            rootNode = new CatcherRootNode();
+                            break;
+                        case "runner":
+                            rootNode = new RunnerRootNode();
+                            break;
+                        case "rethrower":
+                            rootNode = new RethrowerRootNode();
+                            break;
+                        default:
+                            throw new IllegalArgumentException();
+                    }
+                    return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
+                }
+            });
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            entered = true;
+            assertNotNull(env);
+        }
     }
 
     @After
     public void after() {
-        context.leave();
+        if (entered) {
+            context.leave();
+        }
         context.close();
         customExceptionVerfier = null;
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testAsHostExceptionIllegalArgument() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         env.asHostException(new Exception());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testAsHostExceptionNull() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         env.asHostException(null);
     }
 
@@ -156,6 +176,7 @@ public class HostExceptionTest {
 
     @Test
     public void testUncaughtHostException() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Value catcher = context.eval(ProxyLanguage.ID, "runner");
         Runnable thrower = HostExceptionTest::thrower;
         try {
@@ -183,6 +204,7 @@ public class HostExceptionTest {
 
     @Test
     public void testExceptionObject() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         Value catcher = context.eval(ProxyLanguage.ID, "catcher");
         Runnable thrower = HostExceptionTest::thrower;
@@ -208,6 +230,7 @@ public class HostExceptionTest {
 
     @Test
     public void testCatchAndThrow() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         Value runner = context.eval(ProxyLanguage.ID, "runner");
         Value catcher = context.eval(ProxyLanguage.ID, "catcher");
@@ -233,6 +256,7 @@ public class HostExceptionTest {
     @SuppressWarnings("serial")
     @Test
     public void testSetStackTraceOverridden() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         class BadException extends RuntimeException {
             @Override
             public void setStackTrace(StackTraceElement[] stackTrace) {
@@ -257,6 +281,7 @@ public class HostExceptionTest {
     @SuppressWarnings("serial")
     @Test
     public void testGetStackTraceOverridden() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         class BadException extends RuntimeException {
             @Override
             public StackTraceElement[] getStackTrace() {
@@ -280,6 +305,7 @@ public class HostExceptionTest {
     @SuppressWarnings("serial")
     @Test
     public void testNullStackTrace() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         class BadException extends RuntimeException {
             @Override
             public StackTraceElement[] getStackTrace() {
@@ -327,6 +353,7 @@ public class HostExceptionTest {
 
     @Test
     public void testNestedPolyglotException() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = TestHostException.class;
         Value runner = context.eval(ProxyLanguage.ID, "runner");
         Value catcher = context.eval(ProxyLanguage.ID, "catcher");
@@ -403,6 +430,7 @@ public class HostExceptionTest {
 
     @Test
     public void testRethrowHostException() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         Runnable thrower = HostExceptionTest::thrower;
         Value rethrower = context.eval(ProxyLanguage.ID, "rethrower");
@@ -431,6 +459,7 @@ public class HostExceptionTest {
 
     @Test
     public void testHostExceptionMetaInstance() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         Value catcher = context.eval(ProxyLanguage.ID, "catcher");
         Runnable thrower = HostExceptionTest::thrower;
@@ -454,6 +483,7 @@ public class HostExceptionTest {
 
     @Test
     public void testHostExceptionIsHostSymbol() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
         customExceptionVerfier = (t) -> {
             assertFalse(env.isHostSymbol(t));
@@ -465,6 +495,7 @@ public class HostExceptionTest {
 
     @Test
     public void testHostExceptionWithContext() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
         Value catcher = context.eval(ProxyLanguage.ID, "catcher");
         Runnable thrower = HostExceptionTest::thrower;

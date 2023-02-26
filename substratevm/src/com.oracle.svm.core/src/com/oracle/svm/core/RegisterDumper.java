@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.thread;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
@@ -34,32 +35,62 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.memory.FloatableThreadLocalAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable {
+public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable, SingleMemoryKill, OrderedMemoryAccess, MemoryAccess, FloatableThreadLocalAccess {
     public static final NodeClass<LoadVMThreadLocalNode> TYPE = NodeClass.create(LoadVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;
     protected final BarrierType barrierType;
     @Input protected ValueNode holder;
-    private final boolean floatReads;
+    private final MemoryOrderMode memoryOrder;
 
-    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType, boolean floatReads) {
+    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType,
+                    MemoryOrderMode memoryOrder) {
         super(TYPE, threadLocalInfo.isObject ? StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(threadLocalInfo.valueClass)))
                         : StampFactory.forKind(threadLocalInfo.storageKind));
         this.threadLocalInfo = threadLocalInfo;
         this.barrierType = barrierType;
-        this.floatReads = floatReads;
         this.holder = holder;
+        this.memoryOrder = memoryOrder;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return threadLocalInfo.locationIdentity;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
+    @Override
+    public boolean canFloat() {
+        return !ordersMemoryAccesses() && threadLocalInfo.allowFloatingReads;
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
     }
 
     @Override
@@ -68,9 +99,9 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
 
         ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
 
-        if (floatReads) {
+        JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, memoryOrder, true));
+        if (canFloat()) {
             /*
              * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they
              * will be conservatively be forced at a fixed location.

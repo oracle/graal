@@ -30,8 +30,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -88,14 +87,12 @@ public final class IsolatedCompileContext {
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<String> createStringInClient0(@SuppressWarnings("unused") ClientIsolateThread client, CCharPointer cstr) {
         return IsolatedCompileClient.get().hand(CTypeConversion.toJavaString(cstr));
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<String[]> createStringArrayInClient0(@SuppressWarnings("unused") ClientIsolateThread client, int length, CCharPointerPointer ptrs) {
         String[] array = new String[length];
         for (int i = 0; i < length; i++) {

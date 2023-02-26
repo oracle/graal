@@ -27,12 +27,12 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 @GenerateUncached
-public abstract class LookupFieldNode extends Node {
+public abstract class LookupFieldNode extends EspressoNode {
     static final int LIMIT = 3;
 
     LookupFieldNode() {

@@ -90,7 +90,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
              */
             AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
             masm.movq(ipAddress, ValueUtil.asRegister(ip));
-            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result));
+            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result), crb);
             masm.jmp(ipAddress);
 
         } else {

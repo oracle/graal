@@ -124,13 +124,6 @@ public final class IntList {
     }
 
     /**
-     * Sets the size of this list to 0.
-     */
-    public void clear() {
-        size = 0;
-    }
-
-    /**
      * Sets a value at a given index in this list.
      *
      * @param index the index of the element to update

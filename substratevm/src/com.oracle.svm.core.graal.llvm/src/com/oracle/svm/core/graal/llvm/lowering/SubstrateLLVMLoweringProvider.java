@@ -29,6 +29,8 @@ import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
@@ -84,8 +86,28 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     }
 
     @Override
+    public boolean writesStronglyOrdered() {
+        return false;
+    }
+
+    @Override
     public boolean targetingLLVM() {
         return true;
+    }
+
+    @Override
+    public boolean divisionOverflowIsJVMSCompliant() {
+        return false;
+    }
+
+    @Override
+    public boolean narrowsUseCastValue() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
+        return false;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,52 @@
  */
 package com.oracle.truffle.api.test;
 
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.function.BooleanSupplier;
+import java.util.Map;
 import java.util.function.Function;
 
+import com.sun.management.HotSpotDiagnosticMXBean;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.visualvm.lib.jfluid.heap.ArrayItemValue;
+import org.graalvm.visualvm.lib.jfluid.heap.GCRoot;
+import org.graalvm.visualvm.lib.jfluid.heap.Heap;
+import org.graalvm.visualvm.lib.jfluid.heap.HeapFactory;
+import org.graalvm.visualvm.lib.jfluid.heap.Instance;
+import org.graalvm.visualvm.lib.jfluid.heap.JavaClass;
+import org.graalvm.visualvm.lib.jfluid.heap.JavaFrameGCRoot;
+import org.graalvm.visualvm.lib.jfluid.heap.JniLocalGCRoot;
+import org.graalvm.visualvm.lib.jfluid.heap.ObjectArrayInstance;
+import org.graalvm.visualvm.lib.jfluid.heap.ObjectFieldValue;
+import org.graalvm.visualvm.lib.jfluid.heap.ThreadObjectGCRoot;
+import org.graalvm.visualvm.lib.jfluid.heap.Value;
 import org.junit.Assert;
+
+import javax.management.MBeanServer;
 
 /**
  * Test collectible objects.
  */
 public final class GCUtils {
+
+    private static final boolean PRESERVE_HEAP_DUMP_ON_FAILURE = Boolean.parseBoolean(System.getProperty(GCUtils.class.getSimpleName() + ".preserveHeapDumpOnFailure", "true"));
+
+    private static final ReachabilityAnalyser<?> analyser = selectAnalyser();
 
     private GCUtils() {
         throw new IllegalStateException("No instance allowed.");
@@ -72,25 +103,69 @@ public final class GCUtils {
      * @param objectFactory producer of collectible object per an iteration
      */
     public static void assertObjectsCollectible(Function<Integer, Object> objectFactory) {
-        List<WeakReference<Object>> collectibleObjects = new ArrayList<>();
+        List<Reference<Object>> collectibleObjects = new ArrayList<>();
         for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i)));
             System.gc();
         }
-        if (!gc(IsFreed.anyOf(collectibleObjects), true)) {
-            Assert.fail("Objects are not collected.");
+        Result result = analyser.anyCollected(collectibleObjects, true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath("Objects are not collected.", result));
         }
     }
 
     /**
-     * Asserts that given reference is cleaned, the referent is freed by garbage collector.
+     * Asserts that given reference is cleaned, the referent is freed by garbage collector. From a
+     * performance point of view, it is always better to call {@link #assertGc(String, Collection)}
+     * or {@link #assertGc(Collection)} with a collection of references rather than repeatedly
+     * calling this method with individual references.
      *
-     * @param message the message for an {@link AssertionError} when referent is not freed by GC
+     * @param message the message for an {@link AssertionError} when referent is not freed by the GC
      * @param ref the reference
+     * @see #assertGc(String, Collection)
+     * @see #assertGc(Collection)
      */
-    public static void assertGc(final String message, final Reference<?> ref) {
-        if (!gc(IsFreed.allOf(Collections.singleton(ref)), true)) {
-            Assert.fail(message);
+    public static void assertGc(String message, Reference<?> ref) {
+        Result result = analyser.allCollected(Collections.singleton(ref), true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath(message, result));
+        }
+    }
+
+    /**
+     * Asserts that all given references are cleaned, the referents are freed by garbage collector.
+     * From a performance point of view, it is always better to call this method with a collection
+     * of references rather than repeatedly calling {@link #assertGc(String, Reference)} with
+     * individual references.
+     *
+     * @param message the message for an {@link AssertionError} when referent is not freed by the GC
+     * @param refs references their referents are to be released
+     */
+    public static void assertGc(String message, Collection<? extends Reference<?>> refs) {
+        Result result = analyser.allCollected(refs, true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath(message, result));
+        }
+    }
+
+    /**
+     * Asserts that all given references are cleaned, the referents are freed by garbage collector.
+     * From a performance point of view, it is always better to call this method with a collection
+     * of references rather than repeatedly calling {@link #assertGc(String, Reference)} with
+     * individual references.
+     *
+     * @param refsWithMessages references, their referents are to be released, with messages for an
+     *            {@link AssertionError} thrown when the referent is not freed by the GC
+     */
+    public static void assertGc(Collection<? extends Pair<String, Reference<?>>> refsWithMessages) {
+        Map<Reference<?>, String> refsMap = new IdentityHashMap<>();
+        for (Pair<String, Reference<?>> pair : refsWithMessages) {
+            refsMap.putIfAbsent(pair.getRight(), pair.getLeft());
+        }
+        Result result = analyser.allCollected(refsMap.keySet(), true, true, PRESERVE_HEAP_DUMP_ON_FAILURE);
+        if (!result.isCollected()) {
+            String message = refsMap.get(result.getReference());
+            Assert.fail(formatShortestGCRootPath(message, result));
         }
     }
 
@@ -101,83 +176,458 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertNotGc(final String message, final Reference<?> ref) {
-        if (gc(IsFreed.allOf(Collections.singleton(ref)), false)) {
+        if (analyser.allCollected(Collections.singleton(ref), false, false, false).isCollected()) {
             Assert.fail(message);
         }
     }
 
-    private static boolean gc(BooleanSupplier isFreed, boolean performAllocations) {
-        int blockSize = 100_000;
-        final List<byte[]> blocks = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            if (isFreed.getAsBoolean()) {
-                return true;
-            }
-            try {
-                System.gc();
-            } catch (OutOfMemoryError oom) {
-            }
-            try {
-                System.runFinalization();
-            } catch (OutOfMemoryError oom) {
-            }
-            if (performAllocations) {
-                try {
-                    blocks.add(new byte[blockSize]);
-                    blockSize = (int) (blockSize * 1.3);
-                } catch (OutOfMemoryError oom) {
-                    blockSize >>>= 1;
-                }
-            }
-            if (i % 10 == 0) {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ie) {
-                    break;
-                }
-            }
+    private static ReachabilityAnalyser<?> selectAnalyser() {
+        if (ImageInfo.inImageCode() || OSUtils.isWindows()) {
+            // In the native-image, the heap dump to slow to be used.
+            // On Windows there are problems with the Heap release, which prevents the headump file
+            // from being deleted.
+            return new GCAnalyser();
+        } else {
+            return new HeapDumpAnalyser();
         }
-        return false;
     }
 
-    private static final class IsFreed implements BooleanSupplier {
+    private static String formatShortestGCRootPath(String message, Result result) {
+        Iterable<? extends InstanceReference> path = result.getShortestGCRootPath();
+        if (path == null) {
+            return message;
+        }
+        StringBuilder sb = new StringBuilder("Shortest GC root path:\n");
+        boolean first = true;
+        for (InstanceReference ref : path) {
+            if (!first) {
+                sb.append("\n");
+            }
+            sb.append("        ");
+            sb.append(ref.className);
+            switch (ref.kind) {
+                case OBJECT_FIELD:
+                    sb.append(".");
+                    sb.append(ref.memberName);
+                    break;
+                case ARRAY_ELEMENT:
+                    sb.append("[");
+                    sb.append(ref.memberName);
+                    sb.append("]");
+                    break;
+                default:
+                    throw new IllegalArgumentException(ref.kind.toString());
+            }
+            if (first) {
+                sb.append(" (instance id ").append(result.getInstanceId()).append(")");
+                first = false;
+            }
+        }
+        sb.append(" (");
+        sb.append(result.getGCRootKind());
+        sb.append(")");
+        Iterable<? extends StackTraceElement> stack = result.getGcRootStackTrace();
+        if (stack != null) {
+            sb.append("\nheld by Java thread with thread id ").append(result.getGcRootThreadId());
+            for (StackTraceElement frame : stack) {
+                sb.append("\n");
+                sb.append("        ");
+                sb.append(frame);
+            }
+        }
+        Path heapDumpFile = result.getHeapDumpFile();
+        if (heapDumpFile != null) {
+            sb.append("\nHeap dump stored in ").append(heapDumpFile.toAbsolutePath());
+        }
+        return String.format("%s%n%s", message, sb);
+    }
 
-        private enum Operator {
-            AND,
-            OR
+    private enum ReferenceKind {
+        OBJECT_FIELD,
+        ARRAY_ELEMENT
+    }
+
+    private static final class InstanceReference {
+        final ReferenceKind kind;
+        final String className;
+        final String memberName;
+
+        InstanceReference(ReferenceKind kind, String className, String memberName) {
+            this.kind = kind;
+            this.className = className;
+            this.memberName = memberName;
+        }
+    }
+
+    private static final class Result {
+
+        static final Result COLLECTED = new Result();
+
+        private final boolean collected;
+        private final Reference<?> reference;
+        private final long instanceId;
+        private final String gcRootKind;
+        private final Iterable<? extends InstanceReference> shortestGCRootPath;
+        private final long gcRootThreadId;
+        private final Iterable<? extends StackTraceElement> gcRootStackTrace;
+        private final Path heapDumpFile;
+
+        private Result() {
+            this.collected = true;
+            this.reference = null;
+            this.gcRootKind = null;
+            this.instanceId = -1;
+            this.shortestGCRootPath = null;
+            this.gcRootThreadId = -1;
+            this.gcRootStackTrace = null;
+            this.heapDumpFile = null;
         }
 
-        private final Collection<? extends Reference<?>> refs;
-        private final Operator operator;
+        Result(Reference<?> reference) {
+            this.collected = false;
+            this.reference = reference;
+            this.gcRootKind = null;
+            this.instanceId = -1;
+            this.shortestGCRootPath = null;
+            this.gcRootThreadId = -1;
+            this.gcRootStackTrace = null;
+            this.heapDumpFile = null;
+        }
 
-        private IsFreed(Collection<? extends Reference<?>> refs, Operator operator) {
-            this.refs = refs;
-            this.operator = operator;
+        Result(Reference<?> reference, long instanceId, String gcRootKind, Iterable<? extends InstanceReference> shortestGCRootPath,
+                        long gcRootThreadId, Iterable<? extends StackTraceElement> gcRootStackTrace, Path heapDumpFile) {
+            this.collected = false;
+            this.reference = reference;
+            this.instanceId = instanceId;
+            this.gcRootKind = gcRootKind;
+            this.shortestGCRootPath = shortestGCRootPath;
+            this.gcRootThreadId = gcRootThreadId;
+            this.gcRootStackTrace = gcRootStackTrace;
+            this.heapDumpFile = heapDumpFile;
+        }
+
+        boolean isCollected() {
+            return collected;
+        }
+
+        Reference<?> getReference() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return reference;
+        }
+
+        long getInstanceId() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return instanceId;
+        }
+
+        String getGCRootKind() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return gcRootKind;
+        }
+
+        Iterable<? extends InstanceReference> getShortestGCRootPath() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return shortestGCRootPath;
+        }
+
+        long getGcRootThreadId() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return gcRootThreadId;
+        }
+
+        Iterable<? extends StackTraceElement> getGcRootStackTrace() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return gcRootStackTrace;
+        }
+
+        Path getHeapDumpFile() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return heapDumpFile;
+        }
+    }
+
+    private abstract static class ReachabilityAnalyser<T> {
+
+        final Result allCollected(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath,
+                        boolean preserveHeapDumpIfNonCollectable) {
+            if (references.isEmpty()) {
+                throw new IllegalArgumentException("References must be non empty.");
+            }
+            Function<T, Result> test = (ctx) -> {
+                for (Reference<?> ref : references) {
+                    Result result = isCollected(ref, ctx);
+                    if (!result.isCollected()) {
+                        return result;
+                    }
+                }
+                return Result.COLLECTED;
+            };
+            return analyse(references, force, collectGCRootPath, preserveHeapDumpIfNonCollectable, test);
+        }
+
+        final Result anyCollected(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath,
+                        boolean preserveHeapDumpIfNonCollectable) {
+            if (references.isEmpty()) {
+                throw new IllegalArgumentException("References must be non empty.");
+            }
+            Function<T, Result> test = (ctx) -> {
+                Result firstResult = null;
+                for (Reference<?> ref : references) {
+                    Result result = isCollected(ref, ctx);
+                    firstResult = firstResult == null ? result : firstResult;
+                    if (result.isCollected()) {
+                        return result;
+                    }
+                }
+                return firstResult;
+            };
+            return analyse(references, force, collectGCRootPath, preserveHeapDumpIfNonCollectable, test);
+        }
+
+        abstract Result analyse(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath,
+                        boolean preserveHeapDumpIfNonCollectable, Function<T, Result> testCollected);
+
+        abstract Result isCollected(Reference<?> reference, T context);
+    }
+
+    private static final class HeapDumpAnalyser extends ReachabilityAnalyser<HeapDumpAnalyser.State> {
+
+        private static volatile HotSpotDiagnosticMXBean hotSpotDiagnosticMBean;
+        private static volatile Reference<?>[] todo;
+
+        private static class State {
+            final boolean collectGCRootPath;
+            final Path heapDumpFile;
+            final Heap heap;
+            final List<Instance> todoInstances;
+            final Map<Reference<?>, Integer> todoIndexes;
+
+            State(boolean collectGCRootPath, Path heapDumpFile, Heap heap,
+                            List<Instance> todoInstances, Map<Reference<?>, Integer> todoIndexes) {
+                this.collectGCRootPath = collectGCRootPath;
+                this.heapDumpFile = heapDumpFile;
+                this.heap = heap;
+                this.todoInstances = todoInstances;
+                this.todoIndexes = todoIndexes;
+            }
         }
 
         @Override
-        public boolean getAsBoolean() {
-            for (Reference<?> ref : refs) {
-                boolean freed = ref.get() == null;
-                if (freed) {
-                    if (operator == Operator.OR) {
-                        return true;
+        Result analyse(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath, boolean preserveHeapDumpIfNonCollectable,
+                        Function<State, Result> testCollected) {
+            try {
+                Result result = null;
+                Path tmpDirectory = Files.createTempDirectory(GCUtils.class.getSimpleName().toLowerCase());
+                try {
+                    Path heapDumpFile = tmpDirectory.resolve("heapdump.hprof");
+                    System.gc();    // Perform GC to minimize heap size and speed up heap queries.
+                    Map<Reference<?>, Integer> todoIndexes = prepareTodoAndTakeHeapDump(references, heapDumpFile);
+                    Heap heap = HeapFactory.createHeap(heapDumpFile.toFile());
+                    JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
+                    ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
+                    List<Instance> instances = todoArray.getValues();
+                    result = testCollected.apply(new State(collectGCRootPath, preserveHeapDumpIfNonCollectable ? heapDumpFile : null, heap, instances, todoIndexes));
+                } finally {
+                    if (result == null || result.isCollected() || !preserveHeapDumpIfNonCollectable) {
+                        delete(tmpDirectory);
                     }
+                }
+                return result;
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        }
+
+        @Override
+        Result isCollected(Reference<?> reference, State context) {
+            int index = context.todoIndexes.get(reference);
+            Instance referenceInstance = context.todoInstances.get(index);
+            Instance referent = (Instance) referenceInstance.getValueOfField("referent");
+            if (referent == null) {
+                return Result.COLLECTED;
+            } else {
+                String gcRootKind = null;
+                List<InstanceReference> gcRootPath = null;
+                long gcRootThreadId = -1;
+                Iterable<? extends StackTraceElement> gcRootStackTrace = null;
+                if (context.collectGCRootPath) {
+                    gcRootPath = new ArrayList<>();
+                    GCRoot gcRoot = collectGCRootPath(gcRootPath, context.heap, referent, null);
+                    if (gcRoot == null) {
+                        return Result.COLLECTED;
+                    }
+                    gcRootKind = gcRoot.getKind();
+                    if (GCRoot.JAVA_FRAME.equals(gcRootKind)) {
+                        JavaFrameGCRoot frameGCRoot = (JavaFrameGCRoot) gcRoot;
+                        ThreadObjectGCRoot threadObjectGCRoot = frameGCRoot.getThreadGCRoot();
+                        gcRootStackTrace = stackUpToAllocationFrame(threadObjectGCRoot, frameGCRoot.getFrameNumber());
+                        gcRootThreadId = getThreadId(threadObjectGCRoot);
+                    } else if (GCRoot.JNI_LOCAL.equals(gcRootKind)) {
+                        JniLocalGCRoot jniLocalGCRoot = (JniLocalGCRoot) gcRoot;
+                        ThreadObjectGCRoot threadObjectGCRoot = jniLocalGCRoot.getThreadGCRoot();
+                        gcRootStackTrace = stackUpToAllocationFrame(threadObjectGCRoot, jniLocalGCRoot.getFrameNumber());
+                        gcRootThreadId = getThreadId(threadObjectGCRoot);
+                    }
+                }
+                return new Result(reference, referent.getInstanceId(), gcRootKind, gcRootPath, gcRootThreadId, gcRootStackTrace,
+                                context.heapDumpFile != null ? context.heapDumpFile : null);
+            }
+        }
+
+        private GCRoot collectGCRootPath(List<InstanceReference> gcRootPath, Heap heap, Instance instance, Instance prev) {
+            if (instance == null) {
+                return null;
+            }
+            String className = instance.getJavaClass().getName();
+            if (Class.class.getName().equals(className)) {
+                className = heap.getJavaClassByID(instance.getInstanceId()).getName();
+            }
+            ReferenceKind referenceKind;
+            String memberName;
+            if (prev == null) {
+                referenceKind = ReferenceKind.OBJECT_FIELD;
+                memberName = "this";
+            } else {
+                Value value = prev.getReferences().get(0);
+                assert value.getDefiningInstance().getInstanceId() == instance.getInstanceId() : String.format("Expected reference from %s(0x%x), but got reference from %s(0x%x).",
+                                instance.getJavaClass().getName(), instance.getInstanceId(), value.getDefiningInstance().getJavaClass().getName(), value.getDefiningInstance().getInstanceId());
+                if (value instanceof ObjectFieldValue) {
+                    ObjectFieldValue objectFieldValue = (ObjectFieldValue) value;
+                    referenceKind = ReferenceKind.OBJECT_FIELD;
+                    memberName = objectFieldValue.getField().getName();
+                } else if (value instanceof ArrayItemValue) {
+                    ArrayItemValue arrayItemValue = (ArrayItemValue) value;
+                    referenceKind = ReferenceKind.ARRAY_ELEMENT;
+                    memberName = String.valueOf(arrayItemValue.getIndex());
                 } else {
-                    if (operator == Operator.AND) {
-                        return false;
+                    throw new IllegalArgumentException("Unknown reference value: " + value);
+                }
+            }
+            gcRootPath.add(new InstanceReference(referenceKind, className, memberName));
+            if (instance.isGCRoot()) {
+                return heap.getGCRoots(instance).iterator().next();
+            }
+            return collectGCRootPath(gcRootPath, heap, instance.getNearestGCRootPointer(), instance);
+        }
+
+        private static Iterable<? extends StackTraceElement> stackUpToAllocationFrame(ThreadObjectGCRoot threadObject, int frameNumber) {
+            StackTraceElement[] stack = threadObject.getStackTrace();
+            return Arrays.asList(Arrays.copyOfRange(stack, frameNumber, stack.length));
+        }
+
+        private static long getThreadId(ThreadObjectGCRoot threadObjectGCRoot) {
+            return (long) threadObjectGCRoot.getInstance().getValueOfField("tid");
+        }
+
+        private static Map<Reference<?>, Integer> prepareTodoAndTakeHeapDump(Collection<? extends Reference<?>> references, Path outputFile) throws IOException {
+            synchronized (HeapDumpAnalyser.class) {
+                assert todo == null : "Todo must be null before assign.";
+                todo = references.toArray(new Reference<?>[0]);
+                Map<Reference<?>, Integer> todoIndexes = new IdentityHashMap<>();
+                for (int i = 0; i < todo.length; i++) {
+                    todoIndexes.put(todo[i], i);
+                }
+                try {
+                    takeHeapDump(outputFile);
+                } finally {
+                    todo = null;
+                }
+                return todoIndexes;
+            }
+        }
+
+        private static void takeHeapDump(Path outputFile) throws IOException, UnsupportedOperationException {
+            if (ImageInfo.inImageRuntimeCode()) {
+                VMRuntime.dumpHeap(outputFile.toString(), true);
+            } else {
+                getHotSpotDiagnosticMBean().dumpHeap(outputFile.toString(), true);
+            }
+        }
+
+        private static HotSpotDiagnosticMXBean getHotSpotDiagnosticMBean() throws IOException {
+            HotSpotDiagnosticMXBean res = hotSpotDiagnosticMBean;
+            if (res == null) {
+                synchronized (GCUtils.class) {
+                    res = hotSpotDiagnosticMBean;
+                    if (res == null) {
+                        MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+                        res = ManagementFactory.newPlatformMXBeanProxy(platformMBeanServer, "com.sun.management:type=HotSpotDiagnostic", HotSpotDiagnosticMXBean.class);
+                        hotSpotDiagnosticMBean = res;
                     }
                 }
             }
-            return operator == Operator.AND;
+            return res;
         }
 
-        static IsFreed anyOf(Collection<? extends Reference<?>> refs) {
-            return new IsFreed(refs, Operator.OR);
+        private static void delete(Path file) throws IOException {
+            if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
+                try (DirectoryStream<Path> content = Files.newDirectoryStream(file)) {
+                    for (Path child : content) {
+                        delete(child);
+                    }
+                }
+            }
+            Files.delete(file);
+        }
+    }
+
+    private static final class GCAnalyser extends ReachabilityAnalyser<Void> {
+
+        @Override
+        Result analyse(Collection<? extends Reference<?>> references, boolean performAllocations, boolean collectGCRootPath,
+                        boolean preserveHeapDumpIfNonCollectable, Function<Void, Result> testCollected) {
+            int blockSize = 100_000;
+            final List<byte[]> blocks = new ArrayList<>();
+            Result result = null;
+            for (int i = 0; i < 50; i++) {
+                result = testCollected.apply(null);
+                if (result.isCollected()) {
+                    return result;
+                }
+                try {
+                    System.gc();
+                } catch (OutOfMemoryError oom) {
+                }
+                try {
+                    System.runFinalization();
+                } catch (OutOfMemoryError oom) {
+                }
+                if (performAllocations) {
+                    try {
+                        blocks.add(new byte[blockSize]);
+                        blockSize = (int) (blockSize * 1.3);
+                    } catch (OutOfMemoryError oom) {
+                        blockSize >>>= 1;
+                    }
+                }
+                if (i % 10 == 0) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ie) {
+                        break;
+                    }
+                }
+            }
+            return result;
         }
 
-        static IsFreed allOf(Collection<? extends Reference<?>> refs) {
-            return new IsFreed(refs, Operator.AND);
+        @Override
+        Result isCollected(Reference<?> reference, Void context) {
+            return reference.get() == null ? Result.COLLECTED : new Result(reference);
         }
     }
 }

@@ -34,10 +34,10 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Tra
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -107,11 +107,25 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     }
 
     /**
+     * Registers a foreign call signature that may subsequently have linkage
+     * {@linkplain #register(HotSpotForeignCallLinkage) registered}.
+     *
+     * This exists to support foreign calls who linkage is not generated eagerly. Libgraal needs to
+     * know the signature of such calls during image building.
+     */
+    public void register(ForeignCallSignature sig) {
+        if (!foreignCalls.containsKey(sig)) {
+            foreignCalls.put(sig, null);
+        }
+    }
+
+    /**
      * Registers the linkage for a foreign call.
      */
     public HotSpotForeignCallLinkage register(HotSpotForeignCallLinkage linkage) {
-        assert !foreignCalls.containsKey(linkage.getDescriptor().getSignature()) : "already registered linkage for " + linkage.getDescriptor();
-        foreignCalls.put(linkage.getDescriptor().getSignature(), linkage);
+        ForeignCallSignature key = linkage.getDescriptor().getSignature();
+        HotSpotForeignCallLinkage existing = foreignCalls.put(key, linkage);
+        GraalError.guarantee(existing == null, "already registered linkage for %s: %s", key, existing);
         return linkage;
     }
 
@@ -161,8 +175,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
             throw new IllegalArgumentException("address must be non-zero");
         }
         Class<?> resultType = descriptor.getResultType();
-        assert descriptor.getTransition() != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " +
-                        descriptor;
+        GraalError.guarantee(descriptor.getTransition() != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType),
+                        "non-leaf foreign calls must return objects in thread local storage: %s", descriptor);
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
                         wordTypes,
@@ -213,7 +227,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
         register(linkage);
-        if (!foreignCalls.containsKey(targetLinkage.getDescriptor().getSignature())) {
+        if (foreignCalls.get(targetLinkage.getDescriptor().getSignature()) == null) {
             register(targetLinkage);
         }
     }
@@ -222,25 +236,30 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     public static final boolean DONT_PREPEND_THREAD = !PREPEND_THREAD;
 
     @Override
-    public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        assert foreignCalls != null : descriptor;
-        HotSpotForeignCallLinkage callTarget = foreignCalls.get(descriptor.getSignature());
+    public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallSignature signature) {
+        GraalError.guarantee(foreignCalls != null, "%s", signature);
+        HotSpotForeignCallLinkage callTarget = foreignCalls.get(signature);
         if (callTarget == null) {
-            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + descriptor);
+            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature);
         }
         callTarget.finalizeAddress(runtime.getHostBackend());
         return callTarget;
     }
 
     @Override
+    public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        return lookupForeignCall(descriptor.getSignature());
+    }
+
+    @Override
     public HotSpotForeignCallDescriptor getDescriptor(ForeignCallSignature signature) {
         HotSpotForeignCallDescriptor descriptor = signatureMap.get(signature);
-        assert descriptor != null : signature;
+        GraalError.guarantee(descriptor != null, "%s", signature);
         return descriptor;
     }
 
     HotSpotForeignCallDescriptor createDescriptor(ForeignCallSignature signature, Transition transition, Reexecutability reexecutability, LocationIdentity... killLocations) {
-        assert signatureMap.get(signature) == null;
+        GraalError.guarantee(!signatureMap.containsKey(signature), "%s", signature);
         HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, reexecutability, killLocations);
         signatureMap.put(signature, descriptor);
         return descriptor;
@@ -251,16 +270,14 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         return LIRKind.fromJavaKind(codeCache.getTarget().arch, javaKind);
     }
 
-    @Override
-    public List<Stub> getStubs() {
-        List<Stub> stubs = new ArrayList<>();
-        for (HotSpotForeignCallLinkage linkage : foreignCalls.getValues()) {
-            if (linkage.isCompiledStub()) {
-                Stub stub = linkage.getStub();
-                assert stub != null;
-                stubs.add(stub);
-            }
+    /**
+     * Performs {@code action} for each registered foreign call. The second parameter to
+     * {@code action} is {@code null} when linkage is not yet available for the call.
+     */
+    public void forEachForeignCall(BiConsumer<ForeignCallSignature, HotSpotForeignCallLinkage> action) {
+        MapCursor<ForeignCallSignature, HotSpotForeignCallLinkage> cursor = foreignCalls.getEntries();
+        while (cursor.advance()) {
+            action.accept(cursor.getKey(), cursor.getValue());
         }
-        return stubs;
     }
 }

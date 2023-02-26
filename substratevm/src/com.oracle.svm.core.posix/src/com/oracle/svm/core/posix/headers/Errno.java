@@ -58,6 +58,18 @@ public class Errno {
     @CConstant
     public static native int ETIMEDOUT();
 
+    @CConstant
+    public static native int EFAULT();
+
+    @CConstant
+    public static native int EINVAL();
+
+    @CConstant
+    public static native int EAGAIN();
+
+    @CConstant
+    public static native int ENOMEM();
+
     @CFunction
     public static native CCharPointer strerror(int errnum);
 }

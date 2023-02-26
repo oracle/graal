@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -151,7 +150,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     @Test
     public void testUnsafeFoldComponentType() {
-        assumeTrue(JavaVersionUtil.JAVA_SPEC >= 9 && GraalHotSpotVMConfig.jvmciGE(GraalHotSpotVMConfig.JVMCI_20_3_b04));
+        assumeTrue(GraalHotSpotVMConfig.jvmciGE(GraalHotSpotVMConfig.JVMCI_20_3_b04));
         runTest = new Runnable() {
             @Override
             public void run() {
@@ -178,23 +177,21 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins plugins) {
-        if (JavaVersionUtil.JAVA_SPEC >= 9) {
-            try {
-                Field f = Class.class.getDeclaredField("componentType");
-                Registration r = new Registration(plugins, ClassSubstitutionsTests.class);
-                r.register1("readComponentType", Class.class, new InvocationPlugin() {
-                    @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
-                        ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
-                        b.addPush(JavaKind.Object,
-                                        LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(),
-                                                        b.getAssumptions(), clazz, field, false, false));
-                        return true;
-                    }
-                });
-            } catch (NoSuchFieldException e) {
-                throw new InternalError(e);
-            }
+        try {
+            Field f = Class.class.getDeclaredField("componentType");
+            Registration r = new Registration(plugins, ClassSubstitutionsTests.class);
+            r.register(new InvocationPlugin("readComponentType", Class.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
+                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
+                    b.addPush(JavaKind.Object,
+                                    LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(),
+                                                    b.getAssumptions(), clazz, field, false, false, b.getGraph().currentNodeSourcePosition()));
+                    return true;
+                }
+            });
+        } catch (NoSuchFieldException e) {
+            throw new InternalError(e);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -90,6 +90,24 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
          * variable (as opposed to only changing parts of it).
          */
         public abstract boolean isInitialize();
+    }
+
+    static class UnavailableLocalVariable extends LocalVarDebugInfo {
+
+        UnavailableLocalVariable(int instructionIndex, LLVMSourceSymbol variable) {
+
+            super(instructionIndex, variable);
+        }
+
+        @Override
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            return LLVMDebugObjectBuilder.UNAVAILABLE;
+        }
+
+        @Override
+        public boolean isInitialize() {
+            return true;
+        }
     }
 
     static class SimpleLocalVariable extends LocalVarDebugInfo {
@@ -314,9 +332,9 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
         return values;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void initializePredecessors() {
         if (predecessors == null) {
-            @SuppressWarnings({"unchecked", "rawtypes"})
             ArrayList<Integer>[] result = new ArrayList[infos.length];
             for (int i = 0; i < infos.length; i++) {
                 result[i] = new ArrayList<>(2);

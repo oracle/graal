@@ -281,6 +281,38 @@ public interface InsightAPI {
         public String rootNameFilter;
         /* @since 0.4 */
         public Predicate<SourceInfo> sourceFilter;
+        /**
+         * Location in the source file.
+         * @since 1.2
+         */
+        public OnConfigAt at;
+    }
+
+    class OnConfigAt {
+        /**
+         * String with a regular expression to match source path.
+         * Exactly one of this or {@link #sourceURI} is a mandatory property of
+         * the `at` object.
+         * @since 1.2
+         */
+        public String sourcePath;
+        /**
+         * String representation of a source URI.
+         * Exactly one of this or {@link #sourcePath} is a mandatory property of
+         * the `at` object.
+         * @since 1.2
+         */
+        public String sourceURI;
+        /**
+         * The line to match.
+         * @since 1.2
+         */
+        public Object line;
+        /**
+         * The column to match.
+         * @since 1.2
+         */
+        public Object column;
     }
 
     /** Register a handler on a particular elements in the source code.

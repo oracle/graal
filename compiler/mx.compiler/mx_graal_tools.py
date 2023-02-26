@@ -82,10 +82,11 @@ from the GraalVM EE installation.
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
     v8u40 = mx.VersionSpec("1.8.0_40")
+    v12 = mx.VersionSpec("12")
     def _c1vJdkVersionCheck(version):
-        return version >= v8u40 and str(version).startswith('1.8.0')
+        return v8u40 <= version < v12
     env = dict(os.environ)
-    env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(1.8 JDK that is >= 1.8.0u40 )', purpose="running C1 Visualizer").home
+    env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11)', purpose="running C1 Visualizer").home
     run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):

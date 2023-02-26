@@ -24,33 +24,52 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.util.Objects;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.runtime.JVMCI;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class GraalAccess {
+
+    private static final GraalRuntime graalRuntime;
+    private static final TargetDescription originalTarget;
+    private static final Providers originalProviders;
+    private static final SnippetReflectionProvider originalSnippetReflection;
+
+    static {
+        graalRuntime = ((GraalJVMCICompiler) JVMCI.getRuntime().getCompiler()).getGraalRuntime();
+        Backend hostBackend = getGraalCapability(RuntimeProvider.class).getHostBackend();
+        originalTarget = Objects.requireNonNull(hostBackend.getTarget());
+        originalProviders = Objects.requireNonNull(hostBackend.getProviders());
+        originalSnippetReflection = Objects.requireNonNull(getGraalCapability(SnippetReflectionProvider.class));
+    }
 
     private GraalAccess() {
     }
 
     public static TargetDescription getOriginalTarget() {
-        return getGraalCapability(RuntimeProvider.class).getHostBackend().getTarget();
+        return originalTarget;
     }
 
     public static Providers getOriginalProviders() {
-        return getGraalCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        return originalProviders;
     }
 
     public static SnippetReflectionProvider getOriginalSnippetReflection() {
-        return getGraalCapability(SnippetReflectionProvider.class);
+        return originalSnippetReflection;
     }
 
     public static <T> T getGraalCapability(Class<T> clazz) {
-        GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
-        return compiler.getGraalRuntime().getCapability(clazz);
+        return graalRuntime.getCapability(clazz);
     }
 }

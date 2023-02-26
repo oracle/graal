@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,12 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -66,7 +68,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -77,13 +78,14 @@ import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -107,11 +109,15 @@ public class SubstrateReplacements extends ReplacementsImpl {
     protected static class Builder {
         protected final GraphMakerFactory graphMakerFactory;
         protected final Map<ResolvedJavaMethod, StructuredGraph> graphs;
+        protected final Deque<Runnable> deferred;
+        protected final HashSet<ResolvedJavaMethod> registered;
         protected final Set<ResolvedJavaMethod> delayedInvocationPluginMethods;
 
         protected Builder(GraphMakerFactory graphMakerFactory) {
             this.graphMakerFactory = graphMakerFactory;
             this.graphs = new HashMap<>();
+            this.deferred = new ArrayDeque<>();
+            this.registered = new HashSet<>();
             this.delayedInvocationPluginMethods = new HashSet<>();
         }
     }
@@ -160,7 +166,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
         access.registerAsImmutable(snippetObjects);
         access.registerAsImmutable(snippetNodeClasses);
         access.registerAsImmutable(snippetStartOffsets, SubstrateReplacements::isImmutable);
-        access.registerAsImmutable(snippetInvocationPlugins, SubstrateReplacements::isImmutable);
     }
 
     /**
@@ -215,17 +220,21 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
         EncodedGraph encodedGraph = new EncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, null, null, false, trackNodeSourcePosition);
         try (DebugContext debug = openSnippetDebugContext("SVMSnippet_", method, options)) {
-            StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
+            StructuredGraph result = new StructuredGraph.Builder(options, debug)
+                            .method(method)
+                            .trackNodeSourcePosition(trackNodeSourcePosition)
+                            .recordInlinedMethods(false)
+                            .setIsSubstitution(true)
+                            .build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
-                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true) {
+                            null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 
                 private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
 
                 @Override
-                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider,
-                                boolean isSubstitution, boolean track) {
+                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
                     if (lookupMethod.equals(method)) {
-                        assert !track || encodedGraph.trackNodeSourcePosition();
+                        assert !result.trackNodeSourcePosition() || encodedGraph.trackNodeSourcePosition();
                         return encodedGraph;
                     } else {
                         throw VMError.shouldNotReachHere(method.format("%H.%n(%p)"));
@@ -238,7 +247,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 }
             };
 
-            graphDecoder.decode(method, true, trackNodeSourcePosition);
+            graphDecoder.decode(method);
 
             assert result.verify();
             return result;
@@ -251,25 +260,33 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
-        assert DirectAnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
+        assert AnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
+        assert builder.registered.add(method) : "snippet registered twice: " + method.getName();
 
-        try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options)) {
-            Object[] args = prepareConstantArguments(receiver);
-            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, SnippetParameterInfo.getNonNullParameters(getSnippetParameterInfo(method)), null, trackNodeSourcePosition,
-                            null);
+        // Defer the processing until encodeSnippets
+        Runnable run = new Runnable() {
+            @Override
+            public void run() {
+                try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options)) {
+                    Object[] args = prepareConstantArguments(receiver);
+                    StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, SnippetParameterInfo.getNonNullParameters(getSnippetParameterInfo(method)), null,
+                                    trackNodeSourcePosition, null);
 
-            // Check if all methods which should be inlined are really inlined.
-            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                ResolvedJavaMethod callee = callTarget.targetMethod();
-                if (!builder.delayedInvocationPluginMethods.contains(callee)) {
-                    throw shouldNotReachHere("method " + callee.format("%h.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)");
+                    // Check if all methods which should be inlined are really inlined.
+                    for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                        ResolvedJavaMethod callee = callTarget.targetMethod();
+                        if (!builder.delayedInvocationPluginMethods.contains(callee)) {
+                            throw shouldNotReachHere("method " + callee.format("%h.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)");
+                        }
+                    }
+
+                    builder.graphs.put(method, graph);
                 }
             }
-
-            builder.graphs.put(method, graph);
-        }
+        };
+        builder.deferred.add(run);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -280,6 +297,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void encodeSnippets() {
         GraphEncoder encoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        while (!builder.deferred.isEmpty()) {
+            builder.deferred.pop().run();
+        }
         for (StructuredGraph graph : builder.graphs.values()) {
             encoder.prepare(graph);
         }
@@ -304,7 +324,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         Map<ResolvedJavaMethod, InvocationPlugin> result = new HashMap<>(builder.delayedInvocationPluginMethods.size());
         for (ResolvedJavaMethod method : builder.delayedInvocationPluginMethods) {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) objectReplacer.apply(method);
-            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod);
+            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod, HostedOptionValues.singleton());
             assert plugin != null : "expected invocation plugin for " + replacedMethod;
             result.put(replacedMethod, plugin);
         }
@@ -328,13 +348,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
-        // This override keeps graphBuilderPlugins from being reached during image generation.
-        return null;
-    }
-
-    @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }

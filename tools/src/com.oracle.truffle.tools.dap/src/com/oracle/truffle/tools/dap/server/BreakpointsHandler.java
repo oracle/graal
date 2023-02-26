@@ -80,16 +80,20 @@ public final class BreakpointsHandler {
     }
 
     public List<com.oracle.truffle.tools.dap.types.Breakpoint> setBreakpoints(SetBreakpointsArguments args) {
-        Source source;
+        Source source = null;
         Integer sourceReference = args.getSource().getSourceReference();
         String path = args.getSource().getPath();
-        String srcId;
+        String srcId = null;
         if (sourceReference != null && sourceReference > 0) {
             source = context.getLoadedSourcesHandler().getSource(sourceReference);
             srcId = (path != null ? path : "") + '#' + sourceReference;
-        } else {
+        }
+        if (source == null && path != null) {
             source = context.getLoadedSourcesHandler().getSource(path);
             srcId = path;
+        }
+        if (srcId == null) {
+            throw Errors.sourceRequestIllegalHandle();
         }
         Map<SourceBreakpoint, Integer> toAdd = new HashMap<>();
         Map<SourceBreakpoint, Integer> toRemove;
@@ -175,7 +179,7 @@ public final class BreakpointsHandler {
                 }
             }
         } else {
-            context.getLoadedSourcesHandler().runOnLoad(args.getSource().getPath(), null);
+            context.getLoadedSourcesHandler().runOnLoad(path, null);
             List<Consumer<Source>> tasks = new ArrayList<>(args.getBreakpoints().size());
             for (SourceBreakpoint sourceBreakpoint : args.getBreakpoints()) {
                 Integer id;
@@ -239,7 +243,7 @@ public final class BreakpointsHandler {
                 }
             }
             if (!tasks.isEmpty()) {
-                context.getLoadedSourcesHandler().runOnLoad(args.getSource().getPath(), (src) -> {
+                context.getLoadedSourcesHandler().runOnLoad(path, (src) -> {
                     for (Consumer<Source> task : tasks) {
                         task.accept(src);
                     }

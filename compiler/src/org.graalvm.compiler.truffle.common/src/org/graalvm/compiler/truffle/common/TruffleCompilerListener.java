@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,7 +119,7 @@ public interface TruffleCompilerListener {
      * @deprecated use
      *             {@link #onSuccess(CompilableTruffleAST, TruffleInliningData, GraphInfo, CompilationResultInfo, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
         onSuccess(compilable, inliningPlan, graph, compilationResultInfo, 0);
     }
@@ -145,7 +145,7 @@ public interface TruffleCompilerListener {
     /**
      * @deprecated use {@link #onFailure(CompilableTruffleAST, String, boolean, boolean, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
         onFailure(compilable, reason, bailout, permanentBailout, 0);
     }
@@ -171,7 +171,7 @@ public interface TruffleCompilerListener {
     /**
      * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     @SuppressWarnings("unused")
     default void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
     }

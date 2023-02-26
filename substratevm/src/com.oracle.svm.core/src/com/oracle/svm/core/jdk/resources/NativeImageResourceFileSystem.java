@@ -134,7 +134,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
 
     // Returns true if there is a name=true/"true" setting in env.
     private static boolean isTrue(Map<String, ?> env) {
-        return "true".equals(env.get("create")) || TRUE.equals(env.get("create"));
+        return env.isEmpty() || "true".equals(env.get("create")) || TRUE.equals(env.get("create"));
     }
 
     private void ensureOpen() {
@@ -1192,7 +1192,6 @@ public class NativeImageResourceFileSystem extends FileSystem {
             this.e = Objects.requireNonNull(e, "Entry is null!");
         }
 
-        // Checkstyle: stop
         @Override
         public synchronized void write(int b) throws IOException {
             out.write(b);
@@ -1218,6 +1217,5 @@ public class NativeImageResourceFileSystem extends FileSystem {
             super.close();
             update(e);
         }
-        // Checkstyle: resume
     }
 }

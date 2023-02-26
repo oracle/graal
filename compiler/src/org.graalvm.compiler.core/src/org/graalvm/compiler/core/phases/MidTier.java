@@ -28,34 +28,33 @@ import static org.graalvm.compiler.core.common.GraalOptions.ConditionalEliminati
 import static org.graalvm.compiler.core.common.GraalOptions.LoopPredication;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateExpressions;
+import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ReassociationPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
@@ -66,12 +65,12 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class MidTier extends BaseTier<MidTierContext> {
 
     public MidTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
 
         appendPhase(new LockEliminationPhase());
 
         if (OptFloatingReads.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
+            appendPhase(new FloatingReadPhase(canonicalizer));
         }
 
         if (ConditionalElimination.getValue(options)) {
@@ -79,14 +78,15 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         if (LoopPredication.getValue(options) && !SpeculativeGuardMovement.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPredicationPhase()));
+            appendPhase(new LoopPredicationPhase(canonicalizer));
         }
 
         appendPhase(new LoopSafepointEliminationPhase());
 
         if (SpeculativeGuardMovement.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new SpeculativeGuardMovementPhase()));
+            appendPhase(new SpeculativeGuardMovementPhase(canonicalizer));
         }
+
         appendPhase(new GuardLoweringPhase());
 
         if (SpectrePHTBarriers.getValue(options) == GuardTargets || SpectrePHTBarriers.getValue(options) == NonDeoptGuardTargets) {
@@ -97,17 +97,18 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()));
+        appendPhase(new LoopFullUnrollPhase(canonicalizer, createLoopPolicies(options)));
+        appendPhase(new RemoveValueProxyPhase(canonicalizer));
 
         appendPhase(new LoopSafepointInsertionPhase());
 
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
+        appendPhase(new MidTierLoweringPhase(canonicalizer));
 
         if (GraalOptions.ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        appendPhase(new OptimizeDivPhase());
+        appendPhase(new OptimizeDivPhase(canonicalizer));
 
         appendPhase(new FrameStateAssignmentPhase());
 

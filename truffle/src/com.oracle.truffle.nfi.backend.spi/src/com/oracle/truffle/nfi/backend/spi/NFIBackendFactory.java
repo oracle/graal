@@ -51,8 +51,7 @@ public interface NFIBackendFactory {
     String getBackendId();
 
     /**
-     * Create an instance of an {@link NFIBackend}. The NFI backend may keep a reference to the
-     * tools for later use.
+     * Create an instance of an {@link NFIBackend}.
      */
-    NFIBackend createBackend(NFIBackendTools tools);
+    NFIBackend createBackend();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -236,26 +236,49 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      *
      * @since 22.0
      */
+    @SuppressWarnings("unchecked")
     static <K, V> MapCursor<K, V> emptyCursor() {
-        return new MapCursor<K, V>() {
-            @Override
-            public void remove() {
-            }
+        return (MapCursor<K, V>) EmptyMap.EMPTY_CURSOR;
+    }
 
-            @Override
-            public boolean advance() {
-                return false;
-            }
+    /**
+     * Return an empty, unmodifiable {@link EconomicMap}.
+     *
+     * @since 22.2
+     */
+    @SuppressWarnings("unchecked")
+    static <K, V> EconomicMap<K, V> emptyMap() {
+        return (EconomicMap<K, V>) EmptyMap.EMPTY_MAP;
+    }
 
-            @Override
-            public K getKey() {
-                return null;
-            }
+    /**
+     * Creates an {@link EconomicMap} with one mapping.
+     *
+     * @param key1 the key of the first mapping
+     * @param value1 the value of the first mapping
+     * @return a map with the mapping
+     * @since 23.0
+     */
+    static <K, V> EconomicMap<K, V> of(K key1, V value1) {
+        EconomicMap<K, V> map = EconomicMap.create(1);
+        map.put(key1, value1);
+        return map;
+    }
 
-            @Override
-            public V getValue() {
-                return null;
-            }
-        };
+    /**
+     * Creates an {@link EconomicMap} with two mappings.
+     *
+     * @param key1 the key of the first mapping
+     * @param value1 the value of the first mapping
+     * @param key2 the key of the second mapping
+     * @param value2 the value of the second mapping
+     * @return a map with two mappings
+     * @since 23.0
+     */
+    static <K, V> EconomicMap<K, V> of(K key1, V value1, K key2, V value2) {
+        EconomicMap<K, V> map = EconomicMap.create(2);
+        map.put(key1, value1);
+        map.put(key2, value2);
+        return map;
     }
 }

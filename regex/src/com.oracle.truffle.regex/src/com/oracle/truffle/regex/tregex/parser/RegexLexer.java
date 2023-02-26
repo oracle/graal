@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
@@ -114,7 +115,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
@@ -131,6 +132,19 @@ public final class RegexLexer {
         final char c = pattern.charAt(index);
         advance();
         return c;
+    }
+
+    private boolean findChars(char... chars) {
+        if (atEnd()) {
+            return false;
+        }
+        int i = ArrayUtils.indexOf(pattern, index, pattern.length(), chars);
+        if (i < 0) {
+            index = pattern.length();
+            return false;
+        }
+        index = i;
+        return true;
     }
 
     private void advance() {
@@ -216,7 +230,7 @@ public final class RegexLexer {
         // which might turn into a non-capturing group or a look-around assertion.
         boolean insideCharClass = false;
         final int restoreIndex = index;
-        while (!atEnd()) {
+        while (findChars('\\', '[', ']', '(')) {
             switch (consumeChar()) {
                 case '\\':
                     // skip escaped char
@@ -234,7 +248,7 @@ public final class RegexLexer {
                     }
                     break;
                 default:
-                    break;
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         index = restoreIndex;
@@ -266,12 +280,8 @@ public final class RegexLexer {
             CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
         }
-        CodePointSet cps = pruneCharClass(curCharClass.toCodePointSet());
+        CodePointSet cps = curCharClass.toCodePointSet();
         return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
-    }
-
-    private CodePointSet pruneCharClass(CodePointSet cps) {
-        return encoding.getFullSet().createIntersection(cps, curCharClass.getTmp());
     }
 
     /* lexer */
@@ -280,7 +290,7 @@ public final class RegexLexer {
         final char c = consumeChar();
         switch (c) {
             case '.':
-                return Token.createCharClass(pruneCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT));
+                return Token.createCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT);
             case '^':
                 return Token.createCaret();
             case '$':
@@ -371,7 +381,7 @@ public final class RegexLexer {
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
                 if (isPredefCharClass(c)) {
-                    return Token.createCharClass(pruneCharClass(parsePredefCharClass(c)));
+                    return Token.createCharClass(parsePredefCharClass(c));
                 } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
                     return charClass(parseUnicodeCharacterProperty(c == 'P'));
                 } else {
@@ -403,7 +413,7 @@ public final class RegexLexer {
 
     private int parseCodePointInGroupName() throws RegexSyntaxException {
         if (consumingLookahead("\\u")) {
-            final int unicodeEscape = parseUnicodeEscapeChar();
+            final int unicodeEscape = parseUnicodeEscapeChar(true);
             if (unicodeEscape < 0) {
                 throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
             } else {
@@ -417,7 +427,7 @@ public final class RegexLexer {
             return -1;
         }
         final char c = consumeChar();
-        return flags.isUnicode() && Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
+        return Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
     }
 
     /**
@@ -648,11 +658,14 @@ public final class RegexLexer {
     /**
      * Parse a {@code RegExpUnicodeEscapeSequence}, assuming that the prefix '&#92;u' has already
      * been read.
+     * 
+     * @param unicodeMode whether we are in Unicode mode, which allows '&#92;u{...} escapes and
+     *            treats surrogate pairs as single code points
      *
      * @return the code point of the escaped character, or -1 if the escape was malformed
      */
-    private int parseUnicodeEscapeChar() throws RegexSyntaxException {
-        if (flags.isUnicode() && consumingLookahead("{")) {
+    private int parseUnicodeEscapeChar(boolean unicodeMode) throws RegexSyntaxException {
+        if (unicodeMode && consumingLookahead("{")) {
             final int value = parseHex(1, Integer.MAX_VALUE, 0x10ffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
             if (!consumingLookahead("}")) {
                 throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
@@ -660,7 +673,7 @@ public final class RegexLexer {
             return value;
         } else {
             final int value = parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
-            if (flags.isUnicode() && Character.isHighSurrogate((char) value)) {
+            if (unicodeMode && Character.isHighSurrogate((char) value)) {
                 final int resetIndex = index;
                 if (consumingLookahead("\\u") && !lookahead("{")) {
                     final char lead = (char) value;
@@ -718,7 +731,7 @@ public final class RegexLexer {
                 advance();
                 return Character.toUpperCase(controlLetter) - ('A' - 1);
             case 'u':
-                final int unicodeEscape = parseUnicodeEscapeChar();
+                final int unicodeEscape = parseUnicodeEscapeChar(flags.isUnicode());
                 return unicodeEscape < 0 ? c : unicodeEscape;
             case 'x':
                 final int value = parseHex(2, 2, 0xff, ErrorMessages.INVALID_ESCAPE);
@@ -740,7 +753,7 @@ public final class RegexLexer {
     }
 
     private int finishSurrogatePair(char c) {
-        assert flags.isUnicode() && Character.isHighSurrogate(c);
+        assert Character.isHighSurrogate(c);
         if (!atEnd() && Character.isLowSurrogate(curChar())) {
             final char lead = c;
             final char trail = consumeChar();

@@ -186,12 +186,12 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
                 return getReadOnlyRelocatable();
             }
             if (info.getSize() >= getHugeObjectThreshold()) {
-                VMError.guarantee(!(info.getObject() instanceof DynamicHub), "Class metadata (dynamic hubs) cannot be huge objects");
+                VMError.guarantee(info.getObjectClass() != DynamicHub.class, "Class metadata (dynamic hubs) cannot be huge objects");
                 return getReadOnlyHuge();
             }
             return hasReferences ? getReadOnlyReference() : getReadOnlyPrimitive();
         } else {
-            assert !(info.getObject() instanceof DynamicHub) : "Class metadata (dynamic hubs) cannot be writable";
+            assert info.getObjectClass() != DynamicHub.class : "Class metadata (dynamic hubs) cannot be writable";
             if (info.getSize() >= getHugeObjectThreshold()) {
                 return getWritableHuge();
             }

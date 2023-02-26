@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -169,5 +170,27 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
                 return doNoIdentity(obj, interop);
             }
         }
+    }
+
+    @ExportMessage
+    static String toDisplayString(LLVMPointerImpl receiver, boolean allowSideEffects,
+                    @CachedLibrary("receiver.object") InteropLibrary objInterop,
+                    @CachedLibrary(limit = "3") InteropLibrary strInterop) {
+        Object managed = objInterop.toDisplayString(receiver.object, allowSideEffects);
+        try {
+            return formatManagedPointer(strInterop.asString(managed), receiver.getOffset());
+        } catch (UnsupportedMessageException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
+    @TruffleBoundary
+    private static String formatManagedPointer(String managed, long offset) {
+        StringBuilder ret = new StringBuilder(managed.length() + 24);
+        ret.append("ptr(");
+        ret.append(managed);
+        ret.append(")+0x");
+        ret.append(Long.toHexString(offset));
+        return ret.toString();
     }
 }

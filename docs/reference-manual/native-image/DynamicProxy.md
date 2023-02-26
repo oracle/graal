@@ -1,18 +1,18 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Dynamic Proxy on Native Image
-permalink: /reference-manual/native-image/DynamicProxy/
+layout: ni-docs
+toc_group: dynamic-features
+link_title: Dynamic Proxy
+permalink: /reference-manual/native-image/dynamic-features/DynamicProxy/
+redirect_from: /$version/reference-manual/native-image/DynamicProxy/
 ---
+
 # Dynamic Proxy in Native Image
 
 Java dynamic proxies, implemented by `java.lang.reflect.Proxy`, provide a mechanism which enables object level access control by routing all method invocations through `java.lang.reflect.InvocationHandler`.
 Dynamic proxy classes are generated from a list of interfaces.
 
-Native Image does not provide machinery for generating and interpreting bytecodes at run time.
-Therefore all dynamic proxy classes need to be generated at native image build time.
-
-See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
+Native Image does not provide machinery for generating and interpreting bytecode at run time.
+Therefore all dynamic proxy classes need to be generated at image build time.
 
 ## Automatic Detection
 
@@ -23,7 +23,7 @@ In addition to generating the dynamic proxy class, the constructor of the genera
 The analysis is limited to situations where the list of interfaces comes from a constant array or an array that is allocated in the same method.
 For example, in the code snippets bellow the dynamic proxy interfaces can be determined automatically.
 
-#### Static Final Array:
+### Static Final Array:
 
 ```java
 class ProxyFactory {
@@ -37,7 +37,8 @@ class ProxyFactory {
     }
 }
 ```
-Note: The analysis operates on compiler graphs and not source code.
+
+Note that the analysis operates on compiler graphs and not source code.
 Therefore the following ways to declare and populate an array are equivalent from the point of view of the analysis:
 
 ```java
@@ -54,11 +55,12 @@ static {
     interfacesArrayPostInitialized[0] = java.util.Comparator.class;
 }
 ```
+
 However, there are no immutable arrays in Java.
 Even if the array is declared as `static final`, its contents can change later on.
 The simple analysis employed here does not track further changes to the array.
 
-#### New Array:
+### New Array:
 
 ```java
 class ProxyFactory {
@@ -89,43 +91,8 @@ Class<?>[] interfaces = {java.util.Comparator.class};
 The static analysis covers code patterns most frequently used to define dynamic proxy classes.
 For the exceptional cases where the analysis cannot discover the interface array there is also a manual dynamic proxy configuration mechanism.
 
-## Manual Configuration
 
-Dynamic proxy classes can be generated at native image build time by specifying the list of interfaces that they implement.
-Native Image provides two options for that: `-H:DynamicProxyConfigurationFiles=<comma-separated-config-files>` and `-H:DynamicProxyConfigurationResources=<comma-separated-config-resources>`. These options accept JSON files whose structure is an array of arrays of fully qualified interface names. For example:
+### Related Documentation
 
-```json
-[
-    ["java.lang.AutoCloseable", "java.util.Comparator"],
-    ["java.util.Comparator"],
-    ["java.util.List"]
-]
-```
-
-Note that the order of the specified proxy interfaces is significant: two requests for a `Proxy` class with the same combination of interfaces but in a different order will result in two distinct behaviours (for more detailed information, refer to [`Proxy Class `javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/Proxy.html).
-
-The `java.lang.reflect.Proxy` API also allows creation of a dynamic proxy that does not implement any user provided interfaces. Therefore the following is a valid configuration:
-```json
-[
-    []
-]
-```
-
-In this case the generated dynamic proxy class only implements `java.lang.reflect.Proxy`.
-
-## Dynamic Proxy Classes in Static Initializers
-
-Dynamic proxy classes and instances of dynamic proxy classes that are defined in static initializers can be accessed at run time without any special handling.
-This is possible since the static initializers are executed at native image build time.
-For example, this will work:
-```java
-private final static Comparator proxyInstance;
-private final static Class<?> proxyClass;
-static {
-    ClassLoader classLoader = ProxyFactory.class.getClassLoader();
-    InvocationHandler handler = new ProxyInvocationHandler();
-    Class<?>[] interfaces = {java.util.Comparator.class};
-    proxyInstance = (Comparator) Proxy.newProxyInstance(classLoader, interfaces, handler);
-    proxyClass = Proxy.getProxyClass(classLoader, interfaces);
-}
-```
+- [Configure Dynamic Proxies Manually](guides/configure-dynamic-proxies.md)
+- [Reachability Metadata: Dynamic Proxy](ReachabilityMetadata.md#dynamic-proxy)

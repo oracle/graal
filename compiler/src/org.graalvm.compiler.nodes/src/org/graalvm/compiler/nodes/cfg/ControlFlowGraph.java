@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
@@ -54,6 +56,7 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -116,6 +119,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+        return compute(graph, connectBlocks, true, computeLoops, computeDominators, computePostdominators);
+    }
+
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
         cfg.identifyBlocks();
@@ -128,7 +135,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             loopInfoComputed = true;
         }
 
-        cfg.computeFrequencies();
+        if (computeFrequency) {
+            cfg.computeFrequencies();
+        }
 
         if (computeLoops && !loopInfoComputed) {
             cfg.computeLoopInformation();
@@ -149,6 +158,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlocks() {
         int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
+            GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
             Block block = new Block(begin);
             identifyBlock(block);
             numBlocks++;
@@ -168,24 +178,20 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return localLoopFrequencyData;
     }
 
-    public String dominatorTreeString() {
-        return dominatorTreeString(getStartBlock());
-    }
-
-    private static String dominatorTreeString(Block b) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(b);
-        sb.append("(");
-        Block firstDominated = b.getFirstDominated();
-        while (firstDominated != null) {
-            if (firstDominated.getDominator().getPostdominator() == firstDominated) {
-                sb.append("!");
-            }
-            sb.append(dominatorTreeString(firstDominated));
-            firstDominated = firstDominated.getDominatedSibling();
-        }
-        sb.append(") ");
-        return sb.toString();
+    /**
+     * Update the cached local loop frequency for the given loop. Future queries of
+     * {@link #localLoopFrequency(LoopBeginNode)} on <em>this</em> {@link ControlFlowGraph} instance
+     * will return the updated value. This is useful for phases to record temporary effects of
+     * transformations on loop frequencies, without having to recompute a CFG.
+     * </p>
+     *
+     * The updated frequency is a cached value local to this CFG. It is <em>not</em> persisted in
+     * the IR graph. Newly computed {@link ControlFlowGraph} instances will recompute a frequency
+     * from loop exit probabilities, they will not see this locally cached value. Persistent changes
+     * to loop frequencies must be modeled by changing loop exit probabilities in the graph.
+     */
+    public void updateCachedLocalLoopFrequency(LoopBeginNode lb, Function<LoopFrequencyData, LoopFrequencyData> updater) {
+        localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
     }
 
     @SuppressWarnings("unchecked")
@@ -268,15 +274,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         private final Block block;
         private final DeferredExit next;
-
-        public Block getBlock() {
-            return block;
-        }
-
-        public DeferredExit getNext() {
-            return next;
-        }
-
     }
 
     public static void addDeferredExit(DeferredExit[] deferredExits, Block b) {
@@ -1091,9 +1088,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 if (beginNode instanceof LoopBeginNode) {
                     Loop<Block> parent = block.getLoop();
                     Loop<Block> loop = new HIRLoop(parent, loops.size(), block);
-                    if (((LoopBeginNode) beginNode).isCompilerInverted()) {
-                        loop.setInverted(true);
-                    }
                     if (parent != null) {
                         parent.getChildren().add(loop);
                     }

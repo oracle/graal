@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,9 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
-import static com.oracle.truffle.object.LocationImpl.alwaysValidAssumption;
 import static com.oracle.truffle.object.LocationImpl.expectDouble;
 import static com.oracle.truffle.object.LocationImpl.expectInteger;
 import static com.oracle.truffle.object.LocationImpl.expectLong;
-import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -310,7 +308,7 @@ abstract class DynamicObjectLibraryImpl {
         if (existingProperty == null && Flags.isSetExisting(putFlags)) {
             return false;
         }
-        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canSet(value)) {
+        if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canStore(value)) {
             getLocation(existingProperty).setSafe(object, value, false, false);
             return true;
         } else {
@@ -341,7 +339,7 @@ abstract class DynamicObjectLibraryImpl {
                 newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
-                if (existingProperty.getLocation().canSet(value)) {
+                if (existingProperty.getLocation().canStore(value)) {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
@@ -1444,7 +1442,7 @@ abstract class DynamicObjectLibraryImpl {
                     newProperty = property;
                 } else {
                     newProperty = newShape.getProperty(cachedKey);
-                    assert newProperty.getLocation().canSet(value);
+                    assert newProperty.getLocation().canStore(value);
                 }
 
                 Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
@@ -1475,7 +1473,7 @@ abstract class DynamicObjectLibraryImpl {
             }
 
             Location location = property.getLocation();
-            if (!location.isDeclared() && !location.canSet(value)) {
+            if (!location.isDeclared() && !location.canStore(value)) {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
                 LayoutStrategy strategy = oldShape.getLayoutStrategy();
@@ -1488,7 +1486,7 @@ abstract class DynamicObjectLibraryImpl {
                 return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
             } else {
                 // set existing
-                assert location.canSet(value);
+                assert location.canStore(value);
                 return oldShape;
             }
         }
@@ -1628,9 +1626,9 @@ abstract class DynamicObjectLibraryImpl {
 
         private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
             if (oldShape == newShape) {
-                return alwaysValidAssumption();
+                return Assumption.ALWAYS_VALID;
             }
-            return newShape.isValid() ? newShape.getValidAssumption() : neverValidAssumption();
+            return newShape.isValid() ? newShape.getValidAssumption() : Assumption.NEVER_VALID;
         }
     }
 
@@ -1679,11 +1677,11 @@ abstract class DynamicObjectLibraryImpl {
         @Override
         protected boolean isValid() {
             Assumption newShapeValid = newShapeValidAssumption;
-            return newShapeValid == neverValidAssumption() || newShapeValid == alwaysValidAssumption() || newShapeValid.isValid();
+            return newShapeValid == Assumption.NEVER_VALID || newShapeValid == Assumption.ALWAYS_VALID || newShapeValid.isValid();
         }
 
         protected void maybeUpdateShape(DynamicObject store) {
-            if (newShapeValidAssumption == neverValidAssumption()) {
+            if (newShapeValidAssumption == Assumption.NEVER_VALID) {
                 updateShapeImpl(store);
             }
         }
@@ -1811,11 +1809,15 @@ abstract class DynamicObjectLibraryImpl {
 
         @Specialization
         static void doCached(DynamicObject object, Shape cachedShape,
-                        @Cached(value = "cachedShape.makeSharedShape()", allowUncached = true) Shape newShape) {
+                        @Cached(value = "makeSharedShape(cachedShape)", allowUncached = true) Shape newShape) {
             assert newShape != cachedShape &&
                             ((ShapeImpl) cachedShape).getObjectArrayCapacity() == ((ShapeImpl) newShape).getObjectArrayCapacity() &&
                             ((ShapeImpl) cachedShape).getPrimitiveArrayCapacity() == ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
             ACCESS.setShape(object, newShape);
+        }
+
+        static Shape makeSharedShape(Shape inputShape) {
+            return ((ShapeImpl) inputShape).makeSharedShape();
         }
     }
 

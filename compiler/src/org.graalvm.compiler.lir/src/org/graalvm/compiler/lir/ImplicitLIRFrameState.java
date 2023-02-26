@@ -37,8 +37,8 @@ public class ImplicitLIRFrameState extends LIRFrameState {
     public final JavaConstant deoptSpeculation;
 
     public ImplicitLIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge,
-                    JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
-        super(topFrame, virtualObjects, exceptionEdge);
+                    JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation, boolean validForDeoptimization) {
+        super(topFrame, virtualObjects, exceptionEdge, validForDeoptimization);
         this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
     }

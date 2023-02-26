@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -66,6 +68,10 @@ public class Mman {
 
     @CConstant
     public static native int MAP_NORESERVE();
+
+    @CConstant
+    @Platforms(Platform.MACOS_AARCH64.class)
+    public static native int MAP_JIT();
 
     @CConstant
     public static native PointerBase MAP_FAILED();

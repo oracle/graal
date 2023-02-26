@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,13 @@ package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -43,9 +42,11 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -53,14 +54,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Macro invokable nodes can be used to temporarily replace an invoke. They can, for example, be
  * used to implement constant folding for known JDK functions like {@link Class#isInterface()}.<br/>
  * <br/>
- * During lowering, multiple sources are queried in order to look for a replacement:
- * <ul>
- * <li>If {@link #getLoweredSnippetGraph(LoweringTool)} returns a non-null result, this graph is
- * used as a replacement.</li>
- * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
- * a replacement.</li>
- * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}.</li>
- * </ul>
+ * During lowering subclasses may lower the node as appropriate. Otherwise, the macro node is
+ * replaced with an {@link Invoke}.
  */
 public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
 
@@ -105,27 +100,16 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
     Invoke replaceWithInvoke();
 
     /**
-     * Gets a snippet to be used for lowering this macro node. The returned graph (if non-null) must
-     * have been
-     * {@linkplain MacroInvokable#lowerReplacement(StructuredGraph, StructuredGraph, LoweringTool)
-     * lowered}.
-     */
-    @SuppressWarnings("unused")
-    default StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
-        return null;
-    }
-
-    /**
      * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
      *
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
      */
     @SuppressWarnings("try")
     static StructuredGraph lowerReplacement(StructuredGraph graph, StructuredGraph replacementGraph, LoweringTool tool) {
-        if (graph.isAfterStage(StructuredGraph.StageFlag.VALUE_PROXY_REMOVAL)) {
-            new RemoveValueProxyPhase().apply(replacementGraph);
+        if (graph.isAfterStage(GraphState.StageFlag.VALUE_PROXY_REMOVAL)) {
+            new RemoveValueProxyPhase(CanonicalizerPhase.create()).apply(replacementGraph, null);
         }
-        StructuredGraph.GuardsStage guardsStage = graph.getGuardsStage();
+        GraphState.GuardsStage guardsStage = graph.getGuardsStage();
         if (!guardsStage.allowsFloatingGuards()) {
             new GuardLoweringPhase().apply(replacementGraph, null);
             if (guardsStage.areFrameStatesAtDeopts()) {
@@ -134,7 +118,19 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
         }
         DebugContext debug = replacementGraph.getDebug();
         try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, tool);
+            switch ((LoweringTool.StandardLoweringStage) tool.getLoweringStage()) {
+                case HIGH_TIER:
+                    new HighTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                case MID_TIER:
+                    new MidTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                case LOW_TIER:
+                    new LowTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
+                    break;
+                default:
+                    GraalError.shouldNotReachHere("Unexpected lowering stage.");
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -143,31 +139,16 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
 
     @Override
     default void lower(LoweringTool tool) {
-        StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
-
         Invoke invoke = replaceWithInvoke();
         assert invoke.asNode().verify();
 
-        if (replacementGraph != null) {
-            // Pull out the receiver null check so that a replaced
-            // receiver can be lowered if necessary
-            if (!getTargetMethod().isStatic()) {
-                ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-                if (nonNullReceiver instanceof Lowerable) {
-                    ((Lowerable) nonNullReceiver).lower(tool);
-                }
-            }
-            InliningUtil.inline(invoke, replacementGraph, false, getTargetMethod(), "Replace with graph.", "LoweringPhase");
-            replacementGraph.getDebug().dump(DebugContext.DETAILED_LEVEL, asNode().graph(), "After inlining replacement %s", replacementGraph);
-        } else {
-            if (isPlaceholderBci(invoke.bci())) {
-                throw new GraalError("%s: cannot lower to invoke with placeholder BCI: %s", asNode().graph(), this);
-            }
-
-            if (invoke.stateAfter() == null) {
-                throw new GraalError("%s: cannot lower to invoke without state: %s", asNode().graph(), this);
-            }
-            invoke.lower(tool);
+        if (isPlaceholderBci(invoke.bci())) {
+            throw new GraalError("%s: cannot lower to invoke with placeholder BCI: %s", asNode().graph(), this);
         }
+
+        if (invoke.stateAfter() == null) {
+            throw new GraalError("%s: cannot lower to invoke without state: %s", asNode().graph(), this);
+        }
+        invoke.lower(tool);
     }
 }

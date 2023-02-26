@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -51,7 +52,12 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromFP80Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt16Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt32Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt8Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.InjectedFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NopConvertFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NothingFactory;
@@ -63,6 +69,9 @@ import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt32Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt64Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt8Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP80Factory;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 final class SimpleTypeCachedState {
@@ -84,15 +93,16 @@ final class SimpleTypeCachedState {
         c[NativeSimpleType.SINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.SINT64.ordinal()] = new TypeCachedState(1, ToInt64Factory.getInstance(), NopConvertFactory.getInstance());
 
-        c[NativeSimpleType.UINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.UINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.UINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), NopConvertFactory.getInstance());
+        c[NativeSimpleType.UINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), FromUInt8Factory.getInstance());
+        c[NativeSimpleType.UINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), FromUInt16Factory.getInstance());
+        c[NativeSimpleType.UINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), FromUInt32Factory.getInstance());
 
         // TODO: need interop unsigned long type
         c[NativeSimpleType.UINT64.ordinal()] = c[NativeSimpleType.SINT64.ordinal()];
 
         c[NativeSimpleType.FLOAT.ordinal()] = new TypeCachedState(1, ToFloatFactory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.DOUBLE.ordinal()] = new TypeCachedState(1, ToDoubleFactory.getInstance(), NopConvertFactory.getInstance());
+        c[NativeSimpleType.FP80.ordinal()] = new TypeCachedState(1, ToFP80Factory.getInstance(), FromFP80Factory.getInstance());
 
         c[NativeSimpleType.POINTER.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
         c[NativeSimpleType.NULLABLE.ordinal()] = new TypeCachedState(1, NullableToNativeFactory.getInstance(), PointerFromNativeFactory.getInstance());
@@ -181,8 +191,14 @@ final class SimpleTypeCachedState {
         }
 
         @Specialization(guards = "arg != null")
-        Object doObject(@SuppressWarnings("unused") NFIType type, Object arg) {
-            return arg;
+        Object doObject(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary(limit = "1") BackendNativePointerLibrary library,
+                        @Cached("createBinaryProfile()") ConditionProfile isPointerProfile) {
+            try {
+                return isPointerProfile.profile(library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
         }
     }
 
@@ -251,6 +267,22 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    abstract static class FromUInt8 extends ConvertTypeNode {
+
+        @Specialization
+        int doPrimitive(@SuppressWarnings("unused") NFIType type, byte arg) {
+            // be lenient with backends that just return a signed primitive value
+            return arg & 0xFF;
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
     abstract static class ToInt16 extends ConvertTypeNode {
 
         @Specialization
@@ -309,6 +341,22 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    abstract static class FromUInt16 extends ConvertTypeNode {
+
+        @Specialization
+        int doPrimitive(@SuppressWarnings("unused") NFIType type, short arg) {
+            // be lenient with backends that just return a signed primitive value
+            return arg & 0xFFFF;
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
     abstract static class ToInt32 extends ConvertTypeNode {
 
         @Specialization
@@ -362,6 +410,22 @@ final class SimpleTypeCachedState {
         @SuppressWarnings("unused")
         byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    abstract static class FromUInt32 extends ConvertTypeNode {
+
+        @Specialization
+        long doPrimitive(@SuppressWarnings("unused") NFIType type, int arg) {
+            // be lenient with backends that just return a signed value
+            return arg & 0xFFFF_FFFFL;
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
         }
     }
 
@@ -523,6 +587,50 @@ final class SimpleTypeCachedState {
         @SuppressWarnings("unused")
         byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    abstract static class ToFP80 extends ConvertTypeNode {
+
+        @Specialization(limit = "3", guards = "interop.isNumber(arg)")
+        @GenerateAOT.Exclude
+        Object doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.fitsInLong(arg) || interop.fitsInDouble(arg);
+            return LongDoubleUtil.interopToFP80(arg);
+        }
+
+        @Specialization(limit = "3", guards = "serialize.isSerializable(arg)")
+        Object doSerializable(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") SerializableLibrary serialize) {
+            assert serialize.isSerializable(arg);
+            return arg;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    abstract static class FromFP80 extends ConvertTypeNode {
+
+        @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})
+        @GenerateAOT.Exclude
+        Object doBuffer(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.hasBufferElements(arg);
+            return LongDoubleUtil.fp80ToNumber(arg);
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
         }
     }
 }

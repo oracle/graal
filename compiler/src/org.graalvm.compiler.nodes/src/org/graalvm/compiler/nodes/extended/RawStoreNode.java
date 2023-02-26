@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -57,37 +58,36 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
     @Input ValueNode value;
     @OptionalInput(State) FrameState stateAfter;
     private final boolean needsBarrier;
-    private boolean isVolatile;
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, value, accessKind, locationIdentity, true, false, null, false);
+        this(object, offset, value, accessKind, locationIdentity, true, MemoryOrderMode.PLAIN, null, false);
     }
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier) {
-        this(object, offset, value, accessKind, locationIdentity, needsBarrier, false, null, false);
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, MemoryOrderMode.PLAIN, null, false);
     }
 
-    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, boolean isVolatile) {
-        this(object, offset, value, accessKind, locationIdentity, needsBarrier, isVolatile, null, false);
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, MemoryOrderMode memoryOrder) {
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, memoryOrder, null, false);
     }
 
     public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, FrameState stateAfter,
                     boolean forceLocation) {
-        this(object, offset, value, accessKind, locationIdentity, needsBarrier, false, stateAfter, forceLocation);
+        this(object, offset, value, accessKind, locationIdentity, needsBarrier, MemoryOrderMode.PLAIN, stateAfter, forceLocation);
     }
 
-    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, boolean isVolatile, FrameState stateAfter,
+    public RawStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier, MemoryOrderMode memoryOrder,
+                    FrameState stateAfter,
                     boolean forceLocation) {
-        this(TYPE, object, offset, value, accessKind, locationIdentity, needsBarrier, isVolatile, stateAfter, forceLocation);
+        this(TYPE, object, offset, value, accessKind, locationIdentity, needsBarrier, memoryOrder, stateAfter, forceLocation);
     }
 
     protected RawStoreNode(NodeClass<? extends RawStoreNode> c, ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, boolean needsBarrier,
-                    boolean isVolatile, FrameState stateAfter, boolean forceLocation) {
-        super(c, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceLocation);
+                    MemoryOrderMode memoryOrder, FrameState stateAfter, boolean forceLocation) {
+        super(c, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);
         this.value = value;
         this.needsBarrier = needsBarrier;
         this.stateAfter = stateAfter;
-        this.isVolatile = isVolatile;
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
     }
 
@@ -100,6 +100,11 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
 
     @NodeIntrinsic
     public static native Object storeByte(Object object, long offset, byte value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return MemoryOrderMode.ordersMemoryAccesses(getMemoryOrder()) ? LocationIdentity.ANY_LOCATION : getLocationIdentity();
+    }
 
     public boolean needsBarrier() {
         return needsBarrier;
@@ -143,29 +148,13 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
     }
 
     @Override
-    public boolean isVolatile() {
-        return isVolatile;
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, MemoryOrderMode memOrder) {
+        return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), memOrder);
     }
 
     @Override
-    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess) {
-        return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), volatileAccess);
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memOrder) {
+        return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, memOrder, stateAfter(), isLocationForced());
     }
 
-    @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
-        return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, volatileAccess, stateAfter(), isLocationForced());
-    }
-
-    public FrameState getState() {
-        return stateAfter;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        if (isVolatile()) {
-            return LocationIdentity.any();
-        }
-        return getLocationIdentity();
-    }
 }

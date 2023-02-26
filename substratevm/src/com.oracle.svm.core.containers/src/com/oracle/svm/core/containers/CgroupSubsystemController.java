@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +28,6 @@
 package com.oracle.svm.core.containers;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -246,8 +246,7 @@ public interface CgroupSubsystemController {
         } catch (NumberFormatException e) {
             // For some properties (e.g. memory.limit_in_bytes, cgroups v1) we may overflow
             // the range of signed long. In this case, return overflowRetval
-            BigInteger b = new BigInteger(strval);
-            if (b.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+            if (strval.length() > 0 && strval.charAt(0) != '-') {
                 return overflowRetval;
             }
         }

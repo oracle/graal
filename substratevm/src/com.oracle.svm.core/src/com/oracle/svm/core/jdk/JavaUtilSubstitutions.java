@@ -30,7 +30,6 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.LogManager;
 
@@ -41,7 +40,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
 /*
@@ -96,13 +94,6 @@ final class Target_java_util_IdentityHashMap {
     Set<?> entrySet;
 }
 
-@TargetClass(className = "sun.misc.SoftCache", onlyWith = JDK8OrEarlier.class)
-final class Target_sun_misc_SoftCache {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Set<?> entrySet;
-}
-
 @TargetClass(java.util.WeakHashMap.class)
 final class Target_java_util_WeakHashMap {
 
@@ -145,17 +136,6 @@ final class Target_java_util_HashMap {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Set<?> entrySet;
 
-    @Substitute
-    private static Class<?> comparableClassFor(Object x) {
-        if (x instanceof Comparable) {
-            /*
-             * We cannot do all the generic interface checks that the original implementation is
-             * doing, because we do not have the necessary metadata at run time.
-             */
-            return x.getClass();
-        }
-        return null;
-    }
 }
 
 @TargetClass(java.util.concurrent.ConcurrentHashMap.class)
@@ -168,17 +148,6 @@ final class Target_java_util_concurrent_ConcurrentHashMap {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Target_java_util_concurrent_ConcurrentHashMap_EntrySetView entrySet;
 
-    @Substitute
-    private static Class<?> comparableClassFor(Object x) {
-        if (x instanceof Comparable) {
-            /*
-             * We cannot do all the generic interface checks that the original implementation is
-             * doing, because we do not have the necessary metadata at run time.
-             */
-            return x.getClass();
-        }
-        return null;
-    }
 }
 
 @TargetClass(value = java.util.concurrent.ConcurrentHashMap.class, innerClass = "KeySetView")
@@ -204,14 +173,8 @@ final class Target_java_util_concurrent_ConcurrentSkipListMap {
     Target_java_util_concurrent_ConcurrentSkipListMap_Values values;
 
     @Alias //
-    @TargetElement(name = "descendingMap", onlyWith = JDK8OrEarlier.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    ConcurrentNavigableMap<?, ?> descendingMapJDK8OrEarlier;
-
-    @Alias //
-    @TargetElement(name = "descendingMap", onlyWith = JDK11OrLater.class) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Target_java_util_concurrent_ConcurrentSkipListMap_SubMap descendingMapJDK11OrLater;
+    Target_java_util_concurrent_ConcurrentSkipListMap_SubMap descendingMap;
 }
 
 @TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "KeySet")
@@ -222,7 +185,7 @@ final class Target_java_util_concurrent_ConcurrentSkipListMap_KeySet {
 final class Target_java_util_concurrent_ConcurrentSkipListMap_EntrySet {
 }
 
-@TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "SubMap", onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "SubMap")
 final class Target_java_util_concurrent_ConcurrentSkipListMap_SubMap {
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import org.graalvm.shadowed.org.jline.reader.Reference;
 import org.graalvm.shadowed.org.jline.reader.UserInterruptException;
 import org.graalvm.shadowed.org.jline.reader.impl.history.DefaultHistory;
 import org.graalvm.shadowed.org.jline.terminal.Terminal;
-import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
 class MultiLanguageShell implements Closeable {
     private static final String WIDGET_NAME = "CHANGE_LANGUAGE_WIDGET";
@@ -80,11 +79,11 @@ class MultiLanguageShell implements Closeable {
     private boolean verboseErrors = false;
     private String input = "";
 
-    MultiLanguageShell(Context context, String defaultStartLanguage) throws IOException {
+    MultiLanguageShell(Context context, String defaultStartLanguage, Terminal terminal) {
         this.context = context;
         this.languages = languages();
         this.prompts = prompts();
-        this.terminal = terminal();
+        this.terminal = terminal;
         this.startLanguage = defaultStartLanguage == null ? languages.get(0).getId() : defaultStartLanguage;
         currentLanguage = context.getEngine().getLanguages().get(startLanguage);
         if (currentLanguage == null) {
@@ -109,7 +108,7 @@ class MultiLanguageShell implements Closeable {
         printHeader();
         for (;;) {
             try {
-                input += reader.readLine(prompt());
+                input += reader.readLine(prompt()) + "\n";
                 if (handleBuiltins() || eval()) {
                     reader.getHistory().add(input);
                     input = "";
@@ -247,11 +246,6 @@ class MultiLanguageShell implements Closeable {
                 throw new ChangeLanguageException(null);
             });
         }
-    }
-
-    private static Terminal terminal() throws IOException {
-        // Create a system Terminal. JANSI and JNA are not shipped in the SDK JLINE3 jar.
-        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private Map<String, Language> prompts() {

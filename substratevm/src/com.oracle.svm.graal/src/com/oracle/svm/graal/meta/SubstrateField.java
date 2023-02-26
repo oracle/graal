@@ -28,26 +28,21 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeCloneable;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateField implements SharedField {
 
@@ -66,21 +61,12 @@ public class SubstrateField implements SharedField {
     @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant")//
     JavaConstant constantValue;
 
-    /* Truffle access this information frequently, so it is worth caching it in a field. */
-    final boolean truffleChildField;
-    final boolean truffleChildrenField;
-    final boolean truffleCloneableField;
-
-    public SubstrateField(MetaAccessProvider originalMetaAccess, ResolvedJavaField original, int modifiers, HostedStringDeduplication stringTable) {
+    public SubstrateField(ResolvedJavaField original, int modifiers, HostedStringDeduplication stringTable) {
         VMError.guarantee(!original.isInternal(), "Internal fields are not supported for JIT compilation");
 
         this.modifiers = modifiers;
         this.name = stringTable.deduplicate(original.getName(), true);
         this.hashCode = original.hashCode();
-
-        truffleChildField = original.getAnnotation(Child.class) != null;
-        truffleChildrenField = original.getAnnotation(Children.class) != null;
-        truffleCloneableField = originalMetaAccess.lookupJavaType(NodeCloneable.class).isAssignableFrom((ResolvedJavaType) original.getType());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -115,6 +101,11 @@ public class SubstrateField implements SharedField {
     @Override
     public boolean isAccessed() {
         return isAccessed;
+    }
+
+    @Override
+    public boolean isReachable() {
+        return isAccessed || isWritten;
     }
 
     @Override

@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.agent.stackaccess;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jvmtiagentbase.Support;
-
 import java.util.function.Supplier;
+
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.jvmtiagentbase.Support;
 
 public final class OnDemandJavaStackAccess extends InterceptedState {
 

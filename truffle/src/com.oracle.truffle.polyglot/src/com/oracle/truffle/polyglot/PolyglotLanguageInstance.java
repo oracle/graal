@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.EngineAccessor.HOST;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
@@ -84,6 +84,11 @@ final class PolyglotLanguageInstance implements VMObject {
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
 
+    @CompilationFinal private volatile Object guestToHostCodeCache;
+
+    private static final AtomicReferenceFieldUpdater<PolyglotLanguageInstance, Object> GUEST_TO_HOST_CODE_CACHE_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(PolyglotLanguageInstance.class, Object.class, "guestToHostCodeCache");
+
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
         this.language = language;
@@ -93,7 +98,7 @@ final class PolyglotLanguageInstance implements VMObject {
         this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, language, HOST.isHostLanguage(spi.getClass()) ? null : this);
+            LANGUAGE.initializeLanguage(spi, language.info, language, language.isHost() ? null : this);
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
@@ -133,6 +138,18 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         });
         return cache;
+    }
+
+    Object getGuestToHostCodeCache() {
+        return guestToHostCodeCache;
+    }
+
+    Object installGuestToHostCodeCache(Object newCache) {
+        if (GUEST_TO_HOST_CODE_CACHE_UPDATER.compareAndSet(this, null, newCache)) {
+            return newCache;
+        } else {
+            return guestToHostCodeCache;
+        }
     }
 
     @Override

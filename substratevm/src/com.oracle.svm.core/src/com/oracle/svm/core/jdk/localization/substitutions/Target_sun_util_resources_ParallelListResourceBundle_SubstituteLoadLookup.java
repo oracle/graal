@@ -24,22 +24,19 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
 
-//Checkstyle: stop
 import sun.util.resources.OpenListResourceBundle;
-//Checkstyle: resume
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-//Checkstyle: allow synchronization
 
 @TargetClass(value = sun.util.resources.ParallelListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"unused", "static-method"})

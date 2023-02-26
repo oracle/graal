@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph().getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
             graph().replaceFixedWithFixed(this, newAnchor);
         }

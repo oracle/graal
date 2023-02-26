@@ -27,13 +27,13 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 /** Given access to a thread stack frame, perform some computation on it. */
-public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor<Void> {
+public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor {
 
     /**
      * Called for each frame that is visited. Note that unless this method is annotated with
@@ -52,12 +52,12 @@ public abstract class StackFrameVisitor extends ParameterizedStackFrameVisitor<V
     protected abstract boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame);
 
     @Override
-    protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Void data) {
+    protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         return visitFrame(sp, ip, codeInfo, deoptimizedFrame);
     }
 
     @Override
-    protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Void data) {
+    protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
         throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, deoptimizedFrame);
     }
 }

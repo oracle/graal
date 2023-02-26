@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,13 +53,23 @@ import static org.junit.Assert.assertTrue;
 @RunWith(TruffleRunner.class)
 public class VAListInteropTest extends InteropTestBase {
 
+    static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+
     static Value testLibrary;
     static Value testVaListCallback4;
+    static Value testMaybeVaPtr;
     static Value getNextVaarg;
+    static Value derefCharCharPtr;
     static Value newStructA;
 
     @ExportLibrary(InteropLibrary.class)
     static class VaListCallback implements TruffleObject {
+
+        private final boolean useNextMessage;
+
+        VaListCallback(boolean useNextMessage) {
+            this.useNextMessage = useNextMessage;
+        }
 
         @ExportMessage
         boolean isExecutable() {
@@ -72,44 +82,61 @@ public class VAListInteropTest extends InteropTestBase {
             try {
                 testInterop(arguments);
 
-                Object vaList = arguments[0];
-                Value res0 = getNextVaarg.execute(vaList);
-                Value res1 = getNextVaarg.execute(vaList);
-                Value res2 = getNextVaarg.execute(vaList);
-                return res0.asInt() + res1.asInt() + res2.asInt();
+                if (useNextMessage) {
+                    return 3;
+                } else {
+                    Object vaList = arguments[0];
+                    Value res0 = getNextVaarg.execute(vaList);
+                    Value res1 = getNextVaarg.execute(vaList);
+                    return res0.asInt() + res1.asInt();
+                }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
 
-        private static void testInterop(Object... arguments) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException, InvalidArrayIndexException {
+        private void testInterop(Object... arguments) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException, InvalidArrayIndexException {
             Object vaList = arguments[0];
             Object libHandle = arguments[1];
 
-            final InteropLibrary vaInterop = InteropLibrary.getUncached(vaList);
-            long vaListSize = vaInterop.getArraySize(vaList);
+            long vaListSize = INTEROP.getArraySize(vaList);
             assertEquals(5, vaListSize);
 
-            assertEquals(1, vaInterop.readArrayElement(vaList, 0));
-            assertEquals(2, vaInterop.readArrayElement(vaList, 1));
-            assertEquals(3, vaInterop.readArrayElement(vaList, 2));
-            Object saNative = vaInterop.readArrayElement(vaList, 3);
-            Object saManaged = vaInterop.readArrayElement(vaList, 4);
+            assertEquals(1, INTEROP.readArrayElement(vaList, 0));
+            assertEquals(2, INTEROP.readArrayElement(vaList, 1));
+            assertEquals(Double.doubleToRawLongBits(3.1), INTEROP.asPointer(INTEROP.readArrayElement(vaList, 2)));
+            Object saNative = INTEROP.readArrayElement(vaList, 3);
+            Object saManaged = INTEROP.readArrayElement(vaList, 4);
             assertTrue(saManaged instanceof TruffleObject);
 
-            InteropLibrary libHandleInterop = InteropLibrary.getUncached(libHandle);
+            Object inttTypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_int_t_typeid"));
+            Object doubletTypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_double_t_typeid"));
+            Object structATypeId = INTEROP.execute(INTEROP.readMember(libHandle, "get_StructA_typeid"));
 
-            Object getInttTypeId = libHandleInterop.readMember(libHandle, "get_int_t_typeid");
-            Object inttTypeId = InteropLibrary.getUncached(getInttTypeId).execute(getInttTypeId);
-            Object vaListElem0 = vaInterop.invokeMember(vaList, "get", 0, inttTypeId);
-            assertEquals(1, vaListElem0);
+            Object[] types = {inttTypeId, inttTypeId, doubletTypeId, structATypeId, structATypeId};
 
-            Object getStructATypeId = libHandleInterop.readMember(libHandle, "get_StructA_typeid");
-            Object structATypeId = InteropLibrary.getUncached(getInttTypeId).execute(getStructATypeId);
-            Object vaListElem3 = vaInterop.invokeMember(vaList, "get", 3, structATypeId);
-            assertEquals(saNative, vaListElem3);
-            assertTrue(LLVMPointer.isInstance(vaListElem3));
-            assertEquals(structATypeId, LLVMPointer.cast(vaListElem3).getExportType());
+            Object[] values = new Object[types.length];
+            for (int i = types.length - 1; i >= 0; i--) {
+                values[i] = INTEROP.invokeMember(vaList, "get", i, types[i]);
+            }
+
+            checkValues(saNative, structATypeId, values);
+
+            if (useNextMessage) {
+                for (int i = 0; i < types.length; i++) {
+                    values[i] = INTEROP.invokeMember(vaList, "next", types[i]);
+                }
+                checkValues(saNative, structATypeId, values);
+            }
+        }
+
+        private static void checkValues(Object saNative, Object structATypeId, Object[] values) {
+            assertEquals(1, values[0]);
+            assertEquals(2, values[1]);
+            assertEquals(3.1, values[2]);
+            assertEquals(saNative, values[3]);
+            assertTrue(LLVMPointer.isInstance(values[3]));
+            assertEquals(structATypeId, LLVMPointer.cast(values[3]).getExportType());
         }
     }
 
@@ -117,7 +144,9 @@ public class VAListInteropTest extends InteropTestBase {
     public static void loadLibrary() {
         testLibrary = loadTestBitcodeValue("valist.c");
         testVaListCallback4 = testLibrary.getMember("test_va_list_callback4");
+        testMaybeVaPtr = testLibrary.getMember("test_maybe_va_ptr");
         getNextVaarg = testLibrary.getMember("get_next_vaarg");
+        derefCharCharPtr = testLibrary.getMember("deref_chr_chr_ptr");
         newStructA = testLibrary.getMember("newStructA");
     }
 
@@ -125,8 +154,38 @@ public class VAListInteropTest extends InteropTestBase {
     public void testVaListCallback() {
         Value sa1 = newStructA.execute(10, 20);
         Value sa2 = Value.asValue(new StructA(30, 40));
-        Value res = testVaListCallback4.execute(new VaListCallback(), testLibrary, 1, 2, 3, sa1, sa2);
-        Assert.assertEquals(6, res.asInt());
+        Value res = testVaListCallback4.execute(new VaListCallback(true), testLibrary, 1, 2, 3.1, sa1, sa2);
+        Assert.assertEquals(3, res.asInt());
+        res = testVaListCallback4.execute(new VaListCallback(false), testLibrary, 1, 2, 3.1, sa1, sa2);
+        Assert.assertEquals(3, res.asInt());
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class MaybeVaListCallback implements TruffleObject {
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object execute(Object... arguments) {
+            try {
+                /*
+                 * On darwin-aarch64 / windows-amd64 arguments[0] is a LLVMMaybeVaPointer, and in
+                 * this case must behave like a pointer
+                 */
+                return derefCharCharPtr.execute(arguments[0]).asInt();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Test
+    public void testTestMaybeVaPtr() {
+        Value res = testMaybeVaPtr.execute(new MaybeVaListCallback());
+        Assert.assertEquals('A', res.asInt());
     }
 
     public static class StructA {

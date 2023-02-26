@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
  * Builtin function that reads a String from the {@link SLContext#getInput() standard input}.
@@ -56,15 +60,15 @@ import com.oracle.truffle.sl.runtime.SLContext;
 public abstract class SLReadlnBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public String readln() {
-        String result = doRead(SLContext.get(this).getInput());
+    public TruffleString readln(@Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        TruffleString result = fromJavaStringNode.execute(doRead(SLContext.get(this).getInput()), SLLanguage.STRING_ENCODING);
         if (result == null) {
             /*
              * We do not have a sophisticated end of file handling, so returning an empty string is
              * a reasonable alternative. Note that the Java null value should never be used, since
              * it can interfere with the specialization logic in generated source code.
              */
-            result = "";
+            result = SLStrings.EMPTY_STRING;
         }
         return result;
     }

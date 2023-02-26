@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,24 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
+import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -39,26 +49,71 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 import jdk.vm.ci.code.CodeUtil;
 
-public class OptimizeDivPhase extends Phase {
+/**
+ * Phase that optimizes integer division operation by using various mathematical foundations to
+ * express it in faster, equivalent, arithmetic.
+ */
+public class OptimizeDivPhase extends BasePhase<CoreProviders> {
+    protected final CanonicalizerPhase canonicalizer;
+
+    public OptimizeDivPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
-            if (rem instanceof SignedRemNode && divByNonZeroConstant(rem)) {
-                optimizeRem(rem);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return this.canonicalizer.notApplicableTo(graphState);
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
+        try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
+            for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
+                if (rem instanceof SignedRemNode && isDivByNonZeroConstant(rem)) {
+                    try (DebugCloseable position = rem.withNodeSourcePosition()) {
+                        optimizeRem(rem);
+                    }
+                }
+            }
+            for (SignedFloatingIntegerRemNode nonTrappingRem : graph.getNodes(SignedFloatingIntegerRemNode.TYPE)) {
+                if (isDivByNonZeroConstant(nonTrappingRem)) {
+                    try (DebugCloseable position = nonTrappingRem.withNodeSourcePosition()) {
+                        optimizeRem(nonTrappingRem);
+                    }
+                }
+            }
+            for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
+                if (div instanceof SignedDivNode && isDivByNonZeroConstant(div)) {
+                    try (DebugCloseable position = div.withNodeSourcePosition()) {
+                        optimizeSignedDiv(div);
+                    }
+                }
+            }
+            for (SignedFloatingIntegerDivNode div : graph.getNodes(SignedFloatingIntegerDivNode.TYPE)) {
+                if (isDivByNonZeroConstant(div)) {
+                    try (DebugCloseable position = div.withNodeSourcePosition()) {
+                        optimizeSignedDiv(div);
+                    }
+                }
             }
         }
-        for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
-            if (div instanceof SignedDivNode && divByNonZeroConstant(div)) {
-                optimizeSignedDiv((SignedDivNode) div);
-            }
+        if (!ec.getNodes().isEmpty()) {
+            canonicalizer.applyIncremental(graph, context, ec.getNodes());
         }
+
     }
 
     @Override
@@ -66,49 +121,60 @@ public class OptimizeDivPhase extends Phase {
         return 5.0f;
     }
 
-    protected static boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {
+    protected static boolean isDivByNonZeroConstant(Canonicalizable.Binary<ValueNode> divRemNode) {
         return divRemNode.getY().isConstant() && divRemNode.getY().asJavaConstant().asLong() != 0;
     }
 
-    protected final void optimizeRem(IntegerDivRemNode rem) {
-        assert rem.getOp() == IntegerDivRemNode.Op.REM;
+    protected final void optimizeRem(Canonicalizable.Binary<ValueNode> rem) {
+        assert rem instanceof IntegerDivRemNode || rem instanceof SignedFloatingIntegerRemNode;
         // Java spec 15.17.3.: (a/b)*b+(a%b) == a
         // so a%b == a-(a/b)*b
-        StructuredGraph graph = rem.graph();
-        ValueNode div = findDivForRem(rem);
+        StructuredGraph graph = ((ValueNode) rem).graph();
+        ValueNode div = findDivForRem((ValueNode) rem);
         ValueNode mul = BinaryArithmeticNode.mul(graph, div, rem.getY(), NodeView.DEFAULT);
         ValueNode result = BinaryArithmeticNode.sub(graph, rem.getX(), mul, NodeView.DEFAULT);
-        graph.replaceFixedWithFloating(rem, result);
+        replacePreserveOriginalStamp(graph, (ValueNode) rem, result);
     }
 
-    private ValueNode findDivForRem(IntegerDivRemNode rem) {
-        if (rem.next() instanceof IntegerDivRemNode) {
-            IntegerDivRemNode div = (IntegerDivRemNode) rem.next();
-            if (div.getOp() == IntegerDivRemNode.Op.DIV && div.getType() == rem.getType() && div.getX() == rem.getX() && div.getY() == rem.getY()) {
-                return div;
+    private ValueNode findDivForRem(ValueNode val) {
+        if (val instanceof IntegerDivRemNode) {
+            IntegerDivRemNode rem = (IntegerDivRemNode) val;
+            if (rem.next() instanceof IntegerDivRemNode) {
+                IntegerDivRemNode div = (IntegerDivRemNode) rem.next();
+                if (div.getOp() == IntegerDivRemNode.Op.DIV && div.getType() == rem.getType() && div.getX() == rem.getX() && div.getY() == rem.getY()) {
+                    return div;
+                }
             }
-        }
-        if (rem.predecessor() instanceof IntegerDivRemNode) {
-            IntegerDivRemNode div = (IntegerDivRemNode) rem.predecessor();
-            if (div.getOp() == IntegerDivRemNode.Op.DIV && div.getType() == rem.getType() && div.getX() == rem.getX() && div.getY() == rem.getY()) {
-                return div;
+            if (rem.predecessor() instanceof IntegerDivRemNode) {
+                IntegerDivRemNode div = (IntegerDivRemNode) rem.predecessor();
+                if (div.getOp() == IntegerDivRemNode.Op.DIV && div.getType() == rem.getType() && div.getX() == rem.getX() && div.getY() == rem.getY()) {
+                    return div;
+                }
             }
+            // not found, create a new one (will be optimized away later)
+            ValueNode div = rem.graph().addOrUniqueWithInputs(createDiv(rem));
+            if (div instanceof FixedNode) {
+                rem.graph().addAfterFixed(rem, (FixedNode) div);
+            }
+            return div;
+        } else if (val instanceof SignedFloatingIntegerRemNode) {
+            ValueNode div = val.graph().addOrUniqueWithInputs(createDiv(val));
+            return div;
         }
-
-        // not found, create a new one (will be optimized away later)
-        ValueNode div = rem.graph().addOrUniqueWithInputs(createDiv(rem));
-        if (div instanceof FixedNode) {
-            rem.graph().addAfterFixed(rem, (FixedNode) div);
-        }
-        return div;
+        throw GraalError.shouldNotReachHere();
     }
 
-    protected ValueNode createDiv(IntegerDivRemNode rem) {
-        assert rem instanceof SignedRemNode;
-        return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroCheck(), NodeView.DEFAULT);
+    protected ValueNode createDiv(ValueNode val) {
+        if (val instanceof SignedRemNode) {
+            SignedRemNode rem = (SignedRemNode) val;
+            return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroGuard(), NodeView.DEFAULT);
+        } else {
+            SignedFloatingIntegerRemNode rem = (SignedFloatingIntegerRemNode) val;
+            return SignedFloatingIntegerDivNode.create(((BinaryNode) val).getX(), ((BinaryNode) val).getY(), NodeView.DEFAULT, rem.getGuard(), rem.divisionOverflowIsJVMSCompliant());
+        }
     }
 
-    protected static void optimizeSignedDiv(SignedDivNode div) {
+    protected static void optimizeSignedDiv(Canonicalizable.Binary<ValueNode> div) {
         ValueNode forX = div.getX();
         long c = div.getY().asJavaConstant().asLong();
         assert c != 1 && c != -1 && c != 0;
@@ -162,8 +228,26 @@ public class OptimizeDivPhase extends Phase {
             value = BinaryArithmeticNode.add(value, sign, NodeView.DEFAULT);
         }
 
-        StructuredGraph graph = div.graph();
-        graph.replaceFixed(div, graph.addOrUniqueWithInputs(value));
+        StructuredGraph graph = ((ValueNode) div).graph();
+        assert div instanceof SignedDivNode || div instanceof SignedFloatingIntegerDivNode : "Unknown or invalid div:" + div;
+        replacePreserveOriginalStamp(graph, (ValueNode) div, value);
+    }
+
+    /**
+     * When this phase replaces a node with a faster computed version we have to inject a pi node
+     * with the old stamp. This is done to ensure a stamp never gets worse, compensating for
+     * limitations in the current integer stamp representation. This phase injects "magic" knowledge
+     * about two's complement division into the graph that cannot be expressed otherwise.
+     */
+    private static void replacePreserveOriginalStamp(StructuredGraph graph, ValueNode originalNode, ValueNode replacement) {
+        Stamp oldStamp = originalNode.stamp(NodeView.DEFAULT);
+        ValueNode replacementWrapped = graph.addOrUniqueWithInputs(PiNode.create(replacement, oldStamp));
+        if (originalNode instanceof FixedNode) {
+            graph.replaceFixed((FixedWithNextNode) originalNode, replacementWrapped);
+        } else {
+            originalNode.replaceAndDelete(replacementWrapped);
+        }
+        graph.getOptimizationLog().report(OptimizeDivPhase.class, "DivOptimization", originalNode);
     }
 
     /**

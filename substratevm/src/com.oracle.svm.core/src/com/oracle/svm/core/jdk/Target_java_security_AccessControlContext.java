@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import org.graalvm.compiler.api.replacements.Fold;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -34,11 +32,22 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import sun.security.util.Debug;
 
+import java.security.AccessControlContext;
+import java.security.ProtectionDomain;
+
 @TargetClass(java.security.AccessControlContext.class)
 final class Target_java_security_AccessControlContext {
 
     @Alias //
     boolean isPrivileged;
+
+    @Alias //
+    protected boolean isAuthorized;
+
+    @Alias //
+    @SuppressWarnings("unused") //
+    Target_java_security_AccessControlContext(ProtectionDomain[] context, AccessControlContext privilegedContext) {
+    }
 
     /**
      * Avoid making the code for debug printing reachable. We do not need it, and it only increases

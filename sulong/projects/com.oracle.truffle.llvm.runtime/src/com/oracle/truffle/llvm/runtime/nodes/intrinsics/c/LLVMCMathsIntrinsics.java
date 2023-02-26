@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,9 +40,9 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -70,12 +70,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.sqrt(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -119,12 +113,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.log(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -141,12 +129,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.log(value) / LOG_2;
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -160,12 +142,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.log10(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -181,12 +157,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.log1p(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -200,12 +170,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.rint(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -221,12 +185,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.ceil(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -241,12 +199,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.floor(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -260,12 +212,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.round(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -424,12 +370,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.exp(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -443,12 +383,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.expm1(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -464,12 +398,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.pow(2, value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -484,12 +412,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value, int exp) {
             return value * Math.pow(2, exp);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, int exp) {
-            double result = doIntrinsic(value.getDoubleValue(), exp);
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -514,16 +436,6 @@ public abstract class LLVMCMathsIntrinsics {
             store.executeWithTarget(integralAddr, integral);
             return fractional;
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat longDoubleValue, LLVMPointer integralAddr,
-                        @Cached LLVM80BitFloatStoreNode store) {
-            double value = longDoubleValue.getDoubleValue();
-            double fractional = value % 1;
-            double integral = value - fractional;
-            store.executeWithTarget(integralAddr, LLVM80BitFloat.fromDouble(integral));
-            return LLVM80BitFloat.fromDouble(fractional);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -538,12 +450,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float numer, float denom) {
             return numer % denom;
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, LLVM80BitFloat denom) {
-            double result = doIntrinsic(value.getDoubleValue(), denom.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -570,18 +476,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doDouble(double a, double b) {
             return Math.pow(a, b);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, int pow) {
-            double result = doDouble(value.getDoubleValue(), pow);
-            return LLVM80BitFloat.fromDouble(result);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat a, LLVM80BitFloat b) {
-            double result = doDouble(a.getDoubleValue(), b.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -595,12 +489,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.sin(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -616,12 +504,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.sinh(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -635,12 +517,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.asin(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -656,12 +532,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.cos(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -675,12 +545,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.cosh(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -696,12 +560,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.acos(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -715,12 +573,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.tan(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -736,12 +588,6 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.tanh(value);
         }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
-        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -755,12 +601,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.atan(value);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
-            double result = doIntrinsic(value.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -776,12 +616,6 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value1, float value2) {
             return (float) Math.atan2(value1, value2);
-        }
-
-        @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value1, LLVM80BitFloat value2) {
-            double result = doIntrinsic(value1.getDoubleValue(), value2.getDoubleValue());
-            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -809,7 +643,7 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    abstract static class LLVMUMinMaxOperator {
+    abstract static class LLVMMinMaxOperator {
         protected abstract boolean compare(boolean a, boolean b);
 
         protected abstract int compare(int a, int b);
@@ -819,9 +653,11 @@ public abstract class LLVMCMathsIntrinsics {
         protected abstract float compare(float a, float b);
 
         protected abstract double compare(double a, double b);
+
+        protected abstract LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp);
     }
 
-    public static final class LLVMUmaxOperator extends LLVMUMinMaxOperator {
+    public static final class LLVMUmaxOperator extends LLVMMinMaxOperator {
         public static final LLVMUmaxOperator INSTANCE = new LLVMUmaxOperator();
 
         @Override
@@ -848,9 +684,14 @@ public abstract class LLVMCMathsIntrinsics {
         protected double compare(double a, double b) {
             return Math.max(a, b);
         }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return Long.compareUnsigned(aCmp, bCmp) >= 0 ? a : b;
+        }
     }
 
-    public static final class LLVMUminOperator extends LLVMUMinMaxOperator {
+    public static final class LLVMUminOperator extends LLVMMinMaxOperator {
         public static final LLVMUminOperator INSTANCE = new LLVMUminOperator();
 
         @Override
@@ -877,23 +718,150 @@ public abstract class LLVMCMathsIntrinsics {
         protected double compare(double a, double b) {
             return Math.min(a, b);
         }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return Long.compareUnsigned(aCmp, bCmp) <= 0 ? a : b;
+        }
+    }
+
+    public static final class LLVMSmaxOperator extends LLVMMinMaxOperator {
+        public static final LLVMSmaxOperator INSTANCE = new LLVMSmaxOperator();
+
+        @Override
+        protected boolean compare(boolean a, boolean b) {
+            return a || b;
+        }
+
+        @Override
+        protected int compare(int a, int b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected long compare(long a, long b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected float compare(float a, float b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected double compare(double a, double b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return aCmp >= bCmp ? a : b;
+        }
+    }
+
+    public static final class LLVMSminOperator extends LLVMMinMaxOperator {
+        public static final LLVMSminOperator INSTANCE = new LLVMSminOperator();
+
+        @Override
+        protected boolean compare(boolean a, boolean b) {
+            return a && b;
+        }
+
+        @Override
+        protected int compare(int a, int b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        protected long compare(long a, long b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        protected float compare(float a, float b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        protected double compare(double a, double b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return aCmp <= bCmp ? a : b;
+        }
+    }
+
+    public abstract static class LLVMAbstractMinMaxNode extends LLVMBuiltin {
+        protected abstract LLVMMinMaxOperator getOperator();
+
+        protected byte compare(byte a, byte b) {
+            return (byte) getOperator().compare(a, b);
+        }
+
+        protected short compare(short a, short b) {
+            return (short) getOperator().compare(a, b);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "operator", type = LLVMMinMaxOperator.class)
+    public abstract static class LLVMScalarMinMaxNode extends LLVMAbstractMinMaxNode {
+        @Specialization
+        protected boolean doI1Scalar(boolean a, boolean b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected byte doI8Scalar(byte a, byte b) {
+            return compare(a, b);
+        }
+
+        @Specialization
+        protected short doI16Vector(short a, short b) {
+            return compare(a, b);
+        }
+
+        @Specialization
+        protected int doI32Vector(int a, int b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected long doI64Vector(long a, long b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected float doFloatVector(float a, float b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected double doDoubleVector(double a, double b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected LLVMPointer doPointer(LLVMPointer a, LLVMPointer b,
+                        @Cached ToComparableValue aComp,
+                        @Cached ToComparableValue bComp) {
+            return getOperator().compare(a, aComp.executeWithTarget(a), b, bComp.executeWithTarget(b));
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "vectorLength", type = int.class)
-    @NodeField(name = "operator", type = LLVMUMinMaxOperator.class)
-    public abstract static class LLVMUnsignedVectorMinMaxNode extends LLVMBuiltin {
+    @NodeField(name = "operator", type = LLVMMinMaxOperator.class)
+    public abstract static class LLVMVectorMinMaxNode extends LLVMAbstractMinMaxNode {
         protected abstract int getVectorLength();
 
-        protected abstract LLVMUMinMaxOperator getOperator();
-
-        private byte compare(byte a, byte b) {
-            return (byte) getOperator().compare(a, b);
-        }
-
-        private short compare(short a, short b) {
-            return (short) getOperator().compare(a, b);
+        @Specialization
+        protected boolean doI1Scalar(boolean a, boolean b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization
@@ -906,6 +874,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = getOperator().compare(a.getValue(i), b.getValue(i));
             }
             return LLVMI1Vector.create(result);
+        }
+
+        @Specialization
+        protected byte doI8Scalar(byte a, byte b) {
+            return compare(a, b);
         }
 
         @Specialization
@@ -923,6 +896,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected short doI16Vector(short a, short b) {
+            return compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI16Vector(LLVMI16Vector a, LLVMI16Vector b) {
             assert a.getLength() == getVectorLength();
@@ -934,6 +912,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = compare(aValue, bValue);
             }
             return LLVMI16Vector.create(result);
+        }
+
+        @Specialization
+        protected int doI32Vector(int a, int b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization
@@ -951,6 +934,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected long doI64Vector(long a, long b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMI64Vector a, LLVMI64Vector b) {
             assert a.getLength() == getVectorLength();
@@ -965,6 +953,11 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
+        protected float doFloatVector(float a, float b) {
+            return getOperator().compare(a, b);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doFloatVector(LLVMFloatVector a, LLVMFloatVector b) {
             assert a.getLength() == getVectorLength();
@@ -974,6 +967,11 @@ public abstract class LLVMCMathsIntrinsics {
                 result[i] = getOperator().compare(a.getValue(i), b.getValue(i));
             }
             return LLVMFloatVector.create(result);
+        }
+
+        @Specialization
+        protected double doDoubleVector(double a, double b) {
+            return getOperator().compare(a, b);
         }
 
         @Specialization

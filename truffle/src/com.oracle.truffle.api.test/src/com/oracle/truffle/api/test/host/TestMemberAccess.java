@@ -422,7 +422,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         testObj = (TruffleObject) INTEROP.instantiate(testClass, (short) 42);
         assertEquals(int.class.getName(), INTEROP.readMember(testObj, "ctor"));
         testObj = (TruffleObject) INTEROP.instantiate(testClass, 4.2f);
-        // TODO prioritize conversion from double to float over double to int
+        // TODO GR-38632 prioritize conversion from double to float over double to int
         // assertEquals(float.class.getName(), INTEROP.readMember(testObj, "ctor"));
     }
 

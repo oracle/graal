@@ -39,7 +39,9 @@ typedef struct {
   char fSHA512;
   char fSVE;
   char fSVE2;
-  char fSTXRPREFETCH;
+  char fSTXR_PREFETCH;
   char fA53MAC;
-  char fDMBATOMICS;
+  char fDMB_ATOMICS;
+  char fPACA;
+  char fSVEBITPERM;
 } CPUFeatures;

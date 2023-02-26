@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,19 +45,22 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexDFAExecutorNode#execute(TRegexExecutorLocals, boolean)}. A trace contains the
- * arguments received by {@link TRegexDFAExecutorNode#execute(TRegexExecutorLocals, boolean)}, and
- * the ID of the DFA transition taken for all characters of the input string that have been
+ * {@link TRegexExecutorNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange, boolean)}.
+ * A trace contains the arguments received by
+ * {@link TRegexExecutorNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange, boolean)},
+ * and the ID of the DFA transition taken for all characters of the input string that have been
  * traversed. After execution, the recorded trace can be dumped to disk as JSON with
  * {@link #finishRecording()}.
  */

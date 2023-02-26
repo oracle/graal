@@ -29,7 +29,25 @@ package com.oracle.truffle.espresso.runtime;
  * 
  * Makes it harder to access the raw int version: please add new predicates instead.
  */
-public final class JavaVersion {
+public enum JavaVersion {
+
+    JAVA_4(4),
+    JAVA_5(5),
+    JAVA_6(6),
+    JAVA_7(7),
+    JAVA_8(8),
+    JAVA_9(9),
+    JAVA_10(10),
+    JAVA_11(11),
+    JAVA_12(12),
+    JAVA_13(13),
+    JAVA_14(14),
+    JAVA_15(15),
+    JAVA_16(16),
+    JAVA_17(17),
+    JAVA_18(18),
+    JAVA_19(19);
+
     public static final class VersionRange {
         public static final VersionRange VERSION_8_OR_LOWER = lower(8);
         public static final VersionRange VERSION_9_TO_11 = new VersionRange(9, 11);
@@ -38,6 +56,7 @@ public final class JavaVersion {
         public static final VersionRange VERSION_11_TO_17 = new VersionRange(11, 17);
         public static final VersionRange VERSION_16_OR_HIGHER = higher(16);
         public static final VersionRange VERSION_17_OR_HIGHER = higher(17);
+        public static final VersionRange VERSION_19_OR_HIGHER = higher(19);
         public static final VersionRange ALL = new VersionRange(0, LATEST_SUPPORTED);
 
         private final int low;
@@ -64,12 +83,21 @@ public final class JavaVersion {
     private static final String HOST_VERSION = System.getProperty("java.version");
 
     public static final boolean HOST_COMPACT_STRINGS = !HOST_VERSION.startsWith("1.");
-    public static final int LATEST_SUPPORTED = 17;
+    public static final int LATEST_SUPPORTED = 19;
 
     private final int version;
 
-    public JavaVersion(int version) {
+    JavaVersion(int version) {
         this.version = version;
+    }
+
+    public static JavaVersion forVersion(int version) {
+        int lowest = values()[0].version;
+        return values()[version - lowest];
+    }
+
+    public static JavaVersion latestSupported() {
+        return forVersion(LATEST_SUPPORTED);
     }
 
     public boolean java8OrEarlier() {
@@ -100,8 +128,16 @@ public final class JavaVersion {
         return version >= 16;
     }
 
+    public boolean java17OrEarlier() {
+        return version <= 17;
+    }
+
     public boolean java17OrLater() {
         return version >= 17;
+    }
+
+    public boolean java19OrLater() {
+        return version >= 19;
     }
 
     public boolean inRange(int low, int high) {

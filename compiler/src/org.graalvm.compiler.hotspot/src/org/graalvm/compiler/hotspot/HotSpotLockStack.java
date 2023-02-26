@@ -60,13 +60,26 @@ public class HotSpotLockStack extends LIRInstruction {
      * Gets a stack slot for a lock at a given lock nesting depth, allocating it first if necessary.
      */
     public VirtualStackSlot makeLockSlot(int lockDepth) {
+        int oldLength = locks.length;
         if (locks == EMPTY) {
             locks = new AllocatableValue[lockDepth + 1];
         } else if (locks.length < lockDepth + 1) {
             locks = Arrays.copyOf(locks, lockDepth + 1);
         }
-        if (locks[lockDepth] == null) {
-            locks[lockDepth] = frameMapBuilder.allocateSpillSlot(slotKind);
+        /*
+         * After optimizations that eliminate locking, lock depths are not necessarily contiguous.
+         * For example, a method may contain locks at depths 0, 1, and 3, with locks at depth 2
+         * optimized out. The locks array must not contain holes because null values are not allowed
+         * in LIR. When we see a new lock depth, we must therefore ensure allocation of slots for
+         * all lower depths as well.
+         *
+         * Non-contiguous lock depths are very rare, so this will almost never create superfluous
+         * lock slots. In addition, any superfluous virtual slots are not used in the rest of the
+         * compilation unit, so stack slot allocation can share their physical location with other
+         * slots.
+         */
+        for (int newLockIndex = oldLength; newLockIndex < lockDepth + 1; newLockIndex++) {
+            locks[newLockIndex] = frameMapBuilder.allocateSpillSlot(slotKind);
         }
         return (VirtualStackSlot) locks[lockDepth];
     }

@@ -29,14 +29,13 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
 public class ConstantPoolPatcher {
     public static void getDirectInnerClassNames(Symbol<Symbol.Name> fileSystemName, byte[] bytes, ArrayList<Symbol<Symbol.Name>> innerNames, EspressoContext context)
-                    throws IllegalClassFormatException {
+                    throws ClassFormatError {
         ClassfileStream stream = new ClassfileStream(bytes, null);
         ByteSequence fileNameBytes = fileSystemName.subSequence(0, fileSystemName.length());
         // skip magic and version - 8 bytes
@@ -90,13 +89,13 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new IllegalClassFormatException();
+                    throw new ClassFormatError();
             }
             i++;
         }
     }
 
-    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>> rules, EspressoContext context) throws IllegalClassFormatException {
+    public static byte[] patchConstantPool(byte[] bytes, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>> rules, EspressoContext context) throws ClassFormatError {
         byte[] result = Arrays.copyOf(bytes, bytes.length);
         ClassfileStream stream = new ClassfileStream(bytes, null);
 
@@ -176,7 +175,7 @@ public class ConstantPoolPatcher {
                     stream.readU2();
                     break;
                 default:
-                    throw new IllegalClassFormatException();
+                    throw new ClassFormatError();
             }
             i++;
         }

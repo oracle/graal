@@ -27,6 +27,8 @@
 package org.graalvm.compiler.jtt.hotpath;
 
 import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Test;
 
 /*
@@ -110,6 +112,7 @@ public class HP_series extends JTTTest {
      */
     @Test
     public void run0() throws Throwable {
+        Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         ulpDelta = 11.0D;
         runTest("test", 100);
     }

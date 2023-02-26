@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,10 +38,11 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -93,10 +94,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     void setCallTarget(CallTargetNode callTarget) {
         updateUsages(this.callTarget, callTarget);
         this.callTarget = callTarget;
-    }
-
-    public MethodCallTargetNode methodCallTarget() {
-        return (MethodCallTargetNode) callTarget;
     }
 
     @Override
@@ -244,6 +241,16 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         if (exceptionEdge() instanceof UnreachableBeginNode) {
             replaceWithInvoke();
         }
+    }
+
+    @Override
+    public NodeCycles estimatedNodeCycles() {
+        return InvokeNode.estimatedNodeCycles(callTarget);
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return InvokeNode.estimatedNodeSize(callTarget);
     }
 
     @Override

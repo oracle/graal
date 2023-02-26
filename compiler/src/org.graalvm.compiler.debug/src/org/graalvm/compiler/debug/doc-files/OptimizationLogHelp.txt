@@ -1,0 +1,8 @@
+Enable the structured optimization log and specify where it is printed.
+The accepted values are:
+  Directory - Format the structured optimization log as JSON and print it to files in a directory.
+              The directory is specified by OptimizationLogPath. If OptimizationLogPath is not set,
+              the target directory is DumpPath/optimization_log.
+     Stdout - Print the structured optimization log to the standard output.
+       Dump - Dump optimization trees for IdealGraphVisualizer according to the PrintGraph option.
+It is possible to specify multiple comma-separated values.

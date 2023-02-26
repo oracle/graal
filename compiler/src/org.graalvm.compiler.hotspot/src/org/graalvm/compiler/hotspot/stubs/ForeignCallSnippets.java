@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,19 +58,23 @@ public class ForeignCallSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        final SnippetInfo handlePendingException = snippet(ForeignCallSnippets.class, "handlePendingException");
-        final SnippetInfo getAndClearObjectResult = snippet(ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
-        final SnippetInfo verifyObject = snippet(ForeignCallSnippets.class, "verifyObject");
+        final SnippetInfo handlePendingException;
+        final SnippetInfo getAndClearObjectResult;
+        final SnippetInfo verifyObject;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.handlePendingException = snippet(providers, ForeignCallSnippets.class, "handlePendingException");
+            this.getAndClearObjectResult = snippet(providers, ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
+            this.verifyObject = snippet(providers, ForeignCallSnippets.class, "verifyObject");
         }
     }
 
     /**
      * See {@link ForeignCallStub#getGraph}.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static void handlePendingException(Word thread, boolean shouldClearException, boolean isObjectResult) {
         if ((shouldClearException && clearPendingException(thread) != null) || (!shouldClearException && getPendingException(thread) != null)) {
             if (isObjectResult) {
@@ -83,7 +87,7 @@ public class ForeignCallSnippets implements Snippets {
     /**
      * Verifies that a given object value is well formed if {@code -XX:+VerifyOops} is enabled.
      */
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     public static Object verifyObject(Object object) {
         if (HotSpotReplacementsUtil.verifyOops(INJECTED_VMCONFIG)) {
             Word verifyOopCounter = WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(INJECTED_VMCONFIG));

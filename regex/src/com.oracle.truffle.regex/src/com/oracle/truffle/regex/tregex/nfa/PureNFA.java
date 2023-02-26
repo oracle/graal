@@ -42,9 +42,13 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -56,18 +60,22 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * A NFA that corresponds to the subtree of one {@link RegexASTSubtreeRootNode}.
  */
 public final class PureNFA implements StateIndex<PureNFAState> {
-
+    private static final PureNFA[] NO_SUBTREES = {};
+    private final int globalSubTreeId;
     private final int subTreeId;
     @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
     @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
+    @CompilationFinal(dimensions = 1) private final PureNFA[] subtrees;
 
     public PureNFA(RegexASTSubtreeRootNode astSubRoot,
                     PureNFAState[] states,
                     Counter.ThresholdCounter stateIDCounter,
                     Counter.ThresholdCounter transitionIDCounter) {
+        this.globalSubTreeId = astSubRoot.getGlobalSubTreeId();
         this.subTreeId = astSubRoot.getSubTreeId();
         this.states = new PureNFAState[stateIDCounter.getCount()];
         this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
+        this.subtrees = astSubRoot.getSubtrees().size() == 0 ? NO_SUBTREES : new PureNFA[astSubRoot.getSubtrees().size()];
         for (PureNFAState s : states) {
             if (s == null) {
                 continue;
@@ -91,6 +99,18 @@ public final class PureNFA implements StateIndex<PureNFAState> {
      */
     public int getSubTreeId() {
         return subTreeId;
+    }
+
+    public int getGlobalSubTreeId() {
+        return globalSubTreeId;
+    }
+
+    public boolean isRoot() {
+        return subTreeId < 0;
+    }
+
+    public RegexASTSubtreeRootNode getASTSubtree(RegexAST ast) {
+        return isRoot() ? ast.getRoot().getSubTreeParent() : ast.getSubtrees().get(globalSubTreeId);
     }
 
     /**
@@ -159,9 +179,17 @@ public final class PureNFA implements StateIndex<PureNFAState> {
         return transitions;
     }
 
+    public PureNFA[] getSubtrees() {
+        return subtrees;
+    }
+
     @Override
     public int getNumberOfStates() {
         return states.length;
+    }
+
+    public int getNumberOfTransitions() {
+        return transitions.length;
     }
 
     @Override
@@ -181,6 +209,44 @@ public final class PureNFA implements StateIndex<PureNFAState> {
                 t.getGroupBoundaries().materializeArrays();
             }
         }
+    }
+
+    /**
+     * Creates a {@link CodePointSet} that matches the union of all code point sets of
+     * {@link PureNFAState#isCharacterClass() character class successor states} of the root NFA's
+     * {@link PureNFA#getUnAnchoredInitialState() unanchored initial state}. If this can not be
+     * calculated, e.g. because one of the successors is an {@link PureNFAState#isEmptyMatch() empty
+     * match state}, {@code null} is returned.
+     */
+    public CodePointSet getMergedInitialStateCharSet(RegexAST ast, CompilationBuffer compilationBuffer) {
+        CodePointSetAccumulator acc = compilationBuffer.getCodePointSetAccumulator1();
+        if (mergeInitialStateMatcher(ast, this, acc)) {
+            return acc.toCodePointSet();
+        }
+        return null;
+    }
+
+    private static boolean mergeInitialStateMatcher(RegexAST ast, PureNFA nfa, CodePointSetAccumulator acc) {
+        for (PureNFATransition t : nfa.getUnAnchoredInitialState().getSuccessors()) {
+            PureNFAState target = t.getTarget();
+            switch (target.getKind()) {
+                case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
+                case PureNFAState.KIND_BACK_REFERENCE:
+                case PureNFAState.KIND_EMPTY_MATCH:
+                    return false;
+                case PureNFAState.KIND_SUB_MATCHER:
+                    if (target.isSubMatcherNegated() || target.isLookBehind(ast) || !mergeInitialStateMatcher(ast, nfa.getSubtrees()[target.getSubtreeId()], acc)) {
+                        return false;
+                    }
+                    break;
+                case PureNFAState.KIND_CHARACTER_CLASS:
+                    acc.addSet(target.getCharSet());
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+        return true;
     }
 
     @TruffleBoundary

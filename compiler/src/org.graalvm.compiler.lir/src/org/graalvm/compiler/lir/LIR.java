@@ -55,7 +55,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     /**
      * The order in which the code is emitted.
      */
-    private final AbstractBlockBase<?>[] codeEmittingOrder;
+    private AbstractBlockBase<?>[] codeEmittingOrder;
 
     /**
      * Map from {@linkplain AbstractBlockBase block} to {@linkplain LIRInstruction}s. Note that we
@@ -74,11 +74,10 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     public LIR(AbstractControlFlowGraph<?> cfg,
                     AbstractBlockBase<?>[] linearScanOrder,
-                    AbstractBlockBase<?>[] codeEmittingOrder,
                     OptionValues options,
                     DebugContext debug) {
         this.cfg = cfg;
-        this.codeEmittingOrder = codeEmittingOrder;
+        this.codeEmittingOrder = null;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
         this.options = options;
@@ -121,7 +120,8 @@ public final class LIR extends LIRGenerator.VariableProvider {
     }
 
     /**
-     * Gets the linear scan ordering of blocks as an array.
+     * Gets the linear scan ordering of blocks as an array. After control flow optimizations this
+     * can contain {@code null} entries for blocks that have been optimized away.
      *
      * @return the blocks in linear scan order
      */
@@ -129,8 +129,49 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return linearScanOrder;
     }
 
+    /**
+     * Gets the code emitting ordering of blocks as an array. Code that does not care about visiting
+     * blocks in a particular order should use {@link #getBlocks()} instead. The code emitting order
+     * is computed late in the LIR pipeline; {@link #codeEmittingOrderAvailable()} can be used to
+     * check whether it has been computed. This method will throw an exception if the code emitting
+     * order is not available.
+     *
+     * @return the blocks in code emitting order
+     * @throws IllegalStateException if the code emitting order is not
+     *             {@linkplain #codeEmittingOrderAvailable() available}
+     */
     public AbstractBlockBase<?>[] codeEmittingOrder() {
+        if (!codeEmittingOrderAvailable()) {
+            throw new IllegalStateException("codeEmittingOrder not computed, consider using getBlocks() or linearScanOrder()");
+        }
         return codeEmittingOrder;
+    }
+
+    public void setCodeEmittingOrder(AbstractBlockBase<?>[] codeEmittingOrder) {
+        this.codeEmittingOrder = codeEmittingOrder;
+    }
+
+    /**
+     * Checks whether the code emitting order has been computed.
+     */
+    public boolean codeEmittingOrderAvailable() {
+        return codeEmittingOrder != null;
+    }
+
+    /**
+     * Gets an array of all the blocks in this LIR. This should be used by all code that wants to
+     * iterate over the blocks but does not care about a particular order.
+     *
+     * The array returned here is in the {@link #codeEmittingOrder()} if available, otherwise it is
+     * in {@link #linearScanOrder()}. In either case it can contain {@code null} entries for blocks
+     * that have been optimized away. The start block will always be at index 0.
+     */
+    public AbstractBlockBase<?>[] getBlocks() {
+        if (codeEmittingOrderAvailable()) {
+            return codeEmittingOrder;
+        } else {
+            return linearScanOrder;
+        }
     }
 
     public void setHasArgInCallerFrame() {
@@ -234,7 +275,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     public void resetLabels() {
 
-        for (AbstractBlockBase<?> block : codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : getBlocks()) {
             if (block == null) {
                 continue;
             }
@@ -248,5 +289,4 @@ public final class LIR extends LIRGenerator.VariableProvider {
             }
         }
     }
-
 }

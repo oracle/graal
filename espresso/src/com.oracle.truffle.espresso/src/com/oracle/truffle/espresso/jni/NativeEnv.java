@@ -29,25 +29,31 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
@@ -69,7 +75,11 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
  * <li>Finally, implement the interface in native code (most likely in mokapot. See the management
  * implementation there for reference.)</li>
  */
-public abstract class NativeEnv implements ContextAccess {
+public abstract class NativeEnv extends ContextAccessImpl {
+
+    public NativeEnv(EspressoContext context) {
+        super(context);
+    }
 
     private static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 
@@ -128,6 +138,7 @@ public abstract class NativeEnv implements ContextAccess {
         try {
             res = (TruffleObject) getUncached().execute(initializeFunctionPointer, newArgs);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             // Free up helper structures
@@ -140,7 +151,7 @@ public abstract class NativeEnv implements ContextAccess {
     private Map<String, CallableFromNative.Factory> buildMethodsMap() {
         Map<String, CallableFromNative.Factory> map = new HashMap<>();
         for (CallableFromNative.Factory method : getCollector()) {
-            EspressoError.guarantee(!map.containsKey(method.methodName()), "Substitution for " + method + " already exists");
+            EspressoError.guarantee(!map.containsKey(method.methodName()), "Substitution already exists", method);
             map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);
@@ -180,14 +191,17 @@ public abstract class NativeEnv implements ContextAccess {
                     processCallBackResult(name, factory, args);
                     return createNativeClosureForFactory(factory, name);
                 } catch (ClassCastException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere(e);
-                } catch (RuntimeException e) {
+                } catch (StackOverflowError | OutOfMemoryError | RuntimeException e) {
                     throw e;
                 } catch (Throwable e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere(e);
                 }
             }
         });
+
         return getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
     }
 
@@ -222,23 +236,89 @@ public abstract class NativeEnv implements ContextAccess {
         TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
         nativeClosures.add(nativeClosure);
         return nativeClosure;
-
     }
+
+    private static class NativeRootNode extends RootNode {
+
+        @FunctionalInterface
+        private interface NativeEnvComputer extends Function<EspressoContext, Object> {
+            NativeEnvComputer getVM = EspressoContext::getVM;
+            NativeEnvComputer getManagement = context -> context.getVM().getManagement();
+            NativeEnvComputer getJNI = EspressoContext::getJNI;
+            NativeEnvComputer getJvmti = context -> context.getVM().getJvmti();
+        }
+
+        @SuppressWarnings("FieldMayBeFinal") //
+        @Child private CallableFromNative node;
+        private final NativeEnvComputer getNativeEnvFromContext;
+        private final String name;
+
+        NativeRootNode(EspressoLanguage language, CallableFromNative node, String name) {
+            super(language);
+            this.node = node;
+            this.name = name;
+            String generatedBy = node.generatedBy();
+            switch (generatedBy) {
+                case "VmImpl":
+                    getNativeEnvFromContext = NativeEnvComputer.getVM;
+                    break;
+                case "ManagementImpl":
+                    getNativeEnvFromContext = NativeEnvComputer.getManagement;
+                    break;
+                case "JniImpl":
+                    getNativeEnvFromContext = NativeEnvComputer.getJNI;
+                    break;
+                case "JvmtiImpl":
+                    getNativeEnvFromContext = NativeEnvComputer.getJvmti;
+                    break;
+                default:
+                    throw EspressoError.shouldNotReachHere("Unknown NativeEnv subclass found " + generatedBy);
+            }
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            EspressoContext context = EspressoContext.get(this);
+            Object nativeEnv = getNativeEnvFromContext.apply(context);
+            return node.invoke(nativeEnv, frame.getArguments());
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+    }
+
+    protected abstract String getName();
 
     private Callback intrinsicWrapper(CallableFromNative.Factory factory) {
         int extraArg = (factory.prependEnv()) ? 1 : 0;
         return new Callback(factory.parameterCount() + extraArg, new Callback.Function() {
-            @CompilerDirectives.CompilationFinal private CallableFromNative subst = null;
+            @CompilationFinal private volatile CallTarget target;
 
             @Override
             public Object call(Object... args) {
                 boolean isJni = factory.prependEnv();
                 try {
-                    if (subst == null) {
+                    CallTarget actualTarget = target;
+                    if (actualTarget == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        subst = factory.create(getMeta());
+                        synchronized (this) {
+                            actualTarget = target;
+                            if (actualTarget == null) {
+                                CallableFromNative subst = factory.create();
+                                String name = getName() + '.' + factory.methodName();
+                                NativeRootNode rootNode = new NativeRootNode(getLanguage(), subst, name);
+                                target = actualTarget = rootNode.getCallTarget();
+                            }
+                        }
                     }
-                    return subst.invoke(NativeEnv.this, args);
+                    return actualTarget.call(args);
                 } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
                     if (isJni) {
                         // This will most likely SOE again. Nothing we can do about that

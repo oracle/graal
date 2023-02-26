@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
@@ -38,15 +39,17 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
+import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -62,9 +65,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
-public final class Meta implements ContextAccess {
+public final class Meta extends ContextAccessImpl {
 
-    private final EspressoContext context;
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
     private final InteropKlassesDispatch interopDispatch;
@@ -72,40 +74,62 @@ public final class Meta implements ContextAccess {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
+        super(context);
         CompilerAsserts.neverPartOfCompilation();
-        this.context = context;
         this.stringConversion = StringConversion.select(context);
 
         // Give access to the partially-built Meta instance.
         context.setBootstrapMeta(this);
 
         // Core types.
+        // Object and Class (+ Class fields) must be initialized before all other classes in order
+        // to eagerly create the guest Class instances.
         java_lang_Object = knownKlass(Type.java_lang_Object);
-        if (context.JDWPOptions != null) {
-            HIDDEN_OBJECT_EXTENSION_FIELD = java_lang_Object.requireHiddenField(Name.extensionFieldName);
-        } else {
-            HIDDEN_OBJECT_EXTENSION_FIELD = null;
-        }
+        // Cloneable must be loaded before Serializable.
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
+        java_lang_Class = knownKlass(Type.java_lang_Class);
+        java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
+        java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
+        java_lang_Class_componentType = diff() //
+                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classData = diff() //
+                        .field(higher(15), Name.classData, Type.java_lang_Object)//
+                        .notRequiredField(java_lang_Class);
+        HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Name.HIDDEN_SIGNERS);
+        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+
+        if (getJavaVersion().modulesEnabled()) {
+            java_lang_Class_module = java_lang_Class.requireDeclaredField(Name.module, Type.java_lang_Module);
+        } else {
+            java_lang_Class_module = null;
+        }
+
+        // Ensure that Object, Cloneable, Class and all its super-interfaces have the guest Class
+        // initialized.
+        initializeEspressoClassInHierarchy(java_lang_Cloneable);
+        initializeEspressoClassInHierarchy(java_lang_Class);
+        // From now on, all Klass'es will safely initialize the guest Class.
+
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
         java_lang_Object_array = java_lang_Object.array();
+        java_lang_Enum = knownKlass(Type.java_lang_Enum);
 
         EspressoError.guarantee(
                         new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
                         "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
-        java_lang_Class = knownKlass(Type.java_lang_Class);
-        HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
-        HIDDEN_SIGNERS = java_lang_Class.requireHiddenField(Name.HIDDEN_SIGNERS);
-        java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
         java_lang_Class_getName = java_lang_Class.requireDeclaredMethod(Name.getName, Signature.String);
         java_lang_Class_getSimpleName = java_lang_Class.requireDeclaredMethod(Name.getSimpleName, Signature.String);
         java_lang_Class_getTypeName = java_lang_Class.requireDeclaredMethod(Name.getTypeName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
-        HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
+
+        java_lang_String = knownKlass(Type.java_lang_String);
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -233,6 +257,7 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
         java_lang_NegativeArraySizeException = knownKlass(Type.java_lang_NegativeArraySizeException);
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
+        java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
@@ -299,6 +324,8 @@ public final class Meta implements ContextAccess {
             java_lang_ClassLoader_name = null;
         }
 
+        java_net_URL = knownKlass(Type.java_net_URL);
+
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
         java_lang_ClassLoader_loadClass = java_lang_ClassLoader.requireDeclaredMethod(Name.loadClass, Signature.Class_String);
         java_io_InputStream = knownKlass(Type.java_io_InputStream);
@@ -358,15 +385,19 @@ public final class Meta implements ContextAccess {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
+        java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
                         .field(higher(14), Name.interrupted, Type._boolean) //
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_ESPRESSO_MANAGED = java_lang_Thread.requireHiddenField(Name.HIDDEN_ESPRESSO_MANAGED);
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
+        HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
+        HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
-        if (context.EnableManagement) {
+        if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
@@ -377,23 +408,50 @@ public final class Meta implements ContextAccess {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
-        java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
-        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.requireDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
+        if (getJavaVersion().java17OrEarlier()) {
+            java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
+        } else {
+            java_lang_ThreadGroup_add = null;
+        }
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.requireDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
         java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
         java_lang_Thread_interrupt = java_lang_Thread.requireDeclaredMethod(Name.interrupt, Signature._void);
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
-        java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
+        if (getJavaVersion().java17OrEarlier()) {
+            java_lang_Thread_holder = null;
+
+            java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
+            java_lang_Thread$FieldHolder_threadStatus = null;
+
+            java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+            java_lang_Thread$FieldHolder_group = null;
+
+            java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
+            java_lang_Thread$FieldHolder_priority = null;
+
+            java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
+            java_lang_Thread$FieldHolder_daemon = null;
+        } else {
+            java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread$FieldHolder.getType());
+
+            java_lang_Thread_threadStatus = null;
+            java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
+
+            java_lang_Thread_group = null;
+            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+
+            java_lang_Thread_priority = null;
+            java_lang_Thread$FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
+
+            java_lang_Thread_daemon = null;
+            java_lang_Thread$FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
+        }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
 
-        java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
         java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Name.name, java_lang_String.getType());
-        java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
-        java_lang_Thread_blockerLock = java_lang_Thread.requireDeclaredField(Name.blockerLock, java_lang_Object.getType());
-        java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
         java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.requireDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
         java_lang_Thread_checkAccess = java_lang_Thread.requireDeclaredMethod(Name.checkAccess, Signature._void);
         java_lang_Thread_stop = java_lang_Thread.requireDeclaredMethod(Name.stop, Signature._void);
@@ -473,6 +531,7 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MethodHandleNatives_linkCallSite = diff() //
                         .method(VERSION_8_OR_LOWER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(VERSION_9_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_19_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(java_lang_invoke_MethodHandleNatives);
 
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethodHandleConstant,
@@ -514,16 +573,6 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_packages = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.packages, Type.java_lang_String_array);
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.requireDeclaredField(Name.deflt, Type._boolean);
-
-        java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
-        java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
-        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
-        java_lang_Class_componentType = diff() //
-                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
-                        .notRequiredField(java_lang_Class);
-        java_lang_Class_classData = diff() //
-                        .field(higher(15), Name.classData, Type.java_lang_Object)//
-                        .notRequiredField(java_lang_Class);
 
         // Classes and Members that differ from Java 8 to 11
 
@@ -570,15 +619,11 @@ public final class Meta implements ContextAccess {
             java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
             java_lang_Module_loader = java_lang_Module.requireDeclaredField(Name.loader, Type.java_lang_ClassLoader);
             HIDDEN_MODULE_ENTRY = java_lang_Module.requireHiddenField(Name.HIDDEN_MODULE_ENTRY);
-
-            java_lang_Class_module = java_lang_Class.requireDeclaredField(Name.module, Type.java_lang_Module);
         } else {
             java_lang_Module = null;
             java_lang_Module_name = null;
             java_lang_Module_loader = null;
             HIDDEN_MODULE_ENTRY = null;
-
-            java_lang_Class_module = null;
         }
 
         java_lang_Record = diff() //
@@ -689,8 +734,13 @@ public final class Meta implements ContextAccess {
         sun_reflect_Reflection_getCallerClass = sun_reflect_Reflection.requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         if (getJavaVersion().java11OrLater()) {
-            java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
-                            Signature.Object_Object_int_Object_Object_Object_Object);
+            if (getJavaVersion().java17OrEarlier()) {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                                Signature.Object_Object_int_Object_Object_Object_Object);
+            } else {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                                Signature.Object_Object_Object_Object_Object_Object);
+            }
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
@@ -829,6 +879,16 @@ public final class Meta implements ContextAccess {
         interopDispatch = new InteropKlassesDispatch(this);
     }
 
+    private static void initializeEspressoClassInHierarchy(ObjectKlass klass) {
+        klass.initializeEspressoClass();
+        if (klass.getSuperKlass() != null) {
+            initializeEspressoClassInHierarchy(klass.getSuperKlass());
+        }
+        for (ObjectKlass k : klass.getSuperInterfaces()) {
+            initializeEspressoClassInHierarchy(k);
+        }
+    }
+
     /**
      * This method registers known classes that are NOT in {@code java.base} module after VM
      * initialization (/ex: {@code java.management}, {@code java.desktop}, etc...), or classes whose
@@ -907,7 +967,6 @@ public final class Meta implements ContextAccess {
     // Checkstyle: stop field name check
 
     public final ObjectKlass java_lang_Object;
-    public final Field HIDDEN_OBJECT_EXTENSION_FIELD;
     public final ArrayKlass java_lang_Object_array;
 
     public final ObjectKlass java_lang_String;
@@ -1003,6 +1062,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
 
+    public final ObjectKlass java_net_URL;
+
     public final ObjectKlass sun_launcher_LauncherHelper;
     public final Method sun_launcher_LauncherHelper_printHelpMessage;
     public final Field sun_launcher_LauncherHelper_ostream;
@@ -1075,6 +1136,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_NegativeArraySizeException;
     public final ObjectKlass java_lang_IllegalArgumentException;
     public final ObjectKlass java_lang_IllegalMonitorStateException;
+    public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
@@ -1165,11 +1227,13 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
-    public final Method java_lang_ThreadGroup_remove;
     public final Method java_lang_Thread_dispatchUncaughtException;
     public final Field java_lang_ThreadGroup_maxPriority;
     public final ObjectKlass java_lang_Thread;
+    public final ObjectKlass java_lang_Thread$FieldHolder;
+    public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
+    public final Field java_lang_Thread$FieldHolder_threadStatus;
     public final Field java_lang_Thread_tid;
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
@@ -1180,17 +1244,22 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
+    public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_INTERRUPTED;
+    public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
+    public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
     public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
     public final Field java_lang_Thread_group;
+    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
-    public final Field java_lang_Thread_blockerLock;
+    public final Field java_lang_Thread$FieldHolder_priority;
     public final Field java_lang_Thread_daemon;
+    public final Field java_lang_Thread$FieldHolder_daemon;
     public final Field java_lang_Thread_inheritedAccessControlContext;
 
     public final ObjectKlass java_lang_ref_Finalizer$FinalizerThread;
@@ -1409,6 +1478,7 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
     // used by class redefinition
+    public final Klass java_lang_Enum;
     @CompilationFinal public ObjectKlass java_lang_reflect_Proxy;
     @CompilationFinal public ObjectKlass sun_misc_ProxyGenerator;
     @CompilationFinal public Method sun_misc_ProxyGenerator_generateProxyClass;
@@ -1559,6 +1629,7 @@ public final class Meta implements ContextAccess {
         if (arg instanceof Double) {
             return meta.boxDouble((double) arg);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 
@@ -1636,6 +1707,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
         throw throwException(initException(exceptionKlass));
     }
@@ -1647,6 +1719,7 @@ public final class Meta implements ContextAccess {
      * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
      * {@link #java_lang_Throwable Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwException(@JavaType(Throwable.class) StaticObject throwable) {
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         throw EspressoException.wrap(throwable, this);
@@ -1664,6 +1737,7 @@ public final class Meta implements ContextAccess {
      *            Throwable}.
      * @param message the message to be used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
@@ -1680,6 +1754,7 @@ public final class Meta implements ContextAccess {
      *            Throwable}.
      * @param message the message to be used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
@@ -1697,6 +1772,7 @@ public final class Meta implements ContextAccess {
      * @param msgFormat the {@linkplain java.util.Formatter format string} to be used to construct
      *            the message used when initializing the exception
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String msgFormat, Object... args) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(EspressoError.format(msgFormat, args)));
     }
@@ -1709,6 +1785,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
+    @HostCompilerDirectives.InliningCutoff
     public EspressoException throwExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
     }
@@ -1739,7 +1816,7 @@ public final class Meta implements ContextAccess {
         assert !Types.isPrimitive(type);
         ObjectKlass k = loadKlassOrNull(type, classLoader);
         if (k == null) {
-            throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
+            throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
         return k;
     }
@@ -1778,7 +1855,11 @@ public final class Meta implements ContextAccess {
      */
     @TruffleBoundary
     public Klass loadKlassOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
-        return getRegistries().loadKlass(type, classLoader, protectionDomain);
+        try {
+            return getRegistries().loadKlass(type, classLoader, protectionDomain);
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(this);
+        }
     }
 
     @TruffleBoundary
@@ -1895,7 +1976,7 @@ public final class Meta implements ContextAccess {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        return stringConversion.toHost(str, this);
+        return stringConversion.toHost(str, getLanguage(), this);
     }
 
     @TruffleBoundary
@@ -1966,7 +2047,7 @@ public final class Meta implements ContextAccess {
                 return null;
             }
             if (guestObject.isArray()) {
-                return guestObject.unwrap();
+                return guestObject.unwrap(getLanguage());
             }
             if (guestObject.getKlass() == java_lang_String) {
                 return toHostString(guestObject);
@@ -1974,11 +2055,6 @@ public final class Meta implements ContextAccess {
             return unboxGuest((StaticObject) object);
         }
         return object;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     // region Guest Unboxing
@@ -2133,7 +2209,7 @@ public final class Meta implements ContextAccess {
             return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) hostPrimitive);
         }
 
-        throw EspressoError.shouldNotReachHere("Not a boxed type ", hostPrimitive);
+        throw EspressoError.shouldNotReachHere("Not a boxed type " + hostPrimitive);
     }
 
     // endregion Guest boxing
@@ -2143,7 +2219,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a boolean.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2160,7 +2236,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a byte.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2177,7 +2253,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a short.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2194,7 +2270,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a char.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2211,7 +2287,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to an int.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2228,7 +2304,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a float.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2245,7 +2321,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a double.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2262,7 +2338,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2279,7 +2355,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a Object value to a StaticObject.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
      */
@@ -2293,7 +2369,7 @@ public final class Meta implements ContextAccess {
     /**
      * Bitwise conversion from a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.
      *
@@ -2302,7 +2378,7 @@ public final class Meta implements ContextAccess {
      */
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             // Checkstyle: stop
             // @formatter:off
             if (value instanceof Boolean)   return ((boolean) value) ? 1 : 0;
@@ -2327,7 +2403,7 @@ public final class Meta implements ContextAccess {
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private StaticObject hotSpotMaybeNull(Object value) {
         assert !(value instanceof StaticObject);
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             return StaticObject.NULL;
         }
         throw EspressoError.shouldNotReachHere("Unexpected object:" + value);

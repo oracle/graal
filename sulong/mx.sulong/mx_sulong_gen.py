@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+from argparse import ArgumentParser
 
 import mx
 import mx_sulong
@@ -36,7 +37,7 @@ _suite = mx.suite('sulong')
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,7 +73,7 @@ COPYRIGHT_HEADER_BSD = """\
 
 COPYRIGHT_HEADER_BSD_HASH = """\
 #
-# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -199,5 +200,12 @@ def generate_llvm_config(args=None, **kwargs):
 
 @mx.command(_suite.name, "create-generated-sources", usage_msg="# recreate generated source files (parsers, config files)")
 def create_generated_sources(args=None, out=None):
+    parser = ArgumentParser(prog='mx create-generated-sources', description='recreate generated source files (parsers, config files)')
+    parser.add_argument('--check', action='store_true', help='check for differences, fail if anything changed')
+    parsed_args, args = parser.parse_known_args(args)
+
     create_parsers(args, out=out)
     generate_llvm_config(args, out=out)
+
+    if parsed_args.check:
+        mx.run(['git', 'diff', '--exit-code'])

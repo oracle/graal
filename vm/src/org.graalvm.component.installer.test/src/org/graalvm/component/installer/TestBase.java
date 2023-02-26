@@ -78,6 +78,16 @@ public class TestBase implements Feedback {
     public TestBase() {
     }
 
+    @Override
+    public boolean isSilent() {
+        return feedbackDelegate == null ? false : feedbackDelegate.isSilent();
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        return feedbackDelegate == null ? false : feedbackDelegate.setSilent(silent);
+    }
+
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
 
@@ -512,10 +522,21 @@ public class TestBase implements Feedback {
         public boolean isNonInteractive() {
             return TestBase.this.isNonInteractive();
         }
+
+        @Override
+        public boolean isSilent() {
+            return TestBase.this.isSilent();
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            return TestBase.this.setSilent(silent);
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
         private ResourceBundle currentBundle;
+        private boolean silent;
 
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
@@ -619,6 +640,18 @@ public class TestBase implements Feedback {
         @Override
         public boolean isNonInteractive() {
             return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return silent;
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            boolean wasSilent = this.silent;
+            this.silent = silent;
+            return wasSilent;
         }
     }
 

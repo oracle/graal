@@ -28,8 +28,8 @@ package hello;
 
 // Checkstyle: stop
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 
 public class Hello {
     public abstract static class Greeter {
@@ -92,6 +92,9 @@ public class Hello {
         inlineCallChain();
         noInlineThis();
         inlineFrom();
+        noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
+        noInlinePassConstants();
         System.exit(0);
     }
 
@@ -177,5 +180,53 @@ public class Hello {
             return;
         }
         inlineTailRecursion(n - 1);
+    }
+
+    @NeverInline("For testing purposes")
+    private static void noInlineManyArgs(int i0, int i1, int i2, int i3, boolean b4, int i5, int i6, long l7, int i8, long l9,
+                    float f0, float f1, float f2, float f3, double d4, float f5, float f6, float f7, float f8, double d9, boolean b10, float f11) {
+        System.out.println("i0 = " + i0);
+        System.out.println("i1 = " + i1);
+        System.out.println("i2 = " + i2);
+        System.out.println("i3 = " + i3);
+        System.out.println("b4 = " + b4);
+        System.out.println("i5 = " + i5);
+        System.out.println("i6 = " + i6);
+        System.out.println("i7 = " + l7);
+        System.out.println("i8 = " + i8);
+        System.out.println("l9 = " + l9);
+        System.out.println("f0 = " + f0);
+        System.out.println("f1 = " + f1);
+        System.out.println("f2 = " + f2);
+        System.out.println("f3 = " + f3);
+        System.out.println("d4 = " + d4);
+        System.out.println("f5 = " + f5);
+        System.out.println("f6 = " + f6);
+        System.out.println("f7 = " + f7);
+        System.out.println("f8 = " + f8);
+        System.out.println("d9 = " + d9);
+        System.out.println("b10 = " + b10);
+        System.out.println("f11 = " + f11);
+    }
+
+    @NeverInline("For testing purposes")
+    private static void noInlinePassConstants() {
+        inlineReceiveConstants((byte) 1, 2, 3L, "stringtext", 4.0F, 5.0D);
+    }
+
+    @AlwaysInline("For testing purposes")
+    private static void inlineReceiveConstants(byte b, int i, long l, String s, float f, double d) {
+        long n = i * l;
+        double q = f * d;
+        String t = s + "!";
+        System.out.println(String.format("b = %d\n", b));
+        System.out.println(String.format("i = %d\n", i));
+        System.out.println(String.format("l = %d\n", l));
+        System.out.println(String.format("s = %s\n", s));
+        System.out.println(String.format("f = %g\n", f));
+        System.out.println(String.format("d = %g\n", d));
+        System.out.println(String.format("n = %d\n", n));
+        System.out.println(String.format("q = %g\n", q));
+        System.out.println(String.format("t = %s\n", t));
     }
 }

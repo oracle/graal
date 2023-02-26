@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -55,7 +57,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
@@ -63,37 +64,38 @@ import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 @RunWith(Parameterized.class)
 public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
-    static final com.oracle.truffle.api.object.Layout longLayout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(
-                    com.oracle.truffle.api.object.Layout.ImplicitCast.IntToLong).build();
-    static final com.oracle.truffle.api.object.Layout doubleLayout = com.oracle.truffle.api.object.Layout.newLayout().addAllowedImplicitCast(
-                    com.oracle.truffle.api.object.Layout.ImplicitCast.IntToDouble).build();
-
     @Parameters
     public static Collection<Object[]> data() {
         List<Object[]> params = new ArrayList<>();
 
         for (TestRun run : TestRun.values()) {
-            params.add(new Object[]{run, longLayout, 1, 1L << 42, long.class});
-            params.add(new Object[]{run, doubleLayout, 1, 3.14, double.class});
+            params.add(new Object[]{run, 1, 1L << 42, long.class});
+            params.add(new Object[]{run, 1, 3.14, double.class});
         }
 
         return Collections.unmodifiableList(params);
     }
 
-    @Parameter(1) public com.oracle.truffle.api.object.Layout layout;
-    @Parameter(2) public int intVal;
-    @Parameter(3) public Object otherVal;
-    @Parameter(4) public Class<?> otherPrimClass;
+    @Parameter(1) public int intVal;
+    @Parameter(2) public Object otherVal;
+    @Parameter(3) public Class<?> otherPrimClass;
 
-    @SuppressWarnings("deprecation")
-    private static Class<?> getLocationType(Location location) {
-        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
+    private DynamicObject newInstanceWithImplicitCast() {
+        Shape.Builder b = Shape.newBuilder();
+        b.allowImplicitCastIntToLong(otherPrimClass == long.class);
+        b.allowImplicitCastIntToDouble(otherPrimClass == double.class);
+        Shape rootShape = b.build();
+        return new TestDynamicObjectDefault(rootShape);
+    }
+
+    private static DynamicObject newInstance() {
+        Shape rootShape = Shape.newBuilder().build();
+        return new TestDynamicObjectDefault(rootShape);
     }
 
     @Test
     public void testIntOther() {
-        Shape rootShape = layout.createShape(new ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -110,8 +112,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testOtherInt() {
-        Shape rootShape = layout.createShape(new ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -128,8 +129,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntOtherDoesNotGoBack() {
-        Shape rootShape = layout.createShape(new ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -152,8 +152,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntObject() {
-        Shape rootShape = layout.createShape(new ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -166,8 +165,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testIntOtherObject() {
-        Shape rootShape = layout.createShape(new ObjectType());
-        DynamicObject object = rootShape.newInstance();
+        DynamicObject object = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
@@ -181,11 +179,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        com.oracle.truffle.api.object.Layout defaultLayout = com.oracle.truffle.api.object.Layout.newLayout().build();
-        Shape defaultRootShape = defaultLayout.createShape(new ObjectType());
-        Shape implicitCastRootShape = layout.createShape(new ObjectType());
-
-        DynamicObject object1 = implicitCastRootShape.newInstance();
+        DynamicObject object1 = newInstanceWithImplicitCast();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object1);
 
@@ -196,7 +190,7 @@ public class ImplicitCastTest extends AbstractParametrizedLibraryTest {
         library.putIfPresent(object1, "a", intVal);
         Assert.assertEquals(location1, object1.getShape().getProperty("a").getLocation());
 
-        DynamicObject object2 = defaultRootShape.newInstance();
+        DynamicObject object2 = newInstance();
         library.put(object2, "a", otherVal);
         Location location2 = object2.getShape().getProperty("a").getLocation();
 

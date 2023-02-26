@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,13 @@ import org.graalvm.options.OptionValues;
 
 public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
-    @CompilationFinal private OptionValues optionValues;
+    @CompilationFinal private boolean signExtensionOps;
+    @CompilationFinal private boolean keepDataSections;
+    @CompilationFinal private boolean multiValue;
+    @CompilationFinal private boolean bulkMemoryAndRefTypes;
+
+    @CompilationFinal private boolean memoryOverheadMode;
+    private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
         this.optionValues = optionValues;
@@ -59,21 +65,51 @@ public class WasmContextOptions {
     }
 
     private void setOptionValues() {
-        this.saturatingFloatToInt = readBooleanOption(WasmOptions.SATURATING_FLOAT_TO_INT);
+        this.saturatingFloatToInt = readBooleanOption(WasmOptions.SaturatingFloatToInt);
+        this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
+        this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
+        this.multiValue = readBooleanOption(WasmOptions.MultiValue);
+        this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
+        this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
         return key.getValue(optionValues);
     }
 
-    public boolean isSaturatingFloatToInt() {
+    public boolean supportSaturatingFloatToInt() {
         return saturatingFloatToInt;
+    }
+
+    public boolean supportSignExtensionOps() {
+        return signExtensionOps;
+    }
+
+    public boolean keepDataSections() {
+        return keepDataSections;
+    }
+
+    public boolean supportMultiValue() {
+        return multiValue;
+    }
+
+    public boolean supportBulkMemoryAndRefTypes() {
+        return bulkMemoryAndRefTypes;
+    }
+
+    public boolean memoryOverheadMode() {
+        return memoryOverheadMode;
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
         hash = 53 * hash + (this.saturatingFloatToInt ? 1 : 0);
+        hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
+        hash = 53 * hash + (this.keepDataSections ? 1 : 0);
+        hash = 53 * hash + (this.multiValue ? 1 : 0);
+        hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
+        hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         return hash;
     }
 
@@ -90,6 +126,21 @@ public class WasmContextOptions {
         }
         final WasmContextOptions other = (WasmContextOptions) obj;
         if (this.saturatingFloatToInt != other.saturatingFloatToInt) {
+            return false;
+        }
+        if (this.signExtensionOps != other.signExtensionOps) {
+            return false;
+        }
+        if (this.keepDataSections != other.keepDataSections) {
+            return false;
+        }
+        if (this.multiValue != other.multiValue) {
+            return false;
+        }
+        if (this.bulkMemoryAndRefTypes != other.bulkMemoryAndRefTypes) {
+            return false;
+        }
+        if (this.memoryOverheadMode != other.memoryOverheadMode) {
             return false;
         }
         return true;

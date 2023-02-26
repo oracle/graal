@@ -22,63 +22,39 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InvokeHandleNode extends QuickNode {
-
-    private final Method method;
-    final int resultAt;
-
-    @CompilationFinal(dimensions = 1) //
-    private final Symbol<Type>[] parsedSignature;
+public final class InvokeHandleNode extends InvokeQuickNode {
 
     @Child private MethodHandleIntrinsicNode intrinsic;
     private final boolean hasReceiver;
     private final int argCount;
-    private final int parameterCount;
-    private final JavaKind rKind;
-    private final boolean returnsPrimitiveType;
 
     public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
-        super(top, curBCI);
-        this.method = method;
-        this.parsedSignature = method.getParsedSignature();
+        super(method, top, curBCI);
         this.hasReceiver = !method.isStatic();
-        this.intrinsic = method.spawnIntrinsicNode(accessingKlass, method.getName(), method.getRawSignature());
+        this.intrinsic = insert(method.spawnIntrinsicNode(getLanguage(), getContext().getMeta(), accessingKlass, method.getName(), method.getRawSignature()));
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
-        this.parameterCount = method.getParameterCount();
-        this.rKind = method.getReturnKind();
-        this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
-        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
+    }
+
+    @Override
+    protected Object[] getArguments(VirtualFrame frame) {
+        Object[] args = new Object[argCount];
+        EspressoFrame.popBasicArgumentsWithArray(frame, top, method.getMethod().getParsedSignature(), hasReceiver, args);
+        return args;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        Object[] args = new Object[argCount];
+        Object[] args = getArguments(frame);
         if (hasReceiver) {
-            args[0] = nullCheck(BytecodeNode.peekReceiver(frame, top, method));
+            nullCheck((StaticObject) args[0]);
         }
-        BytecodeNode.popBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
-        Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
-        if (!returnsPrimitiveType) {
-            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
-        }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getReturnKind());
-    }
-
-    private int getResultAt() {
-        return resultAt;
+        return pushResult(frame, intrinsic.processReturnValue(intrinsic.call(args), method.getMethod().getReturnKind()));
     }
 }

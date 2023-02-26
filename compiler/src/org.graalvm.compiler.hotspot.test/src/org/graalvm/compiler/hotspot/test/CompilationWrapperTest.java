@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=ExitVM",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -78,6 +79,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.ExitVMOnException=true",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -148,6 +150,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=TestProgram.*",
@@ -167,7 +170,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -203,7 +206,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }

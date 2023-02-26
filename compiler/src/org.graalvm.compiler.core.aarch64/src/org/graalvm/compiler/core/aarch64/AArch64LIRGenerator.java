@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,13 +28,14 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -46,29 +47,45 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64AESDecryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CalcStringAttributesOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESDecryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CompareBranchZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
+import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
+import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
+import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import org.graalvm.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
@@ -145,6 +162,21 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
     }
 
+    /**
+     * Returns the appropriate value to use within a comparison if the value is a pointer constant;
+     * if not, returns the original value.
+     */
+    protected Value getCompareValueForConstantPointer(Value v) {
+        if (LIRValueUtil.isNullConstant(v)) {
+            AArch64ArithmeticLIRGenerator arithLir = ((AArch64ArithmeticLIRGenerator) arithmeticLIRGen);
+            JavaConstant constant = asJavaConstant(v);
+            if (arithLir.mustReplaceNullWithNullRegister(constant)) {
+                return arithLir.getNullRegisterValue();
+            }
+        }
+        return v;
+    }
+
     @Override
     public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
         emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder);
@@ -180,7 +212,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
         AArch64Kind memKind = (AArch64Kind) integerAccessKind.getPlatformKind();
-        Variable result = newVariable(integerAccessKind);
+        Variable result = newVariable(toRegisterKind(integerAccessKind));
         AllocatableValue allocatableExpectedValue = asAllocatable(reinterpretedExpectedValue);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue);
         append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
@@ -194,16 +226,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
-        Variable result = newVariable(kind);
-        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(new AtomicReadAndWriteOp((AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
         return result;
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
-        Variable result = newVariable(kind);
-        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), delta));
+    public Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
+        Variable result = newVariable(toRegisterKind(accessKind));
+        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) accessKind.getPlatformKind(), result, asAllocatable(address), delta));
         return result;
     }
 
@@ -259,12 +291,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      */
     @Override
     public Variable emitConditionalMove(PlatformKind cmpKind, Value left, final Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        AArch64ArithmeticLIRGenerator arithLir = ((AArch64ArithmeticLIRGenerator) arithmeticLIRGen);
-        Value actualRight = right;
-        if (isJavaConstant(actualRight) && arithLir.mustReplaceNullWithNullRegister((asJavaConstant(actualRight)))) {
-            actualRight = arithLir.getNullRegisterValue();
-        }
-        boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
+        boolean mirrored = emitCompare(cmpKind, left, right, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         // Note mirroring does *not* affect unorderedIsTrue
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
@@ -283,36 +310,26 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitCompareBranch(PlatformKind cmpKind, Value left, final Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
                     double trueDestinationProbability) {
-        Value actualRight = right;
-        if (cond == Condition.EQ) {
-            // emit cbz instruction for IsNullNode.
-            assert !LIRValueUtil.isNullConstant(left) : "emitNullCheckBranch()'s null input should be in right.";
-            AArch64ArithmeticLIRGenerator arithLir = ((AArch64ArithmeticLIRGenerator) arithmeticLIRGen);
-            if (LIRValueUtil.isNullConstant(actualRight)) {
-                JavaConstant rightConstant = asJavaConstant(actualRight);
-                if (arithLir.mustReplaceNullWithNullRegister(rightConstant)) {
-                    actualRight = arithLir.getNullRegisterValue();
-                } else {
-                    append(new CompareBranchZeroOp(asAllocatable(left), trueDestination, falseDestination,
-                                    trueDestinationProbability));
-                    return;
-                }
-            }
+        Value leftVal = getCompareValueForConstantPointer(left);
+        Value rightVal = getCompareValueForConstantPointer(right);
 
-            // emit cbz instruction for IntegerEquals when any of the inputs is zero.
-            AArch64Kind kind = (AArch64Kind) cmpKind;
-            if (kind.isInteger()) {
-                if (isIntConstant(left, 0)) {
-                    append(new CompareBranchZeroOp(asAllocatable(actualRight), trueDestination, falseDestination, trueDestinationProbability));
-                    return;
-                } else if (isIntConstant(actualRight, 0)) {
-                    append(new CompareBranchZeroOp(asAllocatable(left), trueDestination, falseDestination, trueDestinationProbability));
-                    return;
-                }
+        if (cond == Condition.EQ) {
+            // try to use cbz instruction for comparisons against zero
+            boolean leftZero = LIRValueUtil.isNullConstant(leftVal) || isIntConstant(leftVal, 0);
+            boolean rightZero = LIRValueUtil.isNullConstant(rightVal) || isIntConstant(rightVal, 0);
+
+            if (rightZero) {
+                append(new CompareBranchZeroOp(asAllocatable(leftVal), trueDestination, falseDestination,
+                                trueDestinationProbability));
+                return;
+            } else if (leftZero) {
+                append(new CompareBranchZeroOp(asAllocatable(rightVal), trueDestination, falseDestination,
+                                trueDestinationProbability));
+                return;
             }
         }
 
-        boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
+        boolean mirrored = emitCompare(cmpKind, leftVal, rightVal, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         // Note mirroring does *not* affect unorderedIsTrue
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
@@ -391,6 +408,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
 
+        Value aVal = getCompareValueForConstantPointer(a);
+        Value bVal = getCompareValueForConstantPointer(b);
         /*
          * AArch64 compares 32 or 64 bits. Note currently the size of the comparison within
          * AArch64Compare is based on the size of the operands, not the comparison size provided.
@@ -398,9 +417,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
          * This minimum comparison size is defined in
          * AArch64LoweringProviderMixin::smallestCompareWidth.
          */
-        assert a.getPlatformKind() == b.getPlatformKind();
+        assert aVal.getPlatformKind() == bVal.getPlatformKind();
         int cmpBitSize = cmpKind.getSizeInBytes() * Byte.SIZE;
-        GraalError.guarantee(cmpBitSize >= 32 && cmpKind == a.getPlatformKind(), "Unexpected comparison parameters.");
+        GraalError.guarantee(cmpBitSize >= 32 && cmpKind == aVal.getPlatformKind(), "Unexpected comparison parameters.");
 
         /*
          * The AArch64 integer comparison instruction left operand can be the stack pointer register
@@ -411,17 +430,17 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         boolean aIsConstant;
         boolean bIsConstant;
         if (kind.isInteger()) {
-            aIsStackPointer = ValueUtil.isRegister(a) && ValueUtil.asRegister(a).equals(AArch64.sp);
-            bIsStackPointer = ValueUtil.isRegister(b) && ValueUtil.asRegister(b).equals(AArch64.sp);
-            aIsConstant = AArch64Compare.CompareOp.isCompareConstant(a);
-            bIsConstant = AArch64Compare.CompareOp.isCompareConstant(b);
+            aIsStackPointer = ValueUtil.isRegister(aVal) && ValueUtil.asRegister(aVal).equals(AArch64.sp);
+            bIsStackPointer = ValueUtil.isRegister(bVal) && ValueUtil.asRegister(bVal).equals(AArch64.sp);
+            aIsConstant = AArch64Compare.CompareOp.isCompareConstant(aVal);
+            bIsConstant = AArch64Compare.CompareOp.isCompareConstant(bVal);
         } else {
             assert kind.isSIMD();
             // sp is an integer register
             aIsStackPointer = false;
             bIsStackPointer = false;
-            aIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(a, condition, unorderedIsTrue);
-            bIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(b, condition, unorderedIsTrue);
+            aIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(aVal, condition, unorderedIsTrue);
+            bIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(bVal, condition, unorderedIsTrue);
         }
 
         if (aIsStackPointer && bIsStackPointer) {
@@ -429,15 +448,15 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
              * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence, sp
              * must be moved to a register.
              */
-            left = right = emitMove(a);
+            left = right = emitMove(aVal);
             mirrored = false;
         } else if (bIsStackPointer || (aIsConstant && !bIsConstant)) {
-            left = b;
-            right = a;
+            left = bVal;
+            right = aVal;
             mirrored = true;
         } else {
-            left = a;
-            right = bIsConstant ? b : asAllocatable(b);
+            left = aVal;
+            right = bIsConstant ? bVal : asAllocatable(bVal);
             mirrored = false;
         }
         left = asAllocatable(left);
@@ -472,18 +491,22 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
-                    Function<Condition, ConditionFlag> converter) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, ConditionFlag> converter) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key));
+    }
+
+    @Override
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, asAllocatable(hash)));
     }
 
     @Override
@@ -494,33 +517,214 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length1, Value length2) {
+    public Variable emitArrayCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
         LIRKind resultKind = LIRKind.value(AArch64Kind.DWORD);
         // DMS TODO: check calling conversion and registers used
         RegisterValue res = AArch64.r0.asValue(resultKind);
-        RegisterValue cnt1 = AArch64.r1.asValue(length1.getValueKind());
-        RegisterValue cnt2 = AArch64.r2.asValue(length2.getValueKind());
-        emitMove(cnt1, length1);
-        emitMove(cnt2, length2);
-        append(new AArch64ArrayCompareToOp(this, kind1, kind2, array1BaseOffset, array2BaseOffset, res, array1, array2, cnt1, cnt2));
+        RegisterValue cntA = AArch64.r1.asValue(lengthA.getValueKind());
+        RegisterValue cntB = AArch64.r2.asValue(lengthB.getValueKind());
+        emitMove(cntA, lengthA);
+        emitMove(cntB, lengthB);
+        append(new AArch64ArrayCompareToOp(this, strideA, strideB, res, arrayA, cntA, arrayB, cntB));
         Variable result = newVariable(resultKind);
         emitMove(result, res);
         return result;
     }
 
-    @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
-        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result, array1, array2, asAllocatable(length), directPointers));
+    private AllocatableValue emitConvertNullToZero(Value value) {
+        AllocatableValue result = newVariable(LIRKind.unknownReference(target().arch.getWordKind()));
+        emitConvertNullToZero(result, value);
         return result;
     }
 
     @Override
-    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
-        assert searchValues.length == 1;
+    public Variable emitArrayRegionCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex),
-                        asAllocatable(searchValues[0])));
+        append(new AArch64ArrayRegionCompareToOp(this, strideA, strideB, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayRegionCompareTo(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayRegionCompareToOp(this, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(dynamicStrides)));
+        return result;
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        append(new AArch64ArrayCopyWithConversionsOp(this, strideSrc, strideDst,
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
+        append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
+        GraalError.guarantee(!kind.isNumericFloat(), "Float arrays comparison (bitwise_equal || both_NaN) isn't supported on AARCH64");
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        Stride stride = Stride.fromJavaKind(kind);
+        append(new AArch64ArrayEqualsOp(this, stride, stride, stride, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideB, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, null, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, asAllocatable(dynamicStrides)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsWithMask(Stride strideA, Stride strideB, Stride strideMask, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB,
+                    Value mask, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideMask, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask), null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsWithMaskDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length,
+                    Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, null, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask),
+                        asAllocatable(dynamicStrides)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        AllocatableValue[] allocatableSearchValues = new AllocatableValue[searchValues.length];
+        for (int i = 0; i < searchValues.length; i++) {
+            allocatableSearchValues[i] = asAllocatable(searchValues[i]);
+        }
+        append(new AArch64ArrayIndexOfOp(stride, findTwoConsecutive, withMask, this, result, emitConvertNullToZero(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
+                        asAllocatable(fromIndex), allocatableSearchValues));
+        return result;
+    }
+
+    @Override
+    public Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
+        return result;
+    }
+
+    @Override
+    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
+        return result;
+    }
+
+    @Override
+    public void emitAESEncrypt(Value from, Value to, Value key) {
+        append(new AArch64AESEncryptOp(asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public void emitAESDecrypt(Value from, Value to, Value key) {
+        append(new AArch64AESDecryptOp(asAllocatable(from), asAllocatable(to), asAllocatable(key), getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+    }
+
+    @Override
+    public Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CounterModeAESCryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(counterAddr),
+                        asAllocatable(len),
+                        asAllocatable(encryptedCounterAddr),
+                        asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESEncryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESDecryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
+        append(new AArch64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
+    }
+
+    @Override
+    public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        append(new AArch64BigIntegerMultiplyToLenOp(asAllocatable(x), asAllocatable(xlen), asAllocatable(y), asAllocatable(ylen), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, boolean assumeValid) {
+        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AArch64Kind.QWORD : AArch64Kind.DWORD));
+        append(new AArch64CalcStringAttributesOp(this, encoding, emitConvertNullToZero(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
+        return result;
+    }
+
+    @Override
+    public void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
+        append(new AArch64StringLatin1InflateOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len)));
+    }
+
+    @Override
+    public Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64StringUTF16CompressOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len), result));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64VectorizedMismatchOp(this, result, asAllocatable(arrayA), asAllocatable(arrayB), asAllocatable(length), asAllocatable(stride)));
         return result;
     }
 

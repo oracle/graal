@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,12 +32,16 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -50,12 +54,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.ResolveFunctionNode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.UnsupportedNativeTypeException;
-import com.oracle.truffle.llvm.runtime.ToolchainConfig;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
@@ -67,41 +69,70 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
+import com.oracle.truffle.nfi.api.NativePointerLibrary;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
     protected final FunctionType type;
+    @CompilationFinal LLVMFunction aotFixedIntrinsicFunction;
 
-    @CompilationFinal private Source signatureSource;
+    @CompilationFinal protected Source signatureSource;
     @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
 
-    private final LLVMFunction llvmFunction;
-    @CompilationFinal private Object signature;
+    @Child private AOTInitHelper aotInitHelper;
+    @CompilationFinal private boolean aot;
 
     protected LLVMDispatchNode(FunctionType type, LLVMFunction llvmFunction) {
         this.type = type;
-        this.llvmFunction = llvmFunction;
 
         LLVMContext context = LLVMLanguage.getContext();
-        if (llvmFunction != null && context != null) {
-            // Early parsing of the function's signature. It makes sense only when the function is
-            // known (llvmFunction != null).
-            // The signature is bound with the native symbol later, as it is not known at this
-            // point. See createNativeSymbolExecutorNode.
+
+        if (context != null && context.isAOTCacheStore()) {
+            // We need to pre-initialize an intrinsic function by generating its call target. It
+            // cannot be done in the constructor code as it is too early for
+            // llvmFunction.getFixedCode() to return the intrinsic.
+            // Therefore, the pre-initialization must be postponed to the AOT preparation stage
+            // using the AOTInitHelper.
+            aotInitHelper = new AOTInitHelper((language, root) -> {
+                if (llvmFunction != null) {
+                    if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
+                        LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
+                        llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+                    }
+                }
+                aot = true;
+                // Throw the helper AOT init node away as it is used during the AOT preparation
+                // stage only
+                aotInitHelper = null;
+            });
+
+            // Early parsing of the function's signature for the sake of the AOT preparation
             try {
                 nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
-                if (nativeCtxExtKey != null) {
+                /*
+                 * Here, we are interested in native functions only and so it assumed that native
+                 * functions have always at least one argument, the stack argument. Of course, it
+                 * actually parses signatures of other functions, but the result will not be used.
+                 */
+                if (nativeCtxExtKey != null && type.getNumberOfArguments() > 0) {
                     NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
                     signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);
-                    signature = nativeContextExtension.createSignature(signatureSource);
                 }
             } catch (UnsupportedNativeTypeException e) {
                 // ignore it
+                throw new RuntimeException(e);
             }
+        } else {
+            aotInitHelper = new AOTInitHelper((language, root) -> {
+                aot = true;
+                aotInitHelper = null;
+            });
         }
     }
 
@@ -198,26 +229,25 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
                     @Cached("create()") IndirectCallNode callNode) {
-        return callNode.call(descriptor.getFunctionCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
-    }
-
-    NativeSymbolExecutorNode createNativeSymbolExecutorNode() {
-        if (llvmFunction != null && signature != null) {
-            // Attempt to create FixedNativeSymbolExecutorNode to execute the known function symbol
-
-            // Get the NFI symbol of the function. N.B. It is associated with llvmFunction in
-            // AllocExternalFunctionNode.
-            Object nfiSymbol = llvmFunction.getNFISymbol();
-            if (nfiSymbol != null && llvmFunction.getFixedCodeAssumption().isValid() && llvmFunction.getFixedCode() != null &&
-                            llvmFunction.getFixedCode().isNativeFunction(LLVMFunctionCodeFactory.ResolveFunctionNodeGen.getUncached())) {
-                ToolchainConfig tcCap = LLVMLanguage.get(this).getCapability(ToolchainConfig.class);
-                Object tmpNativeBoundSymbol = tcCap.bind(signature, nfiSymbol);
-                if (tmpNativeBoundSymbol != null) {
-                    return new FixedNativeSymbolExecutorNode(tmpNativeBoundSymbol);
-                }
-            }
+        RootCallTarget intrinsicCallTarget;
+        if (aotFixedIntrinsicFunction != null && aotFixedIntrinsicFunction.getFixedCodeAssumption().isValid()) {
+            // This branch cannot be factored out to another specialization guarded by
+            // aotFixedIntrinsicFunction.getFixedCodeAssumption() since aotFixedIntrinsicFunction
+            // is not yet initialized (by this.aotInitHelper) upon the execution of prepareForAOT
+            // (see AOTInitHelper). As aotFixedIntrinsicFunction is still null at that point,
+            // the respective specialization would not be included in the list of AOT
+            // specialization.
+            intrinsicCallTarget = aotFixedIntrinsicFunction.getFixedCode().getIntrinsic(resolve).cachedCallTarget(type);
+        } else {
+            LLVMFunctionCode.Intrinsic intrinsic = descriptor.getFunctionCode().getIntrinsic(resolve);
+            // In the AOT mode, the call target must be retrieved via the slow path as it may (is?)
+            // not
+            // cached yet and caching it would generate a deopt. Most of the code parts in
+            // cachedCallTarget are beyond
+            // the TB anyway.
+            intrinsicCallTarget = aot ? intrinsic.cachedCallTargetSlowPath(type) : intrinsic.cachedCallTarget(type);
         }
-        return LLVMDispatchNodeGen.NonFixedNativeSymbolExecutorNodeGen.create();
+        return callNode.call(intrinsicCallTarget, arguments);
     }
 
     /*
@@ -225,9 +255,9 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
+    @GenerateAOT.Exclude
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()",
                     "haveNativeCtxExt()"}, assumptions = "singleContextAssumption()")
-    @GenerateAOT.Exclude
     protected Object doCachedNativeFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
@@ -237,16 +267,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @Cached("bindSymbol(cachedFunctionCode)") Object cachedBoundFunction,
                     @CachedLibrary("cachedBoundFunction") InteropLibrary nativeCall,
                     @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
-
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, nativeCall, cachedBoundFunction, nativeArgs, cachedDescriptor);
         return fromNative.executeConvert(returnValue);
     }
 
+    @GenerateAOT.Exclude
     @Specialization(replaces = "doCachedNativeFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode",
                     "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
-    @GenerateAOT.Exclude
     protected Object doCachedNativeCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
@@ -262,7 +291,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
-    @TruffleBoundary
+    @CompilerDirectives.TruffleBoundary
     private static Object doBind(NativeContextExtension ctxExt, LLVMFunctionCode functionCode, Source signatureSource) {
         return ctxExt.bindSignature(functionCode, signatureSource);
     }
@@ -277,24 +306,43 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doNative(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                    @Cached("createNativeSymbolExecutorNode()") NativeSymbolExecutorNode nativeSymbolExecutorNode,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached @SuppressWarnings("unused") ResolveFunctionNode resolve,
                     @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
 
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object boundSymbol = bindSymbol(descriptor.getFunctionCode());
         Object returnValue;
-        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, nativeSymbolExecutorNode, boundSymbol, nativeArgs, descriptor);
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, interop, boundSymbol, nativeArgs, descriptor);
         return fromNative.executeConvert(returnValue);
     }
 
-    @Specialization(guards = {"descriptor.getFunctionCode().isNativeFunction(resolve)", "nativeSymbolExecutorNode.hasFixedSymbol()"})
+    boolean isPointerReturnType() {
+        return type.getReturnType() instanceof PointerType;
+    }
+
+    @Specialization(guards = {"signatureSource != null", "descriptor.getFunctionCode().isNativeFunction(resolve)"})
     protected Object doNativeAOT(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                    @Cached("createNativeSymbolExecutorNode()") NativeSymbolExecutorNode nativeSymbolExecutorNode,
+                    @Cached("isPointerReturnType()") boolean isPointerReturnType,
+                    @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
+                    @CachedLibrary(limit = "1") NativePointerLibrary nativePointerLibrary,
                     @Cached @SuppressWarnings("unused") ResolveFunctionNode resolve) {
-        return doNative(descriptor, arguments, toNative, fromNative, nativeSymbolExecutorNode, resolve, false);
+        try {
+            Object signature = getNativeCtxExt().createSignature(signatureSource);
+            Object nativeFunction = descriptor.getFunctionCode().getNativeFunction(resolve);
+            Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
+            Object returnValue = signatureLibrary.call(signature, nativeFunction, nativeArgs);
+            if (isPointerReturnType && nativePointerLibrary.isPointer(returnValue)) {
+                // By using the raw long value we can avoid using interop in the subsequent
+                // conversion
+                returnValue = nativePointerLibrary.asPointer(returnValue);
+            }
+            return fromNative.executeConvert(returnValue);
+        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     @ExplodeLoop
@@ -319,13 +367,32 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeConvertNode.createFromNative(type.getReturnType());
     }
 
-    @Specialization(guards = {"foreigns.isForeign(receiver)"})
+    @Specialization(guards = {"foreigns.isForeign(receiver)", "interopLibrary.isExecutable(foreignFunction)"})
     @GenerateAOT.Exclude
-    protected Object doForeign(Object receiver, Object[] arguments,
-                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+    protected Object doForeignExecutable(Object receiver, Object[] arguments,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") NativeTypeLibrary natives,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        return lookupDispatchForeignNode.execute(foreigns.asForeign(receiver), natives.getNativeType(receiver), arguments);
+        return lookupDispatchForeignNode.execute(foreignFunction, natives.getNativeType(receiver), arguments);
+    }
+
+    @Specialization(guards = {"foreigns.isForeign(receiver)", "!interopLibrary.isExecutable(foreignFunction)",
+                    "interopLibrary.isPointer(foreignFunction)"})
+    @GenerateAOT.Exclude
+    protected Object doForeignPointer(@SuppressWarnings("unused") Object receiver, Object[] arguments,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") InteropLibrary interopLibrary,
+                    @Bind("foreigns.asForeign(receiver)") Object foreignFunction,
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode,
+                    @Cached BranchProfile exception) {
+        try {
+            return dispatchNode.executeDispatch(LLVMNativePointer.create(interopLibrary.asPointer(foreignFunction)), arguments);
+        } catch (UnsupportedMessageException | IllegalStateException e) {
+            exception.enter();
+            throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
+        }
     }
 
     @Specialization(guards = "haveNativeCtxExt()")
@@ -386,6 +453,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             try {
                 Object[] args = getForeignArguments(dataEscapeNodes, arguments, functionType, exception);
                 Object ret;
+
                 ret = crossLanguageCall.execute(function, args);
                 if (!isVoidReturn && functionType != null) {
                     LLVMInteropType retType = functionType.getReturnType();
@@ -460,49 +528,4 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             return LLVMLookupDispatchForeignNodeGen.create(type);
         }
     }
-
-    public abstract static class NativeSymbolExecutorNode extends LLVMNode {
-
-        abstract Object execute(Object receiver, Object[] args) throws InteropException;
-
-        abstract boolean hasFixedSymbol();
-
-    }
-
-    public static final class FixedNativeSymbolExecutorNode extends NativeSymbolExecutorNode {
-        final Object nativeSymbol;
-        @Child InteropLibrary fixedInterop;
-
-        FixedNativeSymbolExecutorNode(Object nativeSymbol) {
-            this.nativeSymbol = nativeSymbol;
-            this.fixedInterop = InteropLibrary.getFactory().create(this.nativeSymbol);
-        }
-
-        @Override
-        Object execute(Object receiver, Object[] args) throws InteropException {
-            return fixedInterop.execute(receiver, args);
-        }
-
-        @Override
-        boolean hasFixedSymbol() {
-            return true;
-        }
-
-    }
-
-    public abstract static class NonFixedNativeSymbolExecutorNode extends NativeSymbolExecutorNode {
-
-        @Specialization
-        @GenerateAOT.Exclude
-        Object executeDynamic(Object receiver, Object[] args,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) throws InteropException {
-            return interop.execute(receiver, args);
-        }
-
-        @Override
-        boolean hasFixedSymbol() {
-            return false;
-        }
-    }
-
 }

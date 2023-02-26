@@ -24,31 +24,22 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(SecureClassLoader.class)
 public final class Target_java_security_SecureClassLoader {
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class) //
     Map<Target_java_security_SecureClassLoader_CodeSourceKey, ProtectionDomain> pdcache;
-
-    @TargetElement(name = "pdcache", onlyWith = JDK8OrEarlier.class) //
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class) //
-    HashMap<CodeSource, ProtectionDomain> pdcacheJDK8OrEarlier;
 }
 
-@TargetClass(value = SecureClassLoader.class, innerClass = "CodeSourceKey", onlyWith = JDK11OrLater.class)
+@TargetClass(value = SecureClassLoader.class, innerClass = "CodeSourceKey")
 final class Target_java_security_SecureClassLoader_CodeSourceKey {
 }

@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,19 +39,25 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -111,11 +116,16 @@ public class AnalysisUniverse implements Universe {
     private final SnippetReflectionProvider snippetReflection;
     private final AnalysisFactory analysisFactory;
 
+    private final AtomicInteger numReachableTypes = new AtomicInteger();
+
     private AnalysisType objectClass;
     private AnalysisType cloneableClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
+    private ImageHeapScanner heapScanner;
+    private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
+    private DuringAnalysisAccess concurrentAnalysisAccess;
 
     public JavaKind getWordKind() {
         return wordKind;
@@ -123,8 +133,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
+                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -210,7 +219,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
-        if (!hostVM.platformSupported(this, type)) {
+        if (!hostVM.platformSupported(type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
@@ -263,7 +272,7 @@ public class AnalysisUniverse implements Universe {
 
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
-            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass, cloneableClass);
+            AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
                 /*
@@ -306,18 +315,6 @@ public class AnalysisUniverse implements Universe {
             Object oldValue = types.put(type, newValue);
             assert oldValue == claim;
             claim = null;
-
-            ResolvedJavaType enclosingType = null;
-            try {
-                enclosingType = newValue.getWrapped().getEnclosingType();
-            } catch (LinkageError e) {
-                /* Ignore LinkageError thrown by enclosing type resolution. */
-            }
-            /* If not being currently constructed by this thread. */
-            if (enclosingType != null && !types.containsKey(enclosingType)) {
-                /* Make sure that the enclosing type is also in the universe. */
-                newValue.getEnclosingType();
-            }
 
             return newValue;
 
@@ -369,8 +366,31 @@ public class AnalysisUniverse implements Universe {
              * it during constant folding.
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
-            declaringType.registerAsReachable();
+            declaringType.registerAsReachable(field);
             declaringType.ensureInitialized();
+
+            /*
+             * Ensure that all reachability handler that were present at the time the type was
+             * marked as reachable are executed before creating the field. This allows field value
+             * transformer to be installed reliably in reachability handler.
+             *
+             * This is necessary because field value transformer are currently implemented via
+             * ComputedValueField that are injected into the substitution universe. A
+             * ComputedValueField added after the AnalysisField is created would be ignored. In the
+             * future, we want a better implementation of field value transformer that do not rely
+             * on the substitution universe, then this code can be removed.
+             */
+            List<AnalysisFuture<Void>> notifications = declaringType.scheduledTypeReachableNotifications;
+            if (notifications != null) {
+                for (var notification : notifications) {
+                    notification.ensureDone();
+                }
+                /*
+                 * Now we know all the handlers have been executed, so subsequent field lookups do
+                 * not need to check anymore.
+                 */
+                declaringType.scheduledTypeReachableNotifications = null;
+            }
         }
 
         field = substitutions.lookup(field);
@@ -382,13 +402,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisField createField(ResolvedJavaField field) {
-        if (!hostVM.platformSupported(this, field)) {
+        if (!hostVM.platformSupported(field)) {
             throw new UnsupportedFeatureException("field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
             return null;
         }
-        AnalysisField newValue = new AnalysisField(this, field);
+        AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField oldValue = fields.putIfAbsent(field, newValue);
         return oldValue != null ? oldValue : newValue;
     }
@@ -425,7 +445,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisMethod createMethod(ResolvedJavaMethod method) {
-        if (!hostVM.platformSupported(this, method)) {
+        if (!hostVM.platformSupported(method)) {
             throw new UnsupportedFeatureException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
         }
         if (sealed) {
@@ -439,7 +459,7 @@ public class AnalysisUniverse implements Universe {
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
-            if (hostVM.platformSupported(this, (ResolvedJavaMethod) method)) {
+            if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
                 AnalysisMethod aMethod = lookup(method);
                 if (aMethod != null) {
                     result.add(aMethod);
@@ -478,7 +498,18 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return snippetReflection.forObject(originalSnippetReflection.asObject(Object.class, constant));
+            Object original = originalSnippetReflection.asObject(Object.class, constant);
+            if (original instanceof ImageHeapConstant) {
+                /*
+                 * The value is an ImageHeapObject, i.e., it already has a build time
+                 * representation, so there is no need to re-wrap it. The value likely comes from
+                 * reading a field of a normal object that is referencing a simulated object. The
+                 * originalConstantReflection provider is not aware of simulated constants, and it
+                 * always wraps them into a HotSpotObjectConstant when reading fields.
+                 */
+                return (JavaConstant) original;
+            }
+            return snippetReflection.forObject(original);
         } else {
             return constant;
         }
@@ -488,7 +519,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return originalSnippetReflection.forObject(getSnippetReflection().asObject(Object.class, constant));
+            return originalSnippetReflection.forObject(snippetReflection.asObject(Object.class, constant));
         } else {
             return constant;
         }
@@ -508,8 +539,16 @@ public class AnalysisUniverse implements Universe {
         return fields.values();
     }
 
+    public AnalysisField getField(ResolvedJavaField resolvedJavaField) {
+        return fields.get(resolvedJavaField);
+    }
+
     public Collection<AnalysisMethod> getMethods() {
         return methods.values();
+    }
+
+    public AnalysisMethod getMethod(ResolvedJavaMethod resolvedJavaMethod) {
+        return methods.get(resolvedJavaMethod);
     }
 
     public Map<JavaConstant, BytecodePosition> getEmbeddedRoots() {
@@ -520,6 +559,7 @@ public class AnalysisUniverse implements Universe {
      * Register an embedded root, i.e., a JavaConstant embedded in a Graal graph via a ConstantNode.
      */
     public void registerEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        this.heapScanner.scanEmbeddedRoot(root, position);
         this.embeddedRoots.put(root, position);
     }
 
@@ -577,26 +617,25 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
+    public static Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
+        return getMethodImplementations(baseMethod, true);
+    }
+
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
-            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
+            Set<AnalysisMethod> implementations = getMethodImplementations(method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
     }
 
-    public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
+    public static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (method.isImplementationInvoked()) {
+            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
-            try {
-                collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
-            } catch (UnsupportedFeatureException ex) {
-                String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
-                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
-            }
+            collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
         }
         return implementations;
     }
@@ -611,48 +650,25 @@ public class AnalysisUniverse implements Universe {
             holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
         }
 
-        /*
-         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
-         * method. The method cannot be marked as invoked.
-         */
-        if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
-            AnalysisMethod aResolved;
-            try {
-                aResolved = holder.resolveConcreteMethod(method, null);
-            } catch (UnsupportedFeatureException e) {
-                /* An unsupported overriding method is not reachable. */
-                aResolved = null;
-            }
-            if (aResolved != null) {
-                /*
-                 * aResolved == null means that the method in the base class was called, but never
-                 * with this holder.
-                 */
-                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
-                    implementations.add(aResolved);
-                }
-            }
+        AnalysisMethod resolved = method.resolveInType(holder, holderOrSubtypeInstantiated);
+        if (resolved != null && (includeInlinedMethods ? resolved.isReachable() : resolved.isImplementationInvoked())) {
+            implementations.add(resolved);
         }
+
         return holderOrSubtypeInstantiated;
     }
 
     /**
-     * Collect and returns *all* subtypes of this type, not only the immediate subtypes. The
-     * immediate sub-types are updated continuously as the universe is expanded and can be accessed
-     * using {@link AnalysisType#getSubTypes()}.
+     * Collect and returns *all reachable* subtypes of this type, not only the immediate subtypes.
+     * To access the immediate sub-types use {@link AnalysisType#getSubTypes()}.
+     *
+     * Since the sub-types are updated continuously as the universe is expanded this method may
+     * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public static Set<AnalysisType> getAllSubtypes(AnalysisType baseType) {
-        HashSet<AnalysisType> result = new HashSet<>();
-        collectSubtypes(baseType, result);
+    public static Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        Set<AnalysisType> result = baseType.getAllSubtypes();
+        result.removeIf(t -> !t.isReachable());
         return result;
-    }
-
-    private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
-        for (AnalysisType subType : baseType.getSubTypes()) {
-            if (result.add(subType)) {
-                collectSubtypes(subType, result);
-            }
-        }
     }
 
     @Override
@@ -674,6 +690,22 @@ public class AnalysisUniverse implements Universe {
         return objectClass;
     }
 
+    public void onFieldAccessed(AnalysisField field) {
+        bb.onFieldAccessed(field);
+    }
+
+    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
+        bb.onTypeInstantiated(type, usage);
+    }
+
+    public void initializeType(AnalysisType type) {
+        hostVM.initializeType(type);
+        type.onInitialized();
+        if (bb != null) {
+            bb.onTypeInitialized(type);
+        }
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }
@@ -692,5 +724,37 @@ public class AnalysisUniverse implements Universe {
 
     public BigBang getBigbang() {
         return bb;
+    }
+
+    public void setConcurrentAnalysisAccess(DuringAnalysisAccess access) {
+        this.concurrentAnalysisAccess = access;
+    }
+
+    public DuringAnalysisAccess getConcurrentAnalysisAccess() {
+        return concurrentAnalysisAccess;
+    }
+
+    public void setHeapScanner(ImageHeapScanner heapScanner) {
+        this.heapScanner = heapScanner;
+    }
+
+    public ImageHeapScanner getHeapScanner() {
+        return heapScanner;
+    }
+
+    public void setHeapVerifier(HeapSnapshotVerifier heapVerifier) {
+        this.heapVerifier = heapVerifier;
+    }
+
+    public HeapSnapshotVerifier getHeapVerifier() {
+        return heapVerifier;
+    }
+
+    public void notifyReachableType() {
+        numReachableTypes.incrementAndGet();
+    }
+
+    public int getReachableTypes() {
+        return numReachableTypes.get();
     }
 }

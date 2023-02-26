@@ -32,16 +32,16 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@AutomaticallyRegisteredImageSingleton
 public final class CFunctionLinkages {
     public static CFunctionLinkages singleton() {
         return ImageSingletons.lookup(CFunctionLinkages.class);
@@ -76,13 +76,5 @@ public final class CFunctionLinkages {
             return cFunctionAnnotation.value();
         }
         return null;
-    }
-}
-
-@AutomaticFeature
-class CFunctionLinkagesFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CFunctionLinkages.class, new CFunctionLinkages());
     }
 }

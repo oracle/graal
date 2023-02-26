@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,16 @@ public final class VirtualFrameSwapNode extends VirtualFrameAccessorNode impleme
     public static final NodeClass<VirtualFrameSwapNode> TYPE = NodeClass.create(VirtualFrameSwapNode.class);
 
     private final int targetSlotIndex;
+    private final byte accessFlags;
 
-    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
+    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, byte accessFlags) {
         super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
         this.targetSlotIndex = targetSlotIndex;
+        this.accessFlags = accessFlags;
+    }
+
+    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
+        this(frame, frameSlotIndex, targetSlotIndex, type, VirtualFrameAccessFlags.NON_STATIC);
     }
 
     @Override
@@ -61,14 +67,19 @@ public final class VirtualFrameSwapNode extends VirtualFrameAccessorNode impleme
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
                     ValueNode tempTag = tool.getEntry(tagVirtual, targetSlotIndex);
-                    ValueNode tempValue = tool.getEntry(objectVirtual, targetSlotIndex);
-                    ValueNode tempPrimitive = tool.getEntry(primitiveVirtual, targetSlotIndex);
+
                     tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
-                    tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
-                    tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                     tool.setVirtualEntry(tagVirtual, frameSlotIndex, tempTag);
-                    tool.setVirtualEntry(objectVirtual, frameSlotIndex, tempValue);
-                    tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, tempPrimitive);
+                    if ((accessFlags & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
+                        ValueNode tempValue = tool.getEntry(objectVirtual, targetSlotIndex);
+                        tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
+                        tool.setVirtualEntry(objectVirtual, frameSlotIndex, tempValue);
+                    }
+                    if ((accessFlags & VirtualFrameAccessFlags.PRIMITIVE_FLAG) != 0) {
+                        ValueNode tempPrimitive = tool.getEntry(primitiveVirtual, targetSlotIndex);
+                        tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
+                        tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, tempPrimitive);
+                    }
                     tool.delete();
                     return;
                 }

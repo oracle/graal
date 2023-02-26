@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,11 +40,11 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -62,7 +64,14 @@ public class RuntimeCodeCache {
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
 
         @Option(help = "Allocate code cache with write access, allowing inlining of objects", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue && !SubstrateUtil.HOSTED && Platform.includedIn(Platform.AARCH64.class)) {
+                    throw new IllegalArgumentException("Enabling " + getName() + " is not supported on this platform.");
+                }
+            }
+        };
     }
 
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "RuntimeCodeInfo");
@@ -84,6 +93,7 @@ public class RuntimeCodeCache {
     public final void tearDown() {
         NonmovableArrays.releaseUnmanagedArray(codeInfos);
         codeInfos = NonmovableArrays.nullArray();
+        numCodeInfos = 0;
 
         // releases all CodeInfos from our table too
         RuntimeCodeInfoMemory.singleton().tearDown();
@@ -150,12 +160,14 @@ public class RuntimeCodeCache {
     }
 
     public void addMethod(CodeInfo info) {
-        assert VMOperation.isInProgressAtSafepoint() : "Modifying code tables that are used by the GC";
+        assert VMOperation.isInProgressAtSafepoint();
         InstalledCodeObserverSupport.activateObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        addMethodOperation(info);
+        addMethod0(info);
+        RuntimeCodeInfoHistory.singleton().logAdd(info);
     }
 
-    private void addMethodOperation(CodeInfo info) {
+    @Uninterruptible(reason = "Modifying code tables that are used by the GC")
+    private void addMethod0(CodeInfo info) {
         addMethodCount.inc();
         assert verifyTable();
         if (codeInfos.isNull() || numCodeInfos >= NonmovableArrays.lengthOf(codeInfos)) {
@@ -171,10 +183,10 @@ public class RuntimeCodeCache {
         numCodeInfos++;
         NonmovableArrays.setWord(codeInfos, insertionPoint, info);
 
-        RuntimeCodeInfoHistory.singleton().logAdd(info);
         assert verifyTable();
     }
 
+    @Uninterruptible(reason = "Modifying code tables that are used by the GC")
     private void enlargeTable() {
         int newTableSize = numCodeInfos * 2;
         if (newTableSize < INITIAL_TABLE_SIZE) {
@@ -189,6 +201,7 @@ public class RuntimeCodeCache {
     }
 
     protected void invalidateMethod(CodeInfo info) {
+        assert VMOperation.isInProgressAtSafepoint();
         prepareInvalidation(info);
 
         /*
@@ -201,14 +214,13 @@ public class RuntimeCodeCache {
     }
 
     protected void invalidateNonStackMethod(CodeInfo info) {
-        assert VMOperation.isGCInProgress() : "must only be called by the GC";
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
         prepareInvalidation(info);
         assert codeNotOnStackVerifier.verify(info);
         finishInvalidation(info, false);
     }
 
     private void prepareInvalidation(CodeInfo info) {
-        VMOperation.guaranteeInProgressAtSafepoint("Modifying code tables that are used by the GC");
         invalidateMethodCount.inc();
         assert verifyTable();
 
@@ -225,6 +237,13 @@ public class RuntimeCodeCache {
     }
 
     private void finishInvalidation(CodeInfo info, boolean notifyGC) {
+        InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
+        finishInvalidation0(info, notifyGC);
+        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
+    }
+
+    @Uninterruptible(reason = "Modifying code tables that are used by the GC")
+    private void finishInvalidation0(CodeInfo info, boolean notifyGC) {
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -237,8 +256,7 @@ public class RuntimeCodeCache {
         numCodeInfos--;
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
-        RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info, notifyGC);
-        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
+        RuntimeCodeInfoAccess.freePartially(info, notifyGC);
         assert verifyTable();
     }
 
@@ -264,34 +282,6 @@ public class RuntimeCodeCache {
             assert NonmovableArrays.getWord(codeInfos, i).isNull() : "a31";
         }
         return true;
-    }
-
-    public boolean walkRuntimeMethods(MemoryWalker.Visitor visitor) {
-        VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
-        boolean continueVisiting = true;
-        for (int i = 0; (continueVisiting && (i < numCodeInfos)); i += 1) {
-            continueVisiting = walkRuntimeMethod(visitor, i);
-        }
-        return continueVisiting;
-    }
-
-    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private boolean walkRuntimeMethod(MemoryWalker.Visitor visitor, int i) {
-        boolean continueVisiting;
-        UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(codeInfos, i);
-        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-        try {
-            CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            continueVisiting = visitRuntimeMethod0(visitor, codeInfo);
-        } finally {
-            CodeInfoAccess.releaseTether(untetheredInfo, tether);
-        }
-        return continueVisiting;
-    }
-
-    @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
-    private static boolean visitRuntimeMethod0(MemoryWalker.Visitor visitor, CodeInfo codeInfo) {
-        return visitor.visitCode(codeInfo, ImageSingletons.lookup(CodeInfoMemoryWalker.class));
     }
 
     private static final class CodeNotOnStackVerifier extends StackFrameVisitor {

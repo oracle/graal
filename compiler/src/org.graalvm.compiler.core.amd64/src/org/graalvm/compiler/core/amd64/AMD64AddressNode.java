@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -59,7 +59,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
     @OptionalInput private ValueNode base;
 
     @OptionalInput private ValueNode index;
-    private Scale scale;
+    private Stride stride;
 
     private int displacement;
 
@@ -71,7 +71,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         super(TYPE);
         this.base = base;
         this.index = index;
-        this.scale = Scale.Times1;
+        this.stride = Stride.S1;
     }
 
     public void canonicalizeIndex(SimplifierTool tool) {
@@ -86,7 +86,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
                         ValueNode valY = add.getY();
                         if (valY instanceof ConstantNode) {
                             int addBy = valY.asJavaConstant().asInt();
-                            displacement = displacement + scale.value * addBy;
+                            displacement = displacement + stride.value * addBy;
                             replaceFirstInput(index, phi);
                             tool.addToWorkList(index);
                         }
@@ -107,7 +107,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         AllocatableValue indexReference;
         if (index == null) {
             indexReference = null;
-        } else if (scale.equals(Scale.Times1)) {
+        } else if (stride.equals(Stride.S1)) {
             indexReference = LIRKind.derivedBaseFromValue(indexValue);
         } else {
             if (LIRKind.isValue(indexValue)) {
@@ -118,7 +118,7 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         }
 
         LIRKind kind = LIRKind.combineDerived(tool.getLIRKind(stamp(NodeView.DEFAULT)), baseReference, indexReference);
-        gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, scale, displacement));
+        gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, stride, displacement));
     }
 
     @Override
@@ -147,12 +147,12 @@ public class AMD64AddressNode extends AddressNode implements Simplifiable, LIRLo
         this.index = index;
     }
 
-    public Scale getScale() {
-        return scale;
+    public Stride getScale() {
+        return stride;
     }
 
-    public void setScale(Scale scale) {
-        this.scale = scale;
+    public void setScale(Stride stride) {
+        this.stride = stride;
     }
 
     public int getDisplacement() {

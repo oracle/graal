@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,20 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
+    protected static final int SINGLE_RESULT_VALUE = 0;
+    protected static final int MULTI_RESULT_VALUE = 1;
+
     @CompilationFinal(dimensions = 1) protected byte[] data;
     protected int offset;
 
@@ -73,29 +78,40 @@ public abstract class BinaryStreamParser {
         if (shift == 42) {
             throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
         } else if (shift == 35 && (0b0111_0000 & b) != 0) {
-            throw WasmException.create(Failure.INTEGER_TOO_LONG);
+            throw WasmException.create(Failure.INTEGER_TOO_LARGE);
         }
 
         return packValueAndLength(result, currentOffset - initialOffset);
     }
 
     /**
-     * Unchecked version of {@link #peekUnsignedInt32AndLength}.
+     * Unchecked and manually unrolled version of {@link #peekUnsignedInt32AndLength}.
      */
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long rawPeekUnsignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
-        int shift = 0;
-        int currentOffset = initialOffset;
-        byte b = (byte) 0x80;
-        while (shift < 42 && (b & 0x80) != 0) {
-            b = rawPeek1(data, currentOffset);
-            currentOffset++;
-            result |= (b & 0x7F) << shift;
-            shift += 7;
+        byte b = data[initialOffset];
+        result |= (b & 0x7F);
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 1);
         }
-
-        return packValueAndLength(result, currentOffset - initialOffset);
+        b = data[initialOffset + 1];
+        result |= (b & 0x7F) << 7;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 2);
+        }
+        b = data[initialOffset + 2];
+        result |= (b & 0x7F) << 14;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 3);
+        }
+        b = data[initialOffset + 3];
+        result |= (b & 0x7F) << 21;
+        if ((b & 0x80) == 0) {
+            return packValueAndLength(result, 4);
+        }
+        b = data[initialOffset + 4];
+        result |= (b & 0x7F) << 28;
+        return packValueAndLength(result, 5);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -114,7 +130,7 @@ public abstract class BinaryStreamParser {
         if (shift == 42) {
             throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
         } else if (shift == 35 && (b & 0b0111_0000) != ((b & 0b1000) == 0 ? 0 : 0b0111_0000)) {
-            throw WasmException.create(Failure.INTEGER_TOO_LONG);
+            throw WasmException.create(Failure.INTEGER_TOO_LARGE);
         }
 
         if (shift != 35 && (b & 0x40) != 0) {
@@ -125,26 +141,45 @@ public abstract class BinaryStreamParser {
     }
 
     /**
-     * Unchecked version of {@link #peekSignedInt32AndLength}.
+     * Unchecked and manually unrolled version of {@link #peekSignedInt32AndLength}.
      */
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long rawPeekSignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
-        int shift = 0;
-        int currentOffset = initialOffset;
-        byte b = (byte) 0x80;
-        while (shift < 42 && (b & 0x80) != 0) {
-            b = rawPeek1(data, currentOffset);
-            currentOffset++;
-            result |= (b & 0x7F) << shift;
-            shift += 7;
+        byte b = data[initialOffset];
+        result |= (b & 0x7F);
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 7);
+            }
+            return packValueAndLength(result, 1);
         }
-
-        if (shift < 35 && (b & 0x40) != 0) {
-            result |= (~0 << shift);
+        b = data[initialOffset + 1];
+        result |= (b & 0x7F) << 7;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 14);
+            }
+            return packValueAndLength(result, 2);
         }
-
-        return packValueAndLength(result, currentOffset - initialOffset);
+        b = data[initialOffset + 2];
+        result |= (b & 0x7F) << 14;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 21);
+            }
+            return packValueAndLength(result, 3);
+        }
+        b = data[initialOffset + 3];
+        result |= (b & 0x7F) << 21;
+        if ((b & 0x80) == 0) {
+            if ((b & 0x40) != 0) {
+                result |= (~0 << 28);
+            }
+            return packValueAndLength(result, 4);
+        }
+        b = data[initialOffset + 4];
+        result |= (b & 0x7F) << 28;
+        return packValueAndLength(result, 5);
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -164,7 +199,7 @@ public abstract class BinaryStreamParser {
             if (shift == 77) {
                 throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
             } else if (shift == 70 && (b & 0b0111_1110) != ((b & 1) == 0 ? 0 : 0b0111_1110)) {
-                throw WasmException.create(Failure.INTEGER_TOO_LONG);
+                throw WasmException.create(Failure.INTEGER_TOO_LARGE);
             }
         }
 
@@ -186,16 +221,8 @@ public abstract class BinaryStreamParser {
         return (int) ((bits >>> 32) & 0xffff_ffffL);
     }
 
-    protected static int peekFloatAsInt32(byte[] data, int offset) {
-        return peek4(data, offset);
-    }
-
     protected int readFloatAsInt32() {
         return read4();
-    }
-
-    protected static long peekFloatAsInt64(byte[] data, int offset) {
-        return peek8(data, offset);
     }
 
     protected long readFloatAsInt64() {
@@ -227,10 +254,6 @@ public abstract class BinaryStreamParser {
 
     protected byte peek1() {
         return peek1(data, offset);
-    }
-
-    protected byte peek1(int ahead) {
-        return peek1(data, offset + ahead);
     }
 
     public static byte peek1(byte[] data, int initialOffset) {
@@ -288,24 +311,43 @@ public abstract class BinaryStreamParser {
         return offset;
     }
 
-    protected static byte peekBlockType(byte[] data, int offset) {
+    /**
+     * Reads the block type at the current location. The result is provided as two values. The first
+     * is the actual value of the block type. The second is an indicator if it is a single result
+     * type or a multi-value result.
+     *
+     * @param result The array used for returning the result.
+     *
+     */
+    protected void readBlockType(int[] result, boolean allowRefTypes) {
         byte type = peek1(data, offset);
         switch (type) {
-            case 0x00:
             case WasmType.VOID_TYPE:
-                return WasmType.VOID_TYPE;
+            case WasmType.I32_TYPE:
+            case WasmType.I64_TYPE:
+            case WasmType.F32_TYPE:
+            case WasmType.F64_TYPE:
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
             default:
-                return peekValueType(data, offset);
+                long valueAndLength = peekSignedInt32AndLength(data, offset);
+                result[0] = value(valueAndLength);
+                Assert.assertIntGreaterOrEqual(result[0], 0, Failure.UNSPECIFIED_MALFORMED);
+                result[1] = MULTI_RESULT_VALUE;
+                offset += length(valueAndLength);
         }
     }
 
-    protected byte readBlockType() {
-        byte type = peekBlockType(data, offset);
-        offset++;
-        return type;
-    }
-
-    protected static byte peekValueType(byte[] data, int offset) {
+    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes) {
         byte b = peek1(data, offset);
         switch (b) {
             case WasmType.I32_TYPE:
@@ -313,14 +355,18 @@ public abstract class BinaryStreamParser {
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
                 break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                Assert.assertTrue(allowRefTypes, Failure.MALFORMED_VALUE_TYPE);
+                break;
             default:
                 Assert.fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid value type: 0x%02X", b));
         }
         return b;
     }
 
-    protected byte readValueType() {
-        byte b = peekValueType(data, offset);
+    protected byte readValueType(boolean allowRefTypes) {
+        byte b = peekValueType(data, offset, allowRefTypes);
         offset++;
         return b;
     }
@@ -336,5 +382,47 @@ public abstract class BinaryStreamParser {
             length++;
         }
         return length;
+    }
+
+    /**
+     * Manually unrolled version of {@link #peekLeb128Length(byte[], int)}.
+     */
+    public static byte rawPeekLeb128IntLength(byte[] data, int initialOffset) {
+        byte b = data[initialOffset];
+        if ((b & 0x80) == 0) {
+            return 1;
+        }
+        b = data[initialOffset + 1];
+        if ((b & 0x80) == 0) {
+            return 2;
+        }
+        b = data[initialOffset + 2];
+        if ((b & 0x80) == 0) {
+            return 3;
+        }
+        b = data[initialOffset + 3];
+        if ((b & 0x80) == 0) {
+            return 4;
+        }
+        return 5;
+    }
+
+    @TruffleBoundary
+    protected void removeSection(int startOffset, int size) {
+        final int endOffset = startOffset + size;
+        final byte[] updatedData = new byte[data.length - size];
+        System.arraycopy(data, 0, updatedData, 0, startOffset);
+        final int remainingLength = data.length - endOffset;
+        if (remainingLength != 0) {
+            System.arraycopy(data, endOffset, updatedData, startOffset, remainingLength);
+        }
+        data = updatedData;
+    }
+
+    protected void replaceInstruction(int instructionOffset, byte newInstruction) {
+        if (instructionOffset < 0 || instructionOffset >= data.length) {
+            throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, "Cannot replace out of bounds opcode");
+        }
+        data[instructionOffset] = newInstruction;
     }
 }

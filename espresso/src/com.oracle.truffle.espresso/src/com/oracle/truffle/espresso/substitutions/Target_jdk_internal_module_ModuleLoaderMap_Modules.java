@@ -23,13 +23,14 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.ArrayList;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -47,28 +48,26 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
         public abstract void execute();
 
         @Specialization
-        public static void clinit(
+        public void clinit(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_Modules_clinit.getCallTargetNoSubstitution())") DirectCallNode original) {
             Meta meta = context.getMeta();
             assert meta.getJavaVersion().java17OrLater();
             original.call();
 
-            ArrayList<StaticObject> toAdd = new ArrayList<>(2);
-            if (meta.getContext().JDWPOptions != null) {
-                toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.HOTSWAP_MODULE_NAME));
-            }
-            if (meta.getContext().Polyglot) {
-                toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.POLYGLOT_MODULE_NAME));
-            }
-
-            if (toAdd.size() == 0) {
+            ModuleExtension[] toAdd = ModuleExtension.get(context);
+            if (toAdd.length == 0) {
                 return;
             }
-
             /*
              * Spoof the statically stored boot module set.
              */
+            spoofBootModules(meta, toAdd);
+        }
+
+        @TruffleBoundary
+        private void spoofBootModules(Meta meta, ModuleExtension[] toAdd) {
+            EspressoLanguage language = getLanguage();
 
             Field bootModulesField = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(Symbol.Name.bootModules, Symbol.Type.java_util_Set);
             Method setOf = meta.java_util_Set.lookupMethod(Symbol.Name.of, Symbol.Signature.java_util_Set_Object_array);
@@ -80,15 +79,15 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
 
             StaticObject array = (StaticObject) toArray.invokeDirect(originalResult, meta.java_lang_String.allocateReferenceArray(0));
             assert array.isArray();
-            StaticObject[] unwrapped = array.unwrap();
+            StaticObject[] unwrapped = array.unwrap(language);
 
-            StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.size());
-            StaticObject[] unwrappedResult = resultArray.unwrap();
+            StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.length);
+            StaticObject[] unwrappedResult = resultArray.unwrap(language);
 
-            System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.size(), unwrapped.length);
+            System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.length, unwrapped.length);
 
-            for (int i = 0; i < toAdd.size(); i++) {
-                unwrappedResult[i] = toAdd.get(i);
+            for (int i = 0; i < toAdd.length; i++) {
+                unwrappedResult[i] = meta.toGuestString(toAdd[i].moduleName());
             }
 
             bootModulesField.setObject(staticStorage, setOf.invokeDirect(null, resultArray));

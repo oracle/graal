@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.libgraal.jni.processor;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +36,6 @@ import java.util.Set;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -49,7 +47,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.ElementFilter;
-import javax.tools.JavaFileObject;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalId;
@@ -74,11 +71,6 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
      */
     protected boolean accept(@SuppressWarnings("unused") ExecutableElement annotatedElement) {
         return true;
-    }
-
-    @Override
-    public final SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
     }
 
     private final Set<ExecutableElement> processed = new HashSet<>();
@@ -245,21 +237,6 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
                 out.println("    }");
             }
             out.println("}");
-        }
-    }
-
-    static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with code style guide checked by Checkstyle
-            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 

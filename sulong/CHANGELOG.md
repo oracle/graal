@@ -1,3 +1,49 @@
+# Version 22.3.0
+
+New Features:
+
+* Add experimental Windows support.
+
+Changes:
+
+* Updated LLVM toolchain to version 14.0.6.
+* Improved support for x86 extended precision float.
+  It is now possible to call native (e.g. libc) functions with `long double` arguments on x86.
+  The `long double` variants of `math.h` functions now use full precision. Previously they were implemented using `double` arithmetic.
+
+# Version 22.2.0
+
+New Features:
+
+* Support for the darwin-aarch64 platform (aka. Apple Silicon).
+
+Changes:
+
+* Updated LLVM toolchain to version 14.0.3.
+
+# Version 22.1.0
+
+New Features:
+
+* Support exporting native byte buffers. See the new APIs in `graalvm/llvm/polyglot-buffer.h`.
+* Support for Time, Date, TimeZone and Instant polyglot interop. See new APIs in `graalvm/llvm/polyglot-time.h`.
+* Support converting primitive types such as boolean values into polyglot
+  values. See `polyglot_from_*` functions in `graalvm/llvm/polyglot.h`.
+* Support for thread local globals.
+
+Changes:
+
+* Option `--llvm.printLifetimeAnalysisStats` is replaced by `--log.llvm.LifetimeAnalysis.level=FINER`.
+* Option `--llvm.debugLoader` is replaced by `--log.llvm.Loader.level=FINER`.
+* Option `--llvm.printNativeCallStats` is replaced by `--log.llvm.NativeCallStats.level=FINER`.
+* Option `--llvm.sysCalls` is replaced by `--log.llvm.SysCalls.level=FINER`.
+* Option `--llvm.llDebugVerbose` is replaced by `--log.llvm.LLDebug.level=FINER`.
+* Option `--llvm.traceIR` is replaced by `--log.llvm.TraceIR.level=FINER`.
+* Option `--llvm.printAST` is replaced by `--llvm.printASTFilter` and accepts all functions by default. AST printing must be enabled by setting `--log.llvm.AST.level=FINEST`.
+* The function `__sulong_print_stacktrace` now prints stack traces to the `llvm.StackTrace` logs instead of stdout.
+* Introduce `polyglot_value` type to replace `void *` in `graalvm/llvm/polyglot.h`. 
+  The compiler flag `POLYGLOT_STRICT_MODE` can be used to treat `polyglot_value` as a distinct type.
+
 # Version 22.0.0
 
 Changes:

@@ -27,14 +27,10 @@ package com.oracle.svm.core.invoke;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodHandle;
-import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 
-// Checkstyle: stop
 import sun.invoke.util.Wrapper;
-// Checkstyle: resume
 
 public class MethodHandleUtils {
     public static Object cast(Object obj, Class<?> type) {
@@ -42,7 +38,8 @@ public class MethodHandleUtils {
         if (type.isPrimitive()) {
             destinationWrapper = Wrapper.forPrimitiveType(type);
         } else if (Wrapper.isWrapperType(type)) {
-            destinationWrapper = Wrapper.forWrapperType(type);
+            /* Null values should remain null and not be converted to the wrapper's zero value. */
+            destinationWrapper = obj == null ? Wrapper.OBJECT : Wrapper.forWrapperType(type);
         } else {
             destinationWrapper = Wrapper.OBJECT;
         }
@@ -128,20 +125,6 @@ public class MethodHandleUtils {
                 return (short) retVal;
             default:
                 throw shouldNotReachHere("Unexpected type for unbox function");
-        }
-    }
-
-    public static class MethodHandlesSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.areMethodHandlesSupported();
-        }
-    }
-
-    public static class MethodHandlesNotSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return !SubstrateOptions.areMethodHandlesSupported();
         }
     }
 }

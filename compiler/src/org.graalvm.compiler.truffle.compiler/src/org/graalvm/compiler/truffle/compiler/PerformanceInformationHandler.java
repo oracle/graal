@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,15 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -53,8 +58,15 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This class handles reporting of performance warning.
+ *
+ * One instance is installed ({@link #install(OptionValues)} for each compilation before the
+ * {@link org.graalvm.compiler.truffle.compiler.phases.TruffleTier} and closed after.
+ */
 public final class PerformanceInformationHandler implements Closeable {
 
     private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();
@@ -79,7 +91,7 @@ public final class PerformanceInformationHandler implements Closeable {
         instance.remove();
     }
 
-    static PerformanceInformationHandler install(OptionValues options) {
+    public static PerformanceInformationHandler install(OptionValues options) {
         assert instance.get() == null : "PerformanceInformationHandler already installed";
         PerformanceInformationHandler handler = new PerformanceInformationHandler(options);
         instance.set(handler);
@@ -149,7 +161,8 @@ public final class PerformanceInformationHandler implements Closeable {
             if (stackTrace.isEmpty()) {
                 builder.append(String.format("  No stack trace available for %s.", locationGroup));
             } else {
-                builder.append(String.format("  Approximated stack trace for %s:", locationGroup));
+                builder.append(String.format("  Approximated stack trace for %s (append --vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+DebugNonSafepoints for more precise approximation):\n",
+                                locationGroup));
                 builder.append(stackTrace);
             }
         }
@@ -157,22 +170,20 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     @SuppressWarnings("try")
-    void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
+    public void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
         ArrayList<ValueNode> warnings = new ArrayList<>();
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {
             for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                if (call.targetMethod().isNative()) {
+                ResolvedJavaMethod targetMethod = call.targetMethod();
+                if (targetMethod.isNative()) {
                     continue; // native methods cannot be inlined
                 }
 
                 TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-                if (runtime.getInlineKind(call.targetMethod(), true).allowsInlining()) {
+                if (runtime.isInlineable(targetMethod) && runtime.getInlineKind(targetMethod, true).allowsInlining()) {
                     logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
-                                    String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).",
-                                                    call.invokeKind(),
-                                                    call.targetMethod(),
-                                                    call),
+                                    String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),
                                     null);
                     warnings.add(call);
                 }
@@ -198,6 +209,27 @@ public final class PerformanceInformationHandler implements Closeable {
                 String reason = "Partial evaluation could not resolve virtual instanceof to an exact type due to: " +
                                 String.format(type.isInterface() ? "interface type check: %s" : "too deep in class hierarchy: %s", type);
                 logPerformanceInfo(target, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
+            }
+        }
+        if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            for (Loop<Block> loop : cfg.getLoops()) {
+                // check if all loop exit contain trusted profiles
+                List<Block> loopBlocks = loop.getBlocks();
+                for (Block exit : loop.getLoopExits()) {
+                    Block exitDom = exit.getDominator();
+                    while (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
+                        // potential computation before loop exit
+                        exitDom = exitDom.getDominator();
+                    }
+                    if (loopBlocks.contains(exitDom) && exitDom.getEndNode() instanceof ControlSplitNode) {
+                        ControlSplitNode split = (ControlSplitNode) exitDom.getEndNode();
+                        if (!ProfileSource.isTrusted(split.getProfileData().getProfileSource())) {
+                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
+                                            String.format("Missing loop profile for %s at loop %s.", split, loop.getHeader().getBeginNode()), null);
+                        }
+                    }
+                }
             }
         }
 

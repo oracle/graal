@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,13 @@
 
 package org.graalvm.compiler.options.test;
 
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent0;
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent1;
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent2;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption0;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption1;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption2;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent0;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent1;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent2;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -50,11 +51,11 @@ public class NestedBooleanOptionKeyTest {
 
     public static class Options {
         public static final OptionKey<Boolean> Parent0 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption0 = new NestedBooleanOptionKey(Parent0, true);
         public static final OptionKey<Boolean> Parent1 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption1 = new NestedBooleanOptionKey(Parent1, true);
         public static final OptionKey<Boolean> Parent2 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption2 = new NestedBooleanOptionKey(Parent2, false);
+        public static final NestedBooleanOptionKey NestedOption0 = new NestedBooleanOptionKey(Parent0, true);
+        public static final NestedBooleanOptionKey NestedOption1 = new NestedBooleanOptionKey(Parent1, true);
+        public static final NestedBooleanOptionKey NestedOption2 = new NestedBooleanOptionKey(Parent2, false);
     }
 
     static final OptionDescriptor parent0 = OptionDescriptor.create("Parent0", OptionType.Debug, Boolean.class, "", Options.class, "Parent0", Parent0);
@@ -63,6 +64,13 @@ public class NestedBooleanOptionKeyTest {
     static final OptionDescriptor nestedOption1 = OptionDescriptor.create("NestedOption1", OptionType.Debug, Boolean.class, "", Options.class, "NestedOption1", NestedOption1);
     static final OptionDescriptor parent2 = OptionDescriptor.create("Parent2", OptionType.Debug, Boolean.class, "", Options.class, "Parent2", Parent2);
     static final OptionDescriptor nestedOption2 = OptionDescriptor.create("NestedOption2", OptionType.Debug, Boolean.class, "", Options.class, "NestedOption2", NestedOption2);
+
+    @Test
+    public void testGetParentOption() {
+        assertEquals(NestedOption0.getParentOption(), Parent0);
+        assertEquals(NestedOption1.getParentOption(), Parent1);
+        assertEquals(NestedOption2.getParentOption(), Parent2);
+    }
 
     @Test
     public void runDefaultTrue() {

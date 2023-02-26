@@ -15,6 +15,7 @@
 *.obj
 *.orig
 *.pdf
+*.phaseplan
 *.pyc
 *.rej
 *.swn

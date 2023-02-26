@@ -57,7 +57,7 @@ abstract class SetThreadSuspensionEnabledNode extends Node {
     static final int CACHE_LIMIT = 10;
 
     public final void execute(boolean suspensionEnabled, SessionList sessions) {
-        execute(suspensionEnabled, sessions, Thread.currentThread().getId());
+        execute(suspensionEnabled, sessions, currentThreadId());
     }
 
     protected abstract void execute(boolean suspensionEnabled, SessionList sessions, long threadId);
@@ -84,6 +84,7 @@ abstract class SetThreadSuspensionEnabledNode extends Node {
 
     }
 
+    @SuppressWarnings("deprecation")
     static long currentThreadId() {
         return Thread.currentThread().getId();
     }

@@ -26,11 +26,13 @@ package com.oracle.svm.core.posix.headers.linux;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 
 // Checkstyle: stop
 
@@ -40,4 +42,7 @@ public class LinuxPthread {
 
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_getcpuclockid(pthread_t pthread, CIntPointer clock_id);
 }

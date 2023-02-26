@@ -25,67 +25,78 @@
 package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.util.List;
-import java.util.Map;
+import java.net.URI;
+import java.util.function.BiConsumer;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.util.json.JSONParserException;
+
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class FilterConfigurationParser extends ConfigurationParser {
-    private final RuleNode rootNode;
+    private final ConfigurationFilter filter;
 
-    public FilterConfigurationParser(RuleNode rootNode) {
+    public FilterConfigurationParser(ConfigurationFilter filter) {
         super(true);
-        assert rootNode != null;
-        this.rootNode = rootNode;
+        assert filter != null;
+        this.filter = filter;
     }
 
-    @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        Object json = new JSONParser(reader).parse();
-        parseTopLevelObject(asMap(json, "First level of document must be an object"));
-    }
-
-    private void parseTopLevelObject(Map<String, Object> top) {
-        Object rulesObject = null;
-        for (Map.Entry<String, Object> pair : top.entrySet()) {
-            if ("rules".equals(pair.getKey())) {
-                rulesObject = pair.getValue();
-            } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
-            }
-        }
-        if (rulesObject != null) {
-            List<Object> rulesList = asList(rulesObject, "Attribute 'list' must be a list of rule objects");
-            for (Object entryObject : rulesList) {
-                parseEntry(entryObject);
-            }
-        }
-    }
-
-    private void parseEntry(Object entryObject) {
-        Map<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
+    static void parseEntry(Object entryObject, BiConsumer<String, ConfigurationFilter.Inclusion> parsedEntryConsumer) {
+        EconomicMap<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
         Object qualified = null;
-        RuleNode.Inclusion inclusion = null;
+        HierarchyFilterNode.Inclusion inclusion = null;
         String exactlyOneMessage = "Exactly one of attributes 'includeClasses' and 'excludeClasses' must be specified for a filter entry";
-        for (Map.Entry<String, Object> pair : entry.entrySet()) {
+        MapCursor<String, Object> cursor = entry.getEntries();
+        while (cursor.advance()) {
             if (qualified != null) {
                 throw new JSONParserException(exactlyOneMessage);
             }
-            qualified = pair.getValue();
-            if ("includeClasses".equals(pair.getKey())) {
-                inclusion = RuleNode.Inclusion.Include;
-            } else if ("excludeClasses".equals(pair.getKey())) {
-                inclusion = RuleNode.Inclusion.Exclude;
+            qualified = cursor.getValue();
+            if ("includeClasses".equals(cursor.getKey())) {
+                inclusion = ConfigurationFilter.Inclusion.Include;
+            } else if ("excludeClasses".equals(cursor.getKey())) {
+                inclusion = ConfigurationFilter.Inclusion.Exclude;
             } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
+                throw new JSONParserException("Unknown attribute '" + cursor.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
             }
         }
         if (qualified == null) {
             throw new JSONParserException(exactlyOneMessage);
         }
-        rootNode.addOrGetChildren(asString(qualified), inclusion);
+        parsedEntryConsumer.accept(asString(qualified), inclusion);
     }
+
+    static void printEntry(JsonWriter writer, boolean[] isFirstRule, ConfigurationFilter.Inclusion inclusion, String rule) throws IOException {
+        if (inclusion == null) {
+            return;
+        }
+        if (!isFirstRule[0]) {
+            writer.append(',').newline();
+        } else {
+            isFirstRule[0] = false;
+        }
+        writer.append('{');
+        switch (inclusion) {
+            case Include:
+                writer.quote("includeClasses");
+                break;
+            case Exclude:
+                writer.quote("excludeClasses");
+                break;
+            default:
+                throw new IllegalStateException("Unsupported inclusion value: " + inclusion.name());
+        }
+        writer.append(':');
+        writer.quote(rule);
+        writer.append("}");
+    }
+
+    @Override
+    public void parseAndRegister(Object json, URI origin) {
+        filter.parseFromJson(asMap(json, "First level of document must be an object"));
+    }
+
 }

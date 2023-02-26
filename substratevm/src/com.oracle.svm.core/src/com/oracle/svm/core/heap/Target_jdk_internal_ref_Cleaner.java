@@ -24,33 +24,21 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
-import java.util.function.Function;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.thread.VMThreads;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_ref implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.ref." + annotation.className();
-        }
-    }
-}
+import jdk.internal.misc.InnocuousThread;
 
-@TargetClass(classNameProvider = Package_jdk_internal_ref.class, className = "Cleaner")
+@TargetClass(className = "jdk.internal.ref.Cleaner")
 public final class Target_jdk_internal_ref_Cleaner {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -74,25 +62,25 @@ public final class Target_jdk_internal_ref_Cleaner {
  * handling is the same as on JDK 8.
  * </ul>
  */
-@TargetClass(className = "jdk.internal.ref.CleanerFactory", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerFactory")
 final class Target_jdk_internal_ref_CleanerFactory {
     @Alias
     public static native Target_java_lang_ref_Cleaner cleaner();
 }
 
-@TargetClass(className = "java.lang.ref.Cleaner", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.ref.Cleaner")
 final class Target_java_lang_ref_Cleaner {
     @Alias//
     public Target_jdk_internal_ref_CleanerImpl impl;
 }
 
-@TargetClass(className = "java.lang.ref.Cleaner$Cleanable", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.ref.Cleaner$Cleanable")
 final class Target_java_lang_ref_Cleaner_Cleanable {
     @Alias
     native void clean();
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl")
 final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
@@ -108,18 +96,74 @@ final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
     public ReferenceQueue<Object> queue;
+
+    /** @see #run() */
+    @Substitute
+    @TargetElement(name = "run", onlyWith = JDK11OrEarlier.class)
+    public void runJDK11() {
+        Thread t = Thread.currentThread();
+        InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
+        while (!phantomCleanableList.isListEmpty() || !weakCleanableList.isListEmpty() || !softCleanableList.isListEmpty()) {
+            if (mlThread != null) {
+                mlThread.eraseThreadLocals();
+            }
+            try {
+                Cleaner.Cleanable ref = (Cleaner.Cleanable) queue.remove(60 * 1000L);
+                if (ref != null) {
+                    ref.clean();
+                }
+            } catch (Throwable e) {
+                if (VMThreads.isTearingDown()) {
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * This loop executes in a daemon thread and waits until there are no more cleanables (including
+     * the {@code Cleaner} itself), ignoring {@link InterruptedException}. This blocks VM tear-down,
+     * so we add a check if the VM is tearing down here.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public void run() {
+        Thread t = Thread.currentThread();
+        InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
+        while (!phantomCleanableList.isListEmpty()) {
+            if (mlThread != null) {
+                mlThread.eraseThreadLocals();
+            }
+            try {
+                Cleaner.Cleanable ref = (Cleaner.Cleanable) queue.remove(60 * 1000L);
+                if (ref != null) {
+                    ref.clean();
+                }
+            } catch (Throwable e) {
+                if (VMThreads.isTearingDown()) {
+                    return;
+                }
+            }
+        }
+    }
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable")
 final class Target_jdk_internal_ref_PhantomCleanable {
+    @Alias
+    native boolean isListEmpty();
 }
 
 // Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_WeakCleanable {
+    @Alias
+    native boolean isListEmpty();
 }
 
 // Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_SoftCleanable {
+    @Alias
+    native boolean isListEmpty();
 }

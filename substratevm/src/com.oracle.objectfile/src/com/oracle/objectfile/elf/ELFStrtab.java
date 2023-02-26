@@ -71,16 +71,6 @@ public class ELFStrtab extends ELFSection implements Iterable<String> {
         return impl.getDependencies(decisions);
     }
 
-    public Iterable<Iterable<String>> getContentProviders() {
-        return new Iterable<Iterable<String>>() {
-
-            @Override
-            public Iterator<Iterable<String>> iterator() {
-                return impl.contentProvidersIterator();
-            }
-        };
-    }
-
     @Override
     public Iterator<String> iterator() {
         return impl.iterator();

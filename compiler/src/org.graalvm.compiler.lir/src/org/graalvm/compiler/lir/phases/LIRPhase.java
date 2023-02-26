@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public abstract class LIRPhase<C> {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Enable LIR level optimiztations.", type = OptionType.Debug)
+        @Option(help = "Enable LIR level optimizations.", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptimization = new OptionKey<>(true);
         // @formatter:on
     }
@@ -79,7 +79,7 @@ public abstract class LIRPhase<C> {
         }
     }
 
-    public static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<LIRPhaseStatistics>() {
+    public static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected LIRPhaseStatistics computeValue(Class<?> c) {
             return new LIRPhaseStatistics(c);

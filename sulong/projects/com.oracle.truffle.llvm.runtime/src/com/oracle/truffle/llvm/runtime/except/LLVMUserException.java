@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,11 +41,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "unwindHeader")
-public final class LLVMUserException extends LLVMException {
+public class LLVMUserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
-    final LLVMPointer unwindHeader;
+    // transient to shut up JDK19 warnings (this should never be serialized anyway)
+    final transient LLVMPointer unwindHeader; // or throw info
 
     public LLVMUserException(Node location, LLVMPointer unwindHeader) {
         super(location);
@@ -88,5 +89,37 @@ public final class LLVMUserException extends LLVMException {
     @TruffleBoundary
     String getExceptionMessage() {
         return getMessage();
+    }
+
+    public static final class LLVMUserExceptionWindows extends LLVMUserException {
+
+        private static final long serialVersionUID = 1L;
+
+        final transient LLVMPointer imageBase;
+        final transient LLVMPointer exceptionObject;
+        final transient long stackOffset;
+
+        public LLVMUserExceptionWindows(Node location, LLVMPointer imageBase, LLVMPointer exceptionObject, LLVMPointer throwInfo, long stackOffset) {
+            super(location, throwInfo);
+            this.exceptionObject = exceptionObject;
+            this.imageBase = imageBase;
+            this.stackOffset = stackOffset;
+        }
+
+        public LLVMPointer getThrowInfo() {
+            return unwindHeader;
+        }
+
+        public LLVMPointer getImageBase() {
+            return imageBase;
+        }
+
+        public LLVMPointer getExceptionObject() {
+            return exceptionObject;
+        }
+
+        public long getStackPointer() {
+            return stackOffset;
+        }
     }
 }

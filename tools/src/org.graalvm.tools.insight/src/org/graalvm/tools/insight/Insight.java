@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import java.util.function.Function;
 import org.graalvm.polyglot.Engine;
 
 /**
- * Programatic access to the Insight instrument. Obtain an instrument instance via its {@link #ID}:
+ * Programmatic access to the Insight instrument. Obtain an instrument instance via its {@link #ID}:
  * <p>
  * {@codesnippet Embedding#apply}
  *
@@ -66,7 +66,7 @@ public final class Insight {
      *
      * @since 20.1
      */
-    public static final String VERSION = "1.1";
+    public static final String VERSION = "1.2";
 
     /**
      * Additional provider of symbols for {@link #ID Insight scripts}. All available instruments are

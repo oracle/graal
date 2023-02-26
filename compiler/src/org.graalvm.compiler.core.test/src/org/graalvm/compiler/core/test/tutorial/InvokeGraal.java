@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,7 @@ public class InvokeGraal {
              * that we want the compilation to make optimistic assumptions about runtime state such
              * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).method(method).compilationId(compilationId).build();
+            StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).method(method).compilationId(compilationId).speculationLog(method.getSpeculationLog()).build();
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If
@@ -109,7 +109,7 @@ public class InvokeGraal {
              * The optimization phases that are applied to the graph. This is the main configuration
              * point for Graal. Add or remove phases to customize your compilation.
              */
-            Suites suites = backend.getSuites().getDefaultSuites(options);
+            Suites suites = backend.getSuites().getDefaultSuites(options, backend.getTarget().arch);
 
             /*
              * The low-level phases that are applied to the low-level representation.

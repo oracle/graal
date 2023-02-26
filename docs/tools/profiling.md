@@ -75,9 +75,9 @@ algorithm.
 
     This program takes a moment to compute. Next you will check where the time is spent.
 
-3. Run `js primes.js --cpusampler` to enable CPU sampling. CPU Sampler should print output for the example application as follows:
+3. Run `js --cpusampler primes.js` to enable CPU sampling. CPU Sampler should print output for the example application as follows:
     ```shell
-    js primes.js --cpusampler
+    js --cpusampler primes.js
 
     Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
     ----------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ algorithm.
 
     You can produce a flame graph in SVG format by requesting that with the `--cpusampler=flamegraph` option:
     ```shell
-    js primes.js --cpusampler=flamegraph
+    js --cpusampler=flamegraph primes.js
     ```
     It should produce a file called `flamegraph.svg` containing something like this:
 
@@ -121,6 +121,8 @@ algorithm.
         return true;
     }
     ```
+    See this [blog post](https://medium.com/graalvm/where-has-all-my-run-time-gone-245f0ccde853) for more details.
+
     Now use the CPU Tracer to collect execution counts of each statement:
 
 4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept` to collect execution counts for all statements in methods ending with `accept`:
@@ -179,56 +181,53 @@ The current set of available options is as follows.
 
 ### CPU Sampler Options
 
-- `--cpusampler`: enables CPU Sampler. Disabled by default.
-- `--cpusampler.Delay=<Long>`: delays the sampling for the given number of milliseconds (default: 0).
-- `--cpusampler.FilterFile=<Expression>`: applies a wildcard filter for source
-file paths, for example, `*program*.sl`. The default is &lowast;.
-- `--cpusampler.FilterLanguage=<String>`: profiles languages only with the
-matching mime-type, for example, `+`. The default is no filter.
-- `--cpusampler.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
-- `--cpusampler.FilterRootName=<Expression>`: applies a wildcard filter for
-program roots, for example, `Math.*`. The default is &lowast;.
-- `--cpusampler.GatherHitTimes`: saves a timestamp for each taken sample. The default is false.
-- `--cpusampler.MinSamples=<Integer>`: removes elements from output if they have less samples than this value (default is `0`).
-- `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
-The default is `histogram`.
-- `--cpusampler.OutputFile=<String>`: saves output to the given file. Output is printed to output stream by default.
-- `--cpusampler.Period=<Long>`: specifies the period, in milliseconds, to
-sample the stack.
-- `--cpusampler.StackLimit=<Integer>`: specifies the maximum number of stack
-elements.
-- `--cpusampler.SummariseThreads `: prints sampling output as a summary of all `per thread` profiles. The default is false.
-
+<!-- BEGIN: cpu-sampler-options -->
+- `--cpusampler=true|false|<Output>` : Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, except for the flamegraph which is printed to a flamegraph.svg file.
+- `--cpusampler.Delay=<ms>` : Delay the sampling for this many milliseconds (default: 0).
+- `--cpusampler.FilterFile=<filter>` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--cpusampler.FilterLanguage=<languageId>` : Only profile the language with given ID. (eg. js) (default: profile all).
+- `--cpusampler.FilterMimeType=<mime-type>` : Only profile the language with given mime-type. (eg. application/javascript) (default: profile all)
+- `--cpusampler.FilterRootName=<filter>` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--cpusampler.GatherHitTimes` : Save a timestamp for each taken sample.
+- `--cpusampler.MinSamples=[0, inf)` : Remove elements from output if they have less samples than this value (default: 0)
+- `--cpusampler.Output=histogram|calltree|json|flamegraph` : Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).
+- `--cpusampler.OutputFile=<path>` : Save output to the given file. Output is printed to output stream by default.
+- `--cpusampler.Period=<ms>` : Period in milliseconds to sample the stack (default: 10)
+- `--cpusampler.SampleContextInitialization` : Enables sampling of code executed during context initialization
+- `--cpusampler.ShowTiers=true|false|0,1,2` : Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. Note: Interpreter is considered Tier 0. (default: false)
+- `--cpusampler.StackLimit=[1, inf)` : Maximum number of maximum stack elements (default: 10000).
+- `--cpusampler.SummariseThreads` : Print output as a summary of all 'per thread' profiles.
+<!-- END: cpu-sampler-options -->
 
 ### CPU Tracer Options
 
-- `--cputracer`: enables the CPU tracer. Disabled by default.
-- `--cputracer.FilterFile=<Expression>`: applies a wildcard filter for source
-file paths, for example, `*program*.sl`. The default is &lowast;.
-- `--cputracer.FilterLanguage=<String>`: profiles languages only with the
-matching mime-type, for example, `+`. The default is no filter.
-- `--cputracer.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
-- `--cputracer.FilterRootName=<Expression>`: applies a wildcard filter for
-program roots, for example, `Math.*`. The default is &lowast;.
-- `--cputracer.Output=<Output>` prints a `histogram` or `json` as output. The default is `histogram`.
-- `--cpusampler.OutputFile=<String>`: saves output to the given file. Output is printed to output stream by default.
-- `--cputracer.TraceCalls`: captures calls when tracing. The default is false.
-- `--cputracer.TraceRoots=<Boolean>`: captures roots when tracing. The default
-is true.
-- `--cputracer.TraceStatements`: captures statements when tracing. The default
-is false.
+
+<!-- BEGIN: cpu-tracer-options -->
+- `--cputracer` : Enable the CPU tracer (default: false).
+- `--cputracer.FilterFile=<filter>` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--cputracer.FilterLanguage=<languageId>` : Only profile languages with given ID. (eg. js) (default: no filter).
+- `--cputracer.FilterMimeType=<mime-type>` : Only profile languages with mime-type. (eg. application/javascript) (default: no filter).
+- `--cputracer.FilterRootName=<filter>` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--cputracer.Output=histogram|json` : Print a 'histogram' or 'json' as output (default: histogram).
+- `--cputracer.OutputFile=<path>` : Save output to the given file. Output is printed to standard output stream by default.
+- `--cputracer.TraceCalls` : Capture calls when tracing (default: false).
+- `--cputracer.TraceRoots=true|false` : Capture roots when tracing (default: true).
+- `--cputracer.TraceStatements` : Capture statements when tracing (default: false).
+<!-- END: cpu-tracer-options -->
 
 ### Memory Tracer Options
 
 The memory tracer tool is currently an experimental tool. Make sure to prepend the `--experimental-options` flag to enable `--memtracer`.
 
-- `--memtracer`: enables the memory tracer. Disabled by default.
-- `--memtracer.FilterFile=<Expression>`: applies a wildcard filter for source file paths, for example, `*program*.sl`. The default is &lowast;.
-- `--memtracer.FilterLanguage=<String>`: profiles languages only with the matching mime-type, for example, `+`. The default is no filter.
-- `--memtracer.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
-- `--memtracer.FilterRootName=<Expression>`: applies a wildcard filter for program roots, for example, `Math.*`. The default is &lowast;.
-- `--memtracer.Output=<Format>`: prints a `typehistogram`, `histogram`, or `calltree` as output. The default is `histogram`.
-- `--memtracer.StackLimit=<Integer>`: sets the maximum number of maximum stack elements.
-- `--memtracer.TraceCalls`: captures calls when tracing. The default is false.
-- `--memtracer.TraceRoots=<Boolean>`: captures roots when tracing. The default is true.
-- `--memtracer.TraceStatements`: captures statements when tracing. The default is false.
+<!-- BEGIN: mem-tracer-options -->
+- `--memtracer` : Enable the Memory Tracer (default: false).
+- `--memtracer.FilterFile=<filter>` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--memtracer.FilterLanguage=<languageId>` : Only profile languages with given ID. (eg. js) (default: no filter).
+- `--memtracer.FilterMimeType=<mime-type>` : Only profile languages with mime-type. (eg. application/javascript). (default: no filter)
+- `--memtracer.FilterRootName=<filter>` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--memtracer.Output=typehistogram|histogram|calltree` : Print a 'typehistogram', 'histogram' or 'calltree' as output. (default: histogram)
+- `--memtracer.StackLimit=[1, inf)` : Maximum number of maximum stack elements. (default: 10000)
+- `--memtracer.TraceCalls` : Capture calls when tracing. (default: false)
+- `--memtracer.TraceRoots=true|false` : Capture roots when tracing. (default: true)
+- `--memtracer.TraceStatements` : Capture statements when tracing (default: false).
+<!-- END: mem-tracer-options -->

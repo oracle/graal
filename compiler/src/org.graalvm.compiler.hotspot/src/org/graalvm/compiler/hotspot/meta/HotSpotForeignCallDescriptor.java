@@ -95,8 +95,19 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
     private final Transition transition;
     private final Reexecutability reexecutability;
 
-    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations, String name, Class<?> resultType, Class<?>... argumentTypes) {
-        super(name, resultType, argumentTypes, reexecutability == Reexecutability.REEXECUTABLE, killedLocations, transition == SAFEPOINT, transition == SAFEPOINT);
+    public HotSpotForeignCallDescriptor(Transition transition,
+                    Reexecutability reexecutability,
+                    LocationIdentity[] killedLocations,
+                    String name,
+                    Class<?> resultType,
+                    Class<?>... argumentTypes) {
+        super(name,
+                        resultType,
+                        argumentTypes,
+                        reexecutability == Reexecutability.REEXECUTABLE,
+                        killedLocations,
+                        transition == SAFEPOINT,
+                        transition == SAFEPOINT);
         this.transition = transition;
         this.reexecutability = reexecutability;
     }

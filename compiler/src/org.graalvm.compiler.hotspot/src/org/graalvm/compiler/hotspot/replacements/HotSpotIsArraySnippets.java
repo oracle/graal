@@ -25,6 +25,8 @@
 package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
@@ -35,7 +37,7 @@ public class HotSpotIsArraySnippets extends IsArraySnippets {
     @Override
     protected boolean classIsArray(Class<?> clazz) {
         KlassPointer klass = ClassGetHubNode.readClass(clazz);
-        if (klass.isNull()) {
+        if (probability(NOT_FREQUENT_PROBABILITY, klass.isNull())) {
             // Class for primitive type
             return false;
         } else {

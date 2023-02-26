@@ -52,6 +52,22 @@ static bool check_error(JNIEnv *env, int ret) {
     }
 }
 
+#define MAX_FD 3
+int dupFds[MAX_FD + 1] = {0};
+
+int getDupFd(jint stdFd) {
+    if (stdFd > MAX_FD) {
+        return -1;
+    }
+
+    // if we haven't encountered this std fd yet, duplicate it
+    if (dupFds[stdFd] == 0) {
+        dupFds[stdFd] = dup(stdFd);
+    }
+
+    return dupFds[stdFd];
+}
+
 JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd,
                                                                                                   jstring filename) {
     const char *path = env->GetStringUTFChars(filename, NULL);
@@ -63,7 +79,7 @@ JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutp
         return -1;
     }
 
-    int oldFd = dup(stdFd);
+    int oldFd = getDupFd(stdFd);
     if (check_error(env, oldFd)) {
         close(fd);
         return -1;
@@ -94,8 +110,9 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutp
     if (check_error(env, dup2(oldStdErr, com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_STDERR))) {
         return;
     }
-    if (check_error(env, close(oldStdOut))) {
-        return;
-    }
-    check_error(env, close(oldStdErr));
+}
+
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_flushStdFiles(JNIEnv *env, jclass self) {
+  fflush(stdout);
+  fflush(stderr);
 }

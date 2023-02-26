@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
@@ -46,8 +47,10 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.StableProfileProvider;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -66,11 +69,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
-public class CompilationTask {
+public class CompilationTask implements CompilationWatchDog.EventHandler {
+
+    @Override
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
+        TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
+        HotSpotGraalServices.exit(STUCK_COMPILATION_EXIT_CODE, jvmciRuntime);
+    }
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
-    private final HotSpotGraalCompiler compiler;
+    protected final HotSpotGraalCompiler compiler;
     private final HotSpotCompilationIdentifier compilationId;
 
     private HotSpotInstalledCode installedCode;
@@ -81,13 +91,14 @@ public class CompilationTask {
      */
     private final boolean installAsDefault;
 
-    private final boolean useProfilingInfo;
+    private final StableProfileProvider profileProvider;
+
     private final boolean shouldRetainLocalVariables;
 
-    final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
+    protected class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
         CompilationResult result;
 
-        HotSpotCompilationWrapper() {
+        protected HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
         }
 
@@ -171,8 +182,8 @@ public class CompilationTask {
 
             StructuredGraph graph;
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
-                graph = compiler.createGraph(method, entryBCI, useProfilingInfo, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug);
+                graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
+                result = compiler.compile(graph, shouldRetainLocalVariables, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -216,7 +227,7 @@ public class CompilationTask {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.compilationId = new HotSpotCompilationIdentifier(request);
-        this.useProfilingInfo = useProfilingInfo;
+        this.profileProvider = useProfilingInfo ? new StableProfileProvider() : null;
         this.shouldRetainLocalVariables = shouldRetainLocalVariables;
         this.installAsDefault = installAsDefault;
     }
@@ -335,8 +346,12 @@ public class CompilationTask {
         }
     }
 
-    @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
+        return runCompilation(debug, new HotSpotCompilationWrapper());
+    }
+
+    @SuppressWarnings("try")
+    protected HotSpotCompilationRequestResult runCompilation(DebugContext debug, HotSpotCompilationWrapper compilation) {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         int entryBCI = getEntryBCI();
@@ -357,7 +372,6 @@ public class CompilationTask {
             }
         }
 
-        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper();
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.run(debug);
         } finally {

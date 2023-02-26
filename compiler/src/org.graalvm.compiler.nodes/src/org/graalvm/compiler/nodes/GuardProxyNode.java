@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,11 +39,6 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
     public GuardProxyNode(GuardingNode value, LoopExitNode proxyPoint) {
         super(TYPE, StampFactory.forVoid(), proxyPoint);
         this.value = value;
-    }
-
-    public void setValue(GuardingNode newValue) {
-        this.updateUsages(value.asNode(), newValue.asNode());
-        this.value = newValue;
     }
 
     @Override

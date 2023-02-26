@@ -28,19 +28,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public class NewInstanceTypeFlow extends SourceTypeFlowBase {
+/**
+ * Models a flow that introduces an instantiated type in the type flow graph. The type can originate
+ * from a new-instance, new-array, new-multi-array, box, arrays-copy-of, etc.
+ */
+public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
 
     @SuppressWarnings("rawtypes") //
     private static final AtomicReferenceFieldUpdater<NewInstanceTypeFlow, ConcurrentMap> HEAP_OBJECTS_CACHE_UPDATER = //
@@ -53,27 +53,29 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
      * NewInstanceTypeFlow per context of a method, however, depending of the analysis policy,
      * multiple NewInstanceTypeFlows can generate objects with the same allocation context.
      */
-    protected volatile ConcurrentMap<AnalysisContext, AnalysisObject> heapObjectsCache;
+    volatile ConcurrentMap<AnalysisContext, AnalysisObject> heapObjectsCache;
 
-    /** Source flow has an immutable type state. */
-    protected final AnalysisType type;
-    protected final BytecodeLocation allocationSite;
-
-    public NewInstanceTypeFlow(ValueNode node, AnalysisType type, BytecodeLocation allocationLabel) {
-        this(node, type, allocationLabel, TypeState.forNull());
+    public NewInstanceTypeFlow(BytecodePosition position, AnalysisType type) {
+        /* The actual type state is set lazily in initFlow(). */
+        super(position, type, TypeState.forEmpty());
+        assert source != null;
+        assert declaredType.isInstantiated() : "Type " + declaredType + " not instantiated " + position;
     }
 
-    protected NewInstanceTypeFlow(ValueNode node, AnalysisType type, BytecodeLocation allocationLabel, TypeState typeState) {
-        super(node, type, typeState);
-        this.type = type;
-        this.allocationSite = allocationLabel;
+    @Override
+    public void initFlow(PointsToAnalysis bb) {
+        if (!isClone()) {
+            /*
+             * Inject state into graphs lazily, only after the type flow graph is pruned. When
+             * context sensitivity is enabled the default graph is kept clean and used as a template
+             * for clones. For clones the state is provided by createCloneState(), on creation.
+             */
+            addState(bb, TypeState.forExactType(bb, declaredType, false));
+        }
     }
 
-    protected NewInstanceTypeFlow(PointsToAnalysis bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(bb, original, methodFlows, original.cloneSourceState(bb, methodFlows));
-
-        this.type = original.type;
-        this.allocationSite = original.allocationSite;
+    NewInstanceTypeFlow(PointsToAnalysis bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
+        super(original, methodFlows, original.createCloneState(bb, methodFlows));
     }
 
     @Override
@@ -82,15 +84,12 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
     }
 
     /** Create the type state for a clone. */
-    protected TypeState cloneSourceState(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        assert !this.isClone();
+    TypeState createCloneState(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        AnalysisContext allocationContext = bb.analysisPolicy().allocationContext(bb, methodFlows);
 
-        AnalysisContext allocatorContext = methodFlows.context();
-        AnalysisContext allocationContext = bb.contextPolicy().allocationContext(allocatorContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
-
-        if (bb.analysisPolicy().isContextSensitiveAllocation(bb, type, allocationContext)) {
+        if (bb.analysisPolicy().isContextSensitiveAllocation(bb, declaredType, allocationContext)) {
             /*
-             * If the analysis is context sensitive create a new heap object for the new context, or
+             * If the analysis is context-sensitive create a new heap object for the new context, or
              * return an existing one. The original NewInstanceTypeFlow is the one that stores the
              * (Context->HeapObject) mapping.
              */
@@ -102,14 +101,12 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
              * allocation site) we use just the type of the object wrapped into the AbstractObject
              * base class. There is no cloning in this case.
              */
-            return TypeState.forExactType(bb, type, false);
+            return TypeState.forExactType(bb, declaredType, false);
         }
 
     }
 
     private AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisContext objContext) {
-        assert !this.isClone();
-
         if (heapObjectsCache == null) {
             /* Lazily initialize the cache. */
             HEAP_OBJECTS_CACHE_UPDATER.compareAndSet(this, null, new ConcurrentHashMap<>());
@@ -117,25 +114,15 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
         AnalysisObject result = heapObjectsCache.get(objContext);
         if (result == null) {
-            AnalysisObject newValue = bb.analysisPolicy().createHeapObject(bb, type, allocationSite, objContext);
+            AnalysisObject newValue = bb.analysisPolicy().createHeapObject(bb, declaredType, source, objContext);
             AnalysisObject oldValue = heapObjectsCache.putIfAbsent(objContext, newValue);
             result = oldValue != null ? oldValue : newValue;
         }
         return result;
     }
 
-    public BytecodeLocation allocationSite() {
-        return allocationSite;
-    }
-
-    public AnalysisType type() {
-        return type;
-    }
-
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("NewInstanceFlow<").append(getState()).append(">");
-        return str.toString();
+        return "NewInstanceFlow<" + getState() + ">";
     }
 }

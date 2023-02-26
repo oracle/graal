@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,11 @@ package com.oracle.truffle.tck.tests;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.function.Function;
 import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.tck.Snippet;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
@@ -67,18 +65,8 @@ public class StatementTest {
         final Collection<? extends TestRun> testRuns = TestUtil.createTestRuns(
                         TestUtil.getRequiredLanguages(context),
                         TestUtil.getRequiredValueLanguages(context),
-                        new Function<String, Collection<? extends Snippet>>() {
-                            @Override
-                            public Collection<? extends Snippet> apply(String lang) {
-                                return context.getStatements(null, null, lang);
-                            }
-                        },
-                        new Function<String, Collection<? extends Snippet>>() {
-                            @Override
-                            public Collection<? extends Snippet> apply(String lang) {
-                                return context.getValueConstructors(null, lang);
-                            }
-                        });
+                        lang -> context.getStatements(null, null, lang),
+                        lang -> context.getValueConstructors(null, lang));
         if (testRuns.isEmpty()) {
             // BeforeClass and AfterClass annotated methods are not called when there are no tests
             // to run. But we need to free TestContext.
@@ -108,12 +96,18 @@ public class StatementTest {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
         boolean success = false;
         try {
+            Value result = null;
             try {
-                final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null, true);
+                result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
+            } catch (IllegalArgumentException e) {
+                TestUtil.validateResult(testRun, context.getContext().asValue(e).as(PolyglotException.class));
                 success = true;
-            } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe, true);
+            } catch (PolyglotException e) {
+                TestUtil.validateResult(testRun, e);
+                success = true;
+            }
+            if (result != null) {
+                TestUtil.validateResult(testRun, result, true);
                 success = true;
             }
         } catch (PolyglotException | AssertionError e) {

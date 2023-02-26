@@ -76,8 +76,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.getAnnotations().add(new CachedParameterSpec(types.Cached));
         spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
-        spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
-        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
         spec.getAnnotations().add(new CachedParameterSpec(types.Bind));
         return spec;
     }

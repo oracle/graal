@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
@@ -94,7 +93,6 @@ import org.graalvm.compiler.phases.contract.VerifyNodeCosts;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -155,14 +153,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         protected String getClassPath() {
             String classpath;
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                classpath = System.getProperty("sun.boot.class.path");
-            } else {
-                classpath = JRT_CLASS_PATH_ENTRY;
-                String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
-                if (upgradeModulePath != null) {
-                    classpath += File.pathSeparator + upgradeModulePath;
-                }
+            classpath = JRT_CLASS_PATH_ENTRY;
+            String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
+            if (upgradeModulePath != null) {
+                classpath += File.pathSeparator + upgradeModulePath;
             }
 
             // Also process classes that go into the libgraal native image.
@@ -181,8 +175,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             if (className.equals("module-info") || className.startsWith("META-INF.versions.")) {
                 return false;
             }
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                // @formatter:off
+            // @formatter:off
                 /*
                  * Work around to prevent:
                  *
@@ -197,14 +190,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                  * which occurs because JDK8 overlays are in modular jars. They are never used normally.
                  */
                 // @formatter:on
-                if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
-                    return false;
-                }
-            } else {
-                if (className.equals("jdk.vm.ci.services.JVMCIClassLoaderFactory")) {
-                    return false;
-                }
+            if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
+                return false;
             }
+
             return true;
         }
 
@@ -355,18 +344,22 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
 
+        verifiers.add(new VerifySharedConstantEmptyArray());
         verifiers.add(new VerifyDebugUsage());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
-        verifiers.add(new VerifyGraphAddUsage());
-        verifiers.add(new VerifyBufferUsage());
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
         verifiers.add(new VerifyVariableCasts());
         verifiers.add(new VerifyIterableNodeType());
+        verifiers.add(new VerifyArchUsageInPlugins());
+        verifiers.add(new VerifyStatelessPhases());
+        verifiers.add(new VerifyProfileMethodUsage());
+        verifiers.add(new VerifyMemoryKillCheck());
+        verifiers.add(new VerifySnippetProbabilities());
 
         loadVerifiers(verifiers);
 
@@ -434,7 +427,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 try (DebugContext debug = new Builder(options).build()) {
-                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null;
+                                    boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
                                     StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(isSubstitution).build();
                                     try (DebugCloseable s = debug.disableIntercept(); DebugContext.Scope ds = debug.scope("CheckingGraph", graph, method)) {
                                         checkMethod(method);

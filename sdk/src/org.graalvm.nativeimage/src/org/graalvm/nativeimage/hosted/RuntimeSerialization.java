@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,27 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 public final class RuntimeSerialization {
 
     /**
+     * Register the specified serialization target class itself and all associated classes.
+     * <p>
+     * According to the Java Object Serialization Specification, the associated classes include 1)
+     * all the target class' non-static and non-transient fields types and their associated classes;
+     * 2) other fields defined in the customised writeObject(ObjectOutputStream) and
+     * readObject(ObjectInputStream). This method can automatically explore all possible
+     * serialization target classes in the first scenario, but can't figure out the classes in the
+     * second scenario.
+     * <p>
+     * Another limitation is the specified {@code clazz} must have no subclasses (effectively
+     * final). Otherwise, the actual serialization target class could be any subclass of the
+     * specified class at runtime.
+     *
+     * @param clazz the serialization target class
+     * @since 21.3
+     */
+    public static void registerIncludingAssociatedClasses(Class<?> clazz) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
+    }
+
+    /**
      * Makes the provided classes available for serialization at runtime.
      *
      * @since 21.3
@@ -77,6 +98,28 @@ public final class RuntimeSerialization {
      */
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
         ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
+    }
+
+    /**
+     * Makes a class available for serialization at runtime that is created for the lambda
+     * expressions (a class that has a $deserializeLambda$ method) specified by the
+     * lambdaCapturingClass.
+     *
+     * @since 22.3
+     */
+    public static void registerLambdaCapturingClass(Class<?> lambdaCapturingClass) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerLambdaCapturingClass(ConfigurationCondition.alwaysTrue(), lambdaCapturingClass);
+    }
+
+    /**
+     * Makes a dynamic proxy class (class that extends {@link java.lang.reflect.Proxy}) available
+     * for serialization at runtime that is specified by the given interfaces the proxy class
+     * implements.
+     *
+     * @since 22.3
+     */
+    public static void registerProxyClass(Class<?>... implementedInterfaces) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerProxyClass(ConfigurationCondition.alwaysTrue(), implementedInterfaces);
     }
 
     private RuntimeSerialization() {

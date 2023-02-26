@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
@@ -63,7 +63,7 @@ public class PthreadConditionUtils {
         return Pthread.pthread_cond_init(cond, attr);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void getAbsoluteTimeNanos(timespec result) {
         /*
          * We need the real-time clock to compute absolute deadlines when a conditional wait should
@@ -88,15 +88,15 @@ public class PthreadConditionUtils {
         }
     }
 
-    /** Turn a delay in nanoseconds into a deadline in a Time.timespec. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void delayNanosToDeadlineTimespec(long delayNanos, Time.timespec result) {
+    /** Turn a duration in nanoseconds into a deadline in a Time.timespec. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void durationNanosToDeadlineTimespec(long durationNanos, Time.timespec result) {
         timespec currentTimespec = StackValue.get(timespec.class);
         getAbsoluteTimeNanos(currentTimespec);
 
-        assert delayNanos >= 0;
-        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(delayNanos));
-        long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(delayNanos);
+        assert durationNanos >= 0;
+        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(durationNanos));
+        long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(durationNanos);
         if (nsec >= TimeUtils.nanosPerSecond) {
             sec = TimeUtils.addOrMaxValue(sec, 1);
             nsec -= TimeUtils.nanosPerSecond;
@@ -108,7 +108,7 @@ public class PthreadConditionUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static long deadlineTimespecToDelayNanos(Time.timespec deadlineTimespec) {
+    public static long deadlineTimespecToDurationNanos(Time.timespec deadlineTimespec) {
         timespec currentTimespec = StackValue.get(timespec.class);
         getAbsoluteTimeNanos(currentTimespec);
 

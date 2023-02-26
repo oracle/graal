@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
@@ -49,10 +49,13 @@ public class CodeReferenceMapDecoder {
      * @param referenceMapEncoding The encoding for the Object references in the collection.
      * @param referenceMapIndex The start index for the particular reference map in the encoding.
      * @param visitor The visitor to be applied to each Object reference.
+     * @param holderObject The object containing the reference, or {@code null} if the reference is
+     *            not part of an object (which it is in case of a stack reference).
      * @return false if any of the visits returned false, true otherwise.
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
         assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
         UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
@@ -66,7 +69,8 @@ public class CodeReferenceMapDecoder {
              * The following code is copied from TypeReader.getUV() and .getSV() because we cannot
              * allocate a TypeReader here which, in addition to returning the read variable-sized
              * values, can keep track of the index in the byte array. Even with an instance of
-             * ReusableTypeReader, we would need to worry about this method being reentrant.
+             * UninterruptibleReusableTypeReader, we would need to worry about this method being
+             * reentrant.
              */
 
             // Size of gap in bytes (negative means the next pointer has derived pointers)
@@ -82,7 +86,7 @@ public class CodeReferenceMapDecoder {
                     shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                 }
             }
-            gap = UnsafeArrayTypeReader.decodeSign(gap);
+            gap = decodeSign(gap);
 
             // Number of pointers (sign distinguishes between compression and uncompression)
             long count = NonmovableByteArrayReader.getU1(referenceMapEncoding, idx++);
@@ -97,7 +101,7 @@ public class CodeReferenceMapDecoder {
                     shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                 }
             }
-            count = UnsafeArrayTypeReader.decodeSign(count);
+            count = decodeSign(count);
 
             if (gap == 0 && count == 0) {
                 break; // reached end of table
@@ -125,8 +129,7 @@ public class CodeReferenceMapDecoder {
                  */
                 Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
 
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
-                if (!visitResult) {
+                if (!callVisitObjectReferenceInline(visitor, objRef, 0, compressed, holderObject)) {
                     return false;
                 }
 
@@ -145,7 +148,7 @@ public class CodeReferenceMapDecoder {
                             shift += UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                         }
                     }
-                    refOffset = UnsafeArrayTypeReader.decodeSign(refOffset);
+                    refOffset = decodeSign(refOffset);
 
                     Pointer derivedRef;
                     if (refOffset >= 0) {
@@ -155,18 +158,18 @@ public class CodeReferenceMapDecoder {
                     }
 
                     Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
-                    int innerOffset = NumUtil.safeToInt(derivedPtr.subtract(basePtr).rawValue());
+                    long innerOffsetRaw = derivedPtr.subtract(basePtr).rawValue();
+                    int innerOffset = (int) innerOffsetRaw;
+                    assert innerOffset == innerOffsetRaw;
 
-                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, null);
-                    if (!derivedVisitResult) {
+                    if (!callVisitObjectReferenceInline(visitor, derivedRef, innerOffset, compressed, holderObject)) {
                         return false;
                     }
                 }
                 objRef = objRef.add(refSize);
             } else {
                 for (long c = 0; c < count; c += 1) {
-                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
-                    if (!visitResult) {
+                    if (!callVisitObjectReferenceInline(visitor, objRef, 0, compressed, holderObject)) {
                         return false;
                     }
                     objRef = objRef.add(refSize);
@@ -174,5 +177,17 @@ public class CodeReferenceMapDecoder {
             }
         }
         return true;
+    }
+
+    /** Uninterruptible duplicate of {@link AbstractTypeReader#decodeSign}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long decodeSign(long value) {
+        return (value >>> 1) ^ -(value & 1);
+    }
+
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    private static boolean callVisitObjectReferenceInline(ObjectReferenceVisitor visitor, Pointer derivedRef, int innerOffset, boolean compressed, Object holderObject) {
+        return visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, holderObject);
     }
 }

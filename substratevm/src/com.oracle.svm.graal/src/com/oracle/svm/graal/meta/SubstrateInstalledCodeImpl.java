@@ -26,6 +26,7 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 
 import com.oracle.svm.core.code.CodeInfo;
@@ -59,6 +60,24 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     @Override
     public ResolvedJavaMethod getMethod() {
         return null;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public long getAddress() {
+        return address;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public long getEntryPoint() {
+        return entryPoint;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public boolean isAlive() {
+        return this.address != 0L;
     }
 
     @Override

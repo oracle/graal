@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
@@ -54,7 +53,7 @@ public abstract class InteropException extends Exception {
 
     InteropException(String message, Throwable cause) {
         super(message, cause);
-        validateTruffleException(cause);
+        assert validateCause(cause);
     }
 
     InteropException(String message) {
@@ -84,7 +83,7 @@ public abstract class InteropException extends Exception {
      * @since 20.2
      */
     @Override
-    @Deprecated
+    @Deprecated(since = "20.2")
     @TruffleBoundary
     public final synchronized Throwable initCause(Throwable cause) {
         return super.initCause(cause);
@@ -101,17 +100,15 @@ public abstract class InteropException extends Exception {
         return this;
     }
 
-    @SuppressWarnings("deprecation")
-    private static void validateTruffleException(Throwable t) {
-        if (CompilerDirectives.inCompiledCode()) {
-            return;
-        }
+    @TruffleBoundary
+    private static boolean validateCause(Throwable t) {
         if (t == null) {
-            return;
+            return true;
         }
-        if (!(t instanceof com.oracle.truffle.api.TruffleException)) {
-            throw new IllegalArgumentException("Cause exception must implement TruffleException but was " + t.getClass() + ".");
+        if (!InteropAccessor.EXCEPTION.isException(t)) {
+            throw new IllegalArgumentException("Cause exception must extend AbstractTruffleException but was " + t.getClass() + ".");
         }
+        return true;
     }
 
     private static final long serialVersionUID = -5173354806966156285L;

@@ -1,29 +1,39 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
+  "mx_version" : "6.14.9",
+
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-22.0-b01", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u311+11-jvmci-22.0-b01", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u311+11-jvmci-22.0-b01-fastdebug", "platformspecific": true },
+    "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.1",  "build_id": "12", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.6+2-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.6+2-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.6+2-jvmci-23.0-b04-sulong", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.6+7-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.6+7-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.6+7-jvmci-23.0-b04-sulong", "platformspecific": true },
 
-    "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
-    "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.13+8-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+5-jvmci-22.0-b02", "platformspecific": true },
+    "oraclejdk19":        {"name": "jpg-jdk",   "version": "19",      "build_id": "26", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-19":      {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ce-19Debug": {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ce-19-llvm": {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04-sulong", "platformspecific": true },
+    "labsjdk-ee-19":      {"name": "labsjdk",   "version": "ee-19.0.2+6-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.2+6-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+6-jvmci-23.0-b04-sulong", "platformspecific": true },
 
-    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true }
+    "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+25-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+25-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+25-jvmci-23.0-b04-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
-      "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
-      "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
-      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
-      "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
+    "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }},
+    "windows-jdk19":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
+    "windows-jdk20":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
+    "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }},
+    "linux-jdk19":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }},
+    "linux-jdk20":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }}
   },
 
   "catch_files" : [
@@ -32,22 +42,18 @@
   ],
 
   "deps": {
-    "COMMENT.common": [
-      "pip:isort is a dependency of pip:pylint. The explicit dependency on the pip package works around",
-      "https://bugzilla.redhat.com/show_bug.cgi?id=1710221 on older Redhat-based systems, and doesn't",
-      "hurt on others."
-    ],
     "common": {
       "timelimit": "30:00",
       "environment": {
-        "MX_PYTHON": "python3"
+        "MX_PYTHON": "python3.8"
       },
       "packages": {
-        "pip:isort": "==4.3.19",
-        "pip:logilab-common": "==1.4.4",
-        "pip:pylint": "==1.9.3",
+        "python3": "==3.8.10",
+        "pip:pylint": "==2.4.4",
+        "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
-      }
+      },
+      "python_version": "3"
     },
 
     "linux": {
@@ -81,6 +87,15 @@
       },
       "environment": {
         "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      },
+
+      "COMMENT.eclipse_org": [
+        "Coordinates for downloading same version as above directly from eclipse.org (used by GitHub actions).",
+        "Template URL: https://archive.eclipse.org/eclipse/downloads/drops4/R-<eclipse_org.version>-<eclipse_org.timestamp>/eclipse-SDK-<eclipse_org.version>-linux-gtk-x86_64.tar.gz"
+      ],
+      "eclipse_org": {
+        "version": "4.14",
+        "timestamp": "201912100610"
       }
     },
     "jdt": {
@@ -97,14 +112,19 @@
           "cmake": "==3.15.2"
         }
       },
-      "darwin": {
+      "darwin_amd64": {
         "packages": {
           "cmake": "==3.15.2"
         }
       },
+      "darwin_aarch64": {
+        "packages": {
+          "cmake": "==3.22.2"
+        }
+      },
       "windows": {
         "packages": {
-          "msvc": "==10.0",
+          "msvc_source": "==14.0",
           "pip:cmake": "==3.18.4"
         }
       }
@@ -126,12 +146,48 @@
       "common": {},
       "linux": {
         "packages": {
-          "binutils": "==2.23.2",
-          "gcc": "==8.3.0",
+          "00:devtoolset": "==7",
           "cmake": "==3.15.2"
         }
       },
       "darwin": {}
+    }
+  },
+  "svm": {
+    "COMMENT.deps": "Please use svm_deps in common.jsonnet instead (the values below are without the repository-specific dependencies).",
+    "deps": {
+      "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
+      "common": {
+        "environment": {
+          "DEFAULT_VM": "server",
+          "LANG": "en_US.UTF-8"
+        },
+        "logs": [
+          "../.native-image/*/*/*/*.log",
+          "*/*.log",
+          "*/svmbuild/*.log",
+          "*/svmbuild/images/*.log",
+          "*/*/stripped/*.map",
+          "*/callgrind.*",
+          "*.log"
+        ]
+      },
+      "linux_amd64": {
+        "packages": {
+          "00:devtoolset": "==7",
+          "01:binutils": ">=2.34",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "linux_aarch64": {
+        "packages": {
+          "00:devtoolset": "==7",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "darwin_amd64": {},
+      "darwin_aarch64": {},
+      "windows": {}
     }
   }
 }

@@ -46,7 +46,7 @@ final class CVFileTableRecord extends CVSymbolRecord {
     private int currentOffset = 0;
 
     /* Use a LinkedHashMap to maintain insertion order. */
-    private Map<FileEntry, FileRecord> fileEntryToRecordMap = new LinkedHashMap<>(FILE_TABLE_INITIAL_SIZE);
+    private final Map<FileEntry, FileRecord> fileEntryToRecordMap = new LinkedHashMap<>(FILE_TABLE_INITIAL_SIZE);
 
     CVFileTableRecord(CVDebugInfo cvDebugInfo, CVSymbolSectionImpl.CVStringTable strings) {
         super(cvDebugInfo, CVDebugConstants.DEBUG_S_FILECHKSMS);
@@ -94,9 +94,9 @@ final class CVFileTableRecord extends CVSymbolRecord {
         private static final byte CHECKSUM_MD5 = 0x01;
         private static final byte[] EMPTY_CHECKSUM = new byte[CHECKSUM_LENGTH];
 
-        private FileEntry entry;
-        private int fileTableId;
-        private int stringTableId;
+        private final FileEntry entry;
+        private final int fileTableId;
+        private final int stringTableId;
 
         FileRecord(FileEntry entry, int fileTableId, int stringTableId) {
             this.entry = entry;

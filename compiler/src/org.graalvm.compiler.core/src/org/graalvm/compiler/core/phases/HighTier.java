@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.EarlyGVN;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.OptConvertDeoptsToGuards;
@@ -38,7 +39,6 @@ import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -48,15 +48,15 @@ import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.DisableOverflownCountedLoopsPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends BaseTier<HighTierContext> {
 
@@ -69,7 +69,7 @@ public class HighTier extends BaseTier<HighTierContext> {
     }
 
     public HighTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
         if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {
@@ -88,22 +88,26 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (OptConvertDeoptsToGuards.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new ConvertDeoptimizeToGuardPhase()));
+            appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizer));
         }
 
         if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
+        if (EarlyGVN.getValue(options)) {
+            appendPhase(new DominatorBasedGlobalValueNumberingPhase(canonicalizer));
+        }
+
         LoopPolicies loopPolicies = createLoopPolicies(options);
         appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
 
         if (LoopPeeling.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
+            appendPhase(new LoopPeelingPhase(loopPolicies, canonicalizer));
         }
 
         if (LoopUnswitch.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
+            appendPhase(new LoopUnswitchingPhase(loopPolicies, canonicalizer));
         }
 
         // Must precede all phases that otherwise ignore the identity of boxes (e.g.
@@ -111,7 +115,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeIdentityPhase());
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer, options).setFinalPEA());
+            appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
         }
 
         if (OptReadElimination.getValue(options)) {
@@ -122,8 +126,8 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.LATE));
         }
 
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new BoxNodeOptimizationPhase()));
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, true));
+        appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
+        appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 
     @Override

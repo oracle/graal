@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -46,7 +47,7 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
-            if (!universe.hostVM().platformSupported(universe, analysisClass)) {
+            if (!universe.hostVM().platformSupported(analysisClass)) {
                 return true;
             } else if (analysisClass.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -60,7 +61,7 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-            if (!universe.hostVM().platformSupported(universe, aMethod)) {
+            if (!universe.hostVM().platformSupported(aMethod)) {
                 return true;
             } else if (aMethod.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -83,10 +84,10 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             AnalysisField aField = metaAccess.lookupJavaField(field);
-            if (!universe.hostVM().platformSupported(universe, aField)) {
+            if (!universe.hostVM().platformSupported(aField)) {
                 return true;
             }
-            if (aField.isAnnotationPresent(Delete.class)) {
+            if (aField.isAnnotationPresent(Delete.class) || aField.isAnnotationPresent(InjectAccessors.class)) {
                 return true; // accesses would fail at runtime
             }
         } catch (UnsupportedFeatureException ignored) {

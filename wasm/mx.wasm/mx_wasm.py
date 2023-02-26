@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ microbenchmarks = [
     "digitron",
     "event-sim",
     "fft",
+    "fib-vm",
     "hash-join",
     "merge-join",
     "phong",
@@ -241,6 +242,16 @@ class WatBuildTask(GraalWasmBuildTask):
             mx.abort("No WABT_DIR specified - the source programs will not be compiled to .wasm.")
         wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
 
+        wat2wasm_version_cmd = [wat2wasm_cmd] + ["--version"]
+        out = mx.OutputCapture()
+        bulk_memory_option = None
+        mx.run(wat2wasm_version_cmd, nonZeroIsFatal=False, out=out)
+        wat2wasm_version = str(out.data).split(".")
+        major = int(wat2wasm_version[0])
+        build = int(wat2wasm_version[2])
+        if major <= 1 and build <= 24:
+            bulk_memory_option = "--enable-bulk-memory"
+
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
@@ -256,6 +267,8 @@ class WatBuildTask(GraalWasmBuildTask):
 
             if must_rebuild:
                 build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path]
+                if bulk_memory_option is not None:
+                    build_cmd_line += [bulk_memory_option]
                 if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                     mx.abort("Could not build the wasm binary of '" + filename + "' with wat2wasm.")
                 shutil.copyfile(source_path, output_wat_path)
@@ -564,3 +577,14 @@ def wasm(args, **kwargs):
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)
+
+@mx.command(_suite.name, "wasm-memory-layout")
+def wasm_memory_layout(args, **kwargs):
+    """Run WebAssembly memory layout extractor."""
+    mx.get_opts().jdk = "jvmci"
+    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    path_args = mx.get_runtime_jvm_args([
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.memory",
+    ])
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, **kwargs)

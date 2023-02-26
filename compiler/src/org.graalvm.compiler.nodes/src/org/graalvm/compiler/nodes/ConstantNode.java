@@ -36,8 +36,6 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.interpreter.value.InterpreterValue;
-import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
@@ -51,7 +49,6 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.util.InterpreterState;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -497,31 +494,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         }
     }
 
-    public static ConstantNode forFloatingKind(JavaKind kind, double value) {
-        switch (kind) {
-            case Float:
-                return ConstantNode.forFloat((float) value);
-            case Double:
-                return ConstantNode.forDouble(value);
-            default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
-        }
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
-        return forFloatingKind(stamp.getStackKind(), value, graph);
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value) {
-        return forFloatingKind(stamp.getStackKind(), value);
-    }
-
     public static ConstantNode defaultForKind(JavaKind kind, StructuredGraph graph) {
         return unique(graph, defaultForKind(kind));
     }
@@ -574,23 +546,5 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             return null;
         }
         return ConstantNode.forInt(length);
-    }
-
-    @NodeIntrinsic
-    public static native Class<?> forClass(@ConstantNodeParameter ResolvedJavaType type);
-
-    @Override
-    public InterpreterValue interpretExpr(InterpreterState interpreter) {
-        Constant cVal = getValue();
-        if (cVal instanceof PrimitiveConstant) {
-            return InterpreterValuePrimitive.ofPrimitiveConstant(cVal);
-        }
-        // Test if the constant is null
-        // 这里加上判断常量 cVal 是否是 null，为了支持 object 要加上这个判断，因为任何 object 变量都可能是 null
-        if (cVal instanceof JavaConstant && ((JavaConstant) cVal).isNull()) {
-            return InterpreterValue.InterpreterValueNullPointer.INSTANCE;
-        }
-        String msg = String.format("cannot interpret constant Value=%s class=%s\n", cVal, cVal.getClass());
-        throw GraalError.unimplemented(msg);
     }
 }

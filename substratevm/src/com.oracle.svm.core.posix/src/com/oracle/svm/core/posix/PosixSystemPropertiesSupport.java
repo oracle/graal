@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Pwd;
@@ -56,7 +56,7 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
     @Override
     protected String userDirValue() {
         int bufSize = Limits.MAXPATHLEN();
-        CCharPointer buf = StackValue.get(bufSize);
+        CCharPointer buf = UnsafeStackValue.get(bufSize);
         if (Unistd.getcwd(buf, WordFactory.unsigned(bufSize)).isNonNull()) {
             return CTypeConversion.toJavaString(buf);
         } else {

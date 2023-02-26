@@ -33,13 +33,19 @@ import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AssumptionCutsBranchTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantWithAssumptionTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {
@@ -86,22 +92,117 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertNull(result.getChildNode());
     }
 
-    static class TestOptimizedAssumptionDependency implements OptimizedAssumptionDependency {
-        boolean valid = true;
+    @NodeInfo
+    public class AlwaysValidAssumptionCutsTestNode extends RootNode {
 
-        @Override
-        public void onAssumptionInvalidated(Object source, CharSequence reason) {
-            valid = false;
+        private final OptimizedAssumption assumption;
+
+        public AlwaysValidAssumptionCutsTestNode() {
+            super(null);
+            this.assumption = (OptimizedAssumption) Assumption.ALWAYS_VALID;
         }
 
         @Override
-        public boolean isValid() {
-            return valid;
+        public Object execute(VirtualFrame frame) {
+            if (assumption.isValid()) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    return 42;
+                }
+                CompilerAsserts.neverPartOfCompilation();
+                return 2;
+            }
+            CompilerAsserts.neverPartOfCompilation();
+            return 1;
+        }
+
+    }
+
+    /**
+     * Tests whether a valid always valid assumption compiles without registration.
+     */
+    @Test
+    public void assumptionBranchAlwaysValid() {
+        setupContext(Context.newBuilder().option("engine.BackgroundCompilation", "false"));
+        AlwaysValidAssumptionCutsTestNode node = new AlwaysValidAssumptionCutsTestNode();
+        Assert.assertEquals(0, node.assumption.countDependencies());
+        Assert.assertTrue(node.assumption.isValid());
+
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getCallTarget();
+        int intResult = (int) callTarget.call();
+        // might be 42 or 2 dependent whether compile immediately is set
+        assertTrue(intResult == 42 || intResult == 2);
+        callTarget.compile(true);
+        Assert.assertEquals(42, callTarget.call());
+
+        Assert.assertEquals(0, node.assumption.countDependencies());
+        Assert.assertTrue(node.assumption.isValid());
+    }
+
+    @NodeInfo
+    public class NeverValidAssumptionCutsTestNode extends RootNode {
+
+        private final OptimizedAssumption assumption;
+
+        public NeverValidAssumptionCutsTestNode() {
+            super(null);
+            this.assumption = (OptimizedAssumption) Assumption.NEVER_VALID;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (!assumption.isValid()) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    return 42;
+                }
+                CompilerAsserts.neverPartOfCompilation();
+                return 2;
+            }
+            CompilerAsserts.neverPartOfCompilation();
+            return 1;
+        }
+
+    }
+
+    /**
+     * Tests whether a never valid assumption compiles without registration.
+     */
+    @Test
+    public void assumptionBranchNeverValid() {
+        setupContext(Context.newBuilder().option("engine.BackgroundCompilation", "false"));
+        NeverValidAssumptionCutsTestNode node = new NeverValidAssumptionCutsTestNode();
+        Assert.assertEquals(0, node.assumption.countDependencies());
+        Assert.assertFalse(node.assumption.isValid());
+
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getCallTarget();
+        int intResult = (int) callTarget.call();
+        // might be 42 or 2 dependent whether compile immediately is set
+        assertTrue(intResult == 42 || intResult == 2);
+        callTarget.compile(true);
+        Assert.assertEquals(42, callTarget.call());
+
+        Assert.assertEquals(0, node.assumption.countDependencies());
+        Assert.assertFalse(node.assumption.isValid());
+    }
+
+    static class TestOptimizedAssumptionDependency implements OptimizedAssumptionDependency {
+        boolean alive = true;
+
+        @Override
+        public void onAssumptionInvalidated(Object source, CharSequence reason) {
+            alive = false;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return alive;
         }
     }
 
     @Test
     public void testAssumptionDependencyManagement() {
+        Assert.assertNotNull(((OptimizedAssumption) Assumption.ALWAYS_VALID).registerDependency());
+        Assert.assertNull(((OptimizedAssumption) Assumption.NEVER_VALID).registerDependency());
+
         OptimizedAssumption assumption = (OptimizedAssumption) Truffle.getRuntime().createAssumption();
         Assert.assertEquals(0, assumption.countDependencies());
 
@@ -123,18 +224,17 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
                 invalidated++;
             }
         }
-        assumption.removeInvalidDependencies();
+        assumption.removeDeadDependencies();
         Assert.assertEquals(invalidated, assumption.countDependencies());
 
         for (int i = 0; i < deps.length; i++) {
             deps[i].onAssumptionInvalidated(assumption, null);
         }
-        assumption.removeInvalidDependencies();
+        assumption.removeDeadDependencies();
         Assert.assertEquals(0, assumption.countDependencies());
 
         WeakReference<TestOptimizedAssumptionDependency> dep = new WeakReference<>(new TestOptimizedAssumptionDependency());
         if (dep.get() != null) {
-            Assert.assertTrue(dep.get().soleExecutionEntryPoint());
             assumption.registerDependency().accept(dep.get());
             Assert.assertEquals(1, assumption.countDependencies());
             int attempts = 10;
@@ -142,7 +242,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
                 System.gc();
             }
             if (dep.get() == null) {
-                assumption.removeInvalidDependencies();
+                assumption.removeDeadDependencies();
                 Assert.assertEquals(0, assumption.countDependencies());
             } else {
                 // System.gc is not guaranteed to do anything
@@ -151,4 +251,5 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         }
 
     }
+
 }

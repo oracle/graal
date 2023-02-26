@@ -28,7 +28,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -109,7 +109,7 @@ public abstract class WithExceptionNode extends ControlSplitNode {
      * Converts this node into a variant with the same semantics but without an exception edge. The
      * default implementation does not change the node class, but instead only marks the exception
      * path as unused. A later lowering of the node needs to take care of the actual removal of the
-     * exception path, e.g., by lowering into a {@link ForeignCallWithExceptionNode}.
+     * exception path, e.g., by lowering into a {@link ForeignCallNode}.
      */
     public FixedNode replaceWithNonThrowing() {
         killExceptionEdge();

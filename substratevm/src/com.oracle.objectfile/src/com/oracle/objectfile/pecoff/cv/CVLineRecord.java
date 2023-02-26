@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.ObjectFile;
-
 import java.util.ArrayList;
 
 /*
@@ -45,8 +43,8 @@ final class CVLineRecord extends CVSymbolRecord {
     /* Has columns flag = 0x80 - not supported. */
     private static final short CB_HAS_NO_COLUMNS_FLAG = 0x00;
 
-    private String symbolName;
-    private ArrayList<FileBlock> fileBlocks = new ArrayList<>(DEFAULT_LINE_BLOCK_COUNT);
+    private final String symbolName;
+    private final ArrayList<FileBlock> fileBlocks = new ArrayList<>(DEFAULT_LINE_BLOCK_COUNT);
 
     CVLineRecord(CVDebugInfo cvDebugInfo, String symbolName) {
         super(cvDebugInfo, CVDebugConstants.DEBUG_S_LINES);
@@ -92,10 +90,7 @@ final class CVLineRecord extends CVSymbolRecord {
         int pos = initialPos;
 
         /* Emit addr:section relocation records. */
-        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, symbolName, 1L);
-        pos = CVUtil.putInt(0, buffer, pos);
-        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, symbolName, 1L);
-        pos = CVUtil.putShort((short) 0, buffer, pos);
+        pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, pos, symbolName);
 
         /* Emit flags. */
         pos = CVUtil.putShort(CB_HAS_NO_COLUMNS_FLAG, buffer, pos);
@@ -127,15 +122,25 @@ final class CVLineRecord extends CVSymbolRecord {
         /* Fileblock header: fileId (4 bytes) lineEntry count (4 bytes) tablesize (4 bytes) */
         static final int FILE_BLOCK_HEADER_SIZE = Integer.BYTES * 3;
 
-        private ArrayList<LineEntry> lineEntries = new ArrayList<>(DEFAULT_LINE_ENTRY_COUNT);
-        private int fileId;
+        /* Initial value (that can never occur) for previousLine when there is no previous line. */
+        static final int NO_PREVIOUS_LINE = -2;
+
+        private final ArrayList<LineEntry> lineEntries = new ArrayList<>(DEFAULT_LINE_ENTRY_COUNT);
+        private final int fileId;
+        private int previousLine;
 
         FileBlock(int fileId) {
             this.fileId = fileId;
+            this.previousLine = NO_PREVIOUS_LINE;
         }
 
         void addEntry(LineEntry le) {
-            lineEntries.add(le);
+            assert le.lineAndFlags != NO_PREVIOUS_LINE;
+            /* Only add an entry if the line number has changed. */
+            if (le.lineAndFlags != previousLine) {
+                lineEntries.add(le);
+                previousLine = le.lineAndFlags;
+            }
         }
 
         int computeContents(byte[] buffer, int initialPos) {
@@ -172,7 +177,7 @@ final class CVLineRecord extends CVSymbolRecord {
         static final int LINE_ENTRY_SIZE = 2 * Integer.BYTES;
 
         int addr;
-        int lineAndFLags;
+        int lineAndFlags;
 
         LineEntry(int addr, int line, int deltaEnd, boolean isStatement) {
             this.addr = addr;
@@ -180,7 +185,7 @@ final class CVLineRecord extends CVSymbolRecord {
             assert line >= 0;
             assert deltaEnd <= 0x7f;
             assert deltaEnd >= 0;
-            lineAndFLags = line | (deltaEnd << 24) | (isStatement ? 0x80000000 : 0);
+            lineAndFlags = line | (deltaEnd << 24) | (isStatement ? 0x80000000 : 0);
         }
 
         LineEntry(int addr, int line) {
@@ -190,7 +195,7 @@ final class CVLineRecord extends CVSymbolRecord {
         int computeContents(byte[] buffer, int initialPos) {
             int pos = initialPos;
             pos = CVUtil.putInt(addr, buffer, pos);
-            pos = CVUtil.putInt(lineAndFLags, buffer, pos);
+            pos = CVUtil.putInt(lineAndFlags, buffer, pos);
             return pos;
         }
     }

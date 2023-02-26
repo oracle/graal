@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.common.alloc;
 
+import java.util.Arrays;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -70,13 +72,26 @@ public class RegisterAllocationConfig {
         }
     }
 
-    public static final String ALL_REGISTERS = "<all>";
-
-    private static Register findRegister(String name, RegisterArray all) {
+    /**
+     * Returns the first register named {@code spec} found in {@code all}. If such a register cannot
+     * be found, an exception is thrown. This behaviour can be changed by appending a question mark
+     * after the register name in the {@code spec}. In this case, {@code null} is returned instead
+     * of throwing an exception.
+     */
+    private static Register findRegister(String spec, RegisterArray all) {
+        boolean optional = false;
+        String name = spec;
+        if (spec.endsWith("?")) {
+            optional = true;
+            name = spec.substring(0, spec.length() - 1);
+        }
         for (Register reg : all) {
             if (reg.name.equals(name)) {
                 return reg;
             }
+        }
+        if (optional) {
+            return null;
         }
         throw new IllegalArgumentException("register " + name + " is not allocatable");
     }
@@ -84,8 +99,14 @@ public class RegisterAllocationConfig {
     protected RegisterArray initAllocatable(RegisterArray registers) {
         if (allocationRestrictedTo != null) {
             Register[] regs = new Register[allocationRestrictedTo.length];
-            for (int i = 0; i < allocationRestrictedTo.length; i++) {
-                regs[i] = findRegister(allocationRestrictedTo[i], registers);
+            int i = 0;
+            for (String spec : allocationRestrictedTo) {
+                Register register = findRegister(spec, registers);
+                if (register == null) {
+                    regs = Arrays.copyOf(regs, regs.length - 1);
+                } else {
+                    regs[i++] = register;
+                }
             }
             return new RegisterArray(regs);
         }
@@ -111,6 +132,8 @@ public class RegisterAllocationConfig {
     /**
      * Gets the set of registers that can be used by the register allocator for a value of a
      * particular kind.
+     *
+     * @return {@code null} if there are no allocatable registers for the given kind
      */
     public AllocatableRegisters getAllocatableRegisters(PlatformKind kind) {
         PlatformKind.Key key = kind.getKey();
@@ -125,12 +148,17 @@ public class RegisterAllocationConfig {
 
     /**
      * Gets the {@link RegisterCategory} for the given {@link PlatformKind}.
+     *
+     * @return {@code null} if there are no allocatable registers for the given kind
      */
     public RegisterCategory getRegisterCategory(PlatformKind kind) {
         return getAllocatableRegisters(kind).allocatableRegisters[0].getRegisterCategory();
     }
 
-    protected AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
+    private static AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
+        if (registers.size() == 0) {
+            return null;
+        }
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Register reg : registers) {
@@ -142,9 +170,7 @@ public class RegisterAllocationConfig {
                 max = number;
             }
         }
-        assert min < max;
         return new AllocatableRegisters(registers, min, max);
-
     }
 
     /**

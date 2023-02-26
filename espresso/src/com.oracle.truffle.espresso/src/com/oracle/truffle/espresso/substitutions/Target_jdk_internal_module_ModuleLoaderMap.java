@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -37,9 +38,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 final class Target_jdk_internal_module_ModuleLoaderMap {
-
-    public static final String HOTSWAP_MODULE_NAME = "espresso.hotswap";
-    public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     /**
      * For JDK >11, boot modules are injected at
@@ -55,18 +53,23 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
         StaticObject executeImpl(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_bootModules.getCallTargetNoSubstitution())") DirectCallNode original) {
-
             Meta meta = context.getMeta();
             // fetch original platform modules set
             @JavaType(Set.class)
             StaticObject originalResult = (StaticObject) original.call();
-            // inject our platform modules if options are enabled
-            Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-            if (context.HotSwapAPI) {
-                add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
+            ModuleExtension[] extensions = ModuleExtension.get(context);
+            if (extensions.length == 0) {
+                return originalResult;
             }
-            if (context.Polyglot) {
-                add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
+            // inject our platform modules if options are enabled
+            return addModules(meta, originalResult, extensions);
+        }
+
+        @TruffleBoundary
+        private static StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
+            Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
+            for (ModuleExtension me : extensions) {
+                add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));
             }
             return originalResult;
         }

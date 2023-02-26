@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer;
 
-import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,7 +51,7 @@ public final class SoftwareChannelSource {
      */
     private Map<String, String> params = new HashMap<>();
 
-    public SoftwareChannelSource(String locationURL) throws MalformedURLException {
+    public SoftwareChannelSource(String locationURL) {
         this.locationURL = SystemUtils.parseURLParameters(locationURL, params);
     }
 

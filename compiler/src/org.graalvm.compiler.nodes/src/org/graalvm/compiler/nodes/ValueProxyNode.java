@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -45,6 +46,11 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     public ValueProxyNode(ValueNode value, LoopExitNode loopExit) {
         super(TYPE, value.stamp(NodeView.DEFAULT), loopExit);
+        this.value = value;
+    }
+
+    public ValueProxyNode(Stamp stamp, ValueNode value, LoopExitNode loopExit) {
+        super(TYPE, stamp, loopExit);
         this.value = value;
     }
 

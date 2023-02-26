@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,20 +46,27 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.NearestSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
+import org.graalvm.collections.EconomicMap;
+
 final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSourceListener {
     private final InsightInstrument instrument;
     private final Supplier<Source> src;
     private final AgentObject insight;
     private final IgnoreSources ignoredSources;
-    private EventBinding<?> agentBinding;
+    // Agent initialization bindings for individual contexts.
+    // The context key is removed on binding dispose, or context close.
+    /* @GuardedBy("this") */
+    private final EconomicMap<TruffleContext, EventBinding<?>> initializeBindings = EconomicMap.create();
     /* @GuardedBy("this") */
     private InsightInstrument.Key sourceBinding;
     /* @GuardedBy("this") */
@@ -66,7 +74,7 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     /* @GuardedBy("this") */
     private Map<Object, InsightInstrument.Key> bindings = new HashMap<>();
     /* @GuardedBy("this") */
-    private Map<TruffleContext, Source> registeredSource = new WeakHashMap<>();
+    private final Map<TruffleContext, Source> registeredSource = new WeakHashMap<>();
     private final EventBinding<InsightPerSource> onInit;
 
     InsightPerSource(Instrumenter instrumenter, InsightInstrument instrument, Supplier<Source> src, IgnoreSources ignoredSources) {
@@ -118,15 +126,32 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
     @Override
     public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-        if (agentBinding != null || language.isInternal()) {
+        if (language.isInternal()) {
             return;
         }
         if (context.isEntered()) {
+            EventBinding<?> agentBinding;
+            synchronized (this) {
+                agentBinding = initializeBindings.removeKey(context);
+            }
+            if (agentBinding != null) {
+                agentBinding.dispose();
+            }
             initializeAgent(context);
         } else {
+            EventBinding<?> agentBinding;
+            synchronized (this) {
+                if (initializeBindings.containsKey(context) || registeredSource.containsKey(context)) {
+                    // Either the binding exists already, or the source is registered already.
+                    return;
+                }
+            }
             final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
             Instrumenter instrumenter = instrument.env().getInstrumenter();
             agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater(context));
+            synchronized (this) {
+                initializeBindings.put(context, agentBinding);
+            }
         }
     }
 
@@ -147,6 +172,13 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
     @Override
     public void onContextClosed(TruffleContext context) {
+        EventBinding<?> binding;
+        synchronized (this) {
+            binding = initializeBindings.removeKey(context);
+        }
+        if (binding != null) {
+            binding.dispose();
+        }
     }
 
     @Override
@@ -160,6 +192,25 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
             bindings = null;
         }
         onInit.dispose();
+        EventBinding<?>[] binds; // copy of initializeBindings values, not to dispose under lock
+        synchronized (this) {
+            if (!initializeBindings.isEmpty()) {
+                int n = initializeBindings.size();
+                binds = (EventBinding<?>[]) Array.newInstance(EventBinding.class, n);
+                int i = 0;
+                for (EventBinding<?> agentInitBinding : initializeBindings.getValues()) {
+                    binds[i++] = agentInitBinding;
+                }
+                initializeBindings.clear();
+            } else {
+                binds = null;
+            }
+        }
+        if (binds != null) {
+            for (EventBinding<?> agentInitBinding : binds) {
+                agentInitBinding.dispose();
+            }
+        }
         instrument.closeKeys(keys);
     }
 
@@ -178,31 +229,83 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         if (key == null) {
             key = instrument.newKey(null);
             // @formatter:off
-            SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder()
-                .sourceIs(ignoredSources)
-                .includeInternal(false)
-                .tagIs(filter.getTags());
-
+            SourceFilter.Builder sfb = SourceFilter.newBuilder()
+                    .sourceIs(ignoredSources)
+                    .includeInternal(false);
+            // @formatter:on
             if (data.sourceFilterFn != null) {
                 InsightSourceFilter predicate = new InsightSourceFilter(instrument, key);
-                SourceFilter sf = SourceFilter.newBuilder().sourceIs(predicate).build();
-                ssfb.sourceFilter(sf);
+                sfb.sourceIs(predicate);
             }
-            if (filter.getRootNameRegExp() != null) {
-                ssfb.rootNameIs(new RegexNameFilter(filter.getRootNameRegExp()));
-            } else if (data.rootNameFn != null) {
-                ssfb.rootNameIs(new RootNameFilter(instrument, key));
+            if (filter.getSourcePathRegExp() != null) {
+                sfb.sourceIs(new RegexSourceFilter(filter.getSourcePathRegExp()));
             }
-            // @formatter:on
-
-            bindings.put(filter, key);
-
+            if (filter.getSourceURI() != null) {
+                sfb.sourceIs(new SourcePredicate() {
+                    @Override
+                    public boolean test(Source source) {
+                        return filter.getSourceURI().equals(source.getURI());
+                    }
+                });
+            }
+            SourceFilter sourceFilter = sfb.build();
             Instrumenter instrumenter = instrument.env().getInstrumenter();
-            EventBinding<?> handle = instrumenter.attachExecutionEventFactory(ssfb.build(), needFactory.apply(key));
-            key.assign(handle);
+            int line = filter.getLine();
+            if (line == 0) {
+                attachBinding(data, key, sourceFilter, needFactory);
+            } else {
+                final InsightInstrument.Key theKey = key;
+                Supplier<ExecutionEventNodeFactory> factoryCreate = new Supplier<>() {
+                    ExecutionEventNodeFactory factory;
+
+                    @Override
+                    public synchronized ExecutionEventNodeFactory get() {
+                        if (factory == null) {
+                            factory = needFactory.apply(theKey);
+                        }
+                        return factory;
+                    }
+                };
+                SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder() //
+                                .sourceFilter(sourceFilter);
+                if (filter.getRootNameRegExp() != null) {
+                    ssfb.rootNameIs(new RegexNameFilter(filter.getRootNameRegExp()));
+                } else if (data.rootNameFn != null) {
+                    ssfb.rootNameIs(new RootNameFilter(instrument, theKey));
+                }
+                int column = filter.getColumn();
+                // We will adjust the location, if necessary
+                NearestSectionFilter nearestFilter = NearestSectionFilter.newBuilder(line, column) //
+                                .anchorStart(data.type == AgentType.ENTER) //
+                                .tagIs(filter.getTags()) //
+                                .build();
+                EventBinding<?> binding = instrumenter.attachExecutionEventFactory(nearestFilter, ssfb.build(), factoryCreate.get());
+                theKey.assign(binding);
+            }
+            bindings.put(filter, key);
         } else {
             hasFactory.accept(key);
         }
+    }
+
+    private void attachBinding(InsightFilter.Data data, InsightInstrument.Key key, SourceFilter sourceFilter, Function<InsightInstrument.Key, ExecutionEventNodeFactory> needFactory) {
+        InsightFilter filter = data.filter;
+        // @formatter:off
+        SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder()
+                .sourceFilter(sourceFilter)
+                .tagIs(filter.getTags());
+        // @formatter:on
+        if (filter.getRootNameRegExp() != null) {
+            ssfb.rootNameIs(new RegexNameFilter(filter.getRootNameRegExp()));
+        } else if (data.rootNameFn != null) {
+            ssfb.rootNameIs(new RootNameFilter(instrument, key));
+        }
+        if (filter.getColumn() != 0) {
+            ssfb.columnIn(filter.getColumn(), 1);
+        }
+        Instrumenter instrumenter = instrument.env().getInstrumenter();
+        EventBinding<?> handle = instrumenter.attachExecutionEventFactory(ssfb.build(), needFactory.apply(key));
+        key.assign(handle);
     }
 
     synchronized InsightInstrument.Key closeBinding() {
@@ -218,10 +321,10 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         checkClosed();
         if (sourceBinding == null) {
             // @formatter:off
-            final SourceFilter filter = SourceFilter.newBuilder().
-                sourceIs(ignoredSources).
-                includeInternal(false).
-                build();
+            final SourceFilter filter = SourceFilter.newBuilder()
+                    .sourceIs(ignoredSources)
+                    .includeInternal(false)
+                    .build();
             // @formatter:on
             Instrumenter instrumenter = instrument.env().getInstrumenter();
             sourceBinding = instrument.newKey(AgentType.SOURCE).assign(instrumenter.attachLoadSourceListener(filter, this, false));
@@ -264,9 +367,17 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
         @Override
         public void onEnter(EventContext ctx, VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreter();
-            agentBinding.dispose();
-            initializeAgent(context);
+            if (instrument.env().getEnteredContext() == context) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                EventBinding<?> agentInitBinding;
+                synchronized (InsightPerSource.this) {
+                    agentInitBinding = initializeBindings.removeKey(context);
+                }
+                if (agentInitBinding != null) {
+                    agentInitBinding.dispose();
+                    initializeAgent(context);
+                }
+            }
         }
 
         @Override

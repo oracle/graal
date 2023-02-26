@@ -76,7 +76,7 @@ public final class MethodParametersAttribute extends Attribute {
         if (other == null || getClass() != other.getClass()) {
             return false;
         }
-        if (!super.equals(other)) {
+        if (!super.sameAs(other)) {
             return false;
         }
         MethodParametersAttribute that = (MethodParametersAttribute) other;

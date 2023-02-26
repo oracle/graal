@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.core.jdk17;
 
-// Checkstyle: allow reflection
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.SealedClassSupport;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton(value = SealedClassSupport.class, onlyWith = JDK17OrLater.class)
 final class SealedClassSupportJDK17OrLater extends SealedClassSupport {
 
     @Override
@@ -42,19 +39,5 @@ final class SealedClassSupportJDK17OrLater extends SealedClassSupport {
     @Override
     public Class<?>[] getPermittedSubclasses(Class<?> clazz) {
         return clazz.getPermittedSubclasses();
-    }
-}
-
-@AutomaticFeature
-final class SealedClassFeatureJDK17OrLater implements Feature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 17;
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SealedClassSupport.class, new SealedClassSupportJDK17OrLater());
     }
 }

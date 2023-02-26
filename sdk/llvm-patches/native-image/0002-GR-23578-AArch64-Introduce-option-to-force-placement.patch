@@ -1,0 +1,38 @@
+From ca6facf3f34d646783d082776378da40d06e9035 Mon Sep 17 00:00:00 2001
+From: Loic Ottet <loic.ottet@oracle.com>
+Date: Tue, 8 Sep 2020 13:03:06 +0200
+Subject: [PATCH 2/3] [GR-23578][AArch64] Introduce option to force placement
+ of the frame record on top of the stack frame
+
+---
+ llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
+index d1b901e58d27..96038fbb8f28 100644
+--- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
++++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
+@@ -35,6 +35,11 @@ using namespace llvm;
+ #define GET_REGINFO_TARGET_DESC
+ #include "AArch64GenRegisterInfo.inc"
+ 
++static cl::opt<bool>
++    FrameRecordOnTop("aarch64-frame-record-on-top",
++                     cl::desc("place the frame record on top of the frame"),
++                     cl::init(false), cl::Hidden);
++
+ AArch64RegisterInfo::AArch64RegisterInfo(const Triple &TT)
+     : AArch64GenRegisterInfo(AArch64::LR), TT(TT) {
+   AArch64_MC::initLLVMToCVRegMapping(this);
+@@ -110,6 +115,8 @@ AArch64RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+     return CSR_AArch64_AAPCS_X18_SaveList;
+   if (hasSVEArgsOrReturn(MF))
+     return CSR_AArch64_SVE_AAPCS_SaveList;
++  if (FrameRecordOnTop)
++    return CSR_Darwin_AArch64_AAPCS_SaveList;
+   return CSR_AArch64_AAPCS_SaveList;
+ }
+ 
+-- 
+2.36.0
+

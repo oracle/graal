@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -53,7 +52,6 @@ import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 
 public final class WasmContext {
     private final Env env;
@@ -72,16 +70,16 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
+        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         this.equivalenceClasses = new HashMap<>();
         this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-        this.globals = new GlobalRegistry();
+        this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
-        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         instantiateBuiltinInstances();
     }
 
@@ -165,12 +163,11 @@ public final class WasmContext {
 
     public WasmModule readModule(byte[] data, ModuleLimits moduleLimits) {
         String moduleName = freshModuleName();
-        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).build();
-        return readModule(moduleName, data, moduleLimits, source);
+        return readModule(moduleName, data, moduleLimits);
     }
 
-    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
-        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits, source);
+    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
+        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits);
         final BinaryParser reader = new BinaryParser(module, this);
         reader.readModule();
         return module;
@@ -180,8 +177,15 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
+        // Reread code sections if module is instantiated multiple times
+        if (module.hasCodeSection() && !module.hasCodeEntries()) {
+            final BinaryParser reader = new BinaryParser(module, this);
+            reader.readCodeEntries();
+        }
         final WasmInstantiator translator = new WasmInstantiator(language);
         final WasmInstance instance = translator.createInstance(this, module);
+        // Remove code entries from module to reduce memory footprint at runtime
+        module.removeCodeEntries();
         this.register(instance);
         return instance;
     }
@@ -212,4 +216,28 @@ public final class WasmContext {
         return REFERENCE.get(node);
     }
 
+    /**
+     * @return The current primitive multi-value stack or null if it has never been resized.
+     */
+    public long[] primitiveMultiValueStack() {
+        return language.multiValueStack().primitiveStack();
+    }
+
+    /**
+     * @return the current reference multi-value stack or null if it has never been resized.
+     */
+    public Object[] referenceMultiValueStack() {
+        return language.multiValueStack().referenceStack();
+    }
+
+    /**
+     * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
+     * copied. Therefore, resizing should occur before any call to a function that uses the
+     * multi-value stack.
+     * 
+     * @param expectedSize The minimum expected size.
+     */
+    public void resizeMultiValueStack(int expectedSize) {
+        language.multiValueStack().resize(expectedSize);
+    }
 }

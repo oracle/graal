@@ -50,19 +50,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 
 // 0: PolyglotThreadInfo
 // 1: PolyglotContextImpl
-// 2 + (languageIndex * 2 + 0): language context impl for fast access
-// 2 + (languageIndex * 2 + 1): language spi for fast access
+// 2: EncapsulatingNodeReference
+// 3 + (languageIndex * 2 + 0): language context impl for fast access
+// 3 + (languageIndex * 2 + 1): language spi for fast access
 final class PolyglotFastThreadLocals {
 
     private static final AbstractFastThreadLocal IMPL = EngineAccessor.RUNTIME.getContextThreadLocal();
@@ -73,7 +74,8 @@ final class PolyglotFastThreadLocals {
     private static final int RESERVED_NULL = -1; // never set
     private static final int THREAD_INDEX = 0;
     static final int CONTEXT_INDEX = 1;
-    private static final int LANGUAGE_START = 2;
+    private static final int ENCAPSULATING_NODE_REFERENCE_INDEX = 2;
+    private static final int LANGUAGE_START = 3;
 
     static final int LANGUAGE_CONTEXT_OFFSET = 0;
     static final int LANGUAGE_SPI_OFFSET = 1;
@@ -90,6 +92,7 @@ final class PolyglotFastThreadLocals {
         Object[] data = new Object[LANGUAGE_START + (thread.context.engine.languages.length * LANGUAGE_ELEMENTS)];
         data[THREAD_INDEX] = thread;
         data[CONTEXT_INDEX] = thread.context;
+        data[ENCAPSULATING_NODE_REFERENCE_INDEX] = EngineAccessor.NODES.createEncapsulatingNodeReference(thread.getThread());
         for (PolyglotLanguageContext languageContext : thread.context.contexts) {
             if (languageContext.isCreated()) {
                 updateLanguageObjects(data, languageContext);
@@ -113,31 +116,12 @@ final class PolyglotFastThreadLocals {
     }
 
     @SuppressWarnings({"unchecked"})
-    public static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Node legacyNode, Class<? extends TruffleLanguage<?>> language) {
-        LanguageReference<C> ref = createLanguageReference(language);
-        if (legacyNode != null) {
-            return new LegacyLanguageReference<>(legacyNode, ref);
-        }
-        return ref;
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
+    public static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
         return (LanguageReference<C>) lookupReferences(language).languageReference;
     }
 
     @SuppressWarnings("unchecked")
-    @TruffleBoundary
-    public static <C> ContextReference<C> createContextReference(Node legacyNode, Class<? extends TruffleLanguage<C>> language) {
-        ContextReference<C> ref = createContextReference(language);
-        if (legacyNode != null) {
-            return new LegacyContextReference<>(legacyNode, ref);
-        }
-        return ref;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> ContextReference<C> createContextReference(Class<? extends TruffleLanguage<C>> language) {
+    public static <C> ContextReference<C> createContextReference(Class<? extends TruffleLanguage<C>> language) {
         return (ContextReference<C>) lookupReferences(language).contextReference;
     }
 
@@ -168,6 +152,16 @@ final class PolyglotFastThreadLocals {
 
     public static void cleanup(Object[] threadLocals) {
         Arrays.fill(threadLocals, null);
+    }
+
+    static EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
+        /*
+         * It is tempting to constant fold here for single thread contexts using a Node. However, I
+         * was unable to measure a speedup from doing this compared to reading the fast thread local
+         * instead. So we do not bother here and trade a bit smaller code for fewer deoptimizations
+         * and less footprint (no assumptions in use).
+         */
+        return IMPL.fastGet(ENCAPSULATING_NODE_REFERENCE_INDEX, EncapsulatingNodeReference.class, invalidateOnNull);
     }
 
     public static PolyglotThreadInfo getCurrentThread(PolyglotSharingLayer layer) {
@@ -346,6 +340,10 @@ final class PolyglotFastThreadLocals {
             staticIndex = cache.getStaticIndex();
             assert staticIndex <= LanguageCache.getMaxStaticIndex() : "invalid sharing between class loaders";
         }
+        return computeLanguageIndexFromStaticIndex(staticIndex, offset);
+    }
+
+    static int computeLanguageIndexFromStaticIndex(int staticIndex, int offset) {
         return LANGUAGE_START + (staticIndex * LANGUAGE_ELEMENTS) + offset;
     }
 
@@ -371,7 +369,7 @@ final class PolyglotFastThreadLocals {
         return indexValue + offset;
     }
 
-    private static PolyglotSharingLayer resolveLayer(Node node) {
+    protected static PolyglotSharingLayer resolveLayer(Node node) {
         if (!CompilerDirectives.isPartialEvaluationConstant(node)) {
             // no constant folding without node
             return null;
@@ -446,33 +444,6 @@ final class PolyglotFastThreadLocals {
         }
     }
 
-    /*
-     * Intended to support deprecated API in fast way, where a Node is not yet passed explicitly.
-     * Remove with deprecated APIs.
-     */
-    static final class LegacyContextReference<C> extends ContextReference<C> {
-
-        private final ContextReference<C> delegate;
-        private final Node fixedNode;
-
-        LegacyContextReference(Node node, ContextReference<C> delegate) {
-            this.fixedNode = node;
-            this.delegate = delegate;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public C get() {
-            return delegate.get(fixedNode);
-        }
-
-        @Override
-        public C get(Node node) {
-            return delegate.get(node);
-        }
-
-    }
-
     static final class ContextReferenceImpl extends ContextReference<Object> {
 
         private final Class<?> languageClass;
@@ -482,12 +453,6 @@ final class PolyglotFastThreadLocals {
             this.languageClass = languageClass;
             this.index = computeLanguageIndex(languageClass, LANGUAGE_CONTEXT_OFFSET);
 
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public Object get() {
-            return get(null);
         }
 
         @Override
@@ -502,32 +467,6 @@ final class PolyglotFastThreadLocals {
         }
     }
 
-    /*
-     * Remove with deprecated APIs.
-     */
-    static final class LegacyLanguageReference<C extends TruffleLanguage<?>> extends LanguageReference<C> {
-
-        private final LanguageReference<C> delegate;
-        private final Node fixedNode;
-
-        LegacyLanguageReference(Node node, LanguageReference<C> delegate) {
-            this.fixedNode = node;
-            this.delegate = delegate;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public C get() {
-            return delegate.get(fixedNode);
-        }
-
-        @Override
-        public C get(Node node) {
-            return delegate.get(node);
-        }
-
-    }
-
     static final class LanguageReferenceImpl extends LanguageReference<TruffleLanguage<Object>> {
 
         private final Class<TruffleLanguage<Object>> languageClass;
@@ -537,12 +476,6 @@ final class PolyglotFastThreadLocals {
         LanguageReferenceImpl(Class<?> languageClass) {
             this.languageClass = (Class<TruffleLanguage<Object>>) languageClass;
             this.index = computeLanguageIndex(languageClass, LANGUAGE_SPI_OFFSET);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public TruffleLanguage<Object> get() {
-            return get(null);
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 #include <stdio.h>
 
 int globalVar;
+
+__thread int threadLocalGlobalVar;
 
 void globalFn() {
 }

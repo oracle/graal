@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         int maxClasses = Integer.MAX_VALUE;
         String methodFilters = null;
         String excludeMethodFilters = null;
+        String scratchDir = "";
         boolean verbose = false;
         try (AutoCloseable c = new TTY.Filter()) {
             CompileTheWorld ctw = new CompileTheWorld(runtime,
@@ -68,6 +69,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
                             maxClasses,
                             methodFilters,
                             excludeMethodFilters,
+                            scratchDir,
                             verbose,
                             harnessOptions,
                             new OptionValues(initialOptions, HighTier.Options.Inline, false,

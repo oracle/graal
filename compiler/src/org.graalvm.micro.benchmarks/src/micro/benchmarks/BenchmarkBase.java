@@ -40,6 +40,6 @@ public class BenchmarkBase {
         public static final int MEASUREMENT_ITERATIONS = 5;
         public static final int WARMUP_ITERATIONS = 5;
         public static final int ITERATIONS_DURATION = 5;
-        public static final int FORKS = 3;
+        public static final int FORKS = 1;
     }
 }

@@ -29,10 +29,22 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Generate a native to HotSpot bridge for an annotated class. For the annotated class, the
+ * processor generates a bridge delegating calls to the object in a HotSpot heap. Further
+ * information can be found in the <a href=
+ * "http://github.com/oracle/graal/blob/master/compiler/docs/NativeBridgeProcessor.md">native bridge
+ * tutorial</a>.
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface GenerateNativeToHotSpotBridge {
 
+    /**
+     * The native bridge configuration. The returned class must have an accessible static
+     * {@code getInstance()} method returning a {@link JNIConfig} instance. The returned
+     * {@link JNIConfig} instance is used for marshallers' lookup.
+     */
     Class<?> jniConfig();
 
 }

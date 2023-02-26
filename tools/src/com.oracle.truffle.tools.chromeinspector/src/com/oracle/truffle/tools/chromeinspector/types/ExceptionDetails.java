@@ -125,7 +125,7 @@ public final class ExceptionDetails {
         if (stack == null) {
             return message;
         }
-        StringBuilder b = new StringBuilder(message);
+        StringBuilder b = new StringBuilder(message == null ? "null" : message);
         for (DebugStackTraceElement element : stack) {
             if (!context.isInspectInternal() && element.isInternal()) {
                 continue;

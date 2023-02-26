@@ -44,15 +44,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -84,12 +86,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
-    /*
-     * The number of array dimensions we create for substitute and alias types. Since every type
-     * introduced into the system brings some overhead, we only create up to a reasonable array
-     * dimension.
+    /**
+     * The number of array dimensions we create for @{@link Substitute} types, i.e., the maximum
+     * array dimension allowed by the JVM spec. For @{@link Alias} types the array substitution
+     * mappings are created on demand.
+     *
+     * @see <a href= "https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.9">
+     *      Constraints on Java Virtual Machine Code</a>
      */
-    private static final int ARRAY_DIMENSIONS = 8;
+    private static final int SUBSTITUTE_ARRAY_DIMENSIONS = 255;
 
     protected final ImageClassLoader imageClassLoader;
     protected final MetaAccessProvider metaAccess;
@@ -107,10 +112,24 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         this.classInitializationSupport = classInitializationSupport;
 
         deleteAnnotations = new HashMap<>();
-        typeSubstitutions = new HashMap<>();
+        typeSubstitutions = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
-        fieldSubstitutions = new HashMap<>();
+        fieldSubstitutions = new ConcurrentHashMap<>();
+    }
+
+    public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
+        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
+        boolean isFinal = field.isFinal();
+        ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
+        ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
+
+        if (existingSubstitution != null) {
+            String reason = existingSubstitution.equals(field)
+                            ? "The field was already accessed by the static analysis. The transformer must be registered earlier, before the static analysis sees a reference to the field for the first time."
+                            : "A field value transformer is already registered for this field.";
+            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
+        }
     }
 
     @Override
@@ -119,11 +138,46 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotation != null) {
             throw new DeletedElementException(deleteErrorMessage(type, deleteAnnotation, true));
         }
-        ResolvedJavaType substitution = typeSubstitutions.get(type);
+        ResolvedJavaType substitution = findTypeSubstitution(type);
         if (substitution != null) {
             return substitution;
         }
         return type;
+    }
+
+    private ResolvedJavaType findTypeSubstitution(ResolvedJavaType type) {
+        ResolvedJavaType substitution = typeSubstitutions.get(type);
+        if (substitution != null) {
+            return substitution;
+        }
+        if (type.isArray()) {
+            ResolvedJavaType elementalType = type.getElementalType();
+            ResolvedJavaType elementalTypeSubstitution = typeSubstitutions.get(elementalType);
+            if (elementalTypeSubstitution != null) {
+                /*
+                 * The elementalType must be an alias type and an alias for an array type of the
+                 * requested dimension has not yet been created. The registered substitution is the
+                 * original type that the alias is pointing to.
+                 */
+                int dimension = SubstrateUtil.arrayTypeDimension(type);
+
+                /*
+                 * Eagerly register all array types of dimensions up to the required type dimension.
+                 * These would be created anyway when iterating through the component types in the
+                 * AnalysisType constructor.
+                 */
+                ResolvedJavaType annotated = elementalType;
+                ResolvedJavaType original = elementalTypeSubstitution;
+                for (int i = 0; i < dimension; i++) {
+                    annotated = annotated.getArrayClass();
+                    original = original.getArrayClass();
+                    typeSubstitutions.putIfAbsent(annotated, original);
+                }
+
+                return original;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -144,15 +198,29 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotation != null) {
             throw new DeletedElementException(deleteErrorMessage(field, deleteAnnotation, true));
         }
-        ResolvedJavaField substitution = fieldSubstitutions.get(field);
-        if (substitution != null) {
-            return substitution;
-        }
-        return field;
+
+        /*
+         * If there is no substitution registered yet, put in the field itself as a marker that the
+         * field was used in a lookup. Registering a substitution after a lookup was done is not
+         * allowed because that means the substitution was missed in the prior lookup.
+         */
+        ResolvedJavaField existing = fieldSubstitutions.putIfAbsent(field, field);
+        return existing != null ? existing : field;
+    }
+
+    public boolean isDeleted(Field field) {
+        return isDeleted(metaAccess.lookupJavaField(field));
     }
 
     public boolean isDeleted(ResolvedJavaField field) {
-        return deleteAnnotations.get(field) != null;
+        if (deleteAnnotations.get(field) != null) {
+            return true;
+        }
+        ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
+        if (substitutionField != null) {
+            return AnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+        }
+        return false;
     }
 
     public boolean isDeleted(Class<?> clazz) {
@@ -169,7 +237,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * When a type is substituted there is a mapping from the original type to the substitution
          * type (and another mapping from the annotated type to the substitution type).
          */
-        return Optional.ofNullable(typeSubstitutions.get(type));
+        return Optional.ofNullable(findTypeSubstitution(type));
     }
 
     public boolean isAliased(ResolvedJavaType type) {
@@ -177,8 +245,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * When a type is aliased there is a mapping from the alias type to the original type. There
          * is no mapping from the original type to the annotated type since that would be wrong, the
          * original type is not substituted by the annotated type.
+         *
+         * If the type is an array type then it's alias is constructed on demand, but there should
+         * be a mapping from the aliased component type to the original component type.
          */
-        return typeSubstitutions.containsValue(type);
+        if (type instanceof SubstitutionType || type instanceof InjectedFieldsType) {
+            return false;
+        }
+        return typeSubstitutions.containsValue(type) || typeSubstitutions.containsValue(type.getElementalType());
     }
 
     @Override
@@ -245,11 +319,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
-                        AnalysisType targetFieldDeclaringType = bb.getMetaAccess().lookupJavaType(cvField.getTargetField().getDeclaringClass());
-                        targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
-                        targetField.registerAsAccessed();
-                        targetField.registerAsUnsafeAccessed(bb.getUniverse());
+                        targetField.registerAsAccessed(cvField);
+                        assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
+                        targetField.registerAsUnsafeAccessed(cvField);
                         break;
                 }
             }
@@ -325,16 +398,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
         }
 
-        ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
         ResolvedJavaType annotated = metaAccess.lookupJavaType(annotatedClass);
+        ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
 
-        for (int i = 0; i < ARRAY_DIMENSIONS; i++) {
-            guarantee(!typeSubstitutions.containsKey(annotated), "Already registered: %s", annotated);
-            typeSubstitutions.put(annotated, original);
+        guarantee(!typeSubstitutions.containsKey(annotated), "Already registered: %s", annotated);
+        typeSubstitutions.put(annotated, original);
 
-            original = original.getArrayClass();
-            annotated = annotated.getArrayClass();
-        }
+        /* The aliases for array types are registered on demand. */
 
         for (Method annotatedMethod : annotatedClass.getDeclaredMethods()) {
             handleMethodInAliasClass(annotatedMethod, originalClass);
@@ -348,7 +418,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleMethodInAliasClass(Executable annotatedMethod, Class<?> originalClass) {
-        if (!NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedMethod, Platforms.class))) {
+        if (skipExcludedPlatform(annotatedMethod)) {
             return;
         }
 
@@ -359,6 +429,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0) + (annotateOriginalAnnotation != null ? 1 : 0) + (aliasAnnotation != null ? 1 : 0);
         if (numAnnotations == 0) {
+            if (!(annotatedMethod instanceof Constructor) && annotatedMethod.getName().startsWith("lambda$")) {
+                String targetClass = annotatedMethod.getDeclaringClass().getName();
+                String[] methodNameParts = annotatedMethod.getName().split("[$]");
+                String method = methodNameParts.length > 1 ? methodNameParts[1] : annotatedMethod.getName();
+
+                throw UserError.abort("Lambda usage detected in the substitution method: %s#%s. Lambdas are not supported inside" +
+                                " substitution methods. To fix the issue, replace the culprit lambda with an equivalent anonymous class.", targetClass, method);
+            }
             guarantee(annotatedMethod instanceof Constructor, "One of @Delete, @Substitute, @AnnotateOriginal, or @Alias must be used: %s", annotatedMethod);
             return;
         }
@@ -395,8 +473,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private boolean skipExcludedPlatform(AnnotatedElement annotatedMethod) {
+        return !NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedMethod, Platforms.class));
+    }
+
     private void handleFieldInAliasClass(Field annotatedField, Class<?> originalClass) {
-        if (!NativeImageGenerator.includedIn(ImageSingletons.lookup(Platform.class), lookupAnnotation(annotatedField, Platforms.class))) {
+        if (skipExcludedPlatform(annotatedField)) {
             return;
         }
 
@@ -592,7 +674,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         SubstitutionType substitution = new SubstitutionType(original, annotated, true);
         register(typeSubstitutions, annotated, original, substitution);
 
-        for (int i = 1; i < ARRAY_DIMENSIONS; i++) {
+        for (int i = 1; i <= SUBSTITUTE_ARRAY_DIMENSIONS; i++) {
             original = original.getArrayClass();
             annotated = annotated.getArrayClass();
             SubstitutionType arrayTypeSubstitution = new SubstitutionType(original, annotated, true);
@@ -629,6 +711,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedMethodInSubstitutionClass(Executable annotatedMethod, Class<?> originalClass) {
+        if (skipExcludedPlatform(annotatedMethod)) {
+            return;
+        }
+
         if (annotatedMethod.isSynthetic()) {
             /*
              * Synthetic bridge methods for co-variant return types inherit the annotations. We
@@ -665,6 +751,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass) {
+        if (skipExcludedPlatform(annotatedField)) {
+            return;
+        }
+
         Substitute substituteAnnotation = lookupAnnotation(annotatedField, Substitute.class);
 
         if (substituteAnnotation == null) {
@@ -864,7 +954,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
             disableCaching = recomputeAnnotation.disableCaching();
-            guarantee(!isFinal || ComputedValueField.isFinalValid(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
+            guarantee(!isFinal || !ComputedValueField.isOffsetRecomputation(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             guarantee(!isFinal || !disableCaching, "@%s can not be final if caching is disabled: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
@@ -875,7 +965,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal, disableCaching);
+        Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
+
+        return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
     }
 
     private void reinitializeField(Field annotatedField) {
@@ -1009,7 +1101,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     protected <T extends Annotation> T lookupAnnotation(AnnotatedElement element, Class<T> annotationClass) {
         assert element instanceof Class || element instanceof Executable || element instanceof Field : element.getClass();
-        return element.getAnnotation(annotationClass);
+        return AnnotationAccess.getAnnotation(element, annotationClass);
     }
 
     protected static String deleteErrorMessage(AnnotatedElement element, Delete deleteAnnotation, boolean hosted) {

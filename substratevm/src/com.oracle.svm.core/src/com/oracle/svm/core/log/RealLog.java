@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -39,11 +38,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -131,7 +131,7 @@ public class RealLog extends Log {
          * the byte array up in multiple chunks and write them separately.
          */
         final int chunkSize = 256;
-        final CCharPointer bytes = StackValue.get(chunkSize);
+        final CCharPointer bytes = UnsafeStackValue.get(chunkSize);
 
         int chunkOffset = offset;
         int inputLength = length;
@@ -178,7 +178,7 @@ public class RealLog extends Log {
     @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log character(char value) {
-        CCharPointer bytes = StackValue.get(CCharPointer.class);
+        CCharPointer bytes = UnsafeStackValue.get(CCharPointer.class);
         bytes.write((byte) value);
         rawBytes(bytes, WordFactory.unsigned(1));
         return this;
@@ -225,7 +225,7 @@ public class RealLog extends Log {
 
         /* Enough space for 64 digits in binary format, and the '-' for a negative value. */
         final int chunkSize = Long.SIZE + 1;
-        CCharPointer bytes = StackValue.get(chunkSize, CCharPointer.class);
+        CCharPointer bytes = UnsafeStackValue.get(chunkSize, CCharPointer.class);
         int charPos = chunkSize;
 
         boolean negative = signed && value < 0;
@@ -485,6 +485,15 @@ public class RealLog extends Log {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    private void rawString(String value, int maxLength) {
+        int length = Math.min(value.length(), maxLength);
+        rawBytes(value, 0, length);
+        if (value.length() > length) {
+            rawString("...");
+        }
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private void rawString(char[] value) {
         rawBytes(value, 0, value.length);
     }
@@ -558,7 +567,7 @@ public class RealLog extends Log {
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
             if (offset % 16 == 0) {
-                zhex(base.add(offset).rawValue());
+                zhex(base.add(offset));
                 string(":");
             }
             string(" ");

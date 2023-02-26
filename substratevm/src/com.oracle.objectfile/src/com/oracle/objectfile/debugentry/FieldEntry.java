@@ -36,6 +36,10 @@ public class FieldEntry extends MemberEntry {
         this.offset = offset;
     }
 
+    public String fieldName() {
+        return memberName;
+    }
+
     public int getSize() {
         return size;
     }

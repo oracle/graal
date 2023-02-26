@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,12 +58,27 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 @ExportLibrary(InteropLibrary.class)
 public final class PythonFlags extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("ASCII", "DOTALL", "IGNORECASE", "LOCALE", "MULTILINE", "TEMPLATE", "UNICODE", "VERBOSE");
+    private static final String PROP_ASCII = "ASCII";
+    private static final String PROP_DOTALL = "DOTALL";
+    private static final String PROP_IGNORECASE = "IGNORECASE";
+    private static final String PROP_LOCALE = "LOCALE";
+    private static final String PROP_MULTILINE = "MULTILINE";
+    private static final String PROP_TEMPLATE = "TEMPLATE";
+    private static final String PROP_UNICODE = "UNICODE";
+    private static final String PROP_VERBOSE = "VERBOSE";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
+                    PROP_ASCII,
+                    PROP_DOTALL,
+                    PROP_IGNORECASE,
+                    PROP_LOCALE,
+                    PROP_MULTILINE,
+                    PROP_TEMPLATE,
+                    PROP_UNICODE,
+                    PROP_VERBOSE);
 
     private final int value;
 
-    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x', 'y');
-    private static final TBitSet VALID_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x');
+    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x');
     private static final TBitSet TYPE_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'u');
 
     private static final String FLAGS = "iLmsxatu";
@@ -76,16 +91,14 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     private static final int FLAG_ASCII = 1 << 5;
     private static final int FLAG_TEMPLATE = 1 << 6;
     private static final int FLAG_UNICODE = 1 << 7;
-    private static final int FLAG_STICKY = 1 << 8;
 
     private static final int[] FLAG_LOOKUP = {
                     FLAG_ASCII, 0, 0, 0, 0, 0, 0, 0, FLAG_IGNORE_CASE, 0, 0, FLAG_LOCALE, FLAG_MULTILINE, 0, 0, 0,
-                    0, 0, FLAG_DOT_ALL, FLAG_TEMPLATE, FLAG_UNICODE, 0, 0, FLAG_VERBOSE, FLAG_STICKY
+                    0, 0, FLAG_DOT_ALL, FLAG_TEMPLATE, FLAG_UNICODE, 0, 0, FLAG_VERBOSE
     };
 
     private static final int TYPE_FLAGS = FLAG_LOCALE | FLAG_ASCII | FLAG_UNICODE;
     private static final int GLOBAL_FLAGS = FLAG_TEMPLATE;
-    private static final int INTERNAL_FLAGS = FLAG_STICKY;
 
     public static final PythonFlags EMPTY_INSTANCE = new PythonFlags("");
     public static final PythonFlags TYPE_FLAGS_INSTANCE = new PythonFlags(TYPE_FLAGS);
@@ -104,9 +117,9 @@ public final class PythonFlags extends AbstractConstantKeysObject {
 
     private static int maskForFlag(int flagChar) {
         assert ALL_FLAG_CHARS.get(flagChar);
-        // flagChar must be one of [A-Ya-y].
+        // flagChar must be one of [A-Xa-x].
         // (flagChar | 0x20) effectively downcases the character and allows us to use an array of
-        // just 25 integers for the lookup.
+        // just 24 integers for the lookup.
         return FLAG_LOOKUP[(flagChar | 0x20) - 'a'];
     }
 
@@ -155,14 +168,9 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 return isUnicodeExplicitlySet() || !isAscii();
             case Bytes:
                 return isUnicodeExplicitlySet();
-            case None:
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-    }
-
-    public boolean isSticky() {
-        return hasFlag(FLAG_STICKY);
     }
 
     public PythonFlags addFlag(int flagChar) {
@@ -210,7 +218,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     }
 
     public static boolean isValidFlagChar(int candidateChar) {
-        return VALID_FLAG_CHARS.get(candidateChar);
+        return ALL_FLAG_CHARS.get(candidateChar);
     }
 
     public static boolean isTypeFlagChar(int candidateChar) {
@@ -242,7 +250,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     @TruffleBoundary
     @Override
     public String toString() {
-        char[] out = new char[Integer.bitCount(value & ~INTERNAL_FLAGS)];
+        char[] out = new char[Integer.bitCount(value)];
         int iOut = 0;
         for (int i = 0; i < FLAGS.length(); i++) {
             char flag = FLAGS.charAt(i);
@@ -266,23 +274,40 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     }
 
     @Override
+    public boolean isMemberReadableImpl(String symbol) {
+        switch (symbol) {
+            case PROP_ASCII:
+            case PROP_DOTALL:
+            case PROP_IGNORECASE:
+            case PROP_LOCALE:
+            case PROP_MULTILINE:
+            case PROP_TEMPLATE:
+            case PROP_UNICODE:
+            case PROP_VERBOSE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
-            case "ASCII":
+            case PROP_ASCII:
                 return isAscii();
-            case "DOTALL":
+            case PROP_DOTALL:
                 return isDotAll();
-            case "IGNORECASE":
+            case PROP_IGNORECASE:
                 return isIgnoreCase();
-            case "LOCALE":
+            case PROP_LOCALE:
                 return isLocale();
-            case "MULTILINE":
+            case PROP_MULTILINE:
                 return isMultiLine();
-            case "TEMPLATE":
+            case PROP_TEMPLATE:
                 return isTemplate();
-            case "UNICODE":
+            case PROP_UNICODE:
                 return isUnicodeExplicitlySet();
-            case "VERBOSE":
+            case PROP_VERBOSE:
                 return isVerbose();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

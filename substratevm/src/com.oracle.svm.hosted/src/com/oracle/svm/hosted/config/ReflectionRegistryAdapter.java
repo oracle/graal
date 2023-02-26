@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -34,6 +35,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ClassUtil;
@@ -63,9 +65,15 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public TypeResult<ConditionalElement<Class<?>>> resolveType(ConfigurationCondition condition, String typeName) {
+    public TypeResult<ConditionalElement<Class<?>>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
         String name = canonicalizeTypeName(typeName);
-        TypeResult<Class<?>> clazz = classLoader.findClass(name);
+        TypeResult<Class<?>> clazz = classLoader.findClass(name, allowPrimitives);
+        if (!clazz.isPresent()) {
+            Throwable classLookupException = clazz.getException();
+            if (classLookupException instanceof LinkageError || ClassForNameSupport.Options.ExitOnUnknownClassLoadingFailure.getValue()) {
+                registry.registerClassLookupException(condition, typeName, classLookupException);
+            }
+        }
         return clazz.map(c -> new ConditionalElement<>(condition, c));
     }
 
@@ -149,6 +157,18 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
         Executable[] methods = type.getElement().getDeclaredConstructors();
         registerExecutable(type.getCondition(), queriedOnly, methods);
         return methods.length > 0;
+    }
+
+    @Override
+    public void registerUnsafeAllocated(ConditionalElement<Class<?>> clazz) {
+        Class<?> type = clazz.getElement();
+        if (!type.isArray() && !type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
+            registry.register(clazz.getCondition(), true, clazz.getElement());
+            /*
+             * Ignore otherwise as the implementation of allocateInstance will anyhow throw an
+             * exception.
+             */
+        }
     }
 
     @Override

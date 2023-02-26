@@ -23,47 +23,25 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterfaceNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InvokeInterfaceQuickNode extends QuickNode {
+public final class InvokeInterfaceQuickNode extends InvokeQuickNode {
 
-    final Method resolutionSeed;
-    final int resultAt;
     @Child InvokeInterface.WithoutNullCheck invokeInterface;
-    final JavaKind returnKind;
 
-    public InvokeInterfaceQuickNode(Method resolutionSeed, int top, int curBCI) {
-        super(top, curBCI);
-        assert !resolutionSeed.isStatic();
-        this.resolutionSeed = resolutionSeed;
-        this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
-        this.returnKind = Signatures.returnKind(resolutionSeed.getParsedSignature());
-        this.invokeInterface = InvokeInterfaceNodeGen.WithoutNullCheckNodeGen.create(resolutionSeed);
+    public InvokeInterfaceQuickNode(Method method, int top, int curBCI) {
+        super(method, top, curBCI);
+        assert !method.isStatic();
+        this.invokeInterface = insert(InvokeInterfaceNodeGen.WithoutNullCheckNodeGen.create(method));
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        /*
-         * Method signature does not change across methods. Can safely use the constant signature
-         * from `resolutionSeed` instead of the non-constant signature from the resolved method.
-         */
-        final Object[] args = BytecodeNode.popArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
-        Object result = invokeInterface.execute(args);
-        if (!returnKind.isPrimitive()) {
-            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
-        }
-        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, returnKind);
-    }
-
-    private int getResultAt() {
-        return resultAt;
+        return pushResult(frame, invokeInterface.execute(args));
     }
 }

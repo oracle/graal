@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,6 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <stdint.h>
 
 #define TestType(T, BITS, PACKING)                                                                                                                   \
     struct {                                                                                                                                         \
@@ -74,10 +76,10 @@ __attribute__((constructor)) int test() {
   TestAssign(uiPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
   TestAssign(siPackedTriple, 0b000, 0b001, 0b010, 0b011, 0b100, 0b101, 0b110, 0b111)
 
-  TestDefine(unsigned long int, 48, , ui48Long)
-  TestDefine(signed long int, 48, , si48Long)
-  TestDefine(unsigned long int, 48, __attribute__ ((packed)), uiPacked48Long)
-  TestDefine(signed long int, 48, __attribute__ ((packed)), siPacked48Long)
+  TestDefine(uint64_t, 48, , ui48Long)
+  TestDefine(int64_t, 48, , si48Long)
+  TestDefine(uint64_t, 48, __attribute__ ((packed)), uiPacked48Long)
+  TestDefine(int64_t, 48, __attribute__ ((packed)), siPacked48Long)
 
   TestAssign(ui48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
   TestAssign(si48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)

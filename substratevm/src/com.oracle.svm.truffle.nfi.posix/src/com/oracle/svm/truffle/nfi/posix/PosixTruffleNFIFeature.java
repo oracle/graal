@@ -29,32 +29,32 @@ import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_t;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_tPointer;
 import com.oracle.svm.core.posix.headers.PosixLibC;
-import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public final class PosixTruffleNFIFeature implements Feature {
+public final class PosixTruffleNFIFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -70,6 +70,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     static int isolatedNamespaceFlag = ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
 
     static void initialize() {
+
         if (Platform.includedIn(Platform.LINUX.class)) {
             isolatedNamespaceFlag = LibCBase.singleton().hasIsolatedNamespaces() ? ISOLATED_NAMESPACE_FLAG : ISOLATED_NAMESPACE_NOT_SUPPORTED_FLAG;
         }
@@ -95,6 +96,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         return PosixLibC.strdup(src);
     }
 
+    @Platforms(Platform.LINUX.class)
     private static PointerBase dlmopen(Lmid_t lmid, String filename, int mode) {
         try (CTypeConversion.CCharPointerHolder pathPin = CTypeConversion.toCString(filename)) {
             CCharPointer pathPtr = pathPin.get();
@@ -105,14 +107,14 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     /**
      * A single linking namespace is created lazily and registered on the NFI context instance.
      */
+    @Platforms(Platform.LINUX.class)
     private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
         assert (mode & isolatedNamespaceFlag) == 0;
-        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux context = SubstrateUtil.cast(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux.class);
+        var context = SubstrateUtil.cast(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_Linux.class);
 
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;
         if (namespaceId == 0) {
-            // Checkstyle: allow synchronization
             synchronized (context) {
                 namespaceId = context.isolatedNamespaceId;
                 if (namespaceId == 0) {
@@ -121,7 +123,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
                         return handle;
                     }
 
-                    Lmid_tPointer namespacePtr = StackValue.get(Lmid_tPointer.class);
+                    Lmid_tPointer namespacePtr = UnsafeStackValue.get(Lmid_tPointer.class);
                     int ret = Dlfcn.GNUExtensions.dlinfo(handle, Dlfcn.GNUExtensions.RTLD_DI_LMID(), namespacePtr);
                     if (ret != 0) {
                         CompilerDirectives.transferToInterpreter();

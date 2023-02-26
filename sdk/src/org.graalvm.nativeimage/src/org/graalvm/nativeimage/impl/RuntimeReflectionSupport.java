@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,6 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import java.lang.reflect.Executable;
-import java.util.Set;
-
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
-    // specific to java.lang.reflect reflection
-    Set<Executable> getQueriedOnlyMethods();
-
-    /*
-     * Returns the methods that shadow a superclass method registered for reflection, to be excluded
-     * from reflection queries.
-     */
-    Set<?> getHidingMethods();
-
-    int getReflectionClassesCount();
-
-    int getReflectionMethodsCount();
-
-    int getReflectionFieldsCount();
+    // needed as reflection-specific ImageSingletons key
 }

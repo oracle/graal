@@ -30,6 +30,7 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -38,8 +39,8 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -115,9 +116,9 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             osrMetadata = initializeBytecodeOSRMetadata(osrNode);
         }
 
-        // metadata can be set to DISABLED during initialization (above) or dynamically after
+        // metadata can be disabled during initialization (above) or dynamically after
         // failed compilation.
-        if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
+        if (osrMetadata.isDisabled()) {
             return false;
         } else {
             return osrMetadata.incrementAndPoll();
@@ -130,12 +131,13 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
             if (metadata == null) {
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                if (callTarget.engine.compilation && callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                    metadata = new BytecodeOSRMetadata(osrNode,
+                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold),
+                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRMaxCompilationReAttempts));
                 } else {
                     metadata = BytecodeOSRMetadata.DISABLED;
                 }
-
                 osrNode.setOSRMetadata(metadata);
             }
             return metadata;
@@ -157,10 +159,24 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         }
     }
 
+    // Support for deprecated frame transfer: GR-38296
     @Override
-    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget) {
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
+        BytecodeOSRMetadata.OsrEntryDescription targetMetadata = osrMetadata.getLazyState().get(bytecodeTarget);
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
+    }
+
+    @Override
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object targetMetadata) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
+    }
+
+    @Override
+    public void restoreOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        osrMetadata.restoreFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
     }
 
     @Override
@@ -192,6 +208,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
         return new OptimizedBlockNode<>(elements, executor);
+    }
+
+    @Override
+    public Assumption createAlwaysValidAssumption() {
+        return OptimizedAssumption.createAlwaysValid();
     }
 
     @Override

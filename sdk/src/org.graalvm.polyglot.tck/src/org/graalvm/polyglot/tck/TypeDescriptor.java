@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -144,7 +144,7 @@ public final class TypeDescriptor {
      * content type.
      *
      * @see #isAssignable(org.graalvm.polyglot.tck.TypeDescriptor).
-     * @see Value#hasMembers().
+     * @see Value#hasArrayElements().
      * @since 0.30
      */
     public static final TypeDescriptor ARRAY;
@@ -171,6 +171,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for date.
      *
+     * @see Value#isDate().
      * @since 20.0
      */
     public static final TypeDescriptor DATE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DATE));
@@ -178,6 +179,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for time.
      *
+     * @see Value#isTime().
      * @since 20.0
      */
     public static final TypeDescriptor TIME = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME));
@@ -185,6 +187,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for time zone.
      *
+     * @see Value#isTimeZone().
      * @since 20.0
      */
     public static final TypeDescriptor TIME_ZONE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME_ZONE));
@@ -192,6 +195,7 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for duration.
      *
+     * @see Value#isDuration().
      * @since 20.0
      */
     public static final TypeDescriptor DURATION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DURATION));
@@ -199,13 +203,15 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for metaobjects.
      *
+     * @see Value#isMetaObject().
      * @since 20.0
      */
     public static final TypeDescriptor META_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.META_OBJECT));
 
     /**
-     * Type descriptor for duration.
+     * Type descriptor for exception.
      *
+     * @see Value#isException()
      * @since 19.3
      */
     public static final TypeDescriptor EXCEPTION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.EXCEPTION));

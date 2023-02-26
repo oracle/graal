@@ -26,19 +26,21 @@ import os
 import mx
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
+import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-
+from os.path import join
 
 _suite = mx.suite('espresso')
 
+# JDK compiled with the Sulong toolchain.
+LLVM_JAVA_HOME = mx.get_env('LLVM_JAVA_HOME')
 
 def _espresso_command(launcher, args):
-    import mx_sdk_vm_impl
-    bin_dir = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
-    exe = os.path.join(bin_dir, mx.exe_suffix(launcher))
+    bin_dir = join(mx_sdk_vm.graalvm_home(fatalIfMissing=True), 'bin')
+    exe = join(bin_dir, mx.exe_suffix(launcher))
     if not os.path.exists(exe):
-        exe = os.path.join(bin_dir, mx.cmd_suffix(launcher))
+        exe = join(bin_dir, mx.cmd_suffix(launcher))
     return [exe] + args
 
 
@@ -48,7 +50,7 @@ def _espresso_launcher_command(args):
 
 
 def _java_truffle_command(args):
-    """Java launcher using libespresso in GraalVM + arguments"""
+    """Java launcher using libjavavm in GraalVM + arguments"""
     return _espresso_command('java', ['-truffle'] + args)
 
 
@@ -77,9 +79,20 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
     return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
 
+def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True):
+    if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
+        # no libespresso, we can only run with the espresso launcher
+        _run_espresso_launcher(args, cwd, nonZeroIsFatal)
+    else:
+        _run_java_truffle(args, cwd, nonZeroIsFatal)
+
+
 def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
+    return _run_espresso_launcher([
+        '--vm.Xss4m',
+        '-Dtruffle.class.path.append=' + mx.dependency('ESPRESSO').path,  # on GraalVM the EspressoLanguageProvider must be visible to the GraalVMLocator
+    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
 
 
 class EspressoTags:
@@ -100,25 +113,24 @@ def _espresso_gate_runner(args, tasks):
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
         if t:
-            import mx_sdk_vm_impl
-            run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:espresso gate --all-suites --task '{}'".format(mokapot_header_gate_name)
+            run_instructions = "$ mx --dynamicimports=/substratevm --native-images=lib:javavm gate --all-suites --task '{}'".format(mokapot_header_gate_name)
             if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
                 mx.abort("""\
-The registration of the Espresso library ('lib:espresso') is skipped. Please run this gate as follows:
+The registration of the Espresso library ('lib:javavm') is skipped. Please run this gate as follows:
 {}""".format(run_instructions))
 
             errors = False
-            mokapot_dir = os.path.join(mx.project('com.oracle.truffle.espresso.mokapot').dir, 'include')
-            libespresso_dir = mx.project(mx_sdk_vm_impl.GraalVmNativeImage.project_name(espresso_library_config)).get_output_root()
+            mokapot_dir = join(mx.project('com.oracle.truffle.espresso.mokapot').dir, 'include')
+            libjavavm_dir = mx.project(mx_sdk_vm_impl.GraalVmNativeImage.project_name(espresso_library_config)).get_output_root()
 
-            for header in ['libespresso_dynamic.h', 'graal_isolate_dynamic.h']:
-                committed_header = os.path.join(mokapot_dir, header)
+            for header in ['libjavavm_dynamic.h', 'graal_isolate_dynamic.h']:
+                committed_header = join(mokapot_dir, header)
                 if not mx.exists(committed_header):
                     mx.abort("Cannot locate '{}'. Was the file moved or renamed?".format(committed_header))
 
-                generated_header = os.path.join(libespresso_dir, header)
+                generated_header = join(libjavavm_dir, header)
                 if not mx.exists(generated_header):
-                    mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:espresso build'".format(generated_header))
+                    mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:javavm build'".format(generated_header))
 
                 committed_header_copyright = []
                 with open(committed_header, 'r') as committed_header_file:
@@ -146,7 +158,7 @@ One or more header files in the include dir of the mokapot project ('{committed}
 To fix the issue, run this gate locally:
 {instructions}
 And adapt the code to the modified headers in '{committed}'.
-""".format(committed=os.path.relpath(mokapot_dir, _suite.vc_dir), generated=os.path.relpath(libespresso_dir, _suite.vc_dir), instructions=run_instructions))
+""".format(committed=os.path.relpath(mokapot_dir, _suite.vc_dir), generated=os.path.relpath(libjavavm_dir, _suite.vc_dir), instructions=run_instructions))
 
 
 # REGISTER MX GATE RUNNER
@@ -154,31 +166,29 @@ And adapt the code to the modified headers in '{committed}'.
 add_gate_runner(_suite, _espresso_gate_runner)
 
 
-if mx_sdk_vm.base_jdk_version() > 8:
-    if mx.is_windows():
-        lib_espresso_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-espresso.jar'
-    else:
-        lib_espresso_cp = '${GRAALVM_HOME}/lib/graalvm/lib-espresso.jar'
+if mx.is_windows():
+    lib_javavm_cp = '%GRAALVM_HOME%\\lib\\graalvm\\lib-javavm.jar'
 else:
-    if mx.is_windows():
-        lib_espresso_cp = '%GRAALVM_HOME%\\jre\\lib\\graalvm\\lib-espresso.jar'
-    else:
-        lib_espresso_cp = '${GRAALVM_HOME}/jre/lib/graalvm/lib-espresso.jar'
+    lib_javavm_cp = '${GRAALVM_HOME}/lib/graalvm/lib-javavm.jar'
 
 
-espresso_library_config = mx_sdk_vm.LibraryConfig(
-    destination='lib/<lib:espresso>',
-    jar_distributions=['espresso:LIB_ESPRESSO'],
+espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
+    language='java',
+    jar_distributions=['espresso:LIB_JAVAVM'],
     build_args=[
-        '--language:java',
-        '--tool:all',
-        '-H:+EnableSignalAPI',
+        '-H:-JNIExportSymbols',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
-        '--features=com.oracle.truffle.espresso.FinalizationFeature',
+        '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
     ],
-    home_finder=True,
 )
+
+if mx_sdk_vm.base_jdk_version() not in (11, 17):
+    _espresso_stability = "experimental"
+elif mx.get_os() != "linux" or mx.get_arch() != "amd64":
+    _espresso_stability = "experimental"
+else:
+    _espresso_stability = "supported"
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
@@ -188,11 +198,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=True,
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
+    dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
     library_configs=[espresso_library_config],
-    polyglot_lib_jar_dependencies=['espresso:LIB_ESPRESSO'],
+    polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
     has_polyglot_lib_entrypoints=True,
     priority=1,
     post_install_msg="""
@@ -204,9 +214,56 @@ Usage: java -truffle [-options] class [args...]
            (to execute a jar file)
 
 To rebuild the polyglot library:
-    gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
-    stability="experimental",
+    gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
+    stability=_espresso_stability,
 ))
+
+if LLVM_JAVA_HOME:
+    release_dict = mx_sdk_vm.parse_release_file(join(LLVM_JAVA_HOME, 'release'))
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            edition = 'ee'
+        else:
+            edition = 'ce'
+    else:
+        mx.warn('Release file for `LLVM_JAVA_HOME` ({}) is missing the IMPLEMENTOR field')
+        edition = 'ce'
+
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+        suite=_suite,
+        name='Java on Truffle LLVM Java libraries',
+        short_name='ellvm',
+        license_files=[],
+        third_party_license_files=[],
+        truffle_jars=[],
+        dir_name='java',
+        installable_id='espresso-llvm',
+        extra_installable_qualifiers=[edition],
+        installable=True,
+        dependencies=['Java on Truffle', 'LLVM Runtime Native'],
+        support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
+        priority=2,
+        stability=_espresso_stability,
+    ))
+
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    """Conditionally creates the ESPRESSO_LLVM_SUPPORT distribution if a Java home with LLVM bitcode is provided.
+    :type register_project: (mx.Project) -> None
+    :type register_distribution: (mx.Distribution) -> None
+    """
+    if LLVM_JAVA_HOME:
+        lib_prefix = mx.add_lib_prefix('')
+        lib_suffix = mx.add_lib_suffix('')
+        lib_path = join(LLVM_JAVA_HOME, 'lib')
+        libraries = [join(lib_path, name) for name in os.listdir(lib_path) if name.startswith(lib_prefix) and name.endswith(lib_suffix)]
+        register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
+            "lib/llvm/default/":
+                ["file:" + lib for lib in libraries] +
+                ["file:{}/release".format(LLVM_JAVA_HOME)],
+        }, None, True, None))
+
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -220,7 +277,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
-    stability="experimental",
+    stability=_espresso_stability,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -252,11 +309,24 @@ mx.update_commands(_suite, {
     'espresso-meta': [_run_espresso_meta, '[args]'],
 })
 
+
 # Build configs
-# pylint: disable=bad-whitespace
-tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                             ] + tools, _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')
+def register_espresso_envs(suite):
+    # pylint: disable=bad-whitespace
+    # pylint: disable=line-too-long
+    tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro']
+    if LLVM_JAVA_HOME:
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'                                                              , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'         , 'svm', 'svmnfi'         , 'svmsl'          , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='jvm-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn', 'cmpee', 'svm', 'svmnfi', 'svmee', 'svmsl', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='jvm-ee-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn'         , 'svm', 'svmnfi'         , 'svmsl'          , 'tflm'                                      , 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='native-ce-llvm')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'llrc', 'llrn', 'cmpee', 'svm', 'svmnfi', 'svmsl', 'svmee', 'tflllm', 'tflm'                                      , 'spolyglot', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgraalvm-native-clang++'] + tools, suite, env_file='native-ee-llvm')
+    else:
+        mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                                                                              , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                         , 'svm', 'svmnfi', 'svmsl'                   , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ce')
+        mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                , 'cmpee', 'svm', 'svmnfi', 'svmsl', 'svmee', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'                                                                                                     ] + tools, suite, env_file='jvm-ee')
+        mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                         , 'svm', 'svmnfi', 'svmsl'                   , 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ce')
+        mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm'         , 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                , 'cmpee', 'svm', 'svmnfi', 'svmsl', 'svmee', 'tflllm', 'tflm'                                      , 'spolyglot'                                                                                                     ] + tools, suite, env_file='native-ee')
+
+
+register_espresso_envs(_suite)

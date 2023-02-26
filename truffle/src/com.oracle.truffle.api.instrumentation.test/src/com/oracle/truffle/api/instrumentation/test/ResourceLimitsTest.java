@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,6 +105,10 @@ public class ResourceLimitsTest {
             } catch (PolyglotException e) {
                 assertStatementCountLimit(context, e, 50);
             }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
     }
 
@@ -129,6 +133,10 @@ public class ResourceLimitsTest {
                 fail();
             } catch (PolyglotException e) {
                 assertStatementCountLimit(context, e, 50);
+            }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
             }
         }
     }
@@ -198,6 +206,10 @@ public class ResourceLimitsTest {
                 assertEquals(1, events.size());
                 assertSame(context, events.iterator().next().getContext());
             }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
     }
 
@@ -228,6 +240,10 @@ public class ResourceLimitsTest {
                     } catch (PolyglotException ex) {
                         assertStatementCountLimit(context, ex, 1);
                     }
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
                 }
 
                 // test with different limit
@@ -239,6 +255,10 @@ public class ResourceLimitsTest {
                         fail();
                     } catch (PolyglotException ex) {
                         assertStatementCountLimit(context, ex, 2);
+                    }
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
                     }
                 }
             }
@@ -278,6 +298,10 @@ public class ResourceLimitsTest {
                         } catch (PolyglotException ex) {
                             assertStatementCountLimit(context, ex, 1);
                         }
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
+                        }
                     }
 
                     // test with different limit
@@ -289,6 +313,10 @@ public class ResourceLimitsTest {
                             fail();
                         } catch (PolyglotException ex) {
                             assertStatementCountLimit(context, ex, 2);
+                        }
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
                         }
                     }
                 }));
@@ -332,6 +360,10 @@ public class ResourceLimitsTest {
                         assertSame(c, events.iterator().next().getContext());
                         assertNotNull(events.iterator().next().toString());
                     }
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
                 }
                 events.clear();
             }
@@ -368,6 +400,10 @@ public class ResourceLimitsTest {
                                 assertSame(c, events.get(c).getContext());
                                 assertNotNull(events.get(c).toString());
                             }
+                        }
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
                         }
                     }
                 }));
@@ -419,6 +455,10 @@ public class ResourceLimitsTest {
                     assertNotNull(events.get(c).toString());
                 }
             }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
         executorService.shutdown();
         executorService.awaitTermination(100, TimeUnit.SECONDS);
@@ -463,6 +503,10 @@ public class ResourceLimitsTest {
                 assertNotNull(events.get(c));
                 assertSame(c, events.get(c).getContext());
                 assertNotNull(events.get(c).toString());
+            }
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
             }
         }
         executorService.shutdown();
@@ -520,7 +564,13 @@ public class ResourceLimitsTest {
                         assertSame(c, events.get(c).getContext());
                         assertNotNull(events.get(c).toString());
                     }
-                    c.close();
+                    try {
+                        c.close();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
+                        }
+                    }
                 }));
             }
             for (Future<?> future : testFutures) {
@@ -595,7 +645,13 @@ public class ResourceLimitsTest {
                         assertSame(c, events.get(c).getContext());
                         assertNotNull(events.get(c).toString());
                     }
-                    c.close();
+                    try {
+                        c.close();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
+                        }
+                    }
                 }));
             }
             for (
@@ -649,6 +705,10 @@ public class ResourceLimitsTest {
                     fail();
                 } catch (PolyglotException e) {
                     assertStatementCountLimit(context, e, 50);
+                }
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
                 }
             }
 

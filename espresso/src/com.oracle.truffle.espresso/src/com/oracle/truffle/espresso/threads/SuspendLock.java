@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.threads;
 
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class SuspendLock {
@@ -76,8 +77,24 @@ public final class SuspendLock {
         return threadSuspended;
     }
 
+    private static class SuspendAction extends ThreadLocalAction {
+        private final SuspendLock lock;
+
+        SuspendAction(SuspendLock lock) {
+            super(true, false);
+            this.lock = lock;
+        }
+
+        @Override
+        protected void perform(Access access) {
+            lock.access.handleSuspend(lock.thread);
+        }
+    }
+
     private void suspendHandshake() {
         boolean wasInterrupted = false;
+        shouldSuspend = true;
+        access.getContext().getEnv().submitThreadLocal(new Thread[]{access.getHost(thread)}, new SuspendAction(this));
         while (!isSuspended()) {
             shouldSuspend = true;
             try {

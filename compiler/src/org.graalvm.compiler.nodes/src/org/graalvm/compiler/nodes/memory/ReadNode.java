@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -41,6 +43,8 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -56,6 +60,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
@@ -63,29 +68,53 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill, ExtendableMemoryAccess {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
-    public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
-        this(TYPE, address, location, stamp, null, barrierType, false, null);
+    private final Stamp accessStamp;
+    private final MemoryOrderMode memoryOrder;
+    public final MemoryExtendKind extendKind;
+
+    public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType, MemoryOrderMode memoryOrder) {
+        this(TYPE, address, location, stamp, null, barrierType, memoryOrder, false, null);
     }
 
-    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, MemoryOrderMode memoryOrder,
+                    boolean usedAsNullCheck,
                     FrameState stateBefore) {
-        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
-        this.lastLocationAccess = null;
+        this(c, address, location, stamp, MemoryExtendKind.DEFAULT, guard, barrierType, memoryOrder, usedAsNullCheck, stateBefore, null);
+    }
+
+    private static Stamp generateStamp(Stamp stamp, MemoryExtendKind extendKind) {
+        if (extendKind.isNotExtended()) {
+            return stamp;
+        } else {
+            return extendKind.stampFor((IntegerStamp) stamp);
+        }
+    }
+
+    protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp accessStamp, MemoryExtendKind extendKind, GuardingNode guard,
+                    BarrierType barrierType, MemoryOrderMode memoryOrder, boolean usedAsNullCheck,
+                    FrameState stateBefore, MemoryKill lastLocationAccess) {
+        super(c, address, location, generateStamp(accessStamp, extendKind), guard, barrierType, usedAsNullCheck, stateBefore);
+
+        this.lastLocationAccess = lastLocationAccess;
+        this.accessStamp = accessStamp;
+        this.extendKind = extendKind;
+        this.memoryOrder = memoryOrder;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
     }
 
     @Override
@@ -94,7 +123,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             // Read without usages or guard can be safely removed.
             return null;
         }
-        if (!getUsedAsNullCheck()) {
+        if (!getUsedAsNullCheck() && !extendsAccess()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
         } else {
             // if this read is a null check, then replacing it with the value is incorrect for
@@ -103,17 +132,42 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         }
     }
 
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
     @SuppressWarnings("try")
     @Override
     public FloatingAccessNode asFloatingNode() {
+        if (ordersMemoryAccesses() || !canFloat()) {
+            throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node.");
+        }
         try (DebugCloseable position = withNodeSourcePosition()) {
             return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(NodeView.DEFAULT), getGuard(), getBarrierType()));
         }
     }
 
     @Override
+    public boolean canFloat() {
+        if (ordersMemoryAccesses()) {
+            return false;
+        }
+        return super.canFloat();
+    }
+
+    @Override
     public boolean isAllowedUsageType(InputType type) {
-        return (getUsedAsNullCheck() && type == InputType.Guard) ? true : super.isAllowedUsageType(type);
+        if (type == InputType.Guard && getUsedAsNullCheck()) {
+            return true;
+        } else if (type == InputType.Memory && ordersMemoryAccesses()) {
+            return true;
+        } else {
+            return super.isAllowedUsageType(type);
+        }
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CanonicalizerTool tool) {
@@ -149,11 +203,22 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             if (metaAccess != null && object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
                 long displacement = offset.asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
+
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
                     Constant constant = resultStamp.readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
                     boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                         return ConstantNode.forConstant(resultStamp, constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
+                    }
+                }
+                if (locationIdentity instanceof FieldLocationIdentity && !locationIdentity.isImmutable()) {
+                    // Use ConstantFoldUtil as that properly handles final Java fields which are
+                    // normally not considered immutable.
+                    ResolvedJavaField field = ((FieldLocationIdentity) locationIdentity).getField();
+                    ConstantNode constantNode = ConstantFoldUtil.tryConstantFold(tool, field, object.asJavaConstant(), displacement, resultStamp,
+                                    accessStamp, read.getOptions(), read.getNodeSourcePosition());
+                    if (constantNode != null) {
+                        return constantNode;
                     }
                 }
             }
@@ -208,6 +273,44 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public Stamp getAccessStamp(NodeView view) {
-        return stamp(view);
+        if (!extendsAccess()) {
+            return stamp(view);
+        } else {
+            return accessStamp;
+        }
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
+    }
+
+    @Override
+    public MemoryExtendKind getExtendKind() {
+        return extendKind;
+    }
+
+    @Override
+    public boolean isCompatibleWithExtend() {
+        return getAccessStamp(NodeView.DEFAULT) instanceof IntegerStamp && !extendsAccess();
+    }
+
+    @Override
+    public boolean isCompatibleWithExtend(MemoryExtendKind newExtendKind) {
+        if (isCompatibleWithExtend()) {
+            return getAccessBits() <= newExtendKind.getExtendedBitSize();
+        }
+        return false;
+    }
+
+    @Override
+    public int getAccessBits() {
+        return ((PrimitiveStamp) getAccessStamp(NodeView.DEFAULT)).getBits();
+    }
+
+    @Override
+    public FixedWithNextNode copyWithExtendKind(MemoryExtendKind newExtendKind) {
+        assert isCompatibleWithExtend(newExtendKind);
+        return new ReadNode(TYPE, address, location, stamp(NodeView.DEFAULT), newExtendKind, guard, barrierType, memoryOrder, usedAsNullCheck, stateBefore, lastLocationAccess);
     }
 }

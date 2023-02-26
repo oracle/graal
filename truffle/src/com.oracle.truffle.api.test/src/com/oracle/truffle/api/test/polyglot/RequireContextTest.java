@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -52,6 +54,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -86,7 +89,6 @@ public class RequireContextTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testInstrument() throws Exception {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
@@ -94,18 +96,48 @@ public class RequireContextTest extends AbstractPolyglotTest {
                 return RootNode.createConstantNode(true).getCallTarget();
             }
         });
-        assertFails(() -> instrumentEnv.getTruffleFile("file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
-        assertFails(() -> instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.getTruffleFile(null, "file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.getTruffleFile(null, Paths.get(".").toAbsolutePath().toUri()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         context.enter();
         try {
-            assertNotNull(instrumentEnv.getTruffleFile("file"));
-            assertNotNull(instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()));
+            assertNotNull(instrumentEnv.getTruffleFile(null, "file"));
+            assertNotNull(instrumentEnv.getTruffleFile(null, Paths.get(".").toAbsolutePath().toUri()));
             assertTrue((boolean) instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()).call());
             assertNotNull(instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class));
         } finally {
             context.leave();
+        }
+    }
+
+    @Test
+    public void testContextFile() throws Exception {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return RootNode.createConstantNode(true).getCallTarget();
+            }
+        });
+        context.enter();
+        try {
+            TruffleContext truffleContext = instrumentEnv.getEnteredContext();
+            AtomicReference<Throwable> throwable = new AtomicReference<>();
+            Thread thread = instrumentEnv.createSystemThread(() -> {
+                try {
+                    assertNull(instrumentEnv.getEnteredContext());
+                    assertFails(() -> instrumentEnv.getTruffleFile(null, "file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+                    assertNotNull(instrumentEnv.getTruffleFile(truffleContext, "file"));
+                    assertNotNull(instrumentEnv.getTruffleFile(truffleContext, Paths.get(".").toAbsolutePath().toUri()));
+                } catch (Throwable t) {
+                    throwable.set(t);
+                }
+            });
+            thread.start();
+            thread.join();
+            assertNull(throwable.get());
+        } finally {
+            context.close();
         }
     }
 

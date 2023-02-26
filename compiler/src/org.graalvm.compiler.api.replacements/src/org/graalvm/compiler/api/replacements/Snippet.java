@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,14 @@ public @interface Snippet {
      * known snippets that are used after frame state assignment, we want to relax this restriction.
      */
     boolean allowPartialIntrinsicArgumentMismatch() default false;
+
+    /**
+     * Marks a method as known to be missing injected branch probabilities. Normally snippets are
+     * required to have at least probabilities in their top level method but sometimes this is not
+     * feasible either because the code is outside of our control or there aren't clear
+     * probabilities that could be chosen.
+     */
+    boolean allowMissingProbabilities() default false;
 
     /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during

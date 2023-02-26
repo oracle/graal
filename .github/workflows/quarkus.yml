@@ -1,4 +1,4 @@
-name: Nightly quarkus tests
+name: Nightly Quarkus Tests
 
 on:
   push:
@@ -11,59 +11,68 @@ on:
   - cron: '0 3 * * *'
 
 env:
-  # Workaround testsuite locale issue
-  LANG: en_US.UTF-8
-  DB_USER: hibernate_orm_test
-  DB_PASSWORD: hibernate_orm_test
-  DB_NAME: hibernate_orm_test
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
-  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
-  MX_GIT_CACHE: refcache
-  MX_PYTHON_VERSION: 3
-  MX_PATH: ${{ github.workspace }}/mx
-  JAVA_HOME: ${{ github.workspace }}/jdk
-  QUARKUS_PATH: ${{ github.workspace }}/quarkus
+  DB_NAME: hibernate_orm_test
+  DB_PASSWORD: hibernate_orm_test
+  DB_USER: hibernate_orm_test
   GRAALVM_HOME: ${{ github.workspace }}/graalvm
+  JAVA_HOME: ${{ github.workspace }}/jdk
+  LANG: en_US.UTF-8 # Workaround testsuite locale issue
+  MX_GIT_CACHE: refcache
+  MX_PATH: ${{ github.workspace }}/mx
+  MX_PYTHON: python3.8
+  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
+  QUARKUS_PATH: ${{ github.workspace }}/quarkus
 
+permissions: {}
 jobs:
   build-quarkus-and-graalvm:
-    name: Nightly quarkus and GraalVM build
-    runs-on: ubuntu-18.04
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Nightly Quarkus and GraalVM build
+    runs-on: ubuntu-20.04
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v3
       with:
         fetch-depth: 1
-    - uses: actions/checkout@v2
+    - name: Checkout graalvm/mx
+      uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
-    - name: Get latest quarkus release
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    - name: Get latest Quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
         echo Getting Quarkus $QUARKUS_VERSION
         curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${QUARKUS_PATH}
         tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - name: Get JDK
+    - name: Fetch LabsJDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-17 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
         cd substratevm
@@ -78,7 +87,7 @@ jobs:
       with:
         name: graalvm
         path: graalvm.tgz
-    - name: Build quarkus
+    - name: Build Quarkus
       run: |
         cd ${QUARKUS_PATH}
         eval ./mvnw -e -B -Dquickly
@@ -87,7 +96,7 @@ jobs:
       run: |
         json=$(tr -d '\n' < ${QUARKUS_PATH}/.github/native-tests.json )
         echo $json
-        echo "::set-output name=matrix::${json}"
+        echo "matrix=${json}" >> $GITHUB_OUTPUT
     - name: Tar Maven Repo
       shell: bash
       run: tar -czvf maven-repo.tgz -C ~ .m2/repository
@@ -118,7 +127,7 @@ jobs:
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
-      - name: Get latest quarkus release
+      - name: Get latest Quarkus release
         if: startsWith(matrix.os-name, 'ubuntu')
         run: |
           export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')

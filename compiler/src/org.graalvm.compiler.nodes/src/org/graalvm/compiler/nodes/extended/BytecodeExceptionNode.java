@@ -215,8 +215,19 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     public FrameState createStateDuring() {
         boolean rethrowException = false;
         boolean duringCall = true;
-        return stateAfter.duplicateModified(graph(), stateAfter.bci, rethrowException, duringCall,
+        FrameState stateDuring = stateAfter.duplicateModified(graph(), stateAfter.bci, rethrowException, duringCall,
                         JavaKind.Object, null, null, null);
+        /*
+         * FrameStates attached to bytecode exception nodes are not a valid deoptimization state
+         * since these nodes are on the exceptional control flow path but before the exception
+         * handling itself.
+         *
+         * We must ensure that this FrameState cannot be mistaken for a "normal" call, as the
+         * FrameState created here will have an empty stack and only contain locals needed by
+         * exception handlers.
+         */
+        stateDuring.invalidateForDeoptimization();
+        return stateDuring;
     }
 
 }

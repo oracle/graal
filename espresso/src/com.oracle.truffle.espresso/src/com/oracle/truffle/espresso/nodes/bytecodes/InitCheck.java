@@ -27,13 +27,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 @GenerateUncached
 @NodeInfo(shortName = "class initcheck")
-public abstract class InitCheck extends Node {
+public abstract class InitCheck extends EspressoNode {
 
     protected static final int LIMIT = 1;
 

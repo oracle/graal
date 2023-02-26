@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,9 +44,10 @@ import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
@@ -250,7 +251,7 @@ public abstract class GraalCompilerState {
     }
 
     protected Suites createSuites(OptionValues opts) {
-        return backend.getSuites().getDefaultSuites(opts).copy();
+        return backend.getSuites().getDefaultSuites(opts, backend.getTarget().arch).copy();
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
@@ -308,7 +309,7 @@ public abstract class GraalCompilerState {
     private NodeLIRBuilderTool nodeLirGen;
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
-    private AbstractBlockBase<?>[] codeEmittingOrder;
+    private CodeEmissionOrder<?> blockOrder;
     private AbstractBlockBase<?>[] linearScanOrder;
 
     /**
@@ -373,10 +374,10 @@ public abstract class GraalCompilerState {
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-        linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+        blockOrder = request.backend.newBlockOrder(blocks.length, startBlock);
+        linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
 
-        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
+        LIR lir = new LIR(cfg, linearScanOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
         RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
         lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
@@ -456,7 +457,7 @@ public abstract class GraalCompilerState {
     }
 
     protected PostAllocationOptimizationContext createPostAllocationOptimizationContext() {
-        return new PostAllocationOptimizationContext(lirGenTool);
+        return new PostAllocationOptimizationContext(lirGenTool, blockOrder);
     }
 
     /**

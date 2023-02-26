@@ -26,8 +26,9 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugEnumTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import org.graalvm.compiler.debug.DebugContext;
 
 public class EnumClassEntry extends ClassEntry {
@@ -36,7 +37,12 @@ public class EnumClassEntry extends ClassEntry {
     }
 
     @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugInfoProvider.DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+    public DebugTypeKind typeKind() {
+        return DebugTypeKind.ENUM;
+    }
+
+    @Override
+    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
         assert debugTypeInfo instanceof DebugEnumTypeInfo;
         super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
     }

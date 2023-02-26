@@ -29,10 +29,15 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-final class ClassTypeSequence implements JavaType, CharSequence {
+/**
+ * A printable representation of the name of class that can serialized as a fully qualified type for
+ * dumping. This is to support deobfuscation of dump output. The {@link #toString()} is the
+ * unqualified name of the Class.
+ */
+public final class ClassTypeSequence implements JavaType, CharSequence {
     private final Class<?> clazz;
 
-    ClassTypeSequence(Class<?> clazz) {
+    public ClassTypeSequence(Class<?> clazz) {
         this.clazz = clazz;
     }
 
@@ -93,6 +98,6 @@ final class ClassTypeSequence implements JavaType, CharSequence {
 
     @Override
     public String toString() {
-        return clazz.getName();
+        return toJavaName(false);
     }
 }

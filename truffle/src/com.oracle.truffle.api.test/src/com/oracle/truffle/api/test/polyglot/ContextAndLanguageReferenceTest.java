@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
@@ -59,6 +58,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
@@ -74,7 +74,6 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
     public static final String LANGUAGE5 = "ContextAndLanguageSupplierTestLanguage5";
     public static final String LANGUAGE6 = "ContextAndLanguageSupplierTestLanguage6";
     private static final List<String> LANGUAGES = Arrays.asList(LANGUAGE1, LANGUAGE2, LANGUAGE3, LANGUAGE4, LANGUAGE5, LANGUAGE6);
-    private static final List<Class<? extends Language1>> LANGUAGE_CLASSES = Arrays.asList(Language1.class, Language2.class, Language3.class, Language4.class, Language5.class, Language6.class);
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -83,6 +82,14 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
     public ContextAndLanguageReferenceTest() {
         needsLanguageEnv = true;
+    }
+
+    @Registration
+    static class InvalidContextReferenceLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            return null;
+        }
     }
 
     @SuppressWarnings({"unchecked"})
@@ -101,7 +108,7 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         }).getEnv());
         assertSame(languageEnv, ref.get(new TestRootNode(language)).getEnv());
 
-        ContextReference<ContextAPITestLanguage.LanguageContext> invalidRef = ContextReference.create(ContextAPITestLanguage.class);
+        ContextReference<AbstractExecutableTestLanguage.ExecutableContext> invalidRef = ContextReference.create(InvalidContextReferenceLanguage.class);
         assertNull(invalidRef.get(null));
 
         assertSame(ref, ContextReference.create(ProxyLanguage.class));
@@ -109,7 +116,6 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         for (String lang : LANGUAGES) {
             context.initialize(lang);
         }
-        adoptNode(this.language, new ContextSupplierTestNode()).get().execute();
     }
 
     @SuppressWarnings({"unchecked"})
@@ -138,7 +144,6 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         for (String lang : LANGUAGES) {
             context.initialize(lang);
         }
-        adoptNode(this.language, new LanguageSupplierTestNode()).get().execute();
 
     }
 
@@ -153,72 +158,6 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
             return "42";
         }
 
-    }
-
-    @SuppressWarnings("deprecation")
-    private static class ContextSupplierTestNode extends Node {
-
-        ContextSupplierTestNode() {
-            lookupContextReference(ProxyLanguage.class);
-        }
-
-        @SuppressWarnings("unchecked")
-        public void execute() {
-            try {
-                lookupContextReference(TruffleLanguage.class).get();
-                fail();
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                lookupContextReference(InvalidLanguage.class).get();
-                fail();
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                lookupContextReference(null);
-            } catch (NullPointerException e) {
-            }
-
-            for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
-                ContextReference<Env> supplier = lookupContextReference(language);
-                Env value = supplier.get(null);
-                assertSame(Language1.getContext(language), value);
-                assertSame(value, supplier.get(null));
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static class LanguageSupplierTestNode extends Node {
-
-        LanguageSupplierTestNode() {
-            lookupLanguageReference(ProxyLanguage.class);
-        }
-
-        @SuppressWarnings("unchecked")
-        public void execute() {
-            try {
-                lookupLanguageReference(TruffleLanguage.class).get();
-                fail();
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                lookupLanguageReference(InvalidLanguage.class).get();
-                fail();
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                lookupLanguageReference(null);
-            } catch (NullPointerException e) {
-            }
-
-            for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
-                LanguageReference<? extends Language1> supplier = lookupLanguageReference(language);
-                Language1 value = supplier.get(null);
-                assertSame(Language1.getLanguage(language), value);
-                assertSame(value, supplier.get(null));
-            }
-        }
     }
 
     @SuppressWarnings("deprecation")

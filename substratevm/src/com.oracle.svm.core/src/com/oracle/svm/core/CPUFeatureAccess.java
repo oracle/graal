@@ -24,10 +24,24 @@
  */
 package com.oracle.svm.core;
 
+import java.util.EnumSet;
+
 import jdk.vm.ci.code.Architecture;
 
 public interface CPUFeatureAccess {
-    void verifyHostSupportsArchitecture(Architecture imageArchitecture);
+    int verifyHostSupportsArchitectureEarly();
+
+    void verifyHostSupportsArchitectureEarlyOrExit();
 
     void enableFeatures(Architecture architecture);
+
+    /**
+     * Compute the CPU features enabled at image run time.
+     */
+    EnumSet<?> determineHostCPUFeatures();
+
+    /**
+     * CPU features enabled at image generation time.
+     */
+    EnumSet<?> buildtimeCPUFeatures();
 }

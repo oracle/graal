@@ -24,13 +24,18 @@
  */
 package com.oracle.svm.core.log;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.headers.LibC;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -39,6 +44,10 @@ import org.graalvm.word.UnsignedWord;
  * pointer is missing, it forwards the operation to the delegate set in the constructor.
  */
 public class FunctionPointerLogHandler implements LogHandlerExtension {
+    private static final CGlobalData<CCharPointer> LOG_OPTION = CGlobalDataFactory.createCString("_log");
+    private static final CGlobalData<CCharPointer> FATAL_LOG_OPTION = CGlobalDataFactory.createCString("_fatal_log");
+    private static final CGlobalData<CCharPointer> FLUSH_LOG_OPTION = CGlobalDataFactory.createCString("_flush_log");
+    private static final CGlobalData<CCharPointer> FATAL_OPTION = CGlobalDataFactory.createCString("_fatal");
 
     private final LogHandler delegate;
 
@@ -132,6 +141,14 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         boolean invoke(CodePointer callerIP, String msg, Throwable ex);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static boolean isJniVMOption(CCharPointer optionString) {
+        return LibC.strcmp(optionString, LOG_OPTION.get()) == 0 ||
+                        LibC.strcmp(optionString, FATAL_LOG_OPTION.get()) == 0 ||
+                        LibC.strcmp(optionString, FLUSH_LOG_OPTION.get()) == 0 ||
+                        LibC.strcmp(optionString, FATAL_OPTION.get()) == 0;
+    }
+
     /**
      * Parses a {@code JavaVMOption} passed to {@code JNI_CreateJavaVM}.
      *
@@ -139,27 +156,28 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
      * @param extraInfo value of the {@code javaVMOption.extraInfo} field
      * @return {@code true} iff the option was consumed by this method
      */
-    public static boolean parseVMOption(String optionString, WordPointer extraInfo) {
-        if (optionString.equals("_log")) {
+    public static boolean parseJniVMOption(CCharPointer optionString, WordPointer extraInfo) {
+        if (LibC.strcmp(optionString, LOG_OPTION.get()) == 0) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
             return true;
-        } else if (optionString.equals("_fatal_log")) {
+        } else if (LibC.strcmp(optionString, FATAL_LOG_OPTION.get()) == 0) {
             handler(optionString).fatalLogFunctionPointer = (LogFunctionPointer) extraInfo;
             return true;
-        } else if (optionString.equals("_flush_log")) {
+        } else if (LibC.strcmp(optionString, FLUSH_LOG_OPTION.get()) == 0) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;
             return true;
-        } else if (optionString.equals("_fatal")) {
+        } else if (LibC.strcmp(optionString, FATAL_OPTION.get()) == 0) {
             handler(optionString).fatalErrorFunctionPointer = (VoidFunctionPointer) extraInfo;
             return true;
         }
         return false;
     }
 
-    private static FunctionPointerLogHandler handler(String optionString) {
+    private static FunctionPointerLogHandler handler(CCharPointer optionString) {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
         if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
-            throw new IllegalArgumentException("The " + optionString + " option is not supported by JNI_CreateJavaVM");
+            String str = CTypeConversion.toJavaString(optionString);
+            throw new IllegalArgumentException("The " + str + " option is not supported by JNI_CreateJavaVM");
         }
         return (FunctionPointerLogHandler) handler;
     }
@@ -167,7 +185,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     /**
      * Notifies that {@code JNI_CreateJavaVM} has finished parsing all {@code JavaVMOption}s.
      */
-    public static void afterParsingVMOptions() {
+    public static void afterParsingJniVMOptions() {
         LogHandler handler = ImageSingletons.lookup(LogHandler.class);
         if (handler == null || !(handler instanceof FunctionPointerLogHandler)) {
             return;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
  * This node can be used for two different kinds of anchoring for non-CFG (floating) nodes: It can
  * 1) keep one node above a certain point in the graph by specifying that node as the
  * {@link #anchored} node; or 2) it can keep nodes below a certain point in the graph by using this
- * node as a Anchor or Guard input.
+ * node as an Anchor or Guard input.
  *
  * This node must not move in the CFG, because that would change the anchor point. So optimizations
  * like de-duplication are not allowed and this node implements {@link NodeWithIdentity}. However,

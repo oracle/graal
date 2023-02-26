@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,6 +74,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     private static final byte FLAGS_NONE = 0;
     private static final byte FLAG_HAS_PREFIX_STATES = 1 << N_FLAGS;
+    private static final byte FLAG_MUST_ADVANCE = 1 << N_FLAGS + 1;
 
     private static final NFAStateTransition[] EMPTY_TRANSITIONS = new NFAStateTransition[0];
 
@@ -90,13 +91,18 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
-                    boolean hasPrefixStates) {
-        this(id, stateSet, hasPrefixStates ? FLAG_HAS_PREFIX_STATES : FLAGS_NONE, null, matcherBuilder, finishedLookBehinds);
+                    boolean hasPrefixStates,
+                    boolean mustAdvance) {
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds);
+    }
+
+    private static byte initFlags(boolean hasPrefixStates, boolean mustAdvance) {
+        return (byte) ((hasPrefixStates ? FLAG_HAS_PREFIX_STATES : FLAGS_NONE) | (mustAdvance ? FLAG_MUST_ADVANCE : FLAGS_NONE));
     }
 
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    byte flags,
+                    short flags,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds);
@@ -104,7 +110,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    byte flags,
+                    short flags,
                     TBitSet possibleResults,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
@@ -140,8 +146,16 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
         setFlag(FLAG_HAS_PREFIX_STATES, value);
     }
 
+    public boolean isMustAdvance() {
+        return getFlag(FLAG_MUST_ADVANCE);
+    }
+
+    public void setMustAdvance(boolean value) {
+        setFlag(FLAG_MUST_ADVANCE, value);
+    }
+
     public boolean hasTransitionToAnchoredFinalState(boolean forward) {
-        return (forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState) >= 0;
+        return getTransitionToAnchoredFinalStateId(forward) >= 0;
     }
 
     public short getTransitionToAnchoredFinalStateId(boolean forward) {
@@ -150,17 +164,17 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     public NFAStateTransition getTransitionToAnchoredFinalState(boolean forward) {
         assert hasTransitionToAnchoredFinalState(forward);
-        return forward ? getSuccessors()[transitionToAnchoredFinalState] : getPredecessors()[revTransitionToAnchoredFinalState];
+        return getSuccessors(forward)[getTransitionToAnchoredFinalStateId(forward)];
     }
 
     @Override
     public boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
-        return (forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState) >= 0;
+        return getTransitionToUnAnchoredFinalStateId(forward) >= 0;
     }
 
     public NFAStateTransition getTransitionToUnAnchoredFinalState(boolean forward) {
         assert hasTransitionToUnAnchoredFinalState(forward);
-        return forward ? getSuccessors()[transitionToUnAnchoredFinalState] : getPredecessors()[revTransitionToUnAnchoredFinalState];
+        return getSuccessors(forward)[getTransitionToUnAnchoredFinalStateId(forward)];
     }
 
     public short getTransitionToUnAnchoredFinalStateId(boolean forward) {
@@ -321,6 +335,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     public JsonObject toJson() {
         return Json.obj(Json.prop("id", getId()),
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("forwardAnchoredFinalState", isAnchoredFinalState()),
@@ -335,6 +350,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     public JsonObject toJson(boolean forward) {
         return Json.obj(Json.prop("id", getId()),
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),

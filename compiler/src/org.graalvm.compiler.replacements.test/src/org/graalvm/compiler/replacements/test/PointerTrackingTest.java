@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,19 +44,30 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
 
     @Test
     public void testTracking() {
-        Result result = executeActual(getResolvedJavaMethod("trackingSnippet"), null, new Object());
+        Result result = executeActual(getResolvedJavaMethod("trackingSnippet"), null);
         assertEquals(new Result("OK", null), result);
     }
 
-    public static String trackingSnippet(Object obj) {
+    public static String trackingSnippet() {
+        for (int i = 0; i < 1000; i++) {
+            // generate a lot of garbage, trying to get a fresh TLAB
+            GraalDirectives.blackhole(new Object());
+        }
+
+        // fresh allocation, this should be in TLAB
+        Object obj = GraalDirectives.opaque(new Object());
+
         long trackedBeforeGC = getTrackedPointer(obj);
         long untrackedBeforeGC = getUntrackedPointer(obj);
 
         int i = 0;
         while (untrackedBeforeGC == getTrackedPointer(obj)) {
+            // allocate something to increase likelyhood of GC moving the object
+            GraalDirectives.blackhole(new Object());
+
             System.gc();
-            if (i++ > 100) {
-                return "Timeout! Object didn't move after 100 GCs.";
+            if (i++ > 1000) {
+                return "Timeout! Object didn't move after 1000 GCs.";
             }
         }
 
@@ -114,7 +125,7 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, PointerTrackingTest.class);
-        r.register1("getTrackedPointer", Object.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("getTrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));
@@ -122,7 +133,7 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
                 return true;
             }
         });
-        r.register1("getUntrackedPointer", Object.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("getUntrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToUntrackedPointer(arg, getReplacements().getWordKind()));

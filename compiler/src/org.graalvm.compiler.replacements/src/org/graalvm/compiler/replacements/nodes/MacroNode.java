@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -127,6 +129,17 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     }
 
     @Override
+    public boolean inferStamp() {
+        verifyStamp();
+        return false;
+    }
+
+    protected void verifyStamp() {
+        GraalError.guarantee(returnStamp.getTrustedStamp().equals(stamp(NodeView.DEFAULT)), "Stamp of replaced node %s must be the same as the original Invoke %s, but is %s ",
+                        this, returnStamp.getTrustedStamp(), stamp(NodeView.DEFAULT));
+    }
+
+    @Override
     public ResolvedJavaMethod getContextMethod() {
         return callerMethod;
     }
@@ -137,7 +150,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     }
 
     public ValueNode[] toArgumentArray() {
-        return arguments.toArray(new ValueNode[0]);
+        return arguments.toArray(ValueNode.EMPTY_ARRAY);
     }
 
     @Override
@@ -174,7 +187,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
 
     /**
      * Returns {@link LocationIdentity#any()}. This node needs to kill any location because it might
-     * get {@linkplain #replaceWithInvoke() replaced with an invoke} and
+     * get {@linkplain MacroInvokable#replaceWithInvoke() replaced with an invoke} and
      * {@link InvokeNode#getKilledLocationIdentity()} kills {@link LocationIdentity#any()} and the
      * kill location must not get broader.
      */
@@ -192,8 +205,9 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
-            InvokeNode invoke = createInvoke();
+            InvokeNode invoke = createInvoke(true);
             graph().replaceFixedWithFixed(this, invoke);
+            assert invoke.verify();
             return invoke;
         }
     }
@@ -202,14 +216,22 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return LocationIdentity.any();
     }
 
-    protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[0]), returnStamp, null));
+    /**
+     * Replace this node with the equivalent invoke. If we are falling back to the original invoke
+     * then the stamp of the current node isn't permitted to be different than the actual invoke
+     * because this would leave the graph in an inconsistent state.
+     */
+    protected InvokeNode createInvoke(boolean verifyStamp) {
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(ValueNode.EMPTY_ARRAY), returnStamp, null));
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getStackKind() != JavaKind.Void) {
                 invoke.stateAfter().replaceFirstInput(this, invoke);
             }
+        }
+        if (verifyStamp) {
+            verifyStamp();
         }
         return invoke;
     }

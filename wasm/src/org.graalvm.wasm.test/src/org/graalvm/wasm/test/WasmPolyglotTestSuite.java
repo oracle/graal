@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Set;
 
 import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
@@ -133,6 +134,46 @@ public class WasmPolyglotTestSuite {
                     Assert.assertTrue("Should not throw internal error", !pex.isInternalError());
                 }
             }
+        }
+    }
+
+    @Test
+    public void extractKeys() throws IOException {
+        ByteSequence test = ByteSequence.create(binaryReturnConst);
+        Source source = Source.newBuilder(WasmLanguage.ID, test, "main").build();
+        try (Context context = Context.create(WasmLanguage.ID)) {
+            context.eval(source);
+            Value instance = context.getBindings(WasmLanguage.ID).getMember("main");
+            Set<String> keys = instance.getMemberKeys();
+            Assert.assertTrue("Should contain function 'main'", keys.contains("main"));
+            Assert.assertTrue("Should contain memory 'memory'", keys.contains("memory"));
+            Assert.assertTrue("Should contain global '__heap_base'", keys.contains("__heap_base"));
+            Assert.assertTrue("Should contain global '__data_end'", keys.contains("__data_end"));
+        }
+    }
+
+    @Test
+    public void deeplyNestedBrIf() throws IOException, InterruptedException {
+        // This code resembles the deeply nested br_if in WebAssembly part of undici
+        StringBuilder wat = new StringBuilder();
+        int depth = 256;
+        wat.append("(module (func (export \"main\") (result i32) (block $my_block ");
+        for (int i = 0; i < depth; i++) {
+            wat.append("(block ");
+        }
+        wat.append("i32.const 0 br_if $my_block i32.const 35 i32.const 0 drop drop");
+        for (int i = 0; i < depth; i++) {
+            wat.append(")");
+        }
+        wat.append(") i32.const 42))");
+
+        ByteSequence bytes = ByteSequence.create(compileWat("test", wat.toString()));
+        Source source = Source.newBuilder(WasmLanguage.ID, bytes, "main").build();
+        try (Context context = Context.create(WasmLanguage.ID)) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 42, result.asInt());
         }
     }
 

@@ -40,7 +40,8 @@ import com.oracle.truffle.tools.profiler.CPUTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = CPUTracerInstrument.VERSION, services = {CPUTracer.class})
+@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = CPUTracerInstrument.VERSION, services = {
+                CPUTracer.class}, website = "https://www.graalvm.org/tools/profiling/")
 public class CPUTracerInstrument extends TruffleInstrument {
 
     /**
@@ -119,8 +120,8 @@ public class CPUTracerInstrument extends TruffleInstrument {
         final boolean statements = env.getOptions().get(CPUTracerCLI.TRACE_STATEMENTS);
         final boolean calls = env.getOptions().get(CPUTracerCLI.TRACE_CALLS);
         final boolean internals = env.getOptions().get(CPUTracerCLI.TRACE_INTERNAL);
-        final Object[] filterRootName = env.getOptions().get(CPUTracerCLI.FILTER_ROOT);
-        final Object[] filterFile = env.getOptions().get(CPUTracerCLI.FILTER_FILE);
+        final WildcardFilter filterRootName = env.getOptions().get(CPUTracerCLI.FILTER_ROOT);
+        final WildcardFilter filterFile = env.getOptions().get(CPUTracerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(CPUTracerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(CPUTracerCLI.FILTER_LANGUAGE);
         return CPUTracerCLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterMimeType, filterLanguage);

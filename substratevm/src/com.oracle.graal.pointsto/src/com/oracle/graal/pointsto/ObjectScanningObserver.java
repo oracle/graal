@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * possible cases: the element value is either null or the field value is non-null. The implementers
  * of this API will call the appropriate method during scanning.
  */
+@SuppressWarnings("unused")
 public interface ObjectScanningObserver {
 
     /**
@@ -46,30 +47,51 @@ public interface ObjectScanningObserver {
      * For relocated pointers the value is only known at runtime after methods are relocated, which
      * is pretty much the same as a field written at runtime: we do not have a constant value.
      */
-    void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
+    default boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        return false;
+    }
 
     /**
      * Hook for scanned null field value.
      */
-    void forNullFieldValue(JavaConstant receiver, AnalysisField field);
+    default boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
+        return false;
+    }
 
     /**
      * Hook for scanned non-null field value.
+     * 
+     * @return true if value is consumed, false otherwise
      */
-    void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
+    default boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        return false;
+    }
 
     /**
      * Hook for scanned null element value.
      */
-    void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex);
+    default boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ScanReason reason) {
+        return false;
+    }
 
     /**
      * Hook for scanned non-null element value.
+     * 
+     * @return true if value is consumed, false otherwise
      */
-    void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex);
+    default boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
+        return false;
+    }
+
+    /**
+     * Hook for scanned embedded root.
+     */
+    default void forEmbeddedRoot(JavaConstant root, ScanReason reason) {
+    }
 
     /**
      * Hook for scanned constant.
      */
-    void forScannedConstant(JavaConstant scannedValue, ScanReason reason);
+    default void forScannedConstant(JavaConstant scannedValue, ScanReason reason) {
+    }
 }

@@ -25,14 +25,14 @@
 package com.oracle.svm.hosted.jdk.localization;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-class CharsetSubstitutionsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class CharsetSubstitutionsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.create("java.lang.CharacterName"), "java/lang/uniName.dat");

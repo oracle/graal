@@ -31,15 +31,15 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.IsolateLeaveStub;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -97,7 +97,7 @@ public final class CEntryPointCallStubSupport {
                 CEntryPointData entryPointData = entryPointDataSupplier.get();
                 CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bb.getMetaAccess());
                 AnalysisMethod wrapped = bb.getUniverse().lookup(stub);
-                bb.addRootMethod(wrapped).registerAsEntryPoint(entryPointData);
+                bb.addRootMethod(wrapped, true).registerAsEntryPoint(entryPointData);
                 value = wrapped;
             }
             return value;
@@ -111,7 +111,7 @@ public final class CEntryPointCallStubSupport {
                 assert !bb.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
                 CFunctionPointer nativeStubAddress = new MethodPointer(nativeStub);
-                String stubName = SubstrateUtil.uniqueShortName(method);
+                String stubName = SubstrateUtil.uniqueStubName(method);
                 ResolvedJavaType holderClass = bb.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
                 value = bb.getUniverse().lookup(stub);
@@ -134,8 +134,8 @@ public final class CEntryPointCallStubSupport {
     }
 }
 
-@AutomaticFeature
-class CEntryPointCallStubFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class CEntryPointCallStubFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) arg;

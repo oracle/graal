@@ -66,7 +66,7 @@ final class PauseThreadLocalAction extends ThreadLocalAction {
                 pauseComplete = true;
                 pauseSync.notifyAll();
             }
-            TruffleSafepoint.setBlockedThreadInterruptible(access.getLocation(), new TruffleSafepoint.Interruptible<Object>() {
+            TruffleSafepoint.setBlockedThreadInterruptible(access.getLocation(), new TruffleSafepoint.Interruptible<>() {
                 @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
                 @Override
                 public void apply(Object waitObject) throws InterruptedException {

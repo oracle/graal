@@ -26,12 +26,9 @@ package com.oracle.truffle.espresso.vm;
 import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
 import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -41,33 +38,32 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoLock;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 
-public final class InterpreterToVM implements ContextAccess {
-
-    private final EspressoContext context;
+public final class InterpreterToVM extends ContextAccessImpl {
 
     public InterpreterToVM(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -91,7 +87,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorWait(EspressoLock self, long timeout) throws InterruptedException {
+    public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
         return self.await(timeout);
     }
 
@@ -105,303 +101,311 @@ public final class InterpreterToVM implements ContextAccess {
         return lock.isHeldByCurrentThread();
     }
 
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
     // region Get (array) operations
 
-    public int getArrayInt(int index, @JavaType(int[].class) StaticObject array) {
-        return getArrayInt(index, array, null);
+    public int getArrayInt(EspressoLanguage language, int index, @JavaType(int[].class) StaticObject array) {
+        return getArrayInt(language, index, array, null);
     }
 
-    public int getArrayInt(int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<int[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+    @TruffleBoundary
+    private static String outOfBoundsMessage(int index, int length) {
+        return "Index " + index + " out of bounds for length " + length;
+    }
+
+    public int getArrayInt(EspressoLanguage language, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        int[] underlying = array.<int[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
-    }
-
-    public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array) {
-        return getArrayObject(index, array, null);
-    }
-
-    public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<StaticObject[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
         }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public long getArrayLong(int index, @JavaType(long[].class) StaticObject array) {
-        return getArrayLong(index, array, null);
+    public StaticObject getArrayObject(EspressoLanguage language, int index, @JavaType(Object[].class) StaticObject array) {
+        return getArrayObject(language, index, array, null);
     }
 
-    public long getArrayLong(int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<long[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+    public StaticObject getArrayObject(EspressoLanguage language, int index, @JavaType(Object[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        StaticObject[] underlying = array.<StaticObject[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
-    }
-
-    public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array) {
-        return getArrayFloat(index, array, null);
-    }
-
-    public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<float[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
         }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array) {
-        return getArrayDouble(index, array, null);
+    public long getArrayLong(EspressoLanguage language, int index, @JavaType(long[].class) StaticObject array) {
+        return getArrayLong(language, index, array, null);
     }
 
-    public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<double[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+    public long getArrayLong(EspressoLanguage language, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        long[] underlying = array.<long[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
-    }
-
-    public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
-        return getArrayByte(index, array, null);
-    }
-
-    public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<byte[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
         }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public char getArrayChar(int index, @JavaType(char[].class) StaticObject array) {
-        return getArrayChar(index, array, null);
+    public float getArrayFloat(EspressoLanguage language, int index, @JavaType(float[].class) StaticObject array) {
+        return getArrayFloat(language, index, array, null);
     }
 
-    public char getArrayChar(int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<char[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+    public float getArrayFloat(EspressoLanguage language, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        float[] underlying = array.<float[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
-    }
-
-    public short getArrayShort(int index, @JavaType(short[].class) StaticObject array) {
-        return getArrayShort(index, array, null);
-    }
-
-    public short getArrayShort(int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<short[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
         }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public double getArrayDouble(EspressoLanguage language, int index, @JavaType(double[].class) StaticObject array) {
+        return getArrayDouble(language, index, array, null);
+    }
+
+    public double getArrayDouble(EspressoLanguage language, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        double[] underlying = array.<double[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
+        return getArrayByte(language, index, array, null);
+    }
+
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
+        byte[] underlying = array.<byte[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public char getArrayChar(EspressoLanguage language, int index, @JavaType(char[].class) StaticObject array) {
+        return getArrayChar(language, index, array, null);
+    }
+
+    public char getArrayChar(EspressoLanguage language, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        char[] underlying = array.<char[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public short getArrayShort(EspressoLanguage language, int index, @JavaType(short[].class) StaticObject array) {
+        return getArrayShort(language, index, array, null);
+    }
+
+    public short getArrayShort(EspressoLanguage language, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        short[] underlying = array.<short[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     // endregion
 
     // region Set (array) operations
 
-    public void setArrayInt(int value, int index, @JavaType(int[].class) StaticObject array) {
-        setArrayInt(value, index, array, null);
+    public void setArrayInt(EspressoLanguage language, int value, int index, @JavaType(int[].class) StaticObject array) {
+        setArrayInt(language, value, index, array, null);
     }
 
-    public void setArrayInt(int value, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<int[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+    public void setArrayInt(EspressoLanguage language, int value, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        int[] underlying = array.<int[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
-    }
-
-    public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array) {
-        setArrayLong(value, index, array, null);
-    }
-
-    public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<long[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array) {
-        setArrayFloat(value, index, array, null);
-    }
-
-    public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<float[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array) {
-        setArrayDouble(value, index, array, null);
-    }
-
-    public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<double[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
-        setArrayByte(value, index, array, null);
-    }
-
-    public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        byte val = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
-        try {
-            (array.<byte[]> unwrap())[index] = val;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array) {
-        setArrayChar(value, index, array, null);
-    }
-
-    public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<char[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array) {
-        setArrayShort(value, index, array, null);
-    }
-
-    public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<short[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
-        }
-    }
-
-    public void setArrayObject(StaticObject value, int index, StaticObject wrapper) {
-        setArrayObject(value, index, wrapper, null);
-    }
-
-    public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
-        if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
-            try {
-                (wrapper.<Object[]> unwrap())[index] = value;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
-            }
-        } else {
-            // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
-            if (Integer.compareUnsigned(index, wrapper.length()) >= 0) {
-                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
-            } else {
-                throwArrayStoreException(getMeta(), bytecodeNode);
-            }
-        }
-    }
-
-    private static void throwArrayIndexOutOfBoundsException(Meta meta, BytecodeNode bytecodeNode) {
         if (bytecodeNode != null) {
             bytecodeNode.enterImplicitExceptionProfile();
         }
-        throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    private static StaticObject throwArrayStoreException(Meta meta, BytecodeNode bytecodeNode) {
+    public void setArrayLong(EspressoLanguage language, long value, int index, @JavaType(long[].class) StaticObject array) {
+        setArrayLong(language, value, index, array, null);
+    }
+
+    public void setArrayLong(EspressoLanguage language, long value, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        long[] underlying = array.<long[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
+        }
         if (bytecodeNode != null) {
             bytecodeNode.enterImplicitExceptionProfile();
         }
-        throw meta.throwException(meta.java_lang_ArrayStoreException);
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
+
+    public void setArrayFloat(EspressoLanguage language, float value, int index, @JavaType(float[].class) StaticObject array) {
+        setArrayFloat(language, value, index, array, null);
+    }
+
+    public void setArrayFloat(EspressoLanguage language, float value, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        float[] underlying = array.<float[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public void setArrayDouble(EspressoLanguage language, double value, int index, @JavaType(double[].class) StaticObject array) {
+        setArrayDouble(language, value, index, array, null);
+    }
+
+    public void setArrayDouble(EspressoLanguage language, double value, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        double[] underlying = array.<double[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
+        setArrayByte(language, value, index, array, null);
+    }
+
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
+        byte maybeMaskedValue = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
+        byte[] underlying = array.<byte[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = maybeMaskedValue;
+            return;
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public void setArrayChar(EspressoLanguage language, char value, int index, @JavaType(char[].class) StaticObject array) {
+        setArrayChar(language, value, index, array, null);
+    }
+
+    public void setArrayChar(EspressoLanguage language, char value, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        char[] underlying = array.<char[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public void setArrayShort(EspressoLanguage language, short value, int index, @JavaType(short[].class) StaticObject array) {
+        setArrayShort(language, value, index, array, null);
+    }
+
+    public void setArrayShort(EspressoLanguage language, short value, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        short[] underlying = array.<short[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
+        }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
+    public void setArrayObject(EspressoLanguage language, StaticObject value, int index, StaticObject wrapper) {
+        setArrayObject(language, value, index, wrapper, null);
+    }
+
+    public void setArrayObject(EspressoLanguage language, StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
+        StaticObject[] underlying = wrapper.<StaticObject[]> unwrap(language);
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
+                underlying[index] = value;
+                return;
+            } // else throw ArrayStoreException
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayStoreException, value.getKlass().getTypeAsString());
+        } // else throw ArrayIndexOutOfBoundsException
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
+    }
+
     // endregion
 
     // region Monitor enter/exit
 
     public static void monitorEnter(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
-            StaticObject thread = context.getCurrentThread();
-            meta.getThreadAccess().fromRunnable(thread, State.BLOCKED);
-            if (context.EnableManagement) {
+            contendedMonitorEnter(obj, meta, lock, context);
+        }
+    }
+
+    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @SuppressWarnings("try")
+    private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
+        StaticObject thread = context.getCurrentThread();
+        try (Transition transition = Transition.transition(context, State.BLOCKED)) {
+            if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
@@ -415,15 +419,14 @@ public final class InterpreterToVM implements ContextAccess {
             if (report) {
                 context.reportOnContendedMonitorEntered(obj);
             }
-            if (context.EnableManagement) {
+            if (context.getEspressoEnv().EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
-            meta.getThreadAccess().toRunnable(thread);
         }
     }
 
     public static void monitorExit(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         if (!holdsLock(lock)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.
@@ -506,104 +509,6 @@ public final class InterpreterToVM implements ContextAccess {
         field.setObject(obj, value);
     }
 
-    public static StaticObject newReferenceArray(Klass componentType, int length, BytecodeNode bytecodeNode) {
-        if (length < 0) {
-            // componentType is not always PE constant e.g. when called from the Array#newInstance
-            // substitution. The derived context and meta accessor are not PE constant
-            // either, so neither is componentType.getMeta().java_lang_NegativeArraySizeException.
-            // The exception mechanism requires exception classes to be PE constant in order to
-            // PE through exception allocation and initialization.
-            // The definitive solution would be to distinguish the cases where the exception klass
-            // is PE constant from the cases where it's dynamic. We can further reduce the dynamic
-            // cases with an inline cache in the above substitution.
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw throwNegativeArraySizeException(componentType.getMeta());
-        }
-        assert length >= 0;
-        StaticObject[] arr = new StaticObject[length];
-        Arrays.fill(arr, StaticObject.NULL);
-        return StaticObject.createArray(componentType.getArrayClass(), arr);
-    }
-
-    public static StaticObject newReferenceArray(Klass componentType, int length) {
-        assert !componentType.isPrimitive();
-        return newReferenceArray(componentType, length, null);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    private static EspressoException throwNegativeArraySizeException(Meta meta) {
-        throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-    }
-
-    @TruffleBoundary
-    public StaticObject newMultiArray(Klass component, int... dimensions) {
-        Meta meta = getMeta();
-        if (component == meta._void) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
-        }
-        for (int d : dimensions) {
-            if (d < 0) {
-                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-            }
-        }
-        return newMultiArrayWithoutChecks(component, dimensions);
-    }
-
-    private static StaticObject newMultiArrayWithoutChecks(Klass component, int... dimensions) {
-        assert dimensions != null && dimensions.length > 0;
-        if (dimensions.length == 1) {
-            if (component.isPrimitive()) {
-                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0], component.getMeta());
-            } else {
-                return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
-                    @Override
-                    public StaticObject apply(int value) {
-                        return StaticObject.NULL;
-                    }
-                });
-            }
-        }
-        int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-        return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int i) {
-                return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);
-            }
-
-        });
-    }
-
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
-        return allocatePrimitiveArray(jvmPrimitiveType, length, meta, null);
-    }
-
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta, BytecodeNode bytecodeNode) {
-        // the constants for the cpi are loosely defined and no real cpi indices.
-        if (length < 0) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-        }
-        // @formatter:off
-        switch (jvmPrimitiveType) {
-            case 4  : return StaticObject.createArray(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
-            case 5  : return StaticObject.wrap(new char[length], meta);
-            case 6  : return StaticObject.wrap(new float[length], meta);
-            case 7  : return StaticObject.wrap(new double[length], meta);
-            case 8  : return StaticObject.wrap(new byte[length], meta);
-            case 9  : return StaticObject.wrap(new short[length], meta);
-            case 10 : return StaticObject.wrap(new int[length], meta);
-            case 11 : return StaticObject.wrap(new long[length], meta);
-            default :
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
-    }
-
     /**
      * Subtyping among Array Types
      *
@@ -634,32 +539,9 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwException(meta.java_lang_ClassCastException);
     }
 
-    /**
-     * Allocates a new instance of the given class; does not call any constructor. If the class is
-     * instantiable, it is initialized.
-     * 
-     * @param throwsError if the given class is not instantiable (abstract or interface); if true
-     *            throws guest {@link InstantiationError} otherwise throws guest
-     *            {@link InstantiationException}.
-     */
-    @Throws({InstantiationError.class, InstantiationException.class})
-    public static StaticObject newObject(Klass klass, boolean throwsError) {
-        // TODO(peterssen): Accept only ObjectKlass.
-        assert klass != null && !klass.isArray() && !klass.isPrimitive() : klass;
-        if (klass.isAbstract() || klass.isInterface()) {
-            Meta meta = klass.getMeta();
-            throw meta.throwException(
-                            throwsError
-                                            ? meta.java_lang_InstantiationError
-                                            : meta.java_lang_InstantiationException);
-        }
-        klass.safeInitialize();
-        return StaticObject.createNew((ObjectKlass) klass);
-    }
-
-    public static int arrayLength(StaticObject arr) {
+    public static int arrayLength(StaticObject arr, EspressoLanguage language) {
         assert arr.isArray();
-        return arr.length();
+        return arr.length(language);
     }
 
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {
@@ -725,7 +607,7 @@ public final class InterpreterToVM implements ContextAccess {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         VM.StackTrace frames = new VM.StackTrace();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             boolean first = skipFirst;
 
             @Override

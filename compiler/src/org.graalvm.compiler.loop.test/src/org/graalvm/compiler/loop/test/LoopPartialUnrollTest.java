@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopFragmentInside;
 import org.graalvm.compiler.nodes.loop.LoopsData;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -54,7 +53,8 @@ import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -217,6 +217,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         z = 7;
         for (int i = 0; i < d; i++) {
             for (int j = 0; injectBranchProbability(0.99, j < i); j++) {
+                GraalDirectives.neverWriteSink();
                 z += x;
             }
             y = x ^ z;
@@ -332,20 +333,20 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
             CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
             canonicalizer.apply(graph, context);
-            new RemoveValueProxyPhase().apply(graph);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-            new FloatingReadPhase().apply(graph);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
+            new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new ConditionalEliminationPhase(true).apply(graph, context);
             new GuardLoweringPhase().apply(graph, context);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
+            new MidTierLoweringPhase(canonicalizer).apply(graph, context);
             new FrameStateAssignmentPhase().apply(graph);
             new DeoptimizationGroupingPhase().apply(graph, context);
             canonicalizer.apply(graph, context);
             new ConditionalEliminationPhase(true).apply(graph, context);
             if (partialUnroll) {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
-                dataCounted.detectedCountedLoops();
+                dataCounted.detectCountedLoops();
                 assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();

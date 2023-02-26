@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.agent.stackaccess;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.jvmtiagentbase.Support;
 
 public abstract class InterceptedState {

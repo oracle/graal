@@ -38,8 +38,6 @@ import java.util.List;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
 /**
  * See {@link ManagementSupport} for documentation of the overall approach.
@@ -102,7 +100,6 @@ final class Target_sun_management_ManagementFactoryHelper {
         return null;
     }
 
-    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private static boolean isPlatformLoggingMXBeanAvailable() {
         return false;

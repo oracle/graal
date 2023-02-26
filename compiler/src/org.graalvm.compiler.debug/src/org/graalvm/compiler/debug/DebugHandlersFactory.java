@@ -46,7 +46,7 @@ public interface DebugHandlersFactory {
     /**
      * Loads {@link DebugHandlersFactory}s on demand via {@link GraalServices#load(Class)}.
      */
-    Iterable<DebugHandlersFactory> LOADER = new Iterable<DebugHandlersFactory>() {
+    Iterable<DebugHandlersFactory> LOADER = new Iterable<>() {
         @Override
         public Iterator<DebugHandlersFactory> iterator() {
             return GraalServices.load(DebugHandlersFactory.class).iterator();

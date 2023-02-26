@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,6 +159,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         body.startIf().tree(check(typeSystem, expectedType, LOCAL_VALUE)).end().startBlock();
         body.startReturn().tree(cast(typeSystem, expectedType, LOCAL_VALUE)).end();
         body.end();
+        body.tree(createTransferToInterpreterAndInvalidate());
         body.startThrow().startNew(typeSystem.getContext().getTypes().UnexpectedResultException).string(LOCAL_VALUE).end().end();
         return method;
     }
@@ -328,6 +329,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             }
 
             builder.startElseBlock();
+            builder.tree(createTransferToInterpreterAndInvalidate());
             builder.startThrow().startNew(context.getTypes().UnexpectedResultException).string(LOCAL_VALUE).end().end();
             builder.end();
             return method;

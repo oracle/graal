@@ -35,12 +35,17 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -111,14 +116,22 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.probability = probability;
         this.condition = condition;
+
+        GraalError.guarantee(!(condition instanceof ShortCircuitOrNode),
+                        "Branch probabilities must be injected on simple conditions, not short-circuiting && or ||: %s", condition);
+    }
+
+    public BranchProbabilityNode(ValueNode condition) {
+        this(ConstantNode.forDouble(0.5D), condition);
     }
 
     public ValueNode getProbability() {
         return probability;
     }
 
-    public ValueNode getCondition() {
-        return condition;
+    public void setProbability(ValueNode probability) {
+        updateUsages(this.probability, probability);
+        this.probability = probability;
     }
 
     @Override
@@ -169,12 +182,15 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                     }
                 }
             }
+            if (!usageFound) {
+                usageFound = hasValidPhiUsage();
+            }
             if (usageFound) {
                 ValueNode currentCondition = condition;
                 IntegerStamp currentStamp = (IntegerStamp) currentCondition.stamp(NodeView.DEFAULT);
                 if (currentStamp.lowerBound() < 0 || 1 < currentStamp.upperBound()) {
-                    ValueNode narrow = graph().maybeAddOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
-                    currentCondition = graph().maybeAddOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
+                    ValueNode narrow = graph().addOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
+                    currentCondition = graph().addOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
                 }
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
@@ -208,7 +224,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                                 ValueNode canonical = eq.canonical(tool);
                                 if (canonical != eq && canonical != null) {
                                     tool.addToWorkList(eq.usages());
-                                    eq.replaceAtUsages(graph().maybeAddOrUnique(canonical));
+                                    eq.replaceAtUsages(graph().addOrUnique(canonical));
                                     GraphUtil.killWithUnusedFloatingInputs(eq);
                                 }
                             }
@@ -220,7 +236,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
             } else {
                 if (!isSubstitutionGraph()) {
-                    throw new GraalError("Wrong usage of branch probability injection!");
+                    throw new GraalError("Wrong usage of branch probability injection " + this);
                 }
             }
         }
@@ -228,6 +244,53 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
 
     private boolean isSubstitutionGraph() {
         return hasExactlyOneUsage() && usages().first() instanceof ReturnNode;
+    }
+
+    /**
+     * Normally a branch probability should be consumed directly as a condition, but in some cases
+     * it can be used as a value itself. For example:
+     *
+     * <pre>
+     * boolean helper() {
+     *     if (probability(a, ...) || probability(b, ...) || probability(c, condition)) {
+     *         return true;
+     *     } else {
+     *         return false;
+     *     }
+     * }
+     *
+     * ...
+     * if (probability(d, helper()) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * After inlining the helper, {@code probability(c, condition)} can be represented as a branch
+     * probability node that feeds into a phi which is then used in an {@code if} condition. This is
+     * benign if that {@code if} has an injected branch probability itself.
+     */
+    private boolean hasValidPhiUsage() {
+        for (Node usage : this.usages()) {
+            if (usage instanceof ValuePhiNode && !((ValuePhiNode) usage).isLoopPhi()) {
+                Node phi = usage;
+                // We want exactly one non-state usage, and it must be a branch probability node.
+                Node uniquePhiUsage = null;
+                for (Node phiUsage : phi.usages()) {
+                    if (phiUsage instanceof FrameState) {
+                        continue;
+                    } else if (uniquePhiUsage == null) {
+                        uniquePhiUsage = phiUsage;
+                    } else if (phiUsage != uniquePhiUsage) {
+                        uniquePhiUsage = null;
+                        break;
+                    }
+                }
+                if (uniquePhiUsage instanceof BranchProbabilityNode) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -243,6 +306,18 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
      */
     @NodeIntrinsic
     public static native boolean probability(double probability, boolean condition);
+
+    /**
+     * This intrinsic can be used to inject a truly unknown probability (0.5 for both true and false
+     * successor) for an {@link IfNode}. While the probability will be 0.5 for both successors this
+     * method ensures the {@link ProfileSource} is {@link ProfileSource#isTrusted(ProfileSource)},
+     * i.e., the compiler can trust it.
+     *
+     * This intrinsic should be used with great caution only for cases, e.g. inside snippets, for
+     * which absolutely now probability guess can be made.
+     */
+    @NodeIntrinsic
+    public static native boolean unknownProbability(boolean condition);
 
     @Override
     public void lower(LoweringTool tool) {

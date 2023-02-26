@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.junit;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
 import org.junit.runners.model.TestClass;
@@ -35,20 +34,16 @@ import org.junit.runners.model.TestClass;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(className = "org.junit.runners.model.TestClass", onlyWith = JUnitFeature.IsEnabled.class)
 public final class Target_org_junit_runners_model_TestClass {
 
-    public static final class OnlyConstructorComputer implements CustomFieldValueComputer {
+    public static final class OnlyConstructorComputer implements FieldValueTransformer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             TestClass testClass = (TestClass) receiver;
             if (testClass.getJavaClass() != null) {
                 /* Make sure Class.forName works because Description.getTestClass can use it. */

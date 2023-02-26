@@ -59,7 +59,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -96,8 +96,12 @@ public class ContextPauseTest {
                     if (onEnterAction != null) {
                         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                             @Override
-                            @CompilerDirectives.TruffleBoundary
                             public void onEnter(EventContext c, VirtualFrame frame) {
+                                onEnterSlowPath(c);
+                            }
+
+                            @TruffleBoundary
+                            private void onEnterSlowPath(EventContext c) {
                                 onEnterAction.execute(c, pauseLatch, stop);
                             }
 
@@ -141,13 +145,14 @@ public class ContextPauseTest {
                     }
                     executorService.shutdownNow();
                     Assert.assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
-
-                } catch (Throwable t) {
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
+                } finally {
                     executorService.shutdownNow();
-
                     // shorter timeout to show errors more quickly
                     executorService.awaitTermination(1, TimeUnit.SECONDS);
-                    throw t;
                 }
             }
         }

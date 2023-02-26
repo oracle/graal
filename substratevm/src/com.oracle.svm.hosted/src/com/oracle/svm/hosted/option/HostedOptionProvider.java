@@ -24,33 +24,11 @@
  */
 package com.oracle.svm.hosted.option;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.options.OptionKey;
-
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 
 public interface HostedOptionProvider {
     EconomicMap<OptionKey<?>, Object> getHostedValues();
 
     EconomicMap<OptionKey<?>, Object> getRuntimeValues();
-
-    default List<String> getAppliedArguments() {
-        List<String> result = new ArrayList<>();
-        HostedOptionProviderHelper.addArguments(result, SubstrateOptionsParser.HOSTED_OPTION_PREFIX, getHostedValues());
-        HostedOptionProviderHelper.addArguments(result, SubstrateOptionsParser.RUNTIME_OPTION_PREFIX, getRuntimeValues());
-        return result;
-    }
-}
-
-class HostedOptionProviderHelper {
-    static void addArguments(List<String> result, String prefix, EconomicMap<OptionKey<?>, Object> values) {
-        MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
-        while (cursor.advance()) {
-            result.add(prefix + cursor.getKey().getName() + "=" + cursor.getValue());
-        }
-    }
 }

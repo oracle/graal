@@ -39,7 +39,6 @@ import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
@@ -51,6 +50,7 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -121,9 +121,17 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         LogicNode synonym = findSynonym(checkedStamp, forValue, view);
         if (synonym != null) {
             return synonym;
-        } else {
-            return this;
+        } else if (!checkedStamp.isExactType()) {
+            TypeReference checkedType = TypeReference.createTrusted(tool.getAssumptions(), checkedStamp.type());
+            if (checkedType != null && checkedType.isExact()) {
+                // Refine type and exact-ness, preserving other properties of the original stamp.
+                ObjectStamp improvedStamp = (ObjectStamp) checkedStamp.tryImproveWith(StampFactory.object(checkedType));
+                if (improvedStamp != null) {
+                    return createHelper(improvedStamp, forValue, profile, anchor);
+                }
+            }
         }
+        return this;
     }
 
     public static LogicNode findSynonym(ObjectStamp checkedStamp, ValueNode object, NodeView view) {

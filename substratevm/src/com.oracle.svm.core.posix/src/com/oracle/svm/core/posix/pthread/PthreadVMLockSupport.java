@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -35,22 +35,25 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.posix.PosixVMSemaphoreSupport;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
@@ -63,17 +66,17 @@ import jdk.vm.ci.meta.JavaKind;
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via pthreads.
  */
-@AutomaticFeature
-final class PthreadVMLockFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class PthreadVMLockFeature implements InternalFeature {
 
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
             return new PthreadVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, VMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
             return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));
@@ -95,18 +98,37 @@ final class PthreadVMLockFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        final int wordSize = ConfigurationValues.getTarget().wordSize;
+
+        // `alignment` should actually be: `max(alignof(pthread_mutex_t), alignof(pthread_cond_t))`.
+        //
+        // Until `alignof()` can be queried from the C compiler, we hard-code this alignment to:
+        // - One word on 64-bit architectures.
+        // - Two words on 32-bit architectures.
+        //
+        // This split is arbitrary. Actual alignment requirements depend on the architecture,
+        // the Pthread library implementation, and the C compiler.
+        // These hard-coded values will need to be adjusted to higher values if we find out
+        // that `pthread_mutex_t` or `pthread_cond_t` have higher alignment requirements on some
+        // particular architecture.
+        assert wordSize == 8 || wordSize == 4 : "Unsupported architecture bit width";
+        final int alignment = (wordSize == 8) ? wordSize : (2 * wordSize);
+
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+
+        // Align the first element to word boundary.
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
         for (PthreadVMMutex mutex : mutexes) {
             mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += mutexSize;
         }
 
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
         for (PthreadVMCondition condition : conditions) {
             condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += conditionSize;
@@ -122,11 +144,11 @@ final class PthreadVMLockFeature implements Feature {
 public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = PthreadVMMutex[].class)//
-    protected PthreadVMMutex[] mutexes;
+    PthreadVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = PthreadVMCondition[].class)//
-    protected PthreadVMCondition[] conditions;
+    PthreadVMCondition[] conditions;
 
     /**
      * Raw memory for the pthread lock structures. Since we know that native image objects are never
@@ -135,7 +157,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
      * {@link PthreadVMCondition#structOffset}.
      */
     @UnknownObjectField(types = byte[].class)//
-    protected byte[] pthreadStructs;
+    byte[] pthreadStructs;
 
     @Fold
     public static PthreadVMLockSupport singleton() {
@@ -160,23 +182,28 @@ public final class PthreadVMLockSupport extends VMLockSupport {
             }
         }
 
-        return true;
+        return PosixVMSemaphoreSupport.singleton().initialize();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
-    protected static void checkResult(int result, String functionName) {
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void checkResult(int result, String functionName) {
         if (result != 0) {
-            /*
-             * Functions are called very early and late during our execution, so there is not much
-             * we can do when they fail.
-             */
-            SafepointBehavior.preventSafepoints();
-            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-
-            Log.log().string(functionName).string(" returned ").signed(result).newline();
-            ImageSingletons.lookup(LogHandler.class).fatalError();
+            fatalError(result, functionName);
         }
+    }
+
+    @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
+    private static void fatalError(int result, String functionName) {
+        /*
+         * Functions are called very early and late during our execution, so there is not much we
+         * can do when they fail.
+         */
+        SafepointBehavior.preventSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
+        Log.log().string(functionName).string(" returned ").signed(result).newline();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     @Override
@@ -188,19 +215,24 @@ public final class PthreadVMLockSupport extends VMLockSupport {
     public PthreadVMCondition[] getConditions() {
         return conditions;
     }
+
+    @Override
+    public VMSemaphore[] getSemaphores() {
+        return PosixVMSemaphoreSupport.singleton().getSemaphores();
+    }
 }
 
 final class PthreadVMMutex extends VMMutex {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected PthreadVMMutex(String name) {
+    PthreadVMMutex(String name) {
         super(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Pthread.pthread_mutex_t getStructPointer() {
+    Pthread.pthread_mutex_t getStructPointer() {
         return (Pthread.pthread_mutex_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
@@ -250,15 +282,15 @@ final class PthreadVMMutex extends VMMutex {
 
 final class PthreadVMCondition extends VMCondition {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected PthreadVMCondition(PthreadVMMutex mutex) {
+    PthreadVMCondition(PthreadVMMutex mutex) {
         super(mutex);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Pthread.pthread_cond_t getStructPointer() {
+    Pthread.pthread_cond_t getStructPointer() {
         return (Pthread.pthread_cond_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
@@ -287,26 +319,26 @@ final class PthreadVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
-        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
+        Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
+        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
+        final int timedWaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
         mutex.setOwnerToCurrentThread();
         /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult == Errno.ETIMEDOUT()) {
+        if (timedWaitResult == Errno.ETIMEDOUT()) {
             return 0L;
         }
         /* Check for other errors from the timed wait. */
-        PthreadVMLockSupport.checkResult(timedwaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDelayNanos(deadlineTimespec);
+        PthreadVMLockSupport.checkResult(timedWaitResult, "pthread_cond_timedwait");
+        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
+        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
@@ -317,7 +349,7 @@ final class PthreadVMCondition extends VMCondition {
         }
         /* Check for other errors from the timed wait. */
         PthreadVMLockSupport.checkResult(timedwaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDelayNanos(deadlineTimespec);
+        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
     }
 
     @Override

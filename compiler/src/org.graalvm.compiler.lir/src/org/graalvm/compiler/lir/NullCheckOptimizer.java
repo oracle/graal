@@ -39,7 +39,7 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
-        AbstractBlockBase<?>[] blocks = ir.codeEmittingOrder();
+        AbstractBlockBase<?>[] blocks = ir.getBlocks();
         NullCheckOptimizer.foldNullChecks(ir, blocks, target.implicitNullCheckLimit);
     }
 

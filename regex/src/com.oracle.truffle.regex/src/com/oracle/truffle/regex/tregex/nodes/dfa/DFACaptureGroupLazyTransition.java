@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,58 +40,157 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import java.util.Arrays;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-public final class DFACaptureGroupLazyTransition implements JsonConvertible {
+public abstract class DFACaptureGroupLazyTransition {
 
-    private final short id;
-    @CompilationFinal(dimensions = 1) private final DFACaptureGroupPartialTransition[] partialTransitions;
-    private final DFACaptureGroupPartialTransition transitionToFinalState;
-    private final DFACaptureGroupPartialTransition transitionToAnchoredFinalState;
-
-    public DFACaptureGroupLazyTransition(short id,
-                    DFACaptureGroupPartialTransition[] partialTransitions,
-                    DFACaptureGroupPartialTransition transitionToFinalState,
-                    DFACaptureGroupPartialTransition transitionToAnchoredFinalState) {
-        this.id = id;
-        this.partialTransitions = partialTransitions;
-        this.transitionToFinalState = transitionToFinalState;
-        this.transitionToAnchoredFinalState = transitionToAnchoredFinalState;
+    public final void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        apply(locals, executor, false);
     }
 
-    public short getId() {
-        return id;
+    public final void applyPreFinal(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        apply(locals, executor, true);
     }
 
-    public DFACaptureGroupPartialTransition[] getPartialTransitions() {
-        return partialTransitions;
-    }
+    protected abstract void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal);
 
-    public DFACaptureGroupPartialTransition getTransitionToFinalState() {
-        return transitionToFinalState;
-    }
+    public static final class Single extends DFACaptureGroupLazyTransition {
 
-    public DFACaptureGroupPartialTransition getTransitionToAnchoredFinalState() {
-        return transitionToAnchoredFinalState;
-    }
+        private static final Single EMPTY = new Single(DFACaptureGroupPartialTransition.getEmptyInstance());
 
-    @TruffleBoundary
-    @Override
-    public JsonValue toJson() {
-        JsonObject json = Json.obj(Json.prop("partialTransitions", Arrays.asList(partialTransitions)));
-        if (transitionToAnchoredFinalState != null) {
-            json.append(Json.prop("transitionToAnchoredFinalState", transitionToAnchoredFinalState));
+        private final DFACaptureGroupPartialTransition transition;
+
+        public Single(DFACaptureGroupPartialTransition transition) {
+            this.transition = transition;
         }
-        if (transitionToFinalState != null) {
-            json.append(Json.prop("transitionToFinalState", transitionToFinalState));
+
+        public static Single create(DFACaptureGroupPartialTransition transition) {
+            return transition.isEmpty() ? EMPTY : new Single(transition);
         }
-        return json;
+
+        @Override
+        protected void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal) {
+            transition.apply(executor, locals.getCGData(), locals.getLastIndex(), preFinal, true);
+        }
+    }
+
+    abstract static class Branches extends DFACaptureGroupLazyTransition {
+
+        final DFACaptureGroupPartialTransition common;
+        @CompilationFinal(dimensions = 1) final DFACaptureGroupPartialTransition[] transitions;
+
+        protected Branches(DFACaptureGroupPartialTransition[] transitions) {
+            this.common = DFACaptureGroupPartialTransition.intersect(transitions);
+            this.transitions = common.isEmpty() ? transitions : subtract(common, transitions);
+            assert transitions.length > 1;
+        }
+
+        private static DFACaptureGroupPartialTransition[] subtract(DFACaptureGroupPartialTransition common, DFACaptureGroupPartialTransition[] transitions) {
+            for (int i = 0; i < transitions.length; i++) {
+                transitions[i] = transitions[i].subtract(common);
+            }
+            return transitions;
+        }
+    }
+
+    public static final class BranchesDirect extends Branches {
+
+        public BranchesDirect(DFACaptureGroupPartialTransition[] transitions) {
+            super(transitions);
+        }
+
+        public static BranchesDirect create(DFACaptureGroupPartialTransition[] transitions) {
+            return new BranchesDirect(transitions);
+        }
+
+        @ExplodeLoop
+        @Override
+        protected void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal) {
+            int lastTransition = locals.getLastTransition();
+            DFACaptureGroupTrackingData d = locals.getCGData();
+            int lastIndex = locals.getLastIndex();
+            common.apply(executor, d, lastIndex, preFinal, true);
+            for (int i = 0; i < transitions.length; i++) {
+                // i == transitions.length - 1 transforms the last exploded iteration into an
+                // else-branch
+                if (i == transitions.length - 1 || i == lastTransition) {
+                    assert i == lastTransition;
+                    transitions[i].apply(executor, d, lastIndex, preFinal, common.isEmpty());
+                    return;
+                }
+            }
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    public static final class BranchesIndirect extends Branches {
+
+        @CompilationFinal(dimensions = 1) private final short[] possibleValues;
+
+        public BranchesIndirect(DFACaptureGroupPartialTransition[] transitions, short[] possibleValues) {
+            super(transitions);
+            this.possibleValues = possibleValues;
+            assert possibleValues.length == transitions.length - 1;
+        }
+
+        public static BranchesIndirect create(DFACaptureGroupPartialTransition[] transitions, short[] possibleValues) {
+            return new BranchesIndirect(transitions, possibleValues);
+        }
+
+        @ExplodeLoop
+        @Override
+        protected void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal) {
+            int lastTransition = locals.getLastTransition();
+            DFACaptureGroupTrackingData d = locals.getCGData();
+            int lastIndex = locals.getLastIndex();
+            common.apply(executor, d, lastIndex, preFinal, true);
+            for (int i = 0; i < transitions.length; i++) {
+                // i == transitions.length - 1 transforms the last exploded iteration into an
+                // else-branch
+                if (i == transitions.length - 1 || possibleValues[i] == lastTransition) {
+                    transitions[i].apply(executor, d, lastIndex, preFinal, common.isEmpty());
+                    return;
+                }
+            }
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    public static final class BranchesWithLookupTable extends Branches {
+
+        @CompilationFinal(dimensions = 1) private final byte[] lookupTable;
+
+        public BranchesWithLookupTable(DFACaptureGroupPartialTransition[] transitions, byte[] lookupTable) {
+            super(transitions);
+            this.lookupTable = lookupTable;
+        }
+
+        public static BranchesWithLookupTable create(DFACaptureGroupPartialTransition[] transitions, byte[] lookupTable) {
+            return new BranchesWithLookupTable(transitions, lookupTable);
+        }
+
+        @ExplodeLoop
+        @Override
+        protected void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean preFinal) {
+            int lastTransitionMapped = Byte.toUnsignedInt(lookupTable[locals.getLastTransition()]);
+            DFACaptureGroupTrackingData d = locals.getCGData();
+            int lastIndex = locals.getLastIndex();
+            common.apply(executor, d, lastIndex, preFinal, true);
+            for (int i = 0; i < transitions.length; i++) {
+                // i == transitions.length - 1 transforms the last exploded iteration into an
+                // else-branch
+                if (i == transitions.length - 1 || i == lastTransitionMapped) {
+                    transitions[i].apply(executor, d, lastIndex, preFinal, common.isEmpty());
+                    return;
+                }
+            }
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 }

@@ -38,6 +38,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@SuppressWarnings("serial")
 public class AnalysisError extends Error {
 
     private static final long serialVersionUID = -4489048906003856416L;
@@ -97,11 +98,22 @@ public class AnalysisError extends Error {
         }
 
         private static String message(AnalysisMethod method) {
-            String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
+            String msg = String.format("Error encountered while parsing %s %n", method.asStackTraceElement(0));
             msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;
         }
+    }
 
+    /**
+     * Thrown when the analysis is misused.
+     */
+    public static class UserError extends AnalysisError {
+
+        private static final long serialVersionUID = -7167507945764369928L;
+
+        UserError(String message) {
+            super(message);
+        }
     }
 
     public static class FieldNotPresentError extends AnalysisError {
@@ -141,6 +153,10 @@ public class AnalysisError extends Error {
         throw new ParsingError(method, original);
     }
 
+    public static UserError userError(String message) {
+        throw new UserError(message);
+    }
+
     public static FieldNotPresentError fieldNotPresentError(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, AnalysisType type) {
         throw new FieldNotPresentError(bb, objectFlow, context, field, type);
     }
@@ -169,9 +185,7 @@ public class AnalysisError extends Error {
 
     public static void guarantee(boolean condition, String format, Object... args) {
         if (!condition) {
-            // Checkstyle: stop
             throw new AnalysisError(String.format(format, args));
-            // Checkstyle: resume
         }
     }
 

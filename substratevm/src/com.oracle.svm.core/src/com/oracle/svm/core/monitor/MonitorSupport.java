@@ -27,8 +27,8 @@ package com.oracle.svm.core.monitor;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadStatus;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -79,8 +79,6 @@ public abstract class MonitorSupport {
     /** Determines whether the object's monitor is locked by the current or any other thread. */
     public abstract boolean isLockedByAnyThread(Object obj);
 
-    public abstract int countThreadLock(IsolateThread vmThread);
-
     /**
      * Implements the semantics of {@link Object#wait}.
      */
@@ -104,9 +102,14 @@ public abstract class MonitorSupport {
     public abstract void notify(Object obj, boolean notifyAll);
 
     /**
-     * Called from {@code Unsafe.park} when changing the current thread's state before parking the
-     * thread. When the thread is parked due to a monitor operation, we need to alter the new thread
-     * state so {@link Thread#getState()} gives the expected result.
+     * Gets a {@link ThreadStatus} for the given parking thread, determining whether it parks
+     * because of a monitor, and if so, returning monitor-specific status codes such as
+     * {@link ThreadStatus#BLOCKED_ON_MONITOR_ENTER} or {@link ThreadStatus#IN_OBJECT_WAIT_TIMED},
+     * or if not, {@link ThreadStatus#PARKED} or {@link ThreadStatus#PARKED_TIMED}.
+     *
+     * Note that when a thread is spuriously unparked, the thread's state briefly changes to running
+     * until it parks again. This is a difference to other VMs which remain in the blocked/waiting
+     * state until the monitor has been successfully acquired.
      */
-    public abstract int maybeAdjustNewParkStatus(int status);
+    public abstract int getParkedThreadStatus(Thread thread, boolean timed);
 }

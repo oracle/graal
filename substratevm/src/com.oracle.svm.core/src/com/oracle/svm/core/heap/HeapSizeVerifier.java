@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 
@@ -101,8 +101,8 @@ public final class HeapSizeVerifier {
     }
 }
 
-@AutomaticFeature
-class HostedHeapSizeVerifierFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class HostedHeapSizeVerifierFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         // At build-time, we can do a reasonable GC-independent verification of all the heap size

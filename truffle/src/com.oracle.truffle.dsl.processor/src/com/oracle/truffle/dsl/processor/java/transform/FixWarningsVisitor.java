@@ -175,7 +175,8 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
     }
 
     private void computeSymbols(String s) {
-        // TODO there should not be any need for a StringTokenizer if we have a real AST for
+        // TODO GR-38632 there should not be any need for a StringTokenizer if we have a real AST
+        // for
         // method bodies. Also the current solution is not perfect. What if one token
         // is spread across multiple CodeTree instances? But for now that works.
         StringTokenizer tokenizer = new StringTokenizer(s, ".= :,()[];{}\"\"'' ", false);

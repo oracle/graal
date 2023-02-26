@@ -36,6 +36,14 @@ Examples of method filters:
   of type "Object", and four more parameters of any type. The
   packages of the parameter types are irrelevant.
 ---------
+  List.set
+
+  Matches all methods named "set" in a class whose simple name is "List".
+---------
+  *List.set
+
+  Matches all methods named "set" in a class whose simple name ends with "List".
+---------
   org.graalvm.compiler.nodes.PhiNode.*
 
   Matches all methods in the class "org.graalvm.compiler.nodes.PhiNode".

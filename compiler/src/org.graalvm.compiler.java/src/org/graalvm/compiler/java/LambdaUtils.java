@@ -51,6 +51,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
+    public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
+    public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -68,6 +70,15 @@ public final class LambdaUtils {
      * {@code "$$Lambda$"} with a hash of the method descriptor for each method invoked by the
      * lambda.
      *
+     * Starting from JDK17, the lambda classes can have additional interfaces that lambda should
+     * implement. This further means that lambda can have more than one public method (public and
+     * not bridge).
+     *
+     * The scala lambda classes have by default one additional interface with one method. This
+     * method has the same signature as the original one but with generalized parameters (all
+     * parameters are Object types) and serves as a wrapper that casts parameters to specialized
+     * types and calls an original method.
+     *
      * @param cip plugin to
      *            {@link ClassInitializationPlugin#loadReferencedType(org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext, jdk.vm.ci.meta.ConstantPool, int, int)
      *            load} new types
@@ -83,7 +94,10 @@ public final class LambdaUtils {
     public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx)
                     throws RuntimeException {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
-        assert lambdaProxyMethods.length == 1 : "There must be only one method calling the target.";
+        /*
+         * Take only the first method to build a graph, because the graph for all other methods will
+         * be the same.
+         */
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, lambdaType, ctx)) {
             GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(cip));
@@ -101,13 +115,12 @@ public final class LambdaUtils {
             }
             throw new JVMCIError(sb.toString());
         }
-        String lambdaTargetName = createStableLambdaName(lambdaType, invokedMethods);
-        return lambdaTargetName;
+        return createStableLambdaName(lambdaType, invokedMethods);
     }
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        return type.isFinalFlagSet() && typeName.contains("/") && typeName.contains("$$Lambda$") && lambdaMatcher(type.getName()).find();
+        return type.isFinalFlagSet() && typeName.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(type.getName()).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {

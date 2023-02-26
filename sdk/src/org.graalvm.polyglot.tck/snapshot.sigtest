@@ -11,6 +11,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -80,6 +81,7 @@ meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Sni
 meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createValueConstructors(org.graalvm.polyglot.Context)
 meth public abstract org.graalvm.polyglot.Value createIdentityFunction(org.graalvm.polyglot.Context)
 meth public java.util.Collection<? extends org.graalvm.polyglot.tck.InlineSnippet> createInlineScripts(org.graalvm.polyglot.Context)
+meth public java.util.Map<java.lang.String,java.lang.String> additionalOptions()
 meth public org.graalvm.polyglot.tck.Snippet createIdentityFunctionSnippet(org.graalvm.polyglot.Context)
 
 CLSS public abstract interface org.graalvm.polyglot.tck.ResultVerifier

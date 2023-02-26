@@ -25,12 +25,15 @@
 package org.graalvm.compiler.nodes.loop;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -93,7 +96,7 @@ public abstract class LoopFragment {
     public abstract void insertBefore(LoopEx l);
 
     public void disconnect() {
-        // TODO (gd) possibly abstract
+        GraalError.unimplemented();
     }
 
     public boolean contains(Node n) {
@@ -199,10 +202,46 @@ public abstract class LoopFragment {
             duplicationMap = graph().addDuplicates(nodesIterable, graph(), nodesIterable.count(), dr);
             finishDuplication();
             nodes = new NodeBitMap(graph());
-            nodes.markAll(duplicationMap.getValues());
+
+            try {
+                nodes.markAll(duplicationMap.getValues());
+            } catch (Throwable t) {
+                checkNoNulls(duplicationMap);
+                graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
+                throw GraalError.shouldNotReachHere(t);
+            }
             nodesReady = true;
         } else {
             // TODO (gd) apply fix ?
+        }
+    }
+
+    private void checkNoNulls(EconomicMap<Node, Node> dupMap) {
+        List<Node> keyListByIterationOrder = new ArrayList<>();
+        List<Node> valueListByIterationOrder = new ArrayList<>();
+        List<Node> valueListByIterationOrderVALUEAPI = new ArrayList<>();
+
+        MapCursor<Node, Node> c = dupMap.getEntries();
+        while (c.advance()) {
+            keyListByIterationOrder.add(c.getKey());
+            valueListByIterationOrder.add(c.getValue());
+            GraalError.guarantee(c.getKey() != null, "key == null in %s", this);
+            GraalError.guarantee(c.getValue() != null, "Value == null for %s in %s", c.getKey(), this);
+        }
+
+        for (Node value : dupMap.getValues()) {
+            valueListByIterationOrderVALUEAPI.add(value);
+        }
+
+        final int keyListSize = keyListByIterationOrder.size();
+        final int valueListSize = valueListByIterationOrder.size();
+        final int valueListSizeVALUEAPI = valueListByIterationOrderVALUEAPI.size();
+        GraalError.guarantee(keyListSize == valueListSize, "%d != %d", keyListSize, valueListSize);
+        GraalError.guarantee(keyListSize == valueListSizeVALUEAPI, " %d != %d", keyListSize, valueListSizeVALUEAPI);
+
+        for (int i = 0; i < valueListSize; i++) {
+            GraalError.guarantee(valueListByIterationOrder.get(i) == valueListByIterationOrderVALUEAPI.get(i), "%s != %s for %d", valueListByIterationOrder.get(i),
+                            valueListByIterationOrderVALUEAPI.get(i), i);
         }
     }
 
@@ -437,12 +476,12 @@ public abstract class LoopFragment {
     }
 
     public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<Block> blocks) {
-        return new NodeIterable<AbstractBeginNode>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<AbstractBeginNode> iterator() {
                 final Iterator<Block> it = blocks.iterator();
-                return new Iterator<AbstractBeginNode>() {
+                return new Iterator<>() {
 
                     @Override
                     public void remove() {
@@ -468,6 +507,7 @@ public abstract class LoopFragment {
      * Merges the early exits (i.e. loop exits) that were duplicated as part of this fragment, with
      * the original fragment's exits.
      */
+    @SuppressWarnings("try")
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
@@ -480,9 +520,15 @@ public abstract class LoopFragment {
             if (newEarlyExit == null) {
                 continue;
             }
-            MergeNode merge = graph.add(new MergeNode());
-            EndNode originalEnd = graph.add(new EndNode());
-            EndNode newEnd = graph.add(new EndNode());
+
+            MergeNode merge;
+            EndNode originalEnd;
+            EndNode newEnd;
+            try (DebugCloseable position = earlyExit.withNodeSourcePosition()) {
+                merge = graph.add(new MergeNode());
+                originalEnd = graph.add(new EndNode());
+                newEnd = graph.add(new EndNode());
+            }
             merge.addForwardEnd(originalEnd);
             merge.addForwardEnd(newEnd);
             earlyExit.setNext(originalEnd);
@@ -532,6 +578,7 @@ public abstract class LoopFragment {
                     ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
                     if (newVpn != null) {
                         PhiNode phi = vpn.createPhi(merge);
+                        phi.setNodeSourcePosition(merge.getNodeSourcePosition());
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
                         replaceWith = phi;

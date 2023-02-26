@@ -26,7 +26,8 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -74,7 +75,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         CompressEncoding encoding = compression.getEncoding();
-        if (!Scale.isScaleShiftSupported(encoding.getShift())) {
+        if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
             return false;
         }
 
@@ -95,8 +96,8 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
             addr.setBase(other);
         }
 
-        Scale scale = Scale.fromShift(encoding.getShift());
-        addr.setScale(scale);
+        Stride stride = Stride.fromLog2(encoding.getShift());
+        addr.setScale(stride);
         addr.setIndex(compression.getValue());
         return true;
     }
@@ -105,7 +106,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     public void preProcess(StructuredGraph graph, LoopsDataProvider loopsDataProvider) {
         if (graph.hasLoops()) {
             LoopsData loopsData = loopsDataProvider.getLoopsData(graph);
-            loopsData.detectedCountedLoops();
+            loopsData.detectCountedLoops();
             for (LoopEx loop : loopsData.countedLoops()) {
                 for (OffsetAddressNode offsetAdressNode : loop.whole().nodes().filter(OffsetAddressNode.class)) {
                     tryOptimize(offsetAdressNode, loop);
@@ -198,7 +199,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                 }
             }
         }
-        return input.graph().maybeAddOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
+        return input.graph().addOrUnique(SignExtendNode.create(input, ADDRESS_BITS, NodeView.DEFAULT));
     }
 
     private static boolean applicableToImplicitZeroExtend(ZeroExtendNode zeroExtendNode) {

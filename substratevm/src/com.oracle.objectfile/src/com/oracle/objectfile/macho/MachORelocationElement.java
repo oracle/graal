@@ -45,6 +45,7 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
+import org.graalvm.compiler.debug.GraalError;
 
 class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     /*
@@ -296,7 +297,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
         int symbolNum;
         if (isAddendKind()) {
             assert !isExtern() : "addend must be encoded as a local";
-            assert NumUtil.isSignedNbit(24, addend);
+            GraalError.guarantee(NumUtil.isSignedNbit(24, addend), "Addend has to be 24bit signed number. Got value 0x%x", addend);
             // store addend as symbolnum
             symbolNum = addend;
         } else if (isExtern()) {
@@ -322,13 +323,11 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
          * case-splitting for endianness.
          */
         int remainingWord = 0;
-        //@formatter:off
         remainingWord |= symbolNum & 0x00ffffff;
         remainingWord |= (kind.isPCRelative() ? 1 : 0) << 24;
-        remainingWord |=            (log2length & 0x3) << 25;
-        remainingWord |=          (isExtern() ? 1 : 0) << 27;
-        remainingWord |=       (kind.getValue() & 0xf) << 28;
-        //@formatter:on
+        remainingWord |= (log2length & 0x3) << 25;
+        remainingWord |= (isExtern() ? 1 : 0) << 27;
+        remainingWord |= (kind.getValue() & 0xf) << 28;
         oa.write4Byte(remainingWord);
         assert oa.pos() - startPos == 8; // check we wrote how much we expected
     }

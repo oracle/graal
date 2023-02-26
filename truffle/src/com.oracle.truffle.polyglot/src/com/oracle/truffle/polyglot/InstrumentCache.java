@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ final class InstrumentCache {
     private final String id;
     private final String name;
     private final String version;
+    private final String website;
     private final boolean internal;
     private final Set<String> services;
     private final TruffleInstrument.Provider provider;
@@ -90,6 +91,21 @@ final class InstrumentCache {
     }
 
     /**
+     * Collect tools included in a native image.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static Set<String> collectInstruments() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        Set<String> res = new HashSet<>();
+        for (InstrumentCache instrumentCache : nativeImageCache) {
+            res.add(instrumentCache.id);
+        }
+        return res;
+    }
+
+    /**
      * Initializes state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.
@@ -101,17 +117,18 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    TruffleInstrument.Provider provider) {
+                    TruffleInstrument.Provider provider, String website) {
         this.id = id;
         this.name = name;
         this.version = version;
+        this.website = website;
         this.className = className;
         this.internal = internal;
         this.services = services;
         this.provider = provider;
     }
 
-    public boolean isInternal() {
+    boolean isInternal() {
         return internal;
     }
 
@@ -143,7 +160,7 @@ final class InstrumentCache {
                 // a Truffle instrument since the Truffle API module descriptor only
                 // exports the packages to modules known at build time (such as the
                 // Graal module).
-                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                ModuleUtils.exportTo(loader, null);
             }
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
                 loadInstrumentImpl(provider, list, classNamesUsed);
@@ -196,6 +213,7 @@ final class InstrumentCache {
             id = className.substring(lastIndex + 1);
         }
         String version = reg.version();
+        String website = reg.website();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>();
         for (String service : provider.getServicesClassNames()) {
@@ -204,7 +222,7 @@ final class InstrumentCache {
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website));
         }
     }
 
@@ -243,5 +261,9 @@ final class InstrumentCache {
 
     String[] services() {
         return services.toArray(new String[0]);
+    }
+
+    String getWebsite() {
+        return website;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,9 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * verifier.
      *
      * @param snippetRun the snippet execution data. The {@link SnippetRun} provides the actual
-     *            snippet parameters, the execution result or the {@link PolyglotException} thrown
-     *            by the execution.
+     *            snippet parameters, the execution result, or the {@link PolyglotException} thrown
+     *            by the execution. If the snippet execution throws an
+     *            {@link IllegalArgumentException}, it's converted to {@link PolyglotException}.
      * @throws PolyglotException may propagate the {@link PolyglotException} from the snippetRun
      * @throws AssertionError may throw an {@link AssertionError} as a result of a verification
      * @since 0.30
@@ -115,7 +116,10 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
         }
 
         /**
-         * Returns the {@link PolyglotException} thrown during snippet execution.
+         * Returns the {@link PolyglotException} thrown during snippet execution. If the snippet
+         * execution throws an {@link IllegalArgumentException}, this exception is first converted
+         * to a {@link PolyglotException}, and the resulting {@link PolyglotException} is provided
+         * by this method.
          *
          * @return the {@link PolyglotException} thrown during the execution or null in case of
          *         successful execution.

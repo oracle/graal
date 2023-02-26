@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -588,7 +588,7 @@ abstract class HostExecuteNode extends Node {
         if (!varArgs) {
             for (SingleMethod candidate : applicableByArity) {
                 int paramCount = candidate.getParameterCount();
-                if (!candidate.isVarArgs() || paramCount == args.length) {
+                if (!candidate.isOnlyVisibleFromJniName() && (!candidate.isVarArgs() || paramCount == args.length)) {
                     assert paramCount == args.length;
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
@@ -608,7 +608,7 @@ abstract class HostExecuteNode extends Node {
             }
         } else {
             for (SingleMethod candidate : applicableByArity) {
-                if (candidate.isVarArgs()) {
+                if (candidate.isVarArgs() && !candidate.isOnlyVisibleFromJniName()) {
                     int parameterCount = candidate.getParameterCount();
                     Class<?>[] parameterTypes = candidate.getParameterTypes();
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
@@ -966,7 +966,6 @@ abstract class HostExecuteNode extends Node {
         @CompilationFinal(dimensions = 1) final HostTargetMapping[] otherMappings;
 
         @Child TypeCheckNode fallback;
-        @Child HostTargetMappingNode targetMapping;
         @Children final SingleMappingNode[] mappingNodes;
         @Children final SingleMappingNode[] otherMappingNodes;
         final int priority;
@@ -987,7 +986,6 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < otherMappings.length; i++) {
                 otherMappingNodes[i] = SingleMappingNodeGen.create();
             }
-            this.targetMapping = HostTargetMappingNode.create();
         }
 
         @Override

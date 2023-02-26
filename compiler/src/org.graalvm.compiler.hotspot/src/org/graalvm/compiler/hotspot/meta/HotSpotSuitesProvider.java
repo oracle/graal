@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import java.util.ListIterator;
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -36,6 +39,7 @@ import org.graalvm.compiler.java.SuitesProviderBase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.SimplifyingGraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -43,9 +47,14 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
  * HotSpot implementation of {@link SuitesCreator}.
@@ -55,7 +64,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     protected final GraalHotSpotVMConfig config;
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    private final SuitesCreator defaultSuitesCreator;
+    protected final SuitesCreator defaultSuitesCreator;
 
     public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime) {
         this.defaultSuitesCreator = defaultSuitesCreator;
@@ -65,8 +74,15 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     }
 
     @Override
-    public Suites createSuites(OptionValues options) {
-        return defaultSuitesCreator.createSuites(options);
+    public Suites createSuites(OptionValues options, Architecture arch) {
+        Suites suites = defaultSuitesCreator.createSuites(options, arch);
+        if (runtime.getTarget().implicitNullCheckLimit > 0 && !runtime.getCompilerConfigurationName().equalsIgnoreCase("economy")) {
+            ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(AddressLoweringPhase.class);
+            assert position != null : "There should be an " + AddressLoweringPhase.class.getName() + " in low tier.";
+            position.previous();
+            position.add(new UseTrappingNullChecksPhase());
+        }
+        return suites;
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
@@ -86,18 +102,23 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
         suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
+            public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                return ALWAYS_APPLICABLE;
+            }
+
+            @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
 
                 StructuredGraph targetGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug(), AllowAssumptions.YES).method(graph.method()).trackNodeSourcePosition(
-                                graph.trackNodeSourcePosition()).build();
+                                graph.trackNodeSourcePosition()).profileProvider(graph.getProfileProvider()).build();
                 SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(runtime.getTarget().arch, targetGraph, context, true);
                 graphDecoder.decode(encodedGraph);
             }
 
             @Override
-            protected CharSequence getName() {
-                return "VerifyEncodingDecoding";
+            public CharSequence getName() {
+                return "VerifyEncodingDecodingPhase";
             }
         });
         return true;

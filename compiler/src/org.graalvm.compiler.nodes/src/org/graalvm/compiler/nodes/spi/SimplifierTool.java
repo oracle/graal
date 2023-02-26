@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,4 +41,10 @@ public interface SimplifierTool extends CanonicalizerTool {
     void addToWorkList(Iterable<? extends Node> nodes);
 
     void removeIfUnused(Node node);
+
+    /*
+     * Returns whether volatile fences associated with writes can be removed if the ordering
+     * requirement can be sunk to a subsequent operation.
+     */
+    boolean trySinkWriteFences();
 }

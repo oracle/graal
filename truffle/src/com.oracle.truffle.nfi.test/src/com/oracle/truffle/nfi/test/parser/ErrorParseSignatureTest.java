@@ -143,4 +143,10 @@ public class ErrorParseSignatureTest extends ParseSignatureTest {
         exception.expect(ParserExceptionMatcher.PARSER);
         tryParseSignature("(float, ...) : void");
     }
+
+    @Test
+    public void parseMissingVararg2() {
+        exception.expect(ParserExceptionMatcher.PARSER);
+        tryParseSignature("(...) : void");
+    }
 }

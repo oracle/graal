@@ -26,6 +26,8 @@ package org.graalvm.compiler.nodes;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
 
+import java.util.Objects;
+
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -33,14 +35,20 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class FieldLocationIdentity extends LocationIdentity implements FormatWithToString {
 
     private final ResolvedJavaField inner;
+    private final boolean immutable;
 
     public FieldLocationIdentity(ResolvedJavaField inner) {
+        this(inner, false);
+    }
+
+    public FieldLocationIdentity(ResolvedJavaField inner, boolean immutable) {
         this.inner = inner;
+        this.immutable = immutable;
     }
 
     @Override
     public boolean isImmutable() {
-        return false;
+        return immutable;
     }
 
     @Override
@@ -50,8 +58,7 @@ public class FieldLocationIdentity extends LocationIdentity implements FormatWit
         }
         if (obj instanceof FieldLocationIdentity) {
             FieldLocationIdentity fieldLocationIdentity = (FieldLocationIdentity) obj;
-            return inner.equals(fieldLocationIdentity.inner);
-
+            return inner.equals(fieldLocationIdentity.inner) && immutable == fieldLocationIdentity.immutable;
         }
         return false;
     }
@@ -62,7 +69,7 @@ public class FieldLocationIdentity extends LocationIdentity implements FormatWit
 
     @Override
     public int hashCode() {
-        return inner.hashCode();
+        return Objects.hash(inner, immutable);
     }
 
     @Override

@@ -93,7 +93,7 @@ inline_assembly :
     )
     assembly_instruction
     ( ( ';' | '\n' )
-      ( prefix
+      ( prefix ( ';' )?
       |                                          { factory.setPrefix(null); }
       )
       ( assembly_instruction )?

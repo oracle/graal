@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -79,19 +79,22 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
         new EnsureClassInitializedSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo ensureClassIsInitialized;
+
     private EnsureClassInitializedSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.ensureClassIsInitialized = snippet(providers, EnsureClassInitializedSnippets.class, "ensureClassIsInitializedSnippet", LocationIdentity.any());
+
         lowerings.put(EnsureClassInitializedNode.class, new EnsureClassInitializedNodeLowering());
     }
 
     class EnsureClassInitializedNodeLowering implements NodeLoweringProvider<EnsureClassInitializedNode> {
-        private final SnippetInfo ensureClassIsInitialized = snippet(EnsureClassInitializedSnippets.class, "ensureClassIsInitializedSnippet", LocationIdentity.any());
-
         @Override
         public void lower(EnsureClassInitializedNode node, LoweringTool tool) {
             Arguments args = new Arguments(ensureClassIsInitialized, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("hub", node.getHub());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

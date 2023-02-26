@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -228,6 +228,7 @@ import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.bytecode.Bytecodes.TABLESWITCH;
 import static org.graalvm.compiler.bytecode.Bytecodes.WIDE;
 import static org.graalvm.compiler.core.common.GraalOptions.SupportJsrBytecodes;
+import static org.graalvm.compiler.java.BciBlockMapping.Options.MaxDuplicationFactor;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -291,9 +292,9 @@ import jdk.vm.ci.meta.JavaMethod;
  * maximum subroutine nesting of 4. Otherwise, a bailout is thrown.
  * <p>
  * Loops in the methods are detected. If a method contains an irreducible loop (a loop with more
- * than one entry), a bailout is thrown or block duplication is attempted to make the loop
- * reducible. This simplifies the compiler later on since only structured loops need to be
- * supported.
+ * than one entry), a bailout is thrown or, if {@link Options#MaxDuplicationFactor} {@code > 1},
+ * block duplication is attempted to make the loop reducible. This simplifies the compiler later on
+ * since only structured loops need to be supported.
  * <p>
  * A data flow analysis computes the live local variables from the point of view of the interpreter.
  * The result is used later to prune frame states, i.e., remove local variable entries that are
@@ -304,13 +305,15 @@ import jdk.vm.ci.meta.JavaMethod;
  */
 public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
-        @Option(help = "When enabled, some limited amount of duplication will be performed in order compile code containing irreducible loops.")//
-        public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
-        @Option(help = "How much duplication can happen because of irreducible loops before bailing out.", type = OptionType.Expert)//
+        @Option(help = "Max amount of extra effort to expend handling irreducible loops. " +
+                        "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
     }
 
     protected static final int UNASSIGNED_ID = -1;
+
+    private static final BitSet SHARED_EMPTY_BITSET = new BitSet();
+    private static final Set<BciBlock> SHARED_EMPTY_BCIBLOCK_SET = Set.of();
 
     public static class BciBlock implements Cloneable {
 
@@ -740,7 +743,7 @@ public class BciBlockMapping implements JavaMethodContext {
     protected BciBlockMapping(Bytecode code, DebugContext debug) {
         this.code = code;
         this.debug = debug;
-        this.exceptionHandlers = code.getExceptionHandlers();
+        this.exceptionHandlers = code.getExceptionHandlers().length != 0 ? code.getExceptionHandlers() : null;
         this.blockMap = new BciBlock[code.getCodeSize()];
     }
 
@@ -831,12 +834,17 @@ public class BciBlockMapping implements JavaMethodContext {
      * directed to.
      */
     private void computeBciExceptionHandlerIDs(BytecodeStream stream) {
+        if (exceptionHandlers == null) {
+            // No handlers exist, so it is unnecessary to store per-bci information
+            return;
+        }
+
         bciExceptionHandlerIDs = new BitSet[code.getCodeSize()];
         /* Initialize BitSets for all bcis corresponding to bytecodes. */
         stream.setBCI(0);
         while (stream.currentBC() != Bytecodes.END) {
             int bci = stream.currentBCI();
-            bciExceptionHandlerIDs[bci] = new BitSet();
+            bciExceptionHandlerIDs[bci] = SHARED_EMPTY_BITSET;
             stream.next();
         }
 
@@ -848,6 +856,11 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (currentIDs == null) {
                     /* No instruction for this bci. */
                     continue;
+                }
+                if (currentIDs == SHARED_EMPTY_BITSET) {
+                    /* Initialize unique BitSet for instruction. */
+                    currentIDs = new BitSet();
+                    bciExceptionHandlerIDs[bci] = currentIDs;
                 }
                 if (h.isCatchAll()) {
                     /*
@@ -890,6 +903,10 @@ public class BciBlockMapping implements JavaMethodContext {
      * @return blocks that were requested to be the start of new blocks.
      */
     protected Set<BciBlock> makeExceptionEntries(boolean splitRanges) {
+        if (exceptionHandlers == null) {
+            return SHARED_EMPTY_BCIBLOCK_SET;
+        }
+
         Set<BciBlock> requestedBlockStarts = new HashSet<>();
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (int i = 0; i < exceptionHandlers.length; i++) {
@@ -1389,26 +1406,29 @@ public class BciBlockMapping implements JavaMethodContext {
 
     protected ExceptionDispatchBlock handleExceptions(int bci, boolean processNewBlock, boolean isInvoke) {
         ExceptionDispatchBlock lastHandler = null;
-        int dispatchBlocks = 0;
 
-        BitSet handlerIDs = getBciExceptionHandlerIDs(bci);
-        assert handlerIDs != null : "missing handlers for bci";
-        for (int handlerID = handlerIDs.length(); (handlerID = handlerIDs.previousSetBit(handlerID - 1)) >= 0;) {
-            if (handlerIDs.get(handlerID)) {
-                /*
-                 * We do not reuse exception dispatch blocks, because nested exception handlers
-                 * might have problems reasoning about the correct frame state.
-                 */
-                ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], bci);
-                dispatchBlocks++;
-                curHandler.addSuccessor(getHandlerBlock(handlerID));
-                if (lastHandler != null) {
-                    curHandler.addSuccessor(lastHandler);
+        if (exceptionHandlers != null) {
+            int dispatchBlocks = 0;
+
+            BitSet handlerIDs = getBciExceptionHandlerIDs(bci);
+            assert handlerIDs != null : "missing handlers for bci";
+            for (int handlerID = handlerIDs.length(); (handlerID = handlerIDs.previousSetBit(handlerID - 1)) >= 0;) {
+                if (handlerIDs.get(handlerID)) {
+                    /*
+                     * We do not reuse exception dispatch blocks, because nested exception handlers
+                     * might have problems reasoning about the correct frame state.
+                     */
+                    ExceptionDispatchBlock curHandler = new ExceptionDispatchBlock(exceptionHandlers[handlerID], bci);
+                    dispatchBlocks++;
+                    curHandler.addSuccessor(getHandlerBlock(handlerID));
+                    if (lastHandler != null) {
+                        curHandler.addSuccessor(lastHandler);
+                    }
+                    lastHandler = curHandler;
                 }
-                lastHandler = curHandler;
             }
+            blocksNotYetAssignedId += dispatchBlocks;
         }
-        blocksNotYetAssignedId += dispatchBlocks;
         if (processNewBlock) {
             return processNewExceptionDispatchBlock(bci, isInvoke, lastHandler);
         } else {
@@ -1604,10 +1624,10 @@ public class BciBlockMapping implements JavaMethodContext {
      * <p>
      * Since loops are marked eagerly, forward entries into an existing loop without going through
      * the loop header (i.e., irreducible loops) can be detected easily. In this case, if
-     * {@link Options#DuplicateIrreducibleLoops} is enabled, the traversal starts to duplicate
+     * {@link Options#MaxDuplicationFactor} is greater than 1, the traversal starts to duplicate
      * blocks until it either exits the loop or reaches the header. Since this is a depth-first
      * traversal and the loop header is not active, we know that the loop and its inner-loops were
-     * until then reducible.
+     * reducible until then.
      * <p>
      * This is not recursive to avoid stack overflow issues.
      */
@@ -1666,7 +1686,7 @@ public class BciBlockMapping implements JavaMethodContext {
                         for (int pos = -1; (pos = checkBits.nextSetBit(pos + 1)) >= 0;) {
                             int id = pos;
                             if (!loopHeaders[id].active) {
-                                if (!Options.DuplicateIrreducibleLoops.getValue(debug.getOptions())) {
+                                if (Options.MaxDuplicationFactor.getValue(debug.getOptions()) <= 1.0D) {
                                     throw new PermanentBailoutException("Irreducible");
                                 } else if (outermostInactiveLoopId == -1 || !loopHeaders[id].loops.get(outermostInactiveLoopId)) {
                                     outermostInactiveLoopId = id;
@@ -1710,10 +1730,12 @@ public class BciBlockMapping implements JavaMethodContext {
                 blocksNotYetAssignedId--;
                 if (blocksNotYetAssignedId < 0) {
                     // this should only happen if duplication is active
-                    assert Options.DuplicateIrreducibleLoops.getValue(debug.getOptions());
+                    OptionValues options = debug.getOptions();
+                    double factor = MaxDuplicationFactor.getValue(options);
                     duplicateBlocks += newDuplicateBlocks;
-                    if (duplicateBlocks > postJsrBlockCount * Options.MaxDuplicationFactor.getValue(debug.getOptions())) {
-                        throw new PermanentBailoutException("Non-reducible loop requires too much duplication");
+                    if (duplicateBlocks > postJsrBlockCount * factor) {
+                        throw new PermanentBailoutException("Non-reducible loop requires too much duplication. " +
+                                        "Setting " + MaxDuplicationFactor.getName() + " to a value higher than " + factor + " may resolve this.");
                     }
                     // there are new duplicate blocks, re-number
                     debug.log(DebugContext.INFO_LEVEL, "Re-numbering blocks to make room for duplicates (old length: %d; new blocks: %d)", blocks.length, newDuplicateBlocks);

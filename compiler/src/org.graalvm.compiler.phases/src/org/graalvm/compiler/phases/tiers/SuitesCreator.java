@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package org.graalvm.compiler.phases.tiers;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * Interface used for composing {@link SuitesProvider}s.
  */
@@ -34,7 +36,7 @@ public interface SuitesCreator extends SuitesProvider {
     /**
      * Create a new set of phase suites based on {@code options}.
      */
-    Suites createSuites(OptionValues options);
+    Suites createSuites(OptionValues options, Architecture arch);
 
     /**
      * Create a new set of low-level phase suites based on {@code options}.

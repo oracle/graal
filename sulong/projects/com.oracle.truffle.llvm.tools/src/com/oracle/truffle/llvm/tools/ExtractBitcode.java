@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,10 +35,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
-import java.util.Arrays;
+import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ExtractBitcode {
@@ -84,6 +87,17 @@ public final class ExtractBitcode {
         return new ArrayByteSequence(buffer, length);
     }
 
+    public static byte[] getBitcode(BinaryParserResult result) {
+        ByteSequence bitcode = result.getBitcode();
+        if (result.getLocator() instanceof WindowsLibraryLocator) {
+            long lastpos = LLVMScanner.ToEndScanner.parseToEnd(bitcode);
+            return bitcode.subSequence(0, (int) lastpos).toByteArray();
+        } else {
+            return bitcode.toByteArray();
+        }
+
+    }
+
     public static void main(String[] args) {
         if (args.length != 2) {
             usage(System.err);
@@ -99,7 +113,8 @@ public final class ExtractBitcode {
             if (result == null) {
                 throw new IOException("No bitcode found in file '" + inName + "'");
             }
-            out.write(result.getBitcode().toByteArray());
+            out.write(getBitcode(result));
+            out.close();
         } catch (IOException e) {
             System.err.println(e.getMessage());
             System.exit(2);

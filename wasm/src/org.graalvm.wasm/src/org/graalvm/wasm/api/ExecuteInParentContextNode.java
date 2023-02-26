@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,11 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     private final Object executable;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
         super(language, instance);
@@ -72,7 +74,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
         try {
             return InteropLibrary.getUncached().execute(executable, frame.getArguments());
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            errorBranch();
+            errorBranch.enter();
             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));
         } finally {
             truffleContext.leave(this, prev);

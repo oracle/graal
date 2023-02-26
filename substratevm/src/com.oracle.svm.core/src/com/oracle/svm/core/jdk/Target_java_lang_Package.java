@@ -24,30 +24,19 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-
 import java.net.URL;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
 @SuppressWarnings({"unused"})
 @TargetClass(Package.class)
-public final class Target_java_lang_Package {
+final class Target_java_lang_Package {
 
     @Alias
-    public Target_java_lang_Package(String name,
+    Target_java_lang_Package(String name,
                     String spectitle, String specversion, String specvendor,
                     String impltitle, String implversion, String implvendor,
                     URL sealbase, ClassLoader loader) {
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static Package getSystemPackage(String name) {
-        Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                        null, null, null, null, null);
-        return SubstrateUtil.cast(pkg, Package.class);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public abstract class InputEndsWithNode extends Node {
 
@@ -51,87 +54,31 @@ public abstract class InputEndsWithNode extends Node {
         return InputEndsWithNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, Object suffix, Object mask);
+    public abstract boolean execute(Object input, Object suffix, Object mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
-    public boolean doBytes(byte[] input, byte[] suffix, @SuppressWarnings("unused") Object mask) {
-        return ArrayUtils.regionEqualsWithOrMask(input, input.length - suffix.length, suffix, 0, suffix.length, null);
-    }
-
-    @Specialization(guards = "mask != null")
-    public boolean doBytesMask(byte[] input, byte[] suffix, byte[] mask) {
-        return ArrayUtils.regionEqualsWithOrMask(input, input.length - suffix.length, suffix, 0, mask.length, mask);
-    }
-
-    @Specialization(guards = "mask == null")
-    public boolean doString(String input, String suffix, @SuppressWarnings("unused") Object mask) {
+    public boolean doString(String input, String suffix, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
         return input.endsWith(suffix);
     }
 
     @Specialization(guards = "mask != null")
-    public boolean doStringMask(String input, String suffix, String mask) {
+    public boolean doStringMask(String input, String suffix, String mask, @SuppressWarnings("unused") Encoding encoding) {
         return ArrayUtils.regionEqualsWithOrMask(input, input.length() - suffix.length(), suffix, 0, mask.length(), mask);
     }
 
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
-    public boolean doTruffleObjBytes(Object input, byte[] suffix, @SuppressWarnings("unused") Object mask,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        return endsWithTruffleObj(input, suffix, null, lengthNode, charAtNode);
+    @Specialization(guards = "mask == null")
+    public boolean doTString(TruffleString input, TruffleString suffix, @SuppressWarnings("unused") Object mask, Encoding encoding,
+                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+        int len1 = input.byteLength(encoding.getTStringEncoding());
+        int len2 = suffix.byteLength(encoding.getTStringEncoding());
+        return len1 >= len2 && regionEqualsNode.execute(input, len1 - len2, suffix, 0, len2, encoding.getTStringEncoding());
     }
 
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
-    public boolean doTruffleObjBytesMask(Object input, byte[] suffix, byte[] mask,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        assert mask.length == suffix.length;
-        return endsWithTruffleObj(input, suffix, mask, lengthNode, charAtNode);
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
-    public boolean doTruffleObjString(Object input, String suffix, @SuppressWarnings("unused") Object mask,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        return endsWithTruffleObj(input, suffix, null, lengthNode, charAtNode);
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
-    public boolean doTruffleObjStringMask(Object input, String suffix, String mask,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        assert mask.length() == suffix.length();
-        return endsWithTruffleObj(input, suffix, mask, lengthNode, charAtNode);
-    }
-
-    private static boolean endsWithTruffleObj(Object input, byte[] suffix, byte[] mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
-        final int inputLength = lengthNode.execute(input);
-        if (inputLength < suffix.length) {
-            return false;
-        }
-        final int offset = inputLength - suffix.length;
-        for (int i = 0; i < suffix.length; i++) {
-            if (InputReadNode.readWithMask(input, offset + i, mask, i, charAtNode) != Byte.toUnsignedInt(suffix[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean endsWithTruffleObj(Object input, String suffix, String mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
-        final int inputLength = lengthNode.execute(input);
-        if (inputLength < suffix.length()) {
-            return false;
-        }
-        final int offset = inputLength - suffix.length();
-        for (int i = 0; i < suffix.length(); i++) {
-            if (InputReadNode.readWithMask(input, offset + i, mask, i, charAtNode) != suffix.charAt(i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String);
+    @Specialization(guards = "mask != null")
+    public boolean doTStringMask(TruffleString input, TruffleString suffix, TruffleString.WithMask mask, Encoding encoding,
+                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+        int len1 = input.byteLength(encoding.getTStringEncoding());
+        int len2 = suffix.byteLength(encoding.getTStringEncoding());
+        return len1 >= len2 && regionEqualsNode.execute(input, len1 - len2, mask, 0, len2, encoding.getTStringEncoding());
     }
 }

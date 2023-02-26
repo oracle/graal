@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -431,9 +431,9 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             Object[] args = frame.getArguments();
 
             if ((boolean) args[0]) {
-                frame.clear(0);
+                frame.setDouble(0, 5);
             } else {
-                frame.setInt(0, 0);
+                frame.setInt(0, 1);
             }
             // Expected Perf warn
             boundary();
@@ -473,5 +473,38 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         public String toString() {
             return "trivial";
         }
+    }
+
+    private static final class RootNodeDevirtualizeInvokeVirtual extends TestRootNode {
+        Base base;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return base.bar();
+        }
+
+        abstract static class Base {
+            public String bar() {
+                return "Base";
+            }
+        }
+
+        abstract static class AbstractBaseImpl extends Base {
+            @Override
+            public String bar() {
+                return "AbstractBaseImpl";
+            }
+        }
+
+        static final class ConcreteImpl extends AbstractBaseImpl {
+            public static void ensureInitialized() {
+            }
+        }
+    }
+
+    @Test
+    public void testDevirtualizeInvokeVirtual() {
+        RootNodeDevirtualizeInvokeVirtual.ConcreteImpl.ensureInitialized();
+        testHelper(new RootNodeDevirtualizeInvokeVirtual(), false, EMPTY_PERF_WARNINGS);
     }
 }

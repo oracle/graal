@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.junit;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,9 +32,19 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class JUnitFeature implements Feature {
+
+    @Override
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.junit/src/com/oracle/svm/junit/JUnitFeature.java";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Enables JUnit support";
+    }
 
     public static class IsEnabled implements BooleanSupplier {
         @Override
@@ -58,12 +66,9 @@ public final class JUnitFeature implements Feature {
     }
 
     @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(ReflectionFeature.class);
-    }
-
-    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        /* Open up builder to allow whitebox testing */
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "org.graalvm.nativeimage.builder");
         SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);
         ImageSingletons.add(SVMJUnitRunner.class, svmRunner);
     }

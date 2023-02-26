@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -97,13 +96,13 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
             if (state != null) {
                 crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
             }
-            masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
+            masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
         } else {
             crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_NEAR : HotSpotMarkId.POLL_NEAR);
             if (state != null) {
                 crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
             }
-            masm.ldr(32, zr, AArch64Address.createPCLiteralAddress(32));
+            masm.deadLoad(32, AArch64Address.createPCLiteralAddress(32), false);
         }
     }
 
@@ -115,7 +114,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         if (state != null) {
             crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
         }
-        masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
+        masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
     }
 
 }

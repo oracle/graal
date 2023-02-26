@@ -96,9 +96,9 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
-                    CompilationIdentifier compilationId) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, SubstrateOptions.parseOnce());
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, forceTrackNodeSourcePosition || SubstrateOptions.parseOnce(), false);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
@@ -108,7 +108,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     @Override
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {
@@ -173,7 +173,7 @@ public class SubstrateGraphKit extends GraphKit {
         return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
     }
 
-    public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
+    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
         return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), arguments);
     }
 
@@ -207,7 +207,7 @@ public class SubstrateGraphKit extends GraphKit {
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
             /*
-             * Since this deoptimization is occurring in an custom graph, assume there are no
+             * Since this deoptimization is occurring in a custom graph, assume there are no
              * exception handlers and directly unwind.
              */
             int bci = invoke.stateAfter().bci;
@@ -229,7 +229,7 @@ public class SubstrateGraphKit extends GraphKit {
     public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, SubstrateCallingConventionKind callKind) {
         assert arguments.size() == signature.getParameterCount(false);
         assert callKind != SubstrateCallingConventionKind.Native : "return kind and stamp would be incorrect";
-        JavaKind returnKind = signature.getReturnKind();
+        JavaKind returnKind = signature.getReturnKind().getStackKind();
         Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
         return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }

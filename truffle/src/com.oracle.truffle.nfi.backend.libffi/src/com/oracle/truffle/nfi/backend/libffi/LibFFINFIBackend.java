@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.SignatureBuilder;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
@@ -62,11 +61,9 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilder
 final class LibFFINFIBackend implements NFIBackend {
 
     private final LibFFILanguage language;
-    final NFIBackendTools tools;
 
-    LibFFINFIBackend(LibFFILanguage language, NFIBackendTools tools) {
+    LibFFINFIBackend(LibFFILanguage language) {
         this.language = language;
-        this.tools = tools;
     }
 
     @Override
@@ -98,7 +95,7 @@ final class LibFFINFIBackend implements NFIBackend {
                         case "ISOLATED_NAMESPACE":
                             if (ctx.ISOLATED_NAMESPACE == 0) {
                                 // undefined
-                                throw new IllegalArgumentException("isolated namespace not supported");
+                                throw new NFIUnsupportedException("isolated namespace not supported");
                             }
                             flags |= ctx.ISOLATED_NAMESPACE;
                             break;

@@ -36,6 +36,21 @@ from mx_java_benchmarks import _daCapoScalaConfig
 _suite = mx.suite('espresso')
 
 
+def espresso_dimensions(guest_vm):
+    """
+    :type guest_vm: GuestVm
+    :rtype: dict[str, str]
+    """
+    host_vm_name = guest_vm.host_vm().name()
+    if '-ce-' in host_vm_name:
+        edition = 'CE'
+    elif '-ee-' in host_vm_name:
+        edition = 'EE'
+    else:
+        edition = 'unknown'
+    return {'platform.graalvm-edition': edition}
+
+
 class EspressoVm(GuestVm, JavaVm):
     def __init__(self, config_name, options, host_vm=None):
         super(EspressoVm, self).__init__(host_vm=host_vm)
@@ -67,11 +82,14 @@ class EspressoVm(GuestVm, JavaVm):
     def run(self, cwd, args):
         if hasattr(self.host_vm(), 'run_launcher'):
             if '-truffle' in self.host_vm().extra_launcher_args:
-                return self.host_vm().run_launcher('java', self._options + args, cwd)
-            # The host-vm is in JVM mode. Run the `espresso` launcher.
-            return self.host_vm().run_launcher('espresso', self._options + args, cwd)
+                code, out, dims = self.host_vm().run_launcher('java', self._options + args, cwd)
+            else:
+                # The host-vm is in JVM mode. Run the `espresso` launcher.
+                code, out, dims = self.host_vm().run_launcher('espresso', self._options + args, cwd)
         else:
-            return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
+            code, out, dims = self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
+        dims.update(espresso_dimensions(self))
+        return code, out, dims
 
 
 class EspressoMinHeapVm(EspressoVm):
@@ -131,9 +149,12 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('interpreter-inline-accessors', 
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-options', '--engine.MultiTier=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('3-compiler-threads', ['--experimental-options', '--engine.CompilerThreads=3']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--experimental-options', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('field-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=field-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based-safe', ['--experimental-options', '--engine.StaticObjectStorageStrategy=array-based', '--engine.RelaxStaticObjectSafetyChecks=false']), _suite)
 

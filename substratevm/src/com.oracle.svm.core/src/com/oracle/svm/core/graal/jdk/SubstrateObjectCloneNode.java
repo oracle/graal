@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 
@@ -94,5 +95,12 @@ public final class SubstrateObjectCloneNode extends BasicObjectCloneNode impleme
     public void setStateBefore(FrameState f) {
         updateUsages(stateBefore, f);
         stateBefore = f;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        if (SubstrateObjectCloneSnippets.canVirtualize(this, tool)) {
+            super.virtualize(tool);
+        }
     }
 }

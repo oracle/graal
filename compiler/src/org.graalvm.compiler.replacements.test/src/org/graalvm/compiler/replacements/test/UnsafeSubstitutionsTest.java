@@ -59,7 +59,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     static long off(Object o, String name) {
         try {
-            return UNSAFE.objectFieldOffset(o.getClass().getDeclaredField(name));
+            return getObjectFieldOffset(o.getClass().getDeclaredField(name));
         } catch (Exception e) {
             Assert.fail(e.toString());
             return 0L;
@@ -149,7 +149,7 @@ public class UnsafeSubstitutionsTest extends MethodSubstitutionTest {
 
     private static long fooOffset(String name) {
         try {
-            return UNSAFE.objectFieldOffset(Foo.class.getDeclaredField(name));
+            return getObjectFieldOffset(Foo.class.getDeclaredField(name));
         } catch (NoSuchFieldException | SecurityException e) {
             throw new AssertionError(e);
         }

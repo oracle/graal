@@ -3,7 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: Reference Manuals
 permalink: /reference-manual/
-redirect_from: /docs/reference-manual/
+redirect_from: /$version/docs/reference-manual/
 ---
 
 # GraalVM Reference Manuals
@@ -16,9 +16,9 @@ environment for their workloads.
 
 [Native Image](native-image/README.md) - learn in detail about Native Image: GraalVM's innovative technology that can ahead-of-time compile Java code to a self-contained native executable.
 
-[Compiler](compiler.md) - learn about the uniqueness of the GraalVM compiler and its advantages.
+[Java on Truffle](java-on-truffle/README.md) - learn how to run Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../truffle/docs/README.md).
 
-[Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
+[GraalVM Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
 
 [Polyglot Programming](polyglot-programming.md) - learn how to write polyglot applications and allow languages to directly interoperate with each other in the same memory space.
 
@@ -29,7 +29,6 @@ environment for their workloads.
 If you are mostly interested in the GraalVM support for a specific language, here you can find the most extensive documentation:
 
 * [Java](java/README.md)
-* [Java on Truffle](java-on-truffle/README.md)
 * [JavaScript and Node.js](js/README.md)
 * [LLVM Languages](llvm/README.md)
 * [Python](python/README.md)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,8 @@ import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -168,6 +168,40 @@ public class BoxingEliminationTest extends GraalCompilerTest {
             sum0 = sum;
         }
         return sum0;
+    }
+
+    @Test
+    public void testLoop3() {
+        compareGraphs("testLoop3Snippet", "referenceLoop3Snippet", true, true);
+    }
+
+    public static int testLoop3Snippet(int n) {
+        Integer sum1 = 0;
+        Integer sum2 = 0;
+
+        for (int i = 0; i < n; i++) {
+            if ((i & 7) > 3) {
+                sum1 += i;
+            } else {
+                sum2 += i;
+            }
+        }
+        return sum1 + sum2;
+    }
+
+    public static int referenceLoop3Snippet(int n) {
+        int sum1 = 0;
+        int sum2 = 0;
+        if (n > 0) {
+            for (int i = 1; i < n; i++) {
+                if ((i & 7) > 3) {
+                    sum1 += i;
+                } else {
+                    sum2 += i;
+                }
+            }
+        }
+        return sum1 + sum2;
     }
 
     public static int referenceIfSnippet(int a) {
@@ -315,7 +349,21 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     @Test
     public void loopTest1() {
         processMethod("loopTest1Snippet");
+    }
 
+    public static int loopTest2Snippet(int n, int v) {
+        Integer sum = 0;
+        for (int i = 0; i < n; i++) {
+            if ((i & 7) < 3) {
+                sum += v;
+            }
+        }
+        return sum;
+    }
+
+    @Test
+    public void loopTest2() {
+        processMethod("loopTest2Snippet");
     }
 
     final ValueNode getResult(String snippet) {
@@ -342,7 +390,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         createInliningPhase().apply(graph, context);
         if (loopPeeling) {
-            new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, context);
+            new LoopPeelingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, context);
         }
         new DeadCodeEliminationPhase().apply(graph);
         canonicalizer.apply(graph, context);

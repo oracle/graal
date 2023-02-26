@@ -25,11 +25,9 @@
  */
 package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
-
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,24 +35,25 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassWriter;
 
-@AutomaticFeature
-public class ClassPredefinitionFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ClassPredefinitionFeature implements InternalFeature {
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
     private boolean sealed = false;
 
@@ -121,17 +120,19 @@ public class ClassPredefinitionFeature implements Feature {
 
     private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
-        public void add(String nameInfo, String providedHash, Path basePath) {
+        public void add(String nameInfo, String providedHash, URI baseUri) {
             if (!PredefinedClassesSupport.supportsBytecodes()) {
                 throw UserError.abort("Cannot predefine class with hash %s from %s because class predefinition is disabled. Enable this feature using option %s.",
-                                providedHash, basePath, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
+                                providedHash, baseUri, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
             }
             UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
 
+            VMError.guarantee(baseUri != null, "Cannot prepare class with hash " + providedHash + " for predefinition because its location is unknown");
             try {
-                Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
-                byte[] data = Files.readAllBytes(path);
-
+                byte[] data;
+                try (InputStream in = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, providedHash)) {
+                    data = in.readAllBytes();
+                }
                 // Compute our own hash code, the files could have been messed with.
                 String hash = PredefinedClassesSupport.hash(data, 0, data.length);
 
@@ -181,7 +182,7 @@ public class ClassPredefinitionFeature implements Feature {
                     defineClass(record);
                 }
             } catch (IOException t) {
-                throw UserError.abort(t, "Failed to prepare class with hash %s from %s for predefinition", providedHash, basePath);
+                throw UserError.abort(t, "Failed to prepare class with hash %s from %s for predefinition", providedHash, baseUri);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,14 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.regex.tregex.util.TruffleReadOnlyIntArray;
+import com.oracle.truffle.regex.util.TruffleNull;
+import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
+import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class AbstractRegexObject implements TruffleObject {
@@ -67,5 +75,33 @@ public abstract class AbstractRegexObject implements TruffleObject {
     @TruffleBoundary
     public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
+    }
+
+    @TruffleBoundary
+    public static AbstractRegexObject createNamedCaptureGroupMapInt(Map<String, Integer> namedCaptureGroups) {
+        if (namedCaptureGroups == null) {
+            return TruffleNull.INSTANCE;
+        } else if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
+            return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
+        } else {
+            return new TruffleReadOnlyMap(namedCaptureGroups);
+        }
+    }
+
+    @TruffleBoundary
+    public static AbstractRegexObject createNamedCaptureGroupMapListInt(Map<String, List<Integer>> namedCaptureGroups) {
+        if (namedCaptureGroups == null) {
+            return TruffleNull.INSTANCE;
+        } else {
+            Map<String, TruffleReadOnlyIntArray> map = new HashMap<>(namedCaptureGroups.size());
+            for (Map.Entry<String, List<Integer>> entry : namedCaptureGroups.entrySet()) {
+                int[] array = new int[entry.getValue().size()];
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = entry.getValue().get(i);
+                }
+                map.put(entry.getKey(), new TruffleReadOnlyIntArray(array));
+            }
+            return new TruffleReadOnlyMap(namedCaptureGroups);
+        }
     }
 }

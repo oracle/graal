@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -46,7 +47,7 @@ public final class QuickenedPutFieldNode extends QuickNode {
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        StaticObject receiver = nullCheck(BytecodeNode.popObject(frame, top - 1 - slotCount));
+        StaticObject receiver = nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
         setFieldNode.setField(frame, root, receiver, top, statementIndex);
         return -slotCount - 1; // -receiver
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -148,7 +148,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final byte[] vector = new byte[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = (byte) (from.getValue(i) ? 0xff : 0);
+                vector[i] = (byte) (from.getValue(i) ? -1 : 0);
             }
             return LLVMI8Vector.create(vector);
         }
@@ -223,7 +223,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final short[] vector = new short[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = (short) (from.getValue(i) ? 1 : 0);
+                vector[i] = (short) (from.getValue(i) ? -1 : 0);
             }
             return LLVMI16Vector.create(vector);
         }
@@ -298,7 +298,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final int[] vector = new int[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = from.getValue(i) ? 1 : 0;
+                vector[i] = from.getValue(i) ? -1 : 0;
             }
             return LLVMI32Vector.create(vector);
         }
@@ -373,7 +373,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final long[] vector = new long[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = from.getValue(i) ? 1 : 0;
+                vector[i] = from.getValue(i) ? -1 : 0;
             }
             return LLVMI64Vector.create(vector);
         }
@@ -460,7 +460,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final float[] vector = new float[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = from.getValue(i) ? 1 : 0;
+                vector[i] = from.getValue(i) ? -1 : 0;
             }
             return LLVMFloatVector.create(vector);
         }
@@ -535,7 +535,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final double[] vector = new double[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = from.getValue(i) ? 1 : 0;
+                vector[i] = from.getValue(i) ? -1 : 0;
             }
             return LLVMDoubleVector.create(vector);
         }
@@ -795,7 +795,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 byte value = 0;
                 for (int j = 0; j < Byte.SIZE; j++) {
-                    value |= (from.getValue(i * Byte.SIZE + j) ? 1 : 0) << j;
+                    value |= (byte) ((from.getValue(i * Byte.SIZE + j) ? 1 : 0) << j);
                 }
                 vector[i] = value;
             }
@@ -921,7 +921,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 short value = 0;
                 for (int j = 0; j < Short.SIZE; j++) {
-                    value |= (from.getValue(i * Short.SIZE + j) ? 1 : 0) << j;
+                    value |= (short) ((from.getValue(i * Short.SIZE + j) ? 1 : 0) << j);
                 }
                 vector[i] = value;
             }
@@ -937,7 +937,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 short value = 0;
                 for (int j = 0; j < Short.BYTES; j++) {
-                    value |= (from.getValue(i * (Short.BYTES) + j) & LLVMExpressionNode.I8_MASK) << (j * Byte.SIZE);
+                    value |= (short) ((from.getValue(i * (Short.BYTES) + j) & LLVMExpressionNode.I8_MASK) << (j * Byte.SIZE));
                 }
                 vector[i] = value;
             }
@@ -1245,7 +1245,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 int value = 0;
                 for (int j = 0; j < Float.SIZE; j++) {
-                    value |= (from.getValue(i * Float.SIZE + j) ? 1L : 0L) << j;
+                    value |= (from.getValue(i * Float.SIZE + j) ? 1 : 0) << j;
                 }
                 vector[i] = Float.intBitsToFloat(value);
             }
@@ -1261,7 +1261,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 int value = 0;
                 for (int j = 0; j < Float.BYTES; j++) {
-                    value |= (long) (from.getValue(i * (Float.BYTES) + j) & LLVMExpressionNode.I8_MASK) << (j * Byte.SIZE);
+                    value |= (from.getValue(i * (Float.BYTES) + j) & LLVMExpressionNode.I8_MASK) << (j * Byte.SIZE);
                 }
                 vector[i] = Float.intBitsToFloat(value);
             }
@@ -1277,7 +1277,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 int value = 0;
                 for (int j = 0; j < SHORTS_PER_FLOAT; j++) {
-                    value |= (long) (from.getValue(i * (SHORTS_PER_FLOAT) + j) & LLVMExpressionNode.I16_MASK) << (j * Short.SIZE);
+                    value |= (from.getValue(i * (SHORTS_PER_FLOAT) + j) & LLVMExpressionNode.I16_MASK) << (j * Short.SIZE);
                 }
                 vector[i] = Float.intBitsToFloat(value);
             }

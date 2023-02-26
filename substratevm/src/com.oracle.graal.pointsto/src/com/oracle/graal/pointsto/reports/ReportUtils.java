@@ -45,8 +45,8 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -68,6 +68,10 @@ public class ReportUtils {
         return report(description, path, name, extension, reporter, true);
     }
 
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint) {
+        return report(description, path, name, extension, reporter, enablePrint, getTimeStampString());
+    }
+
     /**
      * Print a report in the format: path/name_timeStamp.extension. The path is relative to the
      * working directory.
@@ -78,15 +82,20 @@ public class ReportUtils {
      * @param name the name of the report
      * @param extension the extension of the report
      * @param reporter a consumer that writes to a PrintWriter
+     * @param timeStamp from {@link #getTimeStampString}
      */
-    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint) {
-        String fileName = timeStampedFileName(name, extension);
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint, String timeStamp) {
+        String fileName = timeStampedFileName(name, extension, timeStamp);
         Path reportDir = Paths.get(path);
         return reportImpl(enablePrint, description, reportDir, fileName, reporter);
     }
 
     public static String timeStampedFileName(String name, String extension) {
-        String fileName = name + "_" + getTimeStampString();
+        return timeStampedFileName(name, extension, getTimeStampString());
+    }
+
+    public static String timeStampedFileName(String name, String extension, String timeStamp) {
+        String fileName = name + "_" + timeStamp;
         return extension.isEmpty() ? fileName : fileName + "." + extension;
     }
 
@@ -205,32 +214,54 @@ public class ReportUtils {
     }
 
     public static String parsingContext(AnalysisMethod method) {
-        return parsingContext(method, 0, "   ");
+        return parsingContext(method, 0, "   ", false);
     }
 
     public static String parsingContext(AnalysisMethod method, String indent) {
-        return parsingContext(method, 0, indent);
+        return parsingContext(method, 0, indent, false);
     }
 
     public static String parsingContext(BytecodePosition context) {
-        return parsingContext((AnalysisMethod) context.getMethod(), context.getBCI(), "   ");
+        return parsingContext((AnalysisMethod) context.getMethod(), context.getBCI(), "   ", true);
     }
 
-    public static String parsingContext(AnalysisMethod method, int bci, String indent) {
+    public static String parsingContext(AnalysisMethod method, int bci, String indent, boolean includeTarget) {
         StringBuilder msg = new StringBuilder();
         StackTraceElement[] parsingContext = method.getParsingContext();
         if (parsingContext.length > 0) {
-            /* Include target method first. */
-            msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
-            /* Then add the parsing context. */
-            for (StackTraceElement e : parsingContext) {
-                msg.append(String.format("%n%sat %s", indent, e));
+            if (includeTarget) {
+                /* Include target method first. */
+                msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
             }
-            msg.append(String.format("%n"));
+            formatParsingContext(parsingContext, indent, msg);
         } else {
             msg.append(String.format(" <no parsing context available> %n"));
         }
         return msg.toString();
+    }
+
+    public static void formatParsingContext(StackTraceElement[] parsingContext, String indent, StringBuilder msg) {
+        /* Then add the parsing context. */
+        for (int i = 0; i < parsingContext.length; i++) {
+            StackTraceElement e = parsingContext[i];
+            if (isStackTraceTruncationSentinel(e)) {
+                msg.append(String.format("%n%s", e.getClassName()));
+                assert i == parsingContext.length - 1;
+            } else {
+                msg.append(String.format("%n%sat %s", indent, e));
+            }
+        }
+        msg.append(String.format("%n"));
+    }
+
+    private static final String stackTraceTruncationSentinel = "WARNING: Parsing context is truncated because its depth exceeds a reasonable limit for ";
+
+    private static boolean isStackTraceTruncationSentinel(StackTraceElement element) {
+        return element.getClassName().startsWith(stackTraceTruncationSentinel);
+    }
+
+    public static StackTraceElement truncatedStackTraceSentinel(AnalysisMethod method) {
+        return new StackTraceElement(stackTraceTruncationSentinel + method.format("%H.%n(%p)"), "", null, -1);
     }
 
     public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type) {

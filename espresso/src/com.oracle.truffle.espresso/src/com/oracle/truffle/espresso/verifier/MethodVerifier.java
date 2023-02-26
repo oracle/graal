@@ -248,6 +248,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
@@ -282,6 +283,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
@@ -622,6 +624,19 @@ public final class MethodVerifier implements ContextAccess {
 
     static VerifierError failNoClassDefFound(String s) {
         throw new VerifierError(s, VerifierError.Kind.NoClassDefFound);
+    }
+
+    public static boolean needsVerify(EspressoLanguage language, StaticObject classLoader) {
+        switch (language.getVerifyMode()) {
+            case NONE:
+                return false;
+            case REMOTE:
+                return !StaticObject.isNull(classLoader);
+            case ALL:
+                return true;
+            default:
+                return true;
+        }
     }
 
     /**
@@ -1947,7 +1962,7 @@ public final class MethodVerifier implements ContextAccess {
         return Name._init_.equals(calledMethodName);
     }
 
-    private Operand popSignatureGetReturnOP(OperandStack stack, MethodRefConstant mrc) {
+    private Operand popSignatureGetReturnOp(OperandStack stack, MethodRefConstant mrc) {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
@@ -2025,7 +2040,7 @@ public final class MethodVerifier implements ContextAccess {
         // Only INVOKESPECIAL can call <init>
         verifyGuarantee(!isInstanceInit(calledMethodName), "Invocation of instance initializer with opcode other than INVOKESPECIAL");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
 
         if (!(returnOp == Void)) {
@@ -2046,7 +2061,7 @@ public final class MethodVerifier implements ContextAccess {
         // Check guest is not invoking <clinit>
         verifyGuarantee(!isClassInit(calledMethodName), "Invocation of class initializer!");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
@@ -2056,6 +2071,11 @@ public final class MethodVerifier implements ContextAccess {
             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
                 verifyGuarantee(Name._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
+                boolean isValidInitThis = toInit.getType() == methodHolder ||
+                                // Here, the superKlass cannot be null, as the j.l.Object case would
+                                // have been handled by the previous check.
+                                toInit.getKlass().getSuperKlass().getType() == methodHolder;
+                verifyGuarantee(isValidInitThis, "<init> method must call this.<init> or super.<init>");
                 calledConstructor = true;
             } else {
                 verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: " + toInit.newBCI);
@@ -2104,7 +2124,7 @@ public final class MethodVerifier implements ContextAccess {
         // Only INVOKESPECIAL can call <init>
         verifyGuarantee(!isInstanceInit(calledMethodName), "Invocation of instance initializer with opcode other than INVOKESPECIAL");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));

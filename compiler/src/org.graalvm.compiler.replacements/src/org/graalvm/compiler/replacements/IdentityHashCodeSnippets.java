@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,15 +57,20 @@ public abstract class IdentityHashCodeSnippets implements Snippets {
         public Templates(IdentityHashCodeSnippets receiver, OptionValues options, Providers providers, LocationIdentity locationIdentity) {
             super(options, providers);
 
-            identityHashCodeSnippet = snippet(IdentityHashCodeSnippets.class, "identityHashCodeSnippet", null, receiver, locationIdentity);
+            identityHashCodeSnippet = snippet(providers,
+                            IdentityHashCodeSnippets.class,
+                            "identityHashCodeSnippet",
+                            null,
+                            receiver,
+                            locationIdentity);
         }
 
         public void lower(IdentityHashCodeNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(identityHashCodeSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.object());
-            SnippetTemplate template = template(node, args);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, node, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

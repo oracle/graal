@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,63 +43,38 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.interop.InteropTestBase;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 public class NFIAPITest {
 
     @ClassRule public static CommonTestUtils.RunWithTestEngineConfigRule runWithPolyglot = new CommonTestUtils.RunWithTestEngineConfigRule(InteropTestBase::updateContextBuilder);
 
     private static final Path TEST_DIR = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "nfi");
-    private static final String SULONG_FILENAME = "toolchain-plain.so";
 
     public static Object sulongObject;
-    public static CallTarget lookupAndBind;
+
+    private static InteropLibrary INTEROP = InteropLibrary.getUncached();
+    private static SignatureLibrary SIGNATURES = SignatureLibrary.getUncached();
 
     @BeforeClass
     public static void initialize() {
         TestOptions.assumeBundledLLVM();
-        sulongObject = loadLibrary("basicTest.c.dir", SULONG_FILENAME);
-        lookupAndBind = lookupAndBind();
+        sulongObject = loadLibrary("basicTest.c.dir");
     }
 
-    private static CallTarget lookupAndBind() {
-        return new LookupAndBindNode().getCallTarget();
-    }
-
-    private static Object loadLibrary(String lib, String filename) {
-        File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
+    private static Object loadLibrary(String lib) {
+        File file = new File(TEST_DIR.toFile(), lib + "/" + InteropTestBase.getTestLibraryName(runWithPolyglot.getPolyglotContext()));
         String loadLib = "with llvm load '" + file.getAbsolutePath() + "'";
         Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").internal(true).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return target.call();
-    }
-
-    private static final class LookupAndBindNode extends RootNode {
-
-        @Child private InteropLibrary lookupSymbol = InteropLibrary.getFactory().createDispatched(3);
-        @Child private InteropLibrary bind = InteropLibrary.getFactory().createDispatched(3);
-
-        private LookupAndBindNode() {
-            super(null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object library = frame.getArguments()[0];
-            String symbolName = (String) frame.getArguments()[1];
-            String signature = (String) frame.getArguments()[2];
-
-            try {
-                Object symbol = lookupSymbol.readMember(library, symbolName);
-                return bind.invokeMember(symbol, "bind", signature);
-            } catch (InteropException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
     }
 
     protected abstract static class TestRootNode extends RootNode {
@@ -147,6 +122,14 @@ public class NFIAPITest {
     }
 
     protected static Object lookupAndBind(Object lib, String name, String signature) {
-        return lookupAndBind.call(lib, name, signature);
+        try {
+            Source sigSource = Source.newBuilder("nfi", String.format("with llvm %s", signature), "signature").build();
+            Object parsedSig = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource).call();
+
+            Object function = INTEROP.readMember(lib, name);
+            return SIGNATURES.bind(parsedSig, function);
+        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
     }
 }

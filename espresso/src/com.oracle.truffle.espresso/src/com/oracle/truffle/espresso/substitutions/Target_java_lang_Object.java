@@ -23,13 +23,20 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.dsl.Bind;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
@@ -37,8 +44,8 @@ import com.oracle.truffle.espresso.vm.VM;
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true, isTrivial = true)
-    public static int hashCode(@JavaType(Object.class) StaticObject self) {
-        return VM.JVM_IHashCode(self);
+    public static int hashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
+        return VM.JVM_IHashCode(self, lang);
     }
 
     @Substitution(hasReceiver = true, isTrivial = true)
@@ -46,34 +53,48 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>")
+    public static final class InitGuard implements InlinedMethodPredicate {
+        public static final InlinedMethodPredicate INSTANCE = new InitGuard();
+
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            StaticObject receiver = node.peekReceiver(frame);
+            return !Init.hasFinalizer(receiver, context);
+        }
+    }
+
+    // TODO: Allow inlining this in bytecode (see GR-42697)
+    // @InlineInBytecode(guard = InitGuard.class)
+    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
 
-        static boolean hasFinalizer(StaticObject self) {
-            return ((ObjectKlass) self.getKlass()).hasFinalizer();
+        static boolean hasFinalizer(StaticObject self, EspressoContext context) {
+            return ((ObjectKlass) self.getKlass()).hasFinalizer(context);
         }
 
-        @Specialization(guards = "hasFinalizer(self)")
-        void registerFinalizer(@JavaType(Object.class) StaticObject self,
-                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Finalizer_register.getCallTarget())") DirectCallNode register) {
-            register.call(self);
-        }
-
-        @Fallback
+        @Specialization(guards = "!hasFinalizer(self, getContext())")
         void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
             // nop
+        }
+
+        @TruffleBoundary
+        @Fallback
+        void registerFinalizer(@JavaType(Object.class) StaticObject self,
+                        @Cached("getMeta().java_lang_ref_Finalizer_register.getCallTarget()") CallTarget register,
+                        @Cached IndirectCallNode indirectCallNode) {
+            indirectCallNode.call(register, self);
         }
     }
 
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, meta, profiler);
+        return VM.JVM_Clone(self, language, meta, profiler);
     }
 
     /* As of JDK 14+, these are no longer linked in libjava. */

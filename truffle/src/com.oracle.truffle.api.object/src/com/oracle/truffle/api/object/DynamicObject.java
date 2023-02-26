@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,8 +56,7 @@ import sun.misc.Unsafe;
 /**
  * Represents a dynamic object, members of which can be dynamically added and removed at run time.
  *
- * Access methods in this class are planned to be deprecated. Extend {@link DynamicObject} and use
- * {@link DynamicObjectLibrary} for object accesses.
+ * To use it, extend {@link DynamicObject} and use {@link DynamicObjectLibrary} for object accesses.
  *
  * When {@linkplain DynamicObject#DynamicObject(Shape) constructing} a {@link DynamicObject}, it has
  * to be initialized with an empty initial shape. Initial shapes are created using
@@ -91,7 +89,6 @@ import sun.misc.Unsafe;
  * @see Shape#newBuilder()
  * @since 0.8 or earlier
  */
-@SuppressWarnings("deprecation")
 public abstract class DynamicObject implements TruffleObject {
 
     /**
@@ -114,20 +111,6 @@ public abstract class DynamicObject implements TruffleObject {
     @DynamicField private Object[] extRef;
     /** Primitive extension array. */
     @DynamicField private int[] extVal;
-
-    /**
-     * This constructor is obsolete, do not use it. Use {@link #DynamicObject(Shape)} instead.
-     *
-     * @throws AssertionError
-     * @since 0.8 or earlier
-     * @deprecated This obsolete constructor has been replaced by {@link #DynamicObject(Shape)} and
-     *             will be removed in the future.
-     */
-    @Deprecated
-    protected DynamicObject() {
-        CompilerAsserts.neverPartOfCompilation();
-        throw CompilerDirectives.shouldNotReachHere();
-    }
 
     /**
      * Constructor for {@link DynamicObject} subclasses. Initializes the object with the provided
@@ -158,27 +141,6 @@ public abstract class DynamicObject implements TruffleObject {
         this.shape = shape;
     }
 
-    /**
-     * Internal constructor for {@link DynamicObjectFactory} and {@link Shape#newInstance()}.
-     *
-     * Do not use.
-     *
-     * @param shape the initial shape of this object
-     * @throws IllegalArgumentException if called with an illegal (incompatible) shape
-     * @throws IllegalAccessError if called with access == null
-     * @since 20.2.0
-     * @deprecated Internal constructor
-     */
-    @Deprecated
-    protected DynamicObject(Shape shape, @SuppressWarnings("unused") Layout.Access access) {
-        if (access == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError();
-        }
-        verifyShapeLegacy(shape, this.getClass());
-        this.shape = shape;
-    }
-
     private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
         Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
         if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
@@ -188,14 +150,6 @@ public abstract class DynamicObject implements TruffleObject {
         if (shape.hasInstanceProperties()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw illegalShapeProperties();
-        }
-    }
-
-    private static void verifyShapeLegacy(Shape shape, Class<? extends DynamicObject> subclass) {
-        Class<? extends DynamicObject> shapeType = shape.getLayoutClass();
-        if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw illegalShapeType(shapeType, subclass);
         }
     }
 
@@ -250,188 +204,6 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     /**
-     * Get property value.
-     *
-     * @param key property identifier
-     * @return property value or {@code null} if object has no such property
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault} instead.
-     */
-    @Deprecated
-    public Object get(Object key) {
-        return DynamicObjectLibrary.getUncached().getOrDefault(this, key, null);
-    }
-
-    /**
-     * Get property value.
-     *
-     * @param key property identifier
-     * @param defaultValue return value if property is not found
-     * @return property value or defaultValue if object has no such property
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault} instead.
-     */
-    @Deprecated
-    public Object get(Object key, Object defaultValue) {
-        return DynamicObjectLibrary.getUncached().getOrDefault(this, key, defaultValue);
-    }
-
-    /**
-     * Set value of existing property.
-     *
-     * @param key property identifier
-     * @param value value to be set
-     * @return {@code true} if successful or {@code false} if property not found
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#putIfPresent} instead.
-     */
-    @Deprecated
-    public boolean set(Object key, Object value) {
-        return DynamicObjectLibrary.getUncached().putIfPresent(this, key, value);
-    }
-
-    /**
-     * Returns {@code true} if this object contains a property with the given key.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#containsKey} instead.
-     */
-    @Deprecated
-    public boolean containsKey(Object key) {
-        return DynamicObjectLibrary.getUncached().containsKey(this, key);
-    }
-
-    /**
-     * Define new property or redefine existing property.
-     *
-     * @param key property identifier
-     * @param value value to be set
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
-     *             instead.
-     */
-    @Deprecated
-    public void define(Object key, Object value) {
-        define(key, value, 0);
-    }
-
-    /**
-     * Define new property or redefine existing property.
-     *
-     * @param key property identifier
-     * @param value value to be set
-     * @param flags flags to be set
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#putWithFlags} instead.
-     */
-    @Deprecated
-    public void define(Object key, Object value, int flags) {
-        DynamicObjectLibrary.getUncached().putWithFlags(this, key, value, flags);
-    }
-
-    /**
-     * Define new property with a static location or change existing property.
-     *
-     * @param key property identifier
-     * @param value value to be set
-     * @param flags flags to be set
-     * @param locationFactory factory function that creates a location for a given shape and value
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#putWithFlags} or
-     *             {@link DynamicObjectLibrary#putConstant} instead.
-     */
-    @Deprecated
-    public void define(Object key, Object value, int flags, LocationFactory locationFactory) {
-        deprecated("putWithFlags");
-    }
-
-    /**
-     * Delete property.
-     *
-     * @param key property identifier
-     * @return {@code true} if successful or {@code false} if property not found
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#removeKey} instead.
-     */
-    @Deprecated
-    public boolean delete(Object key) {
-        return DynamicObjectLibrary.getUncached().removeKey(this, key);
-    }
-
-    /**
-     * Returns the number of properties in this object.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Use {@link Shape#getPropertyCount() getShape().getPropertyCount()} instead.
-     */
-    @Deprecated
-    public int size() {
-        return getShape().getPropertyCount();
-    }
-
-    /**
-     * Returns {@code true} if this object contains no properties.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Use {@link Shape#getPropertyCount() getShape().getPropertyCount() == 0} instead.
-     */
-    @Deprecated
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
-    /**
-     * Set object shape and grow storage if necessary.
-     *
-     * @param oldShape the object's current shape (must equal {@link #getShape()})
-     * @param newShape the new shape to be set
-     * @since 0.8 or earlier
-     * @deprecated Use one of the {@link DynamicObjectLibrary} methods instead.
-     */
-    @Deprecated
-    public void setShapeAndGrow(Shape oldShape, Shape newShape) {
-        deprecated();
-    }
-
-    /**
-     * Set object shape and resize storage if necessary.
-     *
-     * @param oldShape the object's current shape (must equal {@link #getShape()})
-     * @param newShape the new shape to be set
-     * @since 0.8 or earlier
-     * @deprecated Use one of the {@link DynamicObjectLibrary} methods instead.
-     */
-    @Deprecated
-    public void setShapeAndResize(Shape oldShape, Shape newShape) {
-        deprecated();
-    }
-
-    /**
-     * Ensure object shape is up-to-date.
-     *
-     * @return {@code true} if shape has changed
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#updateShape} instead.
-     */
-    @Deprecated
-    public boolean updateShape() {
-        return DynamicObjectLibrary.getUncached().updateShape(this);
-    }
-
-    /**
-     * Create a shallow copy of this object.
-     *
-     * @param currentShape the object's current shape (must equal {@link #getShape()})
-     * @since 0.8 or earlier
-     * @deprecated No longer supported; as a replacement, you should implement your own copy method
-     *             that constructs a new object and copies any properties over.
-     */
-    @Deprecated
-    public DynamicObject copy(Shape currentShape) {
-        throw deprecated();
-    }
-
-    /**
      * The {@link #clone()} method is not supported by {@link DynamicObject} at this point in time,
      * so it always throws {@link CloneNotSupportedException}, even if the {@link Cloneable}
      * interface is implemented in a subclass.
@@ -476,25 +248,20 @@ public abstract class DynamicObject implements TruffleObject {
         return DynamicField.class;
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    static UnsupportedOperationException deprecated() {
-        throw new UnsupportedOperationException("Deprecated. Use DynamicObjectLibrary instead.");
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    static UnsupportedOperationException deprecated(String libraryMethod) {
-        throw new UnsupportedOperationException("Deprecated. Use DynamicObjectLibrary." + libraryMethod + " instead.");
-    }
-
     private static final Unsafe UNSAFE;
     private static final long SHAPE_OFFSET;
     static {
         UNSAFE = getUnsafe();
         try {
-            SHAPE_OFFSET = UNSAFE.objectFieldOffset(DynamicObject.class.getDeclaredField("shape"));
+            SHAPE_OFFSET = getObjectFieldOffset(DynamicObject.class.getDeclaredField("shape"));
         } catch (Exception e) {
             throw new IllegalStateException("Could not get 'shape' field offset", e);
         }
+    }
+
+    @SuppressWarnings("deprecation" /* JDK-8277863 */)
+    private static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     private static Unsafe getUnsafe() {

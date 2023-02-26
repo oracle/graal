@@ -29,8 +29,9 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.FinalizationSupport;
+import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -44,19 +45,20 @@ public final class Target_java_lang_ref_Reference {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@JavaType(java.lang.ref.Reference.class) StaticObject self,
+    public static void init(@JavaType(Reference.class) StaticObject self,
                     @JavaType(Object.class) StaticObject referent, @JavaType(ReferenceQueue.class) StaticObject queue,
-                    @Inject Meta meta) {
+                    @Inject EspressoContext context) {
         // Guest referent field is ignored for weak/soft/final/phantom references.
-        EspressoReference<StaticObject> ref = null;
+        EspressoReference ref = null;
+        Meta meta = context.getMeta();
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference)) {
-            ref = new EspressoWeakReference(self, referent, meta.getContext().getReferenceQueue());
+            ref = EspressoReference.createWeak(context, self, referent);
         } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference)) {
-            ref = new EspressoSoftReference(self, referent, meta.getContext().getReferenceQueue());
+            ref = EspressoReference.createSoft(context, self, referent);
         } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
-            ref = new EspressoFinalReference(self, referent, meta.getContext().getReferenceQueue());
+            ref = EspressoReference.createFinal(context, self, referent);
         } else if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference)) {
-            ref = new EspressoPhantomReference(self, referent, meta.getContext().getReferenceQueue());
+            ref = EspressoReference.createPhantom(context, self, referent);
         }
         if (ref != null) {
             // Weak/Soft/Final/Phantom reference.
@@ -88,7 +90,7 @@ public final class Target_java_lang_ref_Reference {
                 return StaticObject.NULL;
             }
             assert ref instanceof Reference;
-            StaticObject obj = (StaticObject) ref.get();
+            StaticObject obj = ref.get();
             return obj == null ? StaticObject.NULL : obj;
         } else {
             return meta.java_lang_ref_Reference_referent.getObject(self);
@@ -102,18 +104,18 @@ public final class Target_java_lang_ref_Reference {
         @Specialization
         @JavaType(Object.class)
         StaticObject doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Reference_getFromInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_ref_Reference_getFromInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
             // Call original to possibly trigger guest assertion.
             original.call(self);
             // Ignore result, and return the actual result.
-            return get(self, context.getMeta());
+            return get(self, meta);
         }
     }
 
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
-    public static void clear(@JavaType(java.lang.ref.Reference.class) StaticObject self,
+    public static void clear(@JavaType(Reference.class) StaticObject self,
                     @Inject Meta meta) {
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
@@ -138,12 +140,12 @@ public final class Target_java_lang_ref_Reference {
 
         @Specialization
         void doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_ref_Reference_clearInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_ref_Reference_clearInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
             // Call original to possibly trigger guest assertion.
             original.call(self);
             // Ignore result, and actually clear.
-            clear(self, context.getMeta());
+            clear(self, meta);
         }
     }
 
@@ -169,6 +171,7 @@ public final class Target_java_lang_ref_Reference {
                                 || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
                     EspressoReference ref = (EspressoReference) meta.HIDDEN_HOST_REFERENCE.getHiddenObject(self);
                     if (ref != null) {
+                        assert ref instanceof Reference;
                         ref.clear();
                     }
                 }
@@ -178,4 +181,8 @@ public final class Target_java_lang_ref_Reference {
 
     }
 
+    @Substitution(isTrivial = true)
+    public static void reachabilityFence(@JavaType(Object.class) StaticObject ref) {
+        Reference.reachabilityFence(ref);
+    }
 }

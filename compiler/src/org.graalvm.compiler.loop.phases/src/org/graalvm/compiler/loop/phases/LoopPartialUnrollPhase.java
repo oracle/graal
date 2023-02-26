@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,13 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
@@ -40,11 +44,8 @@ import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
-    private final CanonicalizerPhase canonicalizer;
-
     public LoopPartialUnrollPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
-        super(policies);
-        this.canonicalizer = canonicalizer;
+        super(policies, canonicalizer);
     }
 
     @SuppressWarnings("try")
@@ -57,7 +58,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
             changed = false;
             try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
-                dataCounted.detectedCountedLoops();
+                dataCounted.detectCountedLoops();
                 Graph.Mark mark = graph.getMark();
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     if (!LoopTransformations.isUnrollableLoop(loop)) {
@@ -102,6 +103,14 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.VALUE_PROXY_REMOVAL, graphState));
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
@@ -119,7 +128,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     private static boolean checkCounted(StructuredGraph graph, LoopsDataProvider loopsDataProvider, Graph.Mark mark) {
         LoopsData dataCounted;
         dataCounted = loopsDataProvider.getLoopsData(graph);
-        dataCounted.detectedCountedLoops();
+        dataCounted.detectCountedLoops();
         for (LoopEx anyLoop : dataCounted.loops()) {
             if (graph.isNew(mark, anyLoop.loopBegin())) {
                 assert anyLoop.isCounted() : "pre/post transformation loses counted loop " + anyLoop.loopBegin();

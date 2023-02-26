@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,16 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -54,16 +58,36 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-public class HostAdapterTest {
+@RunWith(Parameterized.class)
+public class HostAdapterTest extends AbstractPolyglotTest {
+
+    public enum Using {
+        HostSymbol,
+        HostClass,
+        Deprecated,
+    }
+
+    @Parameter(0) public Using using;
+
+    @Parameters(name = "{0}")
+    public static List<Using> data() {
+        return Arrays.asList(Using.values());
+    }
 
     static class TestContext implements AutoCloseable {
         protected Context context;
@@ -96,20 +120,61 @@ public class HostAdapterTest {
         }
     }
 
-    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
-
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    private Object asHostType(TruffleLanguage.Env env, Class<?> c) {
+        if (using == Using.HostClass) {
+            return env.asGuestValue(c);
+        } else {
+            return env.asHostSymbol(c);
+        }
+    }
+
+    private static Object verifyHostAdapterClass(TruffleLanguage.Env env, Object hostAdapterClass) {
+        assertTrue(env.isHostObject(hostAdapterClass));
+        assertTrue(env.isHostSymbol(hostAdapterClass));
+        assertTrue(INTEROP.isMetaObject(hostAdapterClass));
+        assertTrue(INTEROP.isInstantiable(hostAdapterClass));
+        return hostAdapterClass;
+    }
+
+    @SuppressWarnings("deprecation")
+    Object createHostAdapterClass(TruffleLanguage.Env env, Class<?>[] classes) {
+        if (using == Using.Deprecated) {
+            return verifyHostAdapterClass(env, env.createHostAdapterClass(classes));
+        }
+        Object[] hostTypes = Arrays.stream(classes).map(c -> asHostType(env, c)).toArray();
+        return verifyHostAdapterClass(env, env.createHostAdapter(hostTypes));
+    }
+
+    @SuppressWarnings("deprecation")
+    Object createHostAdapterClassWithClassOverrides(TruffleLanguage.Env env, Class<?>[] classes, Object classOverrides) {
+        if (using == Using.Deprecated) {
+            return verifyHostAdapterClass(env, env.createHostAdapterClassWithStaticOverrides(classes, classOverrides));
+        }
+        Object[] hostTypes = Arrays.stream(classes).map(c -> asHostType(env, c)).toArray();
+        return verifyHostAdapterClass(env, env.createHostAdapterWithClassOverrides(hostTypes, classOverrides));
+    }
+
+    private static Object instantianteHostAdapter(TruffleLanguage.Env env, Object adapter, Object... arguments) throws InteropException {
+        Object instance = INTEROP.instantiate(adapter, arguments);
+        assertTrue(INTEROP.isMetaInstance(adapter, instance));
+        assertTrue(env.isHostObject(instance));
+        return instance;
     }
 
     @Test
     public void testCreateHostAdapterFromInterface() throws InteropException {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(explicitHostAccessAllowImplementations(Callable.class)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(new Class<?>[]{Callable.class});
-            Object instance = INTEROP.instantiate(adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("call", (ProxyExecutable) (args) -> 42))));
+            Object adapter = createHostAdapterClass(env, new Class<?>[]{Callable.class});
+            Object instance = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("call", (ProxyExecutable) (args) -> 42))));
             assertEquals(42, INTEROP.invokeMember(instance, "call"));
+
+            assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(Callable.class), instance));
         }
     }
 
@@ -117,18 +182,20 @@ public class HostAdapterTest {
     public void testCreateHostAdapterFromClass() throws InteropException {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(explicitHostAccessAllowImplementations(Extensible.class)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(new Class<?>[]{Extensible.class});
-            Object instance1 = INTEROP.instantiate(adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override"))));
+            Object adapter = createHostAdapterClass(env, new Class<?>[]{Extensible.class});
+            Object instance1 = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override"))));
             assertEquals("override", INTEROP.invokeMember(instance1, "abstractMethod"));
             assertEquals("base", INTEROP.invokeMember(instance1, "baseMethod"));
 
-            Object instance2 = INTEROP.instantiate(adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("baseMethod", (ProxyExecutable) (args) -> "override"))));
+            Object instance2 = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("baseMethod", (ProxyExecutable) (args) -> "override"))));
             assertEquals("override", INTEROP.invokeMember(instance2, "baseMethod"));
-            try {
-                INTEROP.invokeMember(instance2, "abstractMethod");
-                fail("should have thrown");
-            } catch (Exception e) {
-            }
+
+            assertFails(() -> {
+                return INTEROP.invokeMember(instance2, "abstractMethod");
+            }, AbstractTruffleException.class, e -> assertTrue(e.toString(), env.isHostException(e)));
+
+            assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(Extensible.class), instance1));
+            assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(Extensible.class), instance2));
         }
     }
 
@@ -137,13 +204,13 @@ public class HostAdapterTest {
         Class<?>[] supertypes = new Class<?>[]{Extensible.class, Callable.class, Interface.class};
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(explicitHostAccessAllowImplementations(supertypes)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(supertypes);
+            Object adapter = createHostAdapterClass(env, supertypes);
             Map<String, Object> impl = new HashMap<>();
             impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
             impl.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl");
             impl.put("call", (ProxyExecutable) (args) -> "callImpl");
             impl.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl");
-            Object instance = INTEROP.instantiate(adapter, env.asGuestValue(ProxyObject.fromMap(impl)));
+            Object instance = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(impl)));
 
             assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
@@ -160,6 +227,10 @@ public class HostAdapterTest {
             impl.remove("defaultMethod");
             assertEquals("base", INTEROP.invokeMember(instance, "baseMethod"));
             assertEquals("default", INTEROP.invokeMember(instance, "defaultMethod"));
+
+            for (Class<?> supertype : supertypes) {
+                assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(supertype), instance));
+            }
         }
     }
 
@@ -167,11 +238,11 @@ public class HostAdapterTest {
     public void testCreateHostAdapterFromClassWithConstructorParams() throws InteropException {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(explicitHostAccessAllowImplementations(NonDefaultConstructor.class)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(new Class<?>[]{NonDefaultConstructor.class});
+            Object adapter = createHostAdapterClass(env, new Class<?>[]{NonDefaultConstructor.class});
             Map<String, Object> impl = new HashMap<>();
             impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
             impl.put("finalMethod", (ProxyExecutable) (args) -> "finalMethodImpl");
-            Object instance = INTEROP.instantiate(adapter, "concreteName", env.asGuestValue(ProxyObject.fromMap(impl)));
+            Object instance = instantianteHostAdapter(env, adapter, "concreteName", env.asGuestValue(ProxyObject.fromMap(impl)));
             assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("final", INTEROP.invokeMember(instance, "finalMethod"));
             assertEquals("concreteName", INTEROP.readMember(instance, "name"));
@@ -181,27 +252,20 @@ public class HostAdapterTest {
     @Test
     public void testCreateHostAdapterImplementationsNotAllowed() {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
+            final String expectedMessage = "Implementation not allowed";
             TruffleLanguage.Env env = c.env;
-            try {
-                env.createHostAdapterClass(new Class<?>[]{Interface.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
-                env.createHostAdapterClass(new Class<?>[]{Interface.class, Callable.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
-                env.createHostAdapterClass(new Class<?>[]{Extensible.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
-                env.createHostAdapterClass(new Class<?>[]{Extensible.class, Interface.class, Callable.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Interface.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Interface.class, Callable.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Extensible.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Extensible.class, Interface.class, Callable.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
         }
     }
 
@@ -209,16 +273,63 @@ public class HostAdapterTest {
     public void testCreateHostAdapterIllegalArgument() {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
             TruffleLanguage.Env env = c.env;
-            try {
-                env.createHostAdapterClass(new Class<?>[]{});
-                fail("should have thrown");
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                env.createHostAdapterClass(null);
-                fail("should have thrown");
-            } catch (NullPointerException e) {
-            }
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("Expected at least one type")));
+
+            assertFails(() -> {
+                createHostAdapterClass(env, null);
+            }, NullPointerException.class);
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterFinalClass() {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.ALL))) {
+            TruffleLanguage.Env env = c.env;
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Class.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("final class")));
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterMultipleClasses() {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.ALL))) {
+            TruffleLanguage.Env env = c.env;
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Extensible.class, NonDefaultConstructor.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("multiple classes")));
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterIllegalArgumentType() {
+        Assume.assumeFalse(using == Using.Deprecated);
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
+            final String expectedMessage = "Types must be host symbols or host classes";
+            TruffleLanguage.Env env = c.env;
+            // java.lang.Class is not an allowed argument type.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{Interface.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+
+            // Arbitrary HostObject.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{env.asGuestValue(new Object())});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            // Arbitrary TruffleObject.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{env.asGuestValue(ProxyObject.fromMap(Collections.emptyMap()))});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+
+            // Interop primitive types are not allowed either.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{"invalid"});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{42});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
         }
     }
 
@@ -227,13 +338,13 @@ public class HostAdapterTest {
         Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(explicitHostAccessAllowImplementations(supertypes)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(supertypes);
+            Object adapter = createHostAdapterClass(env, supertypes);
             Map<String, Object> impl = new HashMap<>();
             impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
             impl.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl");
             impl.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl");
             Object guestObject = env.asGuestValue(ProxyObject.fromMap(impl));
-            Object instance = INTEROP.instantiate(adapter, guestObject);
+            Object instance = instantianteHostAdapter(env, adapter, guestObject);
 
             assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
@@ -255,13 +366,13 @@ public class HostAdapterTest {
         Class<?>[] supertypes = new Class<?>[]{Extensible.class, Interface.class};
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(minimalHostAccessAllowImplementations(supertypes)))) {
             TruffleLanguage.Env env = c.env;
-            Object adapter = env.createHostAdapterClass(supertypes);
+            Object adapter = createHostAdapterClass(env, supertypes);
             Map<String, Object> impl = new HashMap<>();
             impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
             impl.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl");
             impl.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl");
             Object guestObject = env.asGuestValue(ProxyObject.fromMap(impl));
-            Object instance = INTEROP.instantiate(adapter, guestObject);
+            Object instance = instantianteHostAdapter(env, adapter, guestObject);
 
             assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
@@ -283,8 +394,8 @@ public class HostAdapterTest {
             impl1.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl1");
             impl1.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl1");
             Object guestObject1 = env.asGuestValue(ProxyObject.fromMap(impl1));
-            Object adapterClass1 = env.createHostAdapterClassWithStaticOverrides(supertypes, guestObject1);
-            Object parent = INTEROP.instantiate(adapterClass1);
+            Object adapterClass1 = createHostAdapterClassWithClassOverrides(env, supertypes, guestObject1);
+            Object parent = instantianteHostAdapter(env, adapterClass1);
 
             assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
             assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
@@ -295,8 +406,8 @@ public class HostAdapterTest {
             impl2.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl2");
             impl2.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl2");
             Object guestObject2 = env.asGuestValue(ProxyObject.fromMap(impl2));
-            Object adapterClass2 = env.createHostAdapterClass(new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
-            Object instance = INTEROP.instantiate(adapterClass2, guestObject2);
+            Object adapterClass2 = createHostAdapterClass(env, new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
+            Object instance = instantianteHostAdapter(env, adapterClass2, guestObject2);
 
             assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));
@@ -320,8 +431,8 @@ public class HostAdapterTest {
             impl1.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl1");
             impl1.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl1");
             Object guestObject1 = env.asGuestValue(ProxyObject.fromMap(impl1));
-            Object adapterClass1 = env.createHostAdapterClass(supertypes);
-            Object parent = INTEROP.instantiate(adapterClass1, guestObject1);
+            Object adapterClass1 = createHostAdapterClass(env, supertypes);
+            Object parent = instantianteHostAdapter(env, adapterClass1, guestObject1);
 
             assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
             assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
@@ -332,8 +443,8 @@ public class HostAdapterTest {
             impl2.put("baseMethod", (ProxyExecutable) (args) -> "baseMethodImpl2");
             impl2.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl2");
             Object guestObject2 = env.asGuestValue(ProxyObject.fromMap(impl2));
-            Object adapterClass2 = env.createHostAdapterClass(new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
-            Object instance = INTEROP.instantiate(adapterClass2, guestObject1, guestObject2);
+            Object adapterClass2 = createHostAdapterClass(env, new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
+            Object instance = instantianteHostAdapter(env, adapterClass2, guestObject1, guestObject2);
 
             assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
             assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));

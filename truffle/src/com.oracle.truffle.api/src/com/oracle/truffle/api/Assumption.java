@@ -56,10 +56,39 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * All instances of classes implementing {@code Assumption} must be held in {@code final} fields for
  * compiler optimizations to take effect.
+ * <p>
+ * Do not manually subclass the {@link Assumption} interface. This class is only intended to be
+ * subclassed by Truffle runtime implementations to avoid polymorphism in performance sensitive
+ * methods.
  *
  * @since 0.8 or earlier
  */
 public interface Assumption {
+
+    /**
+     * An assumption that is always valid and fails with an {@link UnsupportedOperationException} if
+     * invalidated.
+     *
+     * @since 22.1
+     */
+    Assumption ALWAYS_VALID = createAlwaysValid();
+
+    /**
+     * An assumption that is never valid.
+     *
+     * @since 22.1
+     */
+    Assumption NEVER_VALID = createNeverValid();
+
+    private static Assumption createNeverValid() {
+        Assumption assumption = create("<never valid>");
+        assumption.invalidate();
+        return assumption;
+    }
+
+    private static Assumption createAlwaysValid() {
+        return LanguageAccessor.RUNTIME.createAlwaysValidAssumption();
+    }
 
     /**
      * Checks that this assumption is still valid. The method throws an exception, if this is no
@@ -124,7 +153,7 @@ public interface Assumption {
      */
     @ExplodeLoop
     static boolean isValidAssumption(Assumption[] assumptions) {
-        CompilerDirectives.isPartialEvaluationConstant(assumptions);
+        CompilerAsserts.partialEvaluationConstant(assumptions);
         if (assumptions == null) {
             return false;
         }
@@ -134,6 +163,25 @@ public interface Assumption {
             }
         }
         return true;
+    }
+
+    /**
+     * Creates a new assumption with a name. Shortcut for {@link TruffleRuntime#createAssumption()}.
+     *
+     * @since 22.1
+     */
+    static Assumption create() {
+        return Truffle.getRuntime().createAssumption();
+    }
+
+    /**
+     * Creates a new assumption with a name. Shortcut for
+     * {@link TruffleRuntime#createAssumption(String)}.
+     *
+     * @since 22.1
+     */
+    static Assumption create(String name) {
+        return Truffle.getRuntime().createAssumption(name);
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -127,7 +127,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                         w.close();
                     } catch (Throwable e1) {
                         // see eclipse bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=361378
-                        // TODO temporary suppress errors on close.
+                        // TODO GR-38632 temporary suppress errors on close.
                     }
                 }
                 writer = null;
@@ -862,7 +862,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
                 int end = Math.min(i + nextSize, string.length());
 
-                // TODO(CH): fails in normal usage - output ok though
+                // TODO GR-38632 (CH): fails in normal usage - output ok though
                 // assert lineLength + (end - i) + 2 < maxLineLength;
                 write("\"");
                 write(string.substring(i, end));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,10 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -41,6 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class VirtualFrameGetTagNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameGetTagNode> TYPE = NodeClass.create(VirtualFrameGetTagNode.class);
+    private static final int STATIC_TAG = NewFrameNode.FrameSlotKindStaticTag;
 
     public VirtualFrameGetTagNode(Receiver frame, int frameSlotIndex) {
         super(TYPE, StampFactory.forKind(JavaKind.Byte), frame, frameSlotIndex, 0, VirtualFrameAccessType.Indexed);
@@ -55,7 +59,17 @@ public final class VirtualFrameGetTagNode extends VirtualFrameAccessorNode imple
 
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
-                tool.replaceWith(actualTag);
+                if (actualTag.isConstant()) {
+                    final int constantTag = actualTag.asJavaConstant().asInt();
+                    tool.replaceWith(getConstant(constantTag < STATIC_TAG ? constantTag : STATIC_TAG));
+                } else {
+                    ValueNode staticTag = getConstant(STATIC_TAG);
+                    LogicNode comparison = new IntegerLessThanNode(actualTag, staticTag);
+                    tool.addNode(comparison);
+                    ConditionalNode result = new ConditionalNode(comparison, actualTag, staticTag);
+                    tool.addNode(result);
+                    tool.replaceWith(result);
+                }
                 return;
             }
         }

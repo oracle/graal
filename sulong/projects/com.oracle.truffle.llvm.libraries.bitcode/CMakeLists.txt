@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,20 +27,30 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.bitcode)
 
-set(GRAALVM_LLVM_INCLUDE_DIR)
+function(require_var var)
+  if (NOT ${var})
+    message(FATAL_ERROR "${var} needs to be set")
+  endif()
+endfunction()
 
-if(NOT GRAALVM_LLVM_INCLUDE_DIR)
-   message(FATAL_ERROR "GRAALVM_LLVM_INCLUDE_DIR needs to be set")
-endif()
+function(check_var var)
+  set(${var} PARENT_SCOPE)
+  require_var(${var})
+endfunction()
 
-set(LIBCXX_SRC)
+# set variable from environement variable if the latter exists
+function(setFromEnv varname envname)
+  if(DEFINED ENV{${envname}})
+    set(${varname} $ENV{${envname}} PARENT_SCOPE)
+  endif()
+endfunction()
 
-if(NOT LIBCXX_SRC)
-   message(FATAL_ERROR "LIBCXX_SRC needs to be set")
-endif()
+check_var(GRAALVM_LLVM_INCLUDE_DIR)
+check_var(GRAALVM_LLVM_LIBS_INCLUDE_DIR)
+check_var(LIBCXX_SRC)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})
 add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${CMAKE_PROJECT_NAME})
@@ -53,64 +63,109 @@ else()
     set(CMAKE_INSTALL_RPATH "\$ORIGIN")
 endif()
 
-if(NOT MX_OS)
-   message(FATAL_ERROR "MX_OS needs to be set")
-endif()
-
-if(NOT MX_ARCH)
-   message(FATAL_ERROR "MX_ARCH needs to be set")
-endif()
+require_var(MX_OS)
+require_var(MX_ARCH)
 
 add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 
 # using glob patterns is not recommended: https://cmake.org/cmake/help/latest/command/file.html#glob
 add_library(sulong SHARED)
 
+target_sources(sulong PRIVATE
+  src/abort.c
+  src/crt0.c
+  src/exit.c
+  src/pthreads.c
+  src/string.c
+  src/sulong_dispose_context.c
+)
+
 if(WIN32)
-    if(NOT LLVM_LINK)
-        message(FATAL_ERROR "LLVM_LINK needs to be set")
-    endif()
+    check_var(LIBCXX_ISYSTEM)
+    check_var(GRAALVM_LLVM_LIB_DIR)
+    check_var(GRAALVM_PTHREAD_INCLUDE_DIR)
+
+    target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
+    target_link_libraries(sulong graalvm-llvm)
+    target_include_directories(sulong PRIVATE ${GRAALVM_PTHREAD_INCLUDE_DIR})
     target_sources(sulong PRIVATE
-      src/crt0.c
-      src/exit.c
-      src/sulong_dispose_context.c
+      sulong.def
+      src/windows/assert.c
     )
-    # link to bitcode
-    set(CMAKE_BC_CREATE_SHARED_LIBRARY "${LLVM_LINK} <OBJECTS> -o <TARGET>")
-    set_target_properties(sulong PROPERTIES LINKER_LANGUAGE BC)
 else()
     target_sources(sulong PRIVATE
-      src/abort.c
       src/assert.c
       src/builtin.c
       src/clone.c
       src/complex.c
-      src/crt0.c
       src/exec.c
-      src/exit.c
       src/fork.c
       src/memcpy.c
-      src/pthreads.c
       src/qsort.c
       src/setjmp.c
       src/signals.c
       src/stat.c
-      src/string.c
-      src/sulong_dispose_context.c
     )
 endif()
 
-target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(threads.h SUPPORTS_C11_THREADS)
+if(SUPPORTS_C11_THREADS)
+  target_sources(sulong PRIVATE src/c11threads.c)
+else()
+  message(NOTICE "Compiling without C11 threads because threads.h is not available.")
+endif()
+
+target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR} ${GRAALVM_LLVM_LIBS_INCLUDE_DIR})
 if(NOT MX_OS STREQUAL "darwin")
     target_link_options(sulong PRIVATE -nostdlib)
 endif()
 install(TARGETS sulong DESTINATION bin)
 
+
+# sulong++ library
+
+add_library(sulong++ SHARED)
+target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src ${LIBCXX_SRC}/libcxxabi/include)
+target_include_directories(sulong++ PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR} ${GRAALVM_LLVM_LIBS_INCLUDE_DIR})
+target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
+target_compile_options(sulong++ PRIVATE -std=c++14 -stdlib=libc++ -Wno-undefined-internal)
+target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
+install(TARGETS sulong++ DESTINATION bin)
+
 if(NOT WIN32)
-    add_library(sulong++ SHARED libsulongxx/exception_support.cpp)
-    target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src)
-    target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
-    target_compile_options(sulong++ PRIVATE -std=c++11 -stdlib=libc++ -Wno-undefined-internal)
-    target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
-    install(TARGETS sulong++ DESTINATION bin)
+  target_sources(sulong++ PRIVATE libsulongxx/exception_support.cpp)
+else()
+  setFromEnv(VCTOOLS_INSTALL_DIR VCToolsInstallDir)
+  set(VCRUNTIME_SRC ${VCTOOLS_INSTALL_DIR}/crt/src/vcruntime)
+
+  target_include_directories(sulong++ PRIVATE ${VCRUNTIME_SRC})
+  target_link_directories(sulong++ PRIVATE ${GRAALVM_LLVM_LIB_DIR})
+  target_link_libraries(sulong++ graalvm-llvm)
+  target_compile_options(sulong++ PRIVATE -stdlib++-isystem ${LIBCXX_ISYSTEM})
+  target_link_options(sulong++ PRIVATE -nostdlib)
+
+  target_sources(sulong++ PRIVATE libsulongxx/windows/sulong++.def)
+  target_sources(sulong++ PRIVATE libsulongxx/windows/exception_helpers.cpp libsulongxx/windows/type_info.cpp)
+  target_sources(sulong++ PRIVATE libsulongxx/windows/cpp_threads.cpp)
+
+  target_compile_definitions(sulong++ PRIVATE _VCRT_BUILD)
+  # source of _Init_thread_* functions
+  target_sources(sulong++ PUBLIC ${VCRUNTIME_SRC}/thread_safe_statics.cpp)
+  set_source_files_properties(${VCRUNTIME_SRC}/thread_safe_statics.cpp PROPERTIES COMPILE_FLAGS "-O0") # prevent inlining of init thread functions
+  # source of operator new functions
+  target_sources(sulong++ PUBLIC
+    ${VCRUNTIME_SRC}/delete_array.cpp
+    ${VCRUNTIME_SRC}/delete_array_nothrow.cpp
+    ${VCRUNTIME_SRC}/delete_array_size.cpp
+    ${VCRUNTIME_SRC}/delete_scalar.cpp
+    ${VCRUNTIME_SRC}/delete_scalar_nothrow.cpp
+    ${VCRUNTIME_SRC}/delete_scalar_size.cpp
+    ${VCRUNTIME_SRC}/new_array.cpp
+    ${VCRUNTIME_SRC}/new_array_nothrow.cpp
+    ${VCRUNTIME_SRC}/new_scalar.cpp
+    ${VCRUNTIME_SRC}/new_scalar_nothrow.cpp
+  )
+
+  set_source_files_properties(libsulongxx/windows/type_info.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
 endif()

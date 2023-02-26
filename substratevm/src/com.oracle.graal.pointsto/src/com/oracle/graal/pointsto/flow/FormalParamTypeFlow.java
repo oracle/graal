@@ -24,42 +24,32 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ParameterNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
-
-    /** The holding method. */
-    protected final AnalysisMethod method;
-    /** The position of the parameter in the method signature. */
+    /**
+     * The position of the parameter in the method signature. The holding method can be accessed
+     * through the source position.
+     */
     protected final int position;
 
-    public FormalParamTypeFlow(ParameterNode source, AnalysisType declaredType, AnalysisMethod method, int position) {
-        super(source.getNodeSourcePosition(), declaredType);
+    public FormalParamTypeFlow(BytecodePosition sourcePosition, AnalysisType declaredType, int position) {
+        super(sourcePosition, declaredType);
         this.position = position;
-        this.method = method;
     }
 
     protected FormalParamTypeFlow(FormalParamTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.position = original.position;
-        this.method = original.method;
     }
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FormalParamTypeFlow(this, methodFlows);
-    }
-
-    @Override
-    public AnalysisMethod method() {
-        return method;
     }
 
     @Override
@@ -77,7 +67,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String format(boolean withState, boolean withSource) {
-        return "Parameter " + position + " of " + method.format("%H.%n(%p)") +
+        return "Parameter " + position + " of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
                         (withState ? " with state <" + getState() + ">" : "");
     }

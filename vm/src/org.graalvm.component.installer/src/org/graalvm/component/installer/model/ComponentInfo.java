@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,8 +90,6 @@ public final class ComponentInfo {
     private final Map<String, Object> providedValues = new HashMap<>();
 
     private URL remoteURL;
-
-    private boolean polyglotRebuild;
 
     private byte[] shaDigest;
 
@@ -248,14 +246,6 @@ public final class ComponentInfo {
         this.shaDigest = shaDigest;
     }
 
-    public boolean isPolyglotRebuild() {
-        return polyglotRebuild;
-    }
-
-    public void setPolyglotRebuild(boolean polyglotRebuild) {
-        this.polyglotRebuild = polyglotRebuild;
-    }
-
     public Set<String> getWorkingDirectories() {
         return workingDirectories;
     }
@@ -318,7 +308,7 @@ public final class ComponentInfo {
     }
 
     private static Comparator<ComponentInfo> editionComparator(String myEdition) {
-        return new Comparator<ComponentInfo>() {
+        return new Comparator<>() {
             @Override
             public int compare(ComponentInfo o1, ComponentInfo o2) {
                 if (o1 == null) {
@@ -353,7 +343,7 @@ public final class ComponentInfo {
         };
     }
 
-    private static final Comparator<ComponentInfo> COMPARATOR_VERSIONS = new Comparator<ComponentInfo>() {
+    private static final Comparator<ComponentInfo> COMPARATOR_VERSIONS = new Comparator<>() {
         @Override
         public int compare(ComponentInfo o1, ComponentInfo o2) {
             if (o1 == null) {
@@ -368,7 +358,7 @@ public final class ComponentInfo {
 
             int n = o1.getVersion().compareTo(o2.getVersion());
             if (n == 0) {
-                return o1.getPriority() - o2.getPriority();
+                return o2.getPriority() - o1.getPriority();
             } else {
                 return n;
             }
@@ -460,7 +450,7 @@ public final class ComponentInfo {
     /**
      * Sets the component tag. WARNING: do not use this after Component has been constructed; the
      * call will change the hashCode + equals !
-     * 
+     *
      * @param tag component tag/serial
      */
     public void setTag(String tag) {

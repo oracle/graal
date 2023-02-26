@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -30,6 +30,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainP
 import static org.graalvm.compiler.core.common.calc.Condition.EQ;
 import static org.graalvm.compiler.core.common.calc.Condition.NE;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -41,6 +43,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -61,17 +64,28 @@ import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.loop.MathUtil;
-import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.Speculative;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class LoopPredicationPhase extends BasePhase<MidTierContext> {
+public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierContext> implements Speculative {
     private static final SpeculationReasonGroup LOOP_PREDICATION = new SpeculationReasonGroup("Loop Predication", BytecodePosition.class);
 
-    public LoopPredicationPhase() {
+    public LoopPredicationPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.withoutSpeculationLog(this, graphState),
+                        NotApplicable.when(!graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards must be allowed."));
     }
 
     @Override
@@ -79,7 +93,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
     protected void run(StructuredGraph graph, MidTierContext context) {
         DebugContext debug = graph.getDebug();
         final SpeculationLog speculationLog = graph.getSpeculationLog();
-        if (graph.hasLoops() && graph.getGuardsStage().allowsFloatingGuards() && context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions()) && speculationLog != null) {
+        if (graph.hasLoops() && context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions())) {
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             final ControlFlowGraph cfg = data.getCFG();
             try (DebugContext.Scope s = debug.scope("predication", cfg)) {
@@ -221,6 +235,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
 
         final GuardingNode combinedGuard = MultiGuardNode.combine(lowerGuard, upperGuard);
         guard.replaceAtUsagesAndDelete(combinedGuard.asNode());
+        graph.getOptimizationLog().report(LoopPredicationPhase.class, "GuardReplacement", guard);
     }
 
     @Override

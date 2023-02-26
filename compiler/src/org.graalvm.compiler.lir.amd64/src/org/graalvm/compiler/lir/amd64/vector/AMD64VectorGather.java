@@ -32,6 +32,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
@@ -77,7 +78,7 @@ public class AMD64VectorGather {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Address address = new AMD64Address(asRegister(base), asRegister(index), AMD64Address.Scale.Times1);
+            AMD64Address address = new AMD64Address(asRegister(base), asRegister(index), Stride.S1);
             opcode.emit(masm, size, asRegister(result), address, asRegister(mask));
         }
 
@@ -104,7 +105,7 @@ public class AMD64VectorGather {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Address address = new AMD64Address(asRegister(base), asRegister(index), AMD64Address.Scale.Times1);
+            AMD64Address address = new AMD64Address(asRegister(base), asRegister(index), Stride.S1);
             opcode.emit(masm, size, asRegister(result), address, asRegister(mask), EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
         }
 

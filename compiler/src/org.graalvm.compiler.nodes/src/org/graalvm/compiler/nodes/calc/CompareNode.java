@@ -50,7 +50,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+//import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.InterpreterState;
@@ -196,22 +196,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 return optimizeNormalizeCompare(constantReflection, metaAccess, options, smallestCompareWidth, constant, (AbstractNormalizeCompareNode) nonConstant, mirrored, view);
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
-                boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
-                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof VolatileReadNode) {
-                    // Only account for data usages
-                    VolatileReadNode read = (VolatileReadNode) convert.getValue();
-                    int nonMemoryEdges = 0;
-                    for (Node u : read.usages()) {
-                        for (Position pos : u.inputPositions()) {
-                            if (pos.get(u) == read && pos.getInputType() != InputType.Memory) {
-                                nonMemoryEdges++;
-                            }
-                        }
-                    }
-                    multiUsage = nonMemoryEdges == 1;
-                }
+                boolean multiUsage = convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsageOfType(InputType.Value);
                 if (convert instanceof IntegerConvertNode && multiUsage) {
-                    // Do not perform for integer convers if it could introduce
+                    // Do not perform for integer converts if it could introduce
                     // new live values.
                     return null;
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -54,6 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
@@ -68,12 +70,14 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ArgumentListExpanderFactory.Unpack32ArgumentExpanderNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ByteConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.IntegerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.LongConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.PointerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ShortConversionHelperNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport.ToNativePointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
@@ -210,8 +214,8 @@ public class LLVMVaListStorage implements TruffleObject {
     }
 
     protected static DataLayout findDataLayoutFromCurrentFrame() {
-        RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
-        return (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
+        RootCallTarget callTarget = (RootCallTarget) Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
+        return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
 
     public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
@@ -267,12 +271,13 @@ public class LLVMVaListStorage implements TruffleObject {
 
     // Interop library implementation
 
-    private static final String GET_MEMBER = "get";
+    public static final String GET_MEMBER = "get";
+    public static final String NEXT_MEMBER = "next";
 
-    protected Object[] realArguments;
+    public Object[] realArguments;
     protected int numberOfExplicitArguments;
 
-    protected final LLVMPointer vaListStackPtr;
+    protected LLVMPointer vaListStackPtr;
     protected boolean nativized;
 
     protected LLVMVaListStorage(LLVMPointer vaListStackPtr) {
@@ -314,20 +319,22 @@ public class LLVMVaListStorage implements TruffleObject {
         @ExportMessage
         @SuppressWarnings("static-method")
         long getArraySize() {
-            return 1;
+            return 2;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         boolean isArrayElementReadable(long index) {
-            return index == 0;
+            return index == 0 || index == 1;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (index == 0) {
-                return "get";
+                return GET_MEMBER;
+            } else if (index == 1) {
+                return NEXT_MEMBER;
             } else {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -340,48 +347,130 @@ public class LLVMVaListStorage implements TruffleObject {
         return new VAListMembers();
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean isMemberInvocable(String member) {
-        return GET_MEMBER.equals(member);
+    public static class IsMemberInvocable {
+
+        @Specialization(guards = "GET_MEMBER.equals(member)")
+        public static boolean get(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @Specialization(guards = "NEXT_MEMBER.equals(member)")
+        public static boolean next(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @Fallback
+        public static boolean other(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return false;
+        }
     }
 
     @ExportMessage
-    public Object invokeMember(String member, Object[] arguments,
-                    @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        if (GET_MEMBER.equals(member)) {
-            if (arguments.length == 2) {
-                if (!(arguments[0] instanceof Integer)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "Index argument must be an integer");
-                }
-                int i = (Integer) arguments[0];
-                if (i >= realArguments.length - numberOfExplicitArguments) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new ArrayIndexOutOfBoundsException(i);
-                }
+    public static class InvokeMember {
 
-                Object arg = realArguments[numberOfExplicitArguments + i];
-
-                if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
-                    return arg;
-                }
-                LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
-
-                if (!LLVMPointer.isInstance(arg)) {
-                    // TODO: Do some conversion if the type in the 2nd argument does not match the
-                    // arg's types
-                    return arg;
-                }
-                LLVMPointer ptrArg = LLVMPointer.cast(arg);
-
-                return pointerEscapeNode.executeWithType(ptrArg, type);
-
-            } else {
+        @Specialization(guards = "GET_MEMBER.equals(member)")
+        public static Object get(LLVMVaListStorage receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnsupportedTypeException {
+            if (arguments.length != 2) {
                 throw ArityException.create(2, 2, arguments.length);
             }
+            if (!(arguments[0] instanceof Integer)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "Index argument must be an integer");
+            }
+            int i = (Integer) arguments[0];
+            if (i >= receiver.realArguments.length - receiver.numberOfExplicitArguments) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new ArrayIndexOutOfBoundsException(i);
+            }
+
+            Object arg = receiver.realArguments[receiver.numberOfExplicitArguments + i];
+
+            if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
+                return arg;
+            }
+            LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
+
+            if (!LLVMPointer.isInstance(arg)) {
+                // TODO: Do some conversion if the type in the 2nd argument does not match the
+                // arg's types
+                return arg;
+            }
+            LLVMPointer ptrArg = LLVMPointer.cast(arg);
+
+            return pointerEscapeNode.executeWithType(ptrArg, type);
         }
-        throw UnknownIdentifierException.create(member);
+
+        @Specialization(guards = "NEXT_MEMBER.equals(member)")
+        public static Object next(LLVMVaListStorage receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @CachedLibrary("receiver") LLVMVaListLibrary vaListLib,
+                        @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnsupportedTypeException {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof LLVMInteropType)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw UnsupportedTypeException.create(arguments, "LLVMInteropType");
+            }
+            LLVMInteropType type = (LLVMInteropType) arguments[0];
+            Type internalType;
+            if (type instanceof LLVMInteropType.Value) {
+                switch (((LLVMInteropType.Value) type).kind) {
+                    case DOUBLE:
+                        internalType = PrimitiveType.DOUBLE;
+                        break;
+                    case FLOAT:
+                        internalType = PrimitiveType.FLOAT;
+                        break;
+                    case I1:
+                        internalType = PrimitiveType.I1;
+                        break;
+                    case I16:
+                        internalType = PrimitiveType.I16;
+                        break;
+                    case I32:
+                        internalType = PrimitiveType.I32;
+                        break;
+                    case I64:
+                        internalType = PrimitiveType.I64;
+                        break;
+                    case I8:
+                        internalType = PrimitiveType.I8;
+                        break;
+                    case POINTER:
+                        // don't care about the pointee type
+                        internalType = new PointerType(PrimitiveType.I64);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof LLVMInteropType.Structured) {
+                // don't care about the pointee type
+                internalType = new PointerType(PrimitiveType.I64);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
+            }
+            // only pointers?
+            Object result = vaListLib.shift(receiver, internalType, null);
+
+            if (!(type instanceof LLVMInteropType.Structured)) {
+                return result;
+            }
+            if (!LLVMPointer.isInstance(result)) {
+                // TODO: Do some conversion if the type in the 2nd argument does not match the
+                // arg's types
+                return result;
+            }
+            LLVMPointer ptrArg = LLVMPointer.cast(result);
+
+            return pointerEscapeNode.executeWithType(ptrArg, (LLVMInteropType.Structured) type);
+        }
+
+        @Fallback
+        public static Object other(@SuppressWarnings("unused") LLVMVaListStorage receiver, String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     @SuppressWarnings("static-method")
@@ -617,12 +706,12 @@ public class LLVMVaListStorage implements TruffleObject {
      */
     public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
         protected final long[] offsets;
-        public final int overflowAreaSize;
+        public final long overflowAreaSize;
 
         protected long previousOffset = -1;
         protected long currentOffset;
 
-        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        protected AbstractOverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize) {
             super(args);
             this.overflowAreaSize = overflowAreaSize;
             this.offsets = offsets;
@@ -816,7 +905,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "!isNativePointer(x)")
         byte managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                        @Cached ToNativePointerNode toNativePointer,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
@@ -903,7 +992,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "!isNativePointer(x)")
         short managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                        @Cached ToNativePointerNode toNativePointer,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
@@ -987,7 +1076,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "!isNativePointer(x)")
         int managedPointerObjectConversion(LLVMManagedPointer x, int offset,
-                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                        @Cached ToNativePointerNode toNativePointer,
                         @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile);
@@ -1124,6 +1213,113 @@ public class LLVMVaListStorage implements TruffleObject {
 
         public static PointerConversionHelperNode create() {
             return PointerConversionHelperNodeGen.create();
+        }
+    }
+
+    public static final boolean UNPACK_32BIT_PRIMITIVES_IN_STRUCTS = true;
+    public static final boolean KEEP_32BIT_PRIMITIVES_IN_STRUCTS = false;
+
+    public static final class ArgumentListExpander extends LLVMNode {
+        private final BranchProfile expansionBranchProfile;
+        private final ConditionProfile noExpansionProfile;
+        private @Child ArgumentExpander expander;
+        private final boolean cached;
+
+        private static final ArgumentListExpander uncached_unpack32 = new ArgumentListExpander(false, UNPACK_32BIT_PRIMITIVES_IN_STRUCTS);
+        private static final ArgumentListExpander uncached_no_unpack32 = new ArgumentListExpander(false, KEEP_32BIT_PRIMITIVES_IN_STRUCTS);
+
+        private ArgumentListExpander(boolean cached, boolean unpack32) {
+            expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
+            noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
+            if (cached) {
+                expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.create() : ArgumentExpanderNodeGen.create();
+            } else {
+                expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.getUncached() : ArgumentExpanderNodeGen.getUncached();
+            }
+            this.cached = cached;
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return cached;
+        }
+
+        public static ArgumentListExpander create(boolean unpack32) {
+            return new ArgumentListExpander(true, unpack32);
+        }
+
+        public static ArgumentListExpander getUncached(boolean unpack32) {
+            return unpack32 ? uncached_unpack32 : uncached_no_unpack32;
+        }
+
+        public Object[] expand(Object[] args, Object[][][] expansionsOutArg) {
+            Object[][] expansions = null;
+            int extraSize = 0;
+            for (int i = 0; i < args.length; i++) {
+                Object[] expansion = expander.execute(args[i]);
+                if (expansion != null) {
+                    expansionBranchProfile.enter();
+                    if (expansions == null) {
+                        expansions = new Object[args.length][];
+                    }
+                    expansions[i] = expansion;
+                    extraSize += expansion.length - 1;
+                }
+            }
+            expansionsOutArg[0] = expansions;
+            return noExpansionProfile.profile(expansions == null) ? args : expandArgs(args, expansions, extraSize);
+        }
+
+        static Object[] expandArgs(Object[] args, Object[][] expansions, int extraSize) {
+            Object[] result = new Object[args.length + extraSize];
+            int j = 0;
+            for (int i = 0; i < args.length; i++) {
+                if (expansions[i] == null) {
+                    result[j] = args[i];
+                    j++;
+                } else {
+                    for (int k = 0; k < expansions[i].length; k++) {
+                        result[j] = expansions[i][k];
+                        j++;
+                    }
+                }
+            }
+            return result;
+        }
+
+        @ImportStatic(LLVMVaListStorage.class)
+        @GenerateUncached
+        public abstract static class ArgumentExpander extends LLVMNode {
+            public abstract Object[] execute(Object arg);
+
+            @Specialization(guards = "isDoubleArrayWithMaxTwoElems(arg.getType()) || isDoubleVectorWithMaxTwoElems(arg.getType())")
+            protected Object[] expandDoubleArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
+                return new Object[]{Double.longBitsToDouble(convNode.executeLong(arg, 0)), Double.longBitsToDouble(convNode.executeLong(arg, 8))};
+            }
+
+            @Specialization(guards = "isI64ArrayWithMaxTwoElems(arg.getType()) || isI64VectorWithMaxTwoElems(arg.getType())")
+            protected Object[] expandI64ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
+                return new Object[]{convNode.executeLong(arg, 0), convNode.executeLong(arg, 8)};
+            }
+
+            @Fallback
+            protected Object[] noExpansion(@SuppressWarnings("unused") Object arg) {
+                return null;
+            }
+        }
+
+        @ImportStatic(LLVMVaListStorage.class)
+        @GenerateUncached
+        public abstract static class Unpack32ArgumentExpander extends ArgumentExpander {
+            @Specialization(guards = {"isFloatArrayWithMaxTwoElems(arg.getType()) || isFloatVectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandFloatArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{Float.intBitsToFloat(convNode.executeInteger(arg, 0)), Float.intBitsToFloat(convNode.executeInteger(arg, 4))};
+            }
+
+            @Specialization(guards = {"isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
+            }
         }
     }
 }

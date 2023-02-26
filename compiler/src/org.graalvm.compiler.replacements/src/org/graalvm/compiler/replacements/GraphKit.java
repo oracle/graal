@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind.Static;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -42,7 +41,6 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -50,12 +48,12 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -66,18 +64,15 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
@@ -93,7 +88,7 @@ import jdk.vm.ci.meta.Signature;
  * subsystems that employ manual graph creation (as opposed to {@linkplain GraphBuilderPhase
  * bytecode parsing} based graph creation).
  */
-public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool {
+public abstract class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool {
 
     protected final StructuredGraph graph;
     protected final WordTypes wordTypes;
@@ -106,9 +101,9 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     }
 
     public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
-                    boolean trackNodeSourcePosition) {
+                    boolean trackNodeSourcePosition, boolean recordInlinedMethods) {
         super(providers);
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId);
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).recordInlinedMethods(recordInlinedMethods).compilationId(compilationId).profileProvider(null);
         if (name != null) {
             builder.name(name);
         } else {
@@ -237,13 +232,22 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         }
     }
 
+    private NodeSourcePosition invokePosition(int invokeBci) {
+        if (graph.trackNodeSourcePosition()) {
+            NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+            assert currentPosition.getCaller() == null : "The GraphKit currentPosition should be a top level position.";
+            return NodeSourcePosition.substitution(currentPosition.getMethod(), invokeBci);
+        }
+        return null;
+    }
+
     /**
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments.
      */
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(bci))) {
             assert method.isStatic() == (invokeKind == InvokeKind.Static);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
@@ -280,7 +284,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(ResolvedJavaMethod method, InvokeKind invokeKind,
                     FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(invokeBci))) {
             InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, args);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();
@@ -292,7 +296,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
 
     @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), callTarget.targetMethod()))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(invokeBci))) {
             InvokeWithExceptionNode result = startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();
@@ -337,74 +341,6 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
             }
         }
         return true;
-    }
-
-    /**
-     * Recursively {@linkplain #inlineAsIntrinsic inlines} all invocations currently in the graph.
-     * The graph of the inlined method is processed in the same manner as for snippets and method
-     * substitutions (e.g. intrinsics).
-     */
-    public void inlineInvokesAsIntrinsics(String reason, String phase) {
-        while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
-            for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-                inlineAsIntrinsic(invoke, reason, phase);
-            }
-        }
-
-        // Clean up all code that is now dead after inlining.
-        new DeadCodeEliminationPhase().apply(graph);
-    }
-
-    /**
-     * Inlines a given invocation to a method. The graph of the inlined method is processed in the
-     * same manner as for snippets and method substitutions (e.g. intrinsics).
-     */
-    public void inlineAsIntrinsic(Invoke invoke, String reason, String phase) {
-        assert invoke instanceof Node;
-        Node invokeNode = (Node) invoke;
-        ResolvedJavaMethod method = invoke.callTarget().targetMethod();
-
-        Plugins plugins = new Plugins(graphBuilderPlugins);
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-
-        StructuredGraph calleeGraph;
-        if (IS_IN_NATIVE_IMAGE) {
-            calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
-        } else {
-            calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
-                            invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
-            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
-            GraphBuilderPhase.Instance instance = createGraphBuilderInstance(config, OptimisticOptimizations.NONE, initialReplacementContext);
-            instance.apply(calleeGraph);
-        }
-        new DeadCodeEliminationPhase().apply(calleeGraph);
-
-        InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);
-    }
-
-    public void inline(Invoke invoke, String reason, String phase) {
-        assert invoke instanceof Node;
-        Node invokeNode = (Node) invoke;
-        ResolvedJavaMethod methodToInline = invoke.callTarget().targetMethod();
-        Plugins plugins = new Plugins(graphBuilderPlugins);
-        GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins);
-        StructuredGraph calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(methodToInline).trackNodeSourcePosition(
-                        invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(false).build();
-        /*
-         * Using null as the intrinsic context makes the ByteCodeParser inline invokes using
-         * InliningScope instead of IntrinsicScope. This allows exceptions to be a part of the
-         * inlined method.
-         */
-        GraphBuilderPhase.Instance instance = createGraphBuilderInstance(config, OptimisticOptimizations.NONE, null);
-        instance.apply(calleeGraph);
-
-        new DeadCodeEliminationPhase().apply(calleeGraph);
-        InliningUtil.inline(invoke, calleeGraph, false, methodToInline, reason, phase);
-    }
-
-    protected GraphBuilderPhase.Instance createGraphBuilderInstance(GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    IntrinsicContext initialIntrinsicContext) {
-        return new GraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     protected void pushStructure(Structure structure) {
@@ -535,9 +471,9 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         return merge;
     }
 
-    static class InvokeWithExceptionStructure extends Structure {
+    protected static class WithExceptionStructure extends Structure {
         protected enum State {
-            INVOKE,
+            START,
             NO_EXCEPTION_EDGE,
             EXCEPTION_EDGE,
             FINISHED
@@ -564,22 +500,26 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         return startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
     }
 
-    public InvokeWithExceptionNode startInvokeWithException(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
+    public InvokeWithExceptionNode startInvokeWithException(CallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
+        return startWithException(invoke, exceptionObject, frameStateBuilder, invokeBci);
+    }
+
+    protected <T extends WithExceptionNode & StateSplit> T startWithException(T withException, ExceptionObjectNode exceptionObject, FrameStateBuilder frameStateBuilder, int bci) {
         AbstractBeginNode noExceptionEdge = graph.add(new BeginNode());
-        invoke.setNext(noExceptionEdge);
-        pushForStateSplit(frameStateBuilder, invokeBci, invoke);
+        withException.setNext(noExceptionEdge);
+        pushForStateSplit(frameStateBuilder, bci, withException);
         lastFixedNode = null;
 
-        InvokeWithExceptionStructure s = new InvokeWithExceptionStructure();
-        s.state = InvokeWithExceptionStructure.State.INVOKE;
+        WithExceptionStructure s = new WithExceptionStructure();
+        s.state = WithExceptionStructure.State.START;
         s.noExceptionEdge = noExceptionEdge;
         s.exceptionEdge = exceptionObject;
         s.exceptionObject = exceptionObject;
         pushStructure(s);
 
-        return invoke;
+        return withException;
     }
 
     protected ExceptionObjectNode createExceptionObjectNode(FrameStateBuilder frameStateBuilder, int exceptionEdgeBci) {
@@ -600,10 +540,10 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
         }
     }
 
-    private InvokeWithExceptionStructure saveLastInvokeWithExceptionNode() {
-        InvokeWithExceptionStructure s = getTopStructure(InvokeWithExceptionStructure.class);
+    private WithExceptionStructure saveLastWithExceptionNode() {
+        WithExceptionStructure s = getTopStructure(WithExceptionStructure.class);
         switch (s.state) {
-            case INVOKE:
+            case START:
                 assert lastFixedNode == null;
                 break;
             case NO_EXCEPTION_EDGE:
@@ -621,34 +561,42 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     }
 
     public void noExceptionPart() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+        WithExceptionStructure s = saveLastWithExceptionNode();
         lastFixedNode = (FixedWithNextNode) s.noExceptionEdge;
-        s.state = InvokeWithExceptionStructure.State.NO_EXCEPTION_EDGE;
+        s.state = WithExceptionStructure.State.NO_EXCEPTION_EDGE;
     }
 
     public void exceptionPart() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+        WithExceptionStructure s = saveLastWithExceptionNode();
         lastFixedNode = (FixedWithNextNode) s.exceptionEdge;
-        s.state = InvokeWithExceptionStructure.State.EXCEPTION_EDGE;
+        s.state = WithExceptionStructure.State.EXCEPTION_EDGE;
     }
 
     public ExceptionObjectNode exceptionObject() {
-        InvokeWithExceptionStructure s = getTopStructure(InvokeWithExceptionStructure.class);
+        WithExceptionStructure s = getTopStructure(WithExceptionStructure.class);
         return s.exceptionObject;
     }
 
     /**
-     * Finishes a control flow started with {@link #startInvokeWithException}. If necessary, creates
-     * a merge of the non-exception and exception edges. The merge node is returned and the
+     * Finishes a control flow started with {@link #startInvokeWithException}. See
+     * {@link #endWithException()}.
+     */
+    public AbstractMergeNode endInvokeWithException() {
+        return endWithException();
+    }
+
+    /**
+     * Finishes a control flow started with {@link #startWithException}. If necessary, creates a
+     * merge of the non-exception and exception edges. The merge node is returned and the
      * non-exception edge is the first forward end of the merge, the exception edge is the second
      * forward end (relevant for phi nodes).
      */
-    public AbstractMergeNode endInvokeWithException() {
-        InvokeWithExceptionStructure s = saveLastInvokeWithExceptionNode();
+    public AbstractMergeNode endWithException() {
+        WithExceptionStructure s = saveLastWithExceptionNode();
         FixedWithNextNode noExceptionEdge = s.noExceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.noExceptionEdge : null;
         FixedWithNextNode exceptionEdge = s.exceptionEdge instanceof FixedWithNextNode ? (FixedWithNextNode) s.exceptionEdge : null;
         AbstractMergeNode merge = mergeControlSplitBranches(noExceptionEdge, exceptionEdge);
-        s.state = InvokeWithExceptionStructure.State.FINISHED;
+        s.state = WithExceptionStructure.State.FINISHED;
         popStructure();
         return merge;
     }

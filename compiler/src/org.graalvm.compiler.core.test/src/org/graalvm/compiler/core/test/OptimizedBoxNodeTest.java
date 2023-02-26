@@ -88,8 +88,9 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
 
     private void parseOptimizeCheck(String boxSnippet, int nrBoxAfter) {
         StructuredGraph g = parseEager(getResolvedJavaMethod(boxSnippet), AllowAssumptions.NO, getInitialOptions());
-        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
-        new BoxNodeOptimizationPhase().apply(g, getDefaultHighTierContext());
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        new BoxNodeOptimizationPhase(canonicalizer).apply(g, getDefaultHighTierContext());
         Assert.assertTrue(GraphOrder.assertNonCyclicGraph(g));
         Assert.assertEquals("expected number of regular box nodes", nrBoxAfter, g.getNodes().filter(BoxNode.class).count());
     }

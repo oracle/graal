@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.meta;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -61,7 +62,7 @@ public abstract class StringConversion {
         }
     }
 
-    public abstract String toHost(StaticObject str, Meta meta);
+    public abstract String toHost(StaticObject str, EspressoLanguage language, Meta meta);
 
     public abstract StaticObject toGuest(String str, Meta meta);
 
@@ -103,12 +104,12 @@ public abstract class StringConversion {
         }
     }
 
-    private static char[] extractGuestChars8(Meta meta, StaticObject str) {
-        return meta.java_lang_String_value.getObject(str).unwrap();
+    private static char[] extractGuestChars8(EspressoLanguage language, Meta meta, StaticObject str) {
+        return meta.java_lang_String_value.getObject(str).unwrap(language);
     }
 
-    private static byte[] extractGuestBytes11(Meta meta, StaticObject str) {
-        return meta.java_lang_String_value.getObject(str).unwrap();
+    private static byte[] extractGuestBytes11(EspressoLanguage language, Meta meta, StaticObject str) {
+        return meta.java_lang_String_value.getObject(str).unwrap(language);
     }
 
     private static int extractGuestHash(Meta meta, StaticObject str) {
@@ -136,14 +137,14 @@ public abstract class StringConversion {
     }
 
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
-        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        StaticObject guestString = meta.java_lang_String.allocateInstance(meta.getContext());
         meta.java_lang_String_hash.set(guestString, hash);
         meta.java_lang_String_value.setObject(guestString, StaticObject.wrap(value, meta), true);
         return guestString;
     }
 
     private static StaticObject produceGuestString11(Meta meta, byte[] value, int hash, byte coder) {
-        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        StaticObject guestString = meta.java_lang_String.allocateInstance(meta.getContext());
         meta.java_lang_String_coder.set(guestString, coder);
         meta.java_lang_String_hash.set(guestString, hash);
         meta.java_lang_String_value.setObject(guestString, StaticObject.wrap(value, meta), true);
@@ -170,8 +171,8 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CharToChar();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
-            return produceHostString8(extractGuestChars8(meta, str), extractGuestHash(meta, str));
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+            return produceHostString8(extractGuestChars8(language, meta, str), extractGuestHash(meta, str));
         }
 
         @Override
@@ -186,8 +187,8 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CopyingCharToChar();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
-            return produceHostString8(extractGuestChars8(meta, str).clone(), extractGuestHash(meta, str));
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+            return produceHostString8(extractGuestChars8(language, meta, str).clone(), extractGuestHash(meta, str));
         }
 
         @Override
@@ -202,8 +203,8 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CompactToCompact();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
-            return produceHostString11(extractGuestBytes11(meta, str), extractGuestHash(meta, str), extractGuestCoder(meta, str));
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+            return produceHostString11(extractGuestBytes11(language, meta, str), extractGuestHash(meta, str), extractGuestCoder(meta, str));
         }
 
         @Override
@@ -217,8 +218,8 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CopyingCompactToCompact();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
-            return produceHostString11(extractGuestBytes11(meta, str).clone(), extractGuestHash(meta, str), extractGuestCoder(meta, str));
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+            return produceHostString11(extractGuestBytes11(language, meta, str).clone(), extractGuestHash(meta, str), extractGuestCoder(meta, str));
         }
 
         @Override
@@ -231,9 +232,9 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CompactGuestCharHost();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
             StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
-            return new String((char[]) wrappedChars.unwrap());
+            return new String((char[]) wrappedChars.unwrap(language));
         }
 
         @Override
@@ -261,8 +262,8 @@ public abstract class StringConversion {
         private static final StringConversion INSTANCE = new CharGuestCompactHost();
 
         @Override
-        public String toHost(StaticObject str, Meta meta) {
-            return new String(StringConversion.extractGuestChars8(meta, str));
+        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+            return new String(StringConversion.extractGuestChars8(language, meta, str));
         }
 
         @Override

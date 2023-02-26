@@ -3,6 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: Polyglot Programming
 permalink: /reference-manual/polyglot-programming/
+redirect_from: /$version/docs/polyglot-programming/
 ---
 
 # Polyglot Programming
@@ -17,7 +18,7 @@ permalink: /reference-manual/polyglot-programming/
 GraalVM allows users to write polyglot applications that seamlessly pass values from one language to another by means of the [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle").
 
 Truffle is a Java library for building programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
-When writing a language interpreter with Truffle, it will automatically use the GraalVM compiler as a just-in-time compiler for the language.
+When writing a language interpreter with Truffle, it will automatically use the Graal compiler as a just-in-time compiler for the language.
 By having access to this framework, a Ruby application, for example, can run on the same JVM as a Java application.
 Also, a host JVM-based language and a guest language can directly interoperate with each other and pass data back and forth in the same memory space.
 
@@ -124,7 +125,7 @@ tab5type="python" tab5id="python_to_llvm" tab5name="LLVM" tab5path="polyglot_ref
 Run:
 
 ```shell
-graalpython --polyglot --jvm polyglot.py
+graalpy --polyglot --jvm polyglot.py
 42
 ```
 
@@ -200,15 +201,15 @@ polyglot --jvm --shell
 
 If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
 ```shell
-GraalVM MultiLanguage Shell 21.3.0
+GraalVM MultiLanguage Shell 22.2.0
 Copyright (c) 2013-2021, Oracle and/or its affiliates
-Java version 1.8|11
-JavaScript version  21.3.0
-Python version 3.8.5
-R version 4.0.3
-Ruby version 2.7.4
+  Java version 22.2.0
+  JavaScript version 22.2.0
+  Python version 3.8.5
+  R version 4.0.3
+  Ruby version 3.0.3
 Usage:
-  Use Ctrl+n to switch language and  Ctrl+d to exit.
+  Use Ctrl+n to switch language and Ctrl+d to exit.
   Enter -usage to get a list of available commands.
 js>
 ```

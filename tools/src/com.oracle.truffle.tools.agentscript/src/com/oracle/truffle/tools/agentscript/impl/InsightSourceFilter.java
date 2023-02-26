@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,27 +25,20 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
-import java.util.Collections;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.function.Predicate;
 
 final class InsightSourceFilter implements Predicate<Source> {
     private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
-    private final Map<Source, Boolean> cache;
     private final InsightInstrument.Key key;
 
     InsightSourceFilter(InsightInstrument insight, InsightInstrument.Key key) {
         this.insight = insight;
         this.key = key;
         this.querying = new ThreadLocal<>();
-        this.cache = Collections.synchronizedMap(new WeakHashMap<>());
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -54,6 +47,11 @@ final class InsightSourceFilter implements Predicate<Source> {
         if (src == null) {
             return false;
         }
+        if (key.isClosed()) {
+            return false;
+        }
+        InsightPerContext ctx = insight.findCtx();
+        Map<Source, Boolean> cache = ctx.getSourceCache(this);
         Boolean previous = cache.get(src);
         if (previous != null) {
             return previous;
@@ -94,13 +92,6 @@ final class InsightSourceFilter implements Predicate<Source> {
 
     static boolean checkSource(final InteropLibrary iop, InsightFilter.Data data, Source src) {
         final SourceEventObject srcObj = new SourceEventObject(src);
-        Object res;
-        try {
-            res = iop.execute(data.sourceFilterFn, srcObj);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException ex) {
-            return false;
-        }
-        final boolean is = Boolean.TRUE.equals(res);
-        return is;
+        return FilterExec.checkFilter(iop, data.sourceFilterFn, srcObj);
     }
 }

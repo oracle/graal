@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableIsEmpty.isNotEmpty;
 import static org.junit.Assert.assertThat;
@@ -41,10 +43,9 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.IntegerLowerThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
@@ -58,7 +59,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
     public void growing(int e) {
         if (size >= array.length) {
             // grow
-            GraalDirectives.deoptimizeAndInvalidateWithSpeculation();
+            GraalDirectives.deoptimize(InvalidateReprofile, TransferToInterpreter, true);
         }
         array[size++] = e;
     }
@@ -87,9 +88,9 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
         StructuredGraph graph = parseEager(method, StructuredGraph.AllowAssumptions.YES);
         HighTierContext highTierContext = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-        new ConvertDeoptimizeToGuardPhase().apply(graph, highTierContext);
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
-        new FloatingReadPhase().apply(graph);
+        new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, highTierContext);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, highTierContext);
+        new FloatingReadPhase(canonicalizer).apply(graph, highTierContext);
         return graph;
     }
 
@@ -101,7 +102,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
             GraalDirectives.deoptimizeAndInvalidate();
         }
         if (c >= 10) {
-            GraalDirectives.deoptimizeAndInvalidateWithSpeculation();
+            GraalDirectives.deoptimize(InvalidateReprofile, TransferToInterpreter, true);
         }
         return array[8] + a[i];
     }

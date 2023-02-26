@@ -30,12 +30,11 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.junit.Assert;
 
@@ -93,12 +92,12 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
     protected void prepareGraph(StructuredGraph graph, CanonicalizerPhase canonicalizer, CoreProviders context, boolean applyLowering) {
         if (applyLowering) {
-            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
             canonicalizer.apply(graph, context);
         }
         canonicalizer.apply(graph, context);
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+        new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
     }
 
     public void testProxies(String snippet, int expectedProxiesCreated) {
@@ -107,7 +106,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer1 = CanonicalizerPhase.createWithoutCFGSimplification();
         canonicalizer1.apply(graph, context);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
 
         int baseProxyCount = graph.getNodes().filter(ProxyNode.class).count();

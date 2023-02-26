@@ -29,6 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.BitSet;
 import java.util.TreeMap;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
@@ -42,7 +44,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -106,7 +108,7 @@ public class CodeInfoEncoder {
     }
 
     public static final class Encoders {
-        final FrequencyEncoder<JavaConstant> objectConstants;
+        public final FrequencyEncoder<JavaConstant> objectConstants;
         public final FrequencyEncoder<Class<?>> sourceClasses;
         public final FrequencyEncoder<String> sourceMethodNames;
         final FrequencyEncoder<String> names;
@@ -181,7 +183,7 @@ public class CodeInfoEncoder {
         return -1;
     }
 
-    public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset) {
+    public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, int compilationSize) {
         int totalFrameSize = compilation.getTotalFrameSize();
         boolean isEntryPoint = method.isEntryPoint();
         boolean hasCalleeSavedRegisters = method.hasCalleeSavedRegisters();
@@ -192,22 +194,38 @@ public class CodeInfoEncoder {
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
-        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset - 1)) {
+        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
             entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
+        EconomicSet<Integer> infopointOffsets = EconomicSet.create(Equivalence.DEFAULT);
+        EconomicSet<Long> deoptEntryBcis = EconomicSet.create(Equivalence.DEFAULT);
         /* Make entries for all calls and deoptimization entry points of the method. */
         for (Infopoint infopoint : compilation.getInfopoints()) {
             final DebugInfo debugInfo = infopoint.debugInfo;
             if (debugInfo != null) {
                 final int offset = getEntryOffset(infopoint);
                 if (offset >= 0) {
+                    boolean added = infopointOffsets.add(offset);
+                    if (!added) {
+                        throw VMError.shouldNotReachHere("Encoding two infopoints at same offset. Conflicting infopoint: " + infopoint);
+                    }
                     IPData entry = makeEntry(offset + compilationOffset);
                     assert entry.referenceMap == null && entry.frameData == null;
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
-                    entry.frameData = frameInfoEncoder.addDebugInfo(method, infopoint, totalFrameSize);
+                    entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
+                    if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
+                        BytecodeFrame frame = debugInfo.frame();
+                        long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                        added = deoptEntryBcis.add(encodedBci);
+                        if (!added) {
+                            String errorMessage = String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)\nmethod: %s", encodedBci, FrameInfoDecoder.readableBci(encodedBci),
+                                            method);
+                            throw VMError.shouldNotReachHere(errorMessage);
+                        }
+                    }
                 }
             }
         }
@@ -220,7 +238,7 @@ public class CodeInfoEncoder {
         }
 
         ImageSingletons.lookup(Counters.class).methodCount.inc();
-        ImageSingletons.lookup(Counters.class).codeSize.add(compilation.getTargetCodeSize());
+        ImageSingletons.lookup(Counters.class).codeSize.add(compilationSize);
     }
 
     private IPData makeEntry(long ip) {
@@ -436,8 +454,8 @@ public class CodeInfoEncoder {
         }
     }
 
-    public static boolean verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, CodeInfo info) {
-        CodeInfoVerifier.verifyMethod(method, compilation, compilationOffset, info);
+    public static boolean verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, int compilationSize, CodeInfo info) {
+        CodeInfoVerifier.verifyMethod(method, compilation, compilationOffset, compilationSize, info);
         return true;
     }
 
@@ -448,8 +466,8 @@ public class CodeInfoEncoder {
 }
 
 class CodeInfoVerifier {
-    static void verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, CodeInfo info) {
-        for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
+    static void verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, int compilationSize, CodeInfo info) {
+        for (int relativeIP = 0; relativeIP < compilationSize; relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
             CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
@@ -464,12 +482,12 @@ class CodeInfoVerifier {
             if (infopoint.debugInfo != null) {
                 int offset = CodeInfoEncoder.getEntryOffset(infopoint);
                 if (offset >= 0) {
-                    assert offset < compilation.getTargetCodeSize();
+                    assert offset < compilationSize;
                     CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);
@@ -483,7 +501,7 @@ class CodeInfoVerifier {
 
         for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
             int offset = handler.pcOffset;
-            assert offset >= 0 && offset < compilation.getTargetCodeSize();
+            assert offset >= 0 && offset < compilationSize;
 
             CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
@@ -646,7 +664,7 @@ class CodeInfoVerifier {
     private static ValueInfo findActualField(ValueInfo[] actualObject, UnsignedWord expectedOffset) {
         DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(actualObject[0].getValue());
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-        assert LayoutEncoding.isInstance(hub.getLayoutEncoding());
+        assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
         return findActualValue(actualObject, expectedOffset, objectLayout, WordFactory.unsigned(objectLayout.getFirstFieldOffset()), 1);
     }
 

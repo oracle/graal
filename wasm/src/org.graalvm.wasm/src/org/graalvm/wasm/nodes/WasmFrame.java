@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,68 +49,101 @@ public abstract class WasmFrame {
         // no instances
     }
 
-    /* Stack operations */
-
-    public static void pushLong(VirtualFrame frame, int slot, long value) {
-        frame.setLong(slot, value);
-    }
-
-    public static void pushInt(VirtualFrame frame, int slot, int value) {
-        frame.setInt(slot, value);
-    }
-
-    public static void pushFloat(VirtualFrame frame, int slot, float value) {
-        frame.setFloat(slot, value);
-    }
-
-    public static void pushDouble(VirtualFrame frame, int slot, double value) {
-        frame.setDouble(slot, value);
-    }
-
-    public static void drop(VirtualFrame frame, int slot) {
+    public static void dropPrimitive(VirtualFrame frame, int slot) {
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
+            frame.clearPrimitiveStatic(slot);
         }
     }
 
-    public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
-        frame.copy(sourceSlot, targetSlot);
+    public static void dropReference(VirtualFrame frame, int slot) {
+        frame.clearObjectStatic(slot);
     }
 
-    public static long popLong(VirtualFrame frame, int slot) {
-        long result = frame.getLong(slot);
+    public static void drop(VirtualFrame frame, int slot) {
+        frame.clearStatic(slot);
+    }
+
+    public static void copyPrimitive(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyPrimitiveStatic(sourceSlot, targetSlot);
+    }
+
+    public static void copyReference(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyObjectStatic(sourceSlot, targetSlot);
+    }
+
+    public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyStatic(sourceSlot, targetSlot);
+    }
+
+    public static boolean popBoolean(VirtualFrame frame, int slot) {
+        boolean result = frame.getIntStatic(slot) != 0;
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
+            frame.clearPrimitiveStatic(slot);
         }
         return result;
     }
 
     public static int popInt(VirtualFrame frame, int slot) {
-        int result = frame.getInt(slot);
+        int result = frame.getIntStatic(slot);
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
+            frame.clearPrimitiveStatic(slot);
         }
         return result;
+    }
+
+    public static void pushInt(VirtualFrame frame, int slot, int value) {
+        frame.setIntStatic(slot, value);
+    }
+
+    public static long popLong(VirtualFrame frame, int slot) {
+        long result = frame.getLongStatic(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clearPrimitiveStatic(slot);
+        }
+        return result;
+    }
+
+    public static void pushLong(VirtualFrame frame, int slot, long value) {
+        frame.setLongStatic(slot, value);
     }
 
     public static float popFloat(VirtualFrame frame, int slot) {
-        float result = frame.getFloat(slot);
+        float result = frame.getFloatStatic(slot);
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
+            frame.clearPrimitiveStatic(slot);
         }
         return result;
     }
 
+    public static void pushFloat(VirtualFrame frame, int slot, float value) {
+        frame.setFloatStatic(slot, value);
+    }
+
     public static double popDouble(VirtualFrame frame, int slot) {
-        double result = frame.getDouble(slot);
+        double result = frame.getDoubleStatic(slot);
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
+            frame.clearPrimitiveStatic(slot);
         }
         return result;
+    }
+
+    public static void pushDouble(VirtualFrame frame, int slot, double value) {
+        frame.setDoubleStatic(slot, value);
+    }
+
+    public static Object popReference(VirtualFrame frame, int slot) {
+        Object result = frame.getObjectStatic(slot);
+        frame.clearObjectStatic(slot);
+        return result;
+    }
+
+    public static void pushReference(VirtualFrame frame, int slot, Object value) {
+        frame.setObjectStatic(slot, value);
     }
 }

@@ -24,20 +24,19 @@
  */
 package com.oracle.svm.hosted.image;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-class ImageHeapFillerObjectsFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class ImageHeapFillerObjectsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         access.registerAsAccessed(ReflectionUtil.lookupField(FillerObject.class, "CLASS_OBJECT"));
-        access.registerAsInHeap(FillerObject.class);
-        access.registerAsInHeap(int[].class);
+        access.registerAsInHeap(FillerObject.class, "Registered by ImageHeapFillerObjectsFeature.");
+        access.registerAsInHeap(int[].class, "Registered by ImageHeapFillerObjectsFeature.");
     }
 }

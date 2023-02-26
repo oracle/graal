@@ -27,13 +27,17 @@ package org.graalvm.compiler.hotspot.amd64;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.DebugContext;
@@ -75,6 +79,7 @@ import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -121,8 +126,19 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected int getMaxVectorSize() {
-        return config.maxVectorSize;
+    public AVXSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
+        int maxVectorSize = config.maxVectorSize;
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX512VL)) {
+            if (maxVectorSize < 0 || maxVectorSize >= 64) {
+                return AVXSize.ZMM;
+            }
+        }
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX2)) {
+            if (maxVectorSize < 0 || maxVectorSize >= 32) {
+                return AVXSize.YMM;
+            }
+        }
+        return AVXSize.XMM;
     }
 
     @Override
@@ -452,7 +468,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue address = new AMD64AddressValue(wordKind, thread, offset);
-        arithmeticLIRGen.emitStore(v.getValueKind(), address, v, null);
+        arithmeticLIRGen.emitStore(v.getValueKind(), address, v, null, MemoryOrderMode.PLAIN);
     }
 
     @Override
@@ -555,11 +571,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed;
             int shift = encoding.getShift();
-            if (Scale.isScaleShiftSupported(shift)) {
+            if (AMD64Address.isScaleShiftSupported(shift)) {
                 LIRKind wordKind = LIRKind.unknownReference(target().arch.getWordKind());
                 RegisterValue heapBase = getProviders().getRegisters().getHeapBaseRegister().asValue(wordKind);
-                Scale scale = Scale.fromShift(shift);
-                uncompressed = new AMD64AddressValue(wordKind, heapBase, asAllocatable(address), scale, 0);
+                Stride stride = Stride.fromLog2(shift);
+                uncompressed = new AMD64AddressValue(wordKind, heapBase, asAllocatable(address), stride, 0);
             } else {
                 uncompressed = emitUncompress(address, encoding, false);
             }
@@ -591,7 +607,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {
         return new AMD64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
 
@@ -611,5 +627,15 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private Value combineLoAndHi(Value lo, Value hi) {
         Value shiftedHi = getArithmetic().emitShl(hi, emitConstant(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(32)));
         return getArithmetic().emitOr(shiftedHi, lo);
+    }
+
+    @Override
+    public int getArrayLengthOffset() {
+        return config.arrayOopDescLengthOffset();
+    }
+
+    @Override
+    public Register getHeapBaseRegister() {
+        return getProviders().getRegisters().getHeapBaseRegister();
     }
 }

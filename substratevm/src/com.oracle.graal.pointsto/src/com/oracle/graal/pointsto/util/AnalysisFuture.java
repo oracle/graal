@@ -67,4 +67,12 @@ public class AnalysisFuture<V> extends FutureTask<V> {
         }
     }
 
+    public V guardedGet() {
+        try {
+            return get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw AnalysisError.shouldNotReachHere(e);
+        }
+    }
+
 }

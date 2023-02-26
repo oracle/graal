@@ -44,7 +44,7 @@ public class UnsafeAccess01 extends JTTTest {
         } catch (NoSuchFieldException e) {
         } catch (SecurityException e) {
         }
-        offset = UNSAFE.objectFieldOffset(field);
+        offset = getObjectFieldOffset(field);
     }
 
     private static class TestClass {

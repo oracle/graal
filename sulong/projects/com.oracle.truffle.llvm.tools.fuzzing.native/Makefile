@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -44,7 +44,11 @@ endif
 LIBS+=$(shell ${LLVM_CONFIG} --libs)
 LDFLAGS+=$(shell ${LLVM_CONFIG} --ldflags) -rpath $(shell ${LLVM_CONFIG} --libdir)
 CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags)
-CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags)
+
+# Our LLVM build is done on a system with an older libstdc++. There was an ABI incompatible
+# change in libstdc++. To be able to link to our pre-built libLLVM, we have to use the
+# `-D_GLIBCXX_USE_CXX11_ABI=0` flag to switch to the old ABI.
+CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags) -D_GLIBCXX_USE_CXX11_ABI=0
 
 src/llvm-stress.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/llvm-stress.cpp
 src/llvm-reduce.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-isel-fuzzer/llvm-isel-fuzzer.cpp

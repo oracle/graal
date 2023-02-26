@@ -24,20 +24,19 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
+final class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void getStackInformation(WordPointer stackBasePtr, WordPointer stackEndPtr) {
@@ -70,7 +69,7 @@ class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
     public UnsignedWord lookupStackBase() {
         WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        getStackInformation(stackBasePtr, stackEndPtr);
+        lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
         return stackBasePtr.read();
     }
 
@@ -85,8 +84,14 @@ class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
     public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
         WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        lookupStack(stackBasePtr, stackEndPtr, requestedStackSize);
+        return stackEndPtr.read();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
         getStackInformation(stackBasePtr, stackEndPtr);
-        UnsignedWord stackEnd = stackEndPtr.read();
 
         if (requestedStackSize.notEqual(WordFactory.zero())) {
             /*
@@ -94,21 +99,12 @@ class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
              * requested stack size.
              */
             UnsignedWord stackBase = stackBasePtr.read();
+            UnsignedWord stackEnd = stackEndPtr.read();
             UnsignedWord stackSize = stackBase.subtract(stackEnd);
             if (stackSize.aboveThan(requestedStackSize)) {
                 UnsignedWord stackAdjustment = stackSize.subtract(requestedStackSize);
-                return stackEnd.add(stackAdjustment);
+                stackEndPtr.write(stackEnd.add(stackAdjustment));
             }
         }
-
-        return stackEnd;
-    }
-}
-
-@AutomaticFeature
-class LinuxStackOverflowSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StackOverflowCheck.OSSupport.class, new LinuxStackOverflowSupport());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,29 @@
  */
 package com.oracle.truffle.llvm.nativemode.runtime.memory;
 
-import java.lang.reflect.Field;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.function.IntBinaryOperator;
-import java.util.function.LongBinaryOperator;
-
-import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.function.IntBinaryOperator;
+import java.util.function.LongBinaryOperator;
 
 public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
 
@@ -108,6 +109,11 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     @TruffleBoundary
     private static void memsetBoundary(long address, long size, byte value) {
         unsafe.setMemory(address, size, value);
+    }
+
+    @Override
+    public int getPageSize() {
+        return unsafe.pageSize();
     }
 
     @Override
@@ -550,7 +556,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
 
         private final Assumption noHandleAssumption;
         private final ArrayDeque<Long> freeList = new ArrayDeque<>();
-        private final EconomicMap<Object, Handle> handleFromManaged = EconomicMap.create();
+        private final EconomicMap<Object, Handle> handleFromManaged = EconomicMap.create(Handle.HandleEquivalence.INSTANCE);
         private Handle[] handleFromPointer = new Handle[1024];
         private long top = getStart(); // address of the next handle
 
@@ -645,6 +651,25 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             this.refcnt = 0;
             this.pointer = pointer;
             this.managed = managed;
+        }
+
+        static final class HandleEquivalence extends Equivalence {
+
+            static final HandleEquivalence INSTANCE = new HandleEquivalence();
+
+            @Override
+            public boolean equals(Object a, Object b) {
+                return InteropLibrary.getUncached().isIdentical(a, b, InteropLibrary.getUncached());
+            }
+
+            @Override
+            public int hashCode(Object o) {
+                try {
+                    return InteropLibrary.getUncached().identityHashCode(o);
+                } catch (UnsupportedMessageException e) {
+                    return o.hashCode();
+                }
+            }
         }
     }
 

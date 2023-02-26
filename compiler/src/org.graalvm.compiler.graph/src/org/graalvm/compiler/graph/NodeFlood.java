@@ -28,6 +28,31 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
 
+import org.graalvm.compiler.graph.NodeWorkList.SingletonNodeWorkList;
+
+/**
+ * A data structure for visiting nodes in a graph iteratively. Each node added to the flood will be
+ * visited exactly once. New nodes to visit can be added during the iteration.
+ * </p>
+ *
+ * A typical use of this class looks like:
+ *
+ * <pre>
+ * NodeFlood flood = graph.createNodeFlood();
+ * flood.add(initialNodeOfInterest);
+ * for (Node n : flood) {
+ *     processNode(n);
+ *     if (inputsAreOfInterest(n)) {
+ *         flood.addAll(n.inputs());
+ *     }
+ * }
+ * </pre>
+ *
+ * This class is equivalent to {@link SingletonNodeWorkList}, except that
+ * {@link SingletonNodeWorkList} ignores deleted nodes both when adding and enumerating nodes. In
+ * contrast, it is an error to try to add deleted nodes to a {@link NodeFlood}, but
+ * {@link NodeFlood} will enumerate nodes that are deleted while they are enqueued for enumeration.
+ */
 public final class NodeFlood implements Iterable<Node> {
 
     private final NodeBitMap visited;
@@ -141,7 +166,7 @@ public final class NodeFlood implements Iterable<Node> {
     }
 
     public Iterable<Node> unmarkedNodes() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Node> iterator() {

@@ -242,6 +242,15 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
     return NULL;
 }
 
+JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
+    // see os_windows.cpp line 1367
+    static char path_buf[MAX_PATH];
+    if (GetTempPath(MAX_PATH, path_buf) <= 0) {
+        path_buf[0] = '\0';
+    }
+    return (*env)->NewStringUTF(env, path_buf);
+}
+
 jboolean VerifyFixClassname(char *utf_name) {
     fprintf(stderr, "VerifyFixClassname(%s) called:  Unimplemented\n", utf_name);
     abort();

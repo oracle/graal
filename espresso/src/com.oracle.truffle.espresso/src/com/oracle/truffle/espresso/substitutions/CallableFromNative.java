@@ -23,15 +23,24 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
 
+    public static boolean validParameterCount(Factory factory, Method.MethodVersion methodVersion) {
+        /*
+         * Static native methods prepends the Class in the arg array, and instance methods do not
+         * include the receiver in the parameter count.
+         */
+        return (factory.parameterCount() == methodVersion.getMethod().getParameterCount() + 1);
+    }
+
     public abstract static class Factory {
-        public abstract CallableFromNative create(Meta meta);
+        public abstract CallableFromNative create();
 
         private final String methodName;
         private final NativeSignature nativeSignature;
@@ -67,6 +76,13 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
     }
 
     /**
+     * Returns the name of the annotation that generated the node.
+     *
+     * @return The annotation type.
+     */
+    public abstract String generatedBy();
+
+    /**
      * The method to invoke when coming from native code.
      * 
      * @param env The env corresponding to this callable
@@ -84,6 +100,7 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
      *            there is no need to un-handlify.
      */
     public Object invokeDirect(Object env, Object[] args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Native method should not be reachable for java substitution");
     }
 }

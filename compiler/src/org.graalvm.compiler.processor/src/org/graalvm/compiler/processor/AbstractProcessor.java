@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,19 +36,24 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.processing.Filer;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 /**
@@ -66,14 +71,12 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        // In JDK 8, each annotation processing round has its own Elements object
-        // so this cache must be cleared at the start of each round. As of JDK9,
-        // a single Elements is preserved across all annotation processing rounds.
-        // However, since both behaviors are compliant with the annotation processing
-        // specification, we unconditionally clear the cache to be safe.
-        types.clear();
+    public final SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latest();
+    }
 
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         return doProcess(annotations, roundEnv);
     }
 
@@ -292,6 +295,30 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
             }
         }
         return result;
+    }
+
+    public static PackageElement getPackage(Element element) {
+        Element e = element.getEnclosingElement();
+        while (e != null && e.getKind() != ElementKind.PACKAGE) {
+            e = e.getEnclosingElement();
+        }
+        return (PackageElement) e;
+    }
+
+    public static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
+        try {
+            /* Ensure Unix line endings to comply with code style guide checked by Checkstyle. */
+            String className = pkg + "." + relativeName;
+            JavaFileObject sourceFile = filer.createSourceFile(className, originatingElements);
+            return new PrintWriter(sourceFile.openWriter()) {
+                @Override
+                public void println() {
+                    print("\n");
+                }
+            };
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

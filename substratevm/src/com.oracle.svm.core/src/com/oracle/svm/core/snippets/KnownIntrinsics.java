@@ -27,7 +27,7 @@ package com.oracle.svm.core.snippets;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,13 +80,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return klassEncoding;
     }
 
-    private final boolean isJDK11Plus = JDK >= 11;
-    private final boolean isJDK8OrJDK11Plus = JDK == 8 || isJDK11Plus;
-
-    // Certain values were accidentally omitted in JDK 9+ only VM values
-    // in vmStructs_jvmci.cpp are exposed to JVMCI. In JDK 8, values in any
-    // vmStructs*.[cpp|hpp] file are exposed to JVMCI.
-    private final boolean gr21761 = JDK == 8 || (JVMCI ? jvmciGE(JVMCI_20_0_b03) : JDK >= 15);
+    private final boolean gr21761 = (JVMCI ? jvmciGE(JVMCI_20_0_b03) : JDK >= 15);
 
     private final boolean jdk13Backport = JVMCI ? jvmciGE(JVMCI_19_3_b03) : JDK >= 13;
 
@@ -99,7 +93,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
-    public final boolean inlineNotify = JDK > 8;
+    public final boolean inlineNotify = true;
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
@@ -109,13 +103,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean verifyAfterGC = getFlag("VerifyAfterGC", Boolean.class);
 
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
-    public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class);
+    public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class, false, JDK < 18);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
-    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class, false, JDK >= 9);
+    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
     public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
-    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false, (JDK == 8 && !IS_OPENJDK) || JDK >= 9);
+    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
-    public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class, false, JDK >= 9); // JDK-8073583
+    public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
     public final boolean useThreadLocalPolling;
     {
         if (JDK >= 14) {
@@ -131,17 +125,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
-    private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class, false, isJDK8OrJDK11Plus);
-    private final boolean useBase64Intrinsics = getFlag("UseBASE64Intrinsics", Boolean.class, false, isJDK11Plus);
-    private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class, false, isJDK8OrJDK11Plus);
-    private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class, false, isJDK8OrJDK11Plus);
-    private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class, false, isJDK8OrJDK11Plus);
-    private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false, isJDK8OrJDK11Plus);
-    public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class, false, isJDK11Plus);
-    public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class, false, JDK >= 9);
+    private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class);
+    private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
+    private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
+    private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class);
+    private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class);
+    public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
+    public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64") && (JDK >= 14 || (JDK == 11 && JDK_UPDATE >= 6)));
 
     public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
+
+    public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class, 0, JDK >= 16);
 
     /*
      * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
@@ -167,10 +162,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return useGHASHIntrinsics && ghashProcessBlocks != 0;
     }
 
-    public boolean useBase64Intrinsics() {
-        return useBase64Intrinsics && base64EncodeBlock != 0;
-    }
-
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
     }
@@ -193,6 +184,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean inlineNotifyAll() {
         return inlineNotify && notifyAllAddress != 0;
+    }
+
+    public boolean useCRC32Intrinsics() {
+        return useCRC32Intrinsics && updateBytesCRC32Stub != 0;
+    }
+
+    public boolean useCRC32CIntrinsics() {
+        return useCRC32CIntrinsics && updateBytesCRC32C != 0;
+    }
+
+    public boolean useAESCTRIntrinsics() {
+        return useAESCTRIntrinsics && counterModeAESCrypt != 0;
+    }
+
+    public boolean useVectorizedMismatchIntrinsic() {
+        return useVectorizedMismatchIntrinsic && vectorizedMismatch != 0;
     }
 
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
@@ -239,7 +246,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
 
-    public final int prototypeMarkWordOffset = getFieldOffset("Klass::_prototype_header", Integer.class, markWord);
+    public final int prototypeMarkWordOffset = getFieldOffset("Klass::_prototype_header", Integer.class, markWord, -1, JDK < 18);
     public final int superCheckOffsetOffset = getFieldOffset("Klass::_super_check_offset", Integer.class, "juint");
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
@@ -248,13 +255,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int classMirrorOffset;
     {
         // JDK-8186777
-        if (JDK <= 8) {
-            classMirrorIsHandle = false;
-            classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "oop");
-        } else {
-            classMirrorIsHandle = true;
-            classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
-        }
+        classMirrorIsHandle = true;
+        classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
     }
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
@@ -268,10 +270,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int layoutHelperHeaderSizeShift = getConstant("Klass::_lh_header_size_shift", Integer.class);
     public final int layoutHelperHeaderSizeMask = getConstant("Klass::_lh_header_size_mask", Integer.class);
 
-    public final int instanceKlassInitStateOffset = getFieldOffset("InstanceKlass::_init_state", Integer.class, "u1");
-    public final int instanceKlassInitThreadOffset = getFieldOffset("InstanceKlass::_init_thread", Integer.class, "Thread*", -1, JDK == 8 || JDK >= 15 || (JVMCI && jvmciGE(JVMCI_20_0_b03)));
+    public final int instanceKlassInitStateOffset = getFieldOffset("InstanceKlass::_init_state", Integer.class, JDK >= 20 ? "InstanceKlass::ClassState" : "u1");
+    public final int instanceKlassInitThreadOffset = getFieldOffset("InstanceKlass::_init_thread", Integer.class, "Thread*", -1, JDK >= 15 || (JVMCI && jvmciGE(JVMCI_20_0_b03)));
 
-    public final int instanceKlassStateBeingInitialized = getConstant("InstanceKlass::being_initialized", Integer.class, -1, JDK == 8 || (JVMCI ? jvmciGE(JVMCI_20_0_b03) : JDK >= 14));
+    public final int instanceKlassStateBeingInitialized = getConstant("InstanceKlass::being_initialized", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_0_b03) : JDK >= 14));
     public final int instanceKlassStateFullyInitialized = getConstant("InstanceKlass::fully_initialized", Integer.class);
 
     public final int arrayOopDescSize = getFieldValue("CompilerToVM::Data::sizeof_arrayOopDesc", Integer.class, "int");
@@ -293,6 +295,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int jvmAccHasFinalizer = getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
     public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
     public final int jvmAccIsHiddenClass = getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class, 0, JDK >= 15); // JDK-8219607
+    public final int jvmAccIsValueBasedClass = verifyConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class, 0x08000000);
 
     public final int jvmciCompileStateCanPostOnExceptionsOffset = getJvmciJvmtiCapabilityOffset("_jvmti_can_post_on_exceptions");
     public final int jvmciCompileStateCanPopFrameOffset = getJvmciJvmtiCapabilityOffset("_jvmti_can_pop_frame");
@@ -317,19 +320,29 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int javaThreadShouldPostOnExceptionsFlagOffset = getFieldOffset("JavaThread::_should_post_on_exceptions_flag", Integer.class, "int", Integer.MIN_VALUE, JVMCI || JDK >= 12);
 
     public final boolean threadObjectFieldIsHandle;
-    public final int threadObjectOffset;
+    /**
+     * The offset of the {@code JavaThread} field containing the reference to the current thread.
+     */
+    public final int threadCurrentThreadObjectOffset;
     {
         if (JDK <= 15) {
             threadObjectFieldIsHandle = false;
-            threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
+        } else if (JDK < 19) {
+            threadObjectFieldIsHandle = true;
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
         } else {
             threadObjectFieldIsHandle = true;
-            threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
+            /*
+             * With virtual threads, the value returned by Thread.currentThread() is the new
+             * _vthread field. The _threadObj field is still present but refers to the carrier
+             * thread. The two fields have the same value in non-virtual threads.
+             */
+            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
         }
     }
 
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
-    public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
     public final int jvmciReserved0Offset;
@@ -352,7 +365,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE, JVMCI || JDK >= 14);
     // @formatter:off
     public final int javaThreadReservedStackActivationOffset =
-                    JDK <= 8 ? 0 :
                     JDK <= 15 ? getFieldOffset("JavaThread::_reserved_stack_activation",                       Integer.class, "address"): // JDK-8046936
                                 getFieldOffset("JavaThread::_stack_overflow_state._reserved_stack_activation", Integer.class, "address"); // JDK-8253717
     // @formatter:on
@@ -419,13 +431,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int osThreadInterruptedOffset = getFieldOffset("OSThread::_interrupted", Integer.class, "jint", Integer.MAX_VALUE, JDK < 14);
 
-    public final int biasedLockMaskInPlace = getConstant(markWordField("biased_lock_mask_in_place"), Integer.class);
+    public final int biasedLockMaskInPlace = getConstant(markWordField("biased_lock_mask_in_place"), Integer.class, -1, JDK < 18);
     public final int ageMaskInPlace = getConstant(markWordField("age_mask_in_place"), Integer.class);
-    public final int epochMaskInPlace = getConstant(markWordField("epoch_mask_in_place"), Integer.class);
+    public final int epochMaskInPlace = getConstant(markWordField("epoch_mask_in_place"), Integer.class, -1, JDK < 18);
 
     public final int unlockedMask = getConstant(markWordField("unlocked_value"), Integer.class);
     public final int monitorMask = getConstant(markWordField("monitor_value"), Integer.class, -1, gr21761);
-    public final int biasedLockPattern = getConstant(markWordField("biased_lock_pattern"), Integer.class);
+    public final int biasedLockPattern = getConstant(markWordField("biased_lock_pattern"), Integer.class, -1, JDK < 18);
 
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null, -1, gr21761);
@@ -436,6 +448,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int markWordNoHashInPlace = getConstant(markWordField("no_hash_in_place"), Integer.class);
     public final int markWordNoLockInPlace = getConstant(markWordField("no_lock_in_place"), Integer.class);
+
+    public long defaultPrototypeMarkWord() {
+        return this.markWordNoHashInPlace | this.markWordNoLockInPlace;
+    }
 
     private static String markWordField(String simpleName) {
         return (JDK < 14 ? "markOopDesc::" : "markWord::") + simpleName;
@@ -455,8 +471,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int invocationCounterOffset = getFieldOffset("MethodCounters::_invocation_counter", Integer.class, "InvocationCounter");
     public final int backedgeCounterOffset = getFieldOffset("MethodCounters::_backedge_counter", Integer.class, "InvocationCounter");
-    public final int invocationCounterIncrement = JDK <= 8 ? 0 : getConstant("InvocationCounter::count_increment", Integer.class);
-    public final int invocationCounterShift = JDK <= 8 ? 0 : getConstant("InvocationCounter::count_shift", Integer.class);
+    public final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class);
+    public final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class);
 
     public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization", Integer.class);
 
@@ -502,31 +518,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int g1CardQueueIndexOffset;
     public final int g1CardQueueBufferOffset;
     {
-        if (JDK <= 8) {
-            int dirtyCardQueueBufferOffset = getFieldOffset("PtrQueue::_buf", Integer.class, "void**");
-            int dirtyCardQueueIndexOffset = getFieldOffset("PtrQueue::_index", Integer.class, "size_t");
-            int satbMarkQueueBufferOffset = dirtyCardQueueBufferOffset;
-            int satbMarkQueueIndexOffset = dirtyCardQueueIndexOffset;
-            int satbMarkQueueActiveOffset = getFieldOffset("PtrQueue::_active", Integer.class, "bool");
-            int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
-            int javaThreadDirtyCardQueueOffset = getFieldOffset("JavaThread::_dirty_card_queue", Integer.class, "DirtyCardQueue");
-
-            dirtyCardValue = getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int");
-            g1YoungCardValue = getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int");
-            g1CardQueueIndexOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueIndexOffset;
-            g1CardQueueBufferOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueBufferOffset;
-            g1SATBQueueMarkingActiveOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
-            g1SATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
-            g1SATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
-        } else {
-            dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
-            g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
-            g1SATBQueueMarkingActiveOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
-            g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
-            g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
-            g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);
-            g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
-        }
+        dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
+        g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
+        g1SATBQueueMarkingActiveOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
+        g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
+        g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
+        g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);
+        g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
     }
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
@@ -539,7 +537,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         // JDK-8237497
         if (JDK < 15) {
-            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address", -1, JDK >= 10);
+            threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "address");
         } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
         } else {
@@ -575,8 +573,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     JVMCI ? jvmciGE(JVMCI_19_3_b07) : JDK >= 14);
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
-    public final long codeCacheLowBound = getFieldValue(JDK == 8 ? "CompilerToVM::Data::CodeCache_low_bound" : "CodeCache::_low_bound", Long.class, "address");
-    public final long codeCacheHighBound = getFieldValue(JDK == 8 ? "CompilerToVM::Data::CodeCache_high_bound" : "CodeCache::_high_bound", Long.class, "address");
+    public final long codeCacheLowBound = getFieldValue("CodeCache::_low_bound", Long.class, "address");
+    public final long codeCacheHighBound = getFieldValue("CodeCache::_high_bound", Long.class, "address");
 
     public final long aescryptEncryptBlockStub = getFieldValue("StubRoutines::_aescrypt_encryptBlock", Long.class, "address");
     public final long aescryptDecryptBlockStub = getFieldValue("StubRoutines::_aescrypt_decryptBlock", Long.class, "address");
@@ -585,27 +583,39 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
+    public final long md5ImplCompress = getFieldValue("StubRoutines::_md5_implCompress", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+    public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
     public final long sha1ImplCompress = getFieldValue("StubRoutines::_sha1_implCompress", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
     public final long sha256ImplCompress = getFieldValue("StubRoutines::_sha256_implCompress", Long.class, "address");
     public final long sha256ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address");
     public final long sha512ImplCompress = getFieldValue("StubRoutines::_sha512_implCompress", Long.class, "address");
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
+    public final long sha3ImplCompress = getFieldValue("StubRoutines::_sha3_implCompress", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+    public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_22_1_b01) && JDK >= 17 : JDK >= 19);
+
     public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address");
 
-    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L, (JDK == 8 && !IS_OPENJDK) || JDK >= 9);
-    public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address", 0L, isJDK8OrJDK11Plus);
-    public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address", 0L, isJDK11Plus);
-    public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address", 0L, isJDK11Plus);
-    public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address", 0L, isJDK11Plus);
-    public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address", 0L, isJDK11Plus);
+    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
+    public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
+    public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
+    public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address", 0L, JDK >= 16);
+    public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
+    public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
+    public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
     public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address");
     public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address");
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
-    public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address", 0L, isJDK11Plus);
+    public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address");
 
-    public final long throwDelayedStackOverflowErrorEntry = JDK <= 8 ? 0 : getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
+    public final long bigIntegerLeftShiftWorker = getFieldValue("StubRoutines::_bigIntegerLeftShiftWorker", Long.class, "address", 0L, JDK >= 14);
+    public final long bigIntegerRightShiftWorker = getFieldValue("StubRoutines::_bigIntegerRightShiftWorker", Long.class, "address", 0L, JDK >= 14);
+
+    public final long electronicCodeBookEncrypt = getFieldValue("StubRoutines::_electronicCodeBook_encryptAESCrypt", Long.class, "address");
+    public final long electronicCodeBookDecrypt = getFieldValue("StubRoutines::_electronicCodeBook_decryptAESCrypt", Long.class, "address");
+
+    public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
     public final long jbyteArraycopy = getFieldValue("StubRoutines::_jbyte_arraycopy", Long.class, "address");
     public final long jshortArraycopy = getFieldValue("StubRoutines::_jshort_arraycopy", Long.class, "address");
@@ -635,6 +645,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long checkcastArraycopyUninit = getFieldValue("StubRoutines::_checkcast_arraycopy_uninit", Long.class, "address");
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
+
+    // JDK19 Continuation stubs
+    public final long contDoYield = getFieldValue("StubRoutines::_cont_doYield", Long.class, "address", 0L, JDK == 19);
 
     // Allocation stubs that throw an exception when allocation fails
     public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
@@ -676,8 +689,31 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long exceptionHandlerForPcAddress = getAddress("JVMCIRuntime::exception_handler_for_pc");
     public final long monitorenterAddress = getAddress("JVMCIRuntime::monitorenter");
     public final long monitorexitAddress = getAddress("JVMCIRuntime::monitorexit");
-    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify", 0L, JDK >= 11);
-    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll", 0L, JDK >= 11);
+    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify");
+    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll");
+
+    // Tracking of the number of monitors held by the current thread. This is used by loom but in
+    // JDK 20 was enabled by default to ensure it was correctly implemented.
+    public final int threadHeldMonitorCountOffset;
+    public final boolean threadHeldMonitorCountIsWord;
+
+    {
+        int offset = -1;
+        boolean isWord = false;
+        if (JDK == 19) {
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int");
+            isWord = false;
+        } else if (JDK >= 20) {
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
+            isWord = true;
+        }
+        threadHeldMonitorCountOffset = offset;
+        threadHeldMonitorCountIsWord = isWord;
+    }
+
+    // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
+    public final boolean updateHeldMonitorCount = JDK >= 20;
+
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
     public final long throwClassCastExceptionAddress = getAddress("JVMCIRuntime::throw_class_cast_exception");
@@ -695,7 +731,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long registerFinalizerAddress = getAddress("SharedRuntime::register_finalizer");
     public final long exceptionHandlerForReturnAddressAddress = getAddress("SharedRuntime::exception_handler_for_return_address");
     public final long osrMigrationEndAddress = getAddress("SharedRuntime::OSR_migration_end");
-    public final long enableStackReservedZoneAddress = JDK <= 8 ? 0 : getAddress("SharedRuntime::enable_stack_reserved_zone");
+    public final long enableStackReservedZoneAddress = getAddress("SharedRuntime::enable_stack_reserved_zone");
 
     public final long javaTimeMillisAddress = getAddress("os::javaTimeMillis");
     public final long javaTimeNanosAddress = getAddress("os::javaTimeNanos");
@@ -736,7 +772,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     private void populateMarkConstants() {
-        boolean jdk13JvmciBackport = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
+        boolean jdk13JvmciBackport = JVMCI ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
         boolean verifyOopsMarkSupported = JDK >= 16;
         Map<String, Long> constants = getStore().getConstants();
         for (HotSpotMarkId markId : HotSpotMarkId.values()) {

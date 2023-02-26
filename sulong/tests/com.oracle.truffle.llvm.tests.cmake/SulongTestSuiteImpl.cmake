@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -160,21 +160,38 @@ if(NOT DEFINED SULONG_TEST_SOURCE_DIR)
     set(SULONG_TEST_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
-################################################
-# This creates the target for every test source.
-################################################
-foreach(TEST ${SULONG_TESTS})
-    # create unique target name
-    get_target(TARGET ${TEST})
+function(add_sulong_test TEST)
+    # determine the folder of the test and store it in DIRECTORY
+    get_filename_component(TEST_DIR ${TEST} DIRECTORY)
+
     # set the source variable
     set(SOURCE "${SULONG_TEST_SOURCE_DIR}/${TEST}")
+    set(OUTPUT_DIR "${TEST}.dir")
+
+    # if the test folder includes a TestOptions.cmake file, run it
+    set(TEST_OPTIONS_PATH "${SULONG_TEST_SOURCE_DIR}/${TEST_DIR}/TestOptions.cmake")
+    include("${TEST_OPTIONS_PATH}" OPTIONAL)
+
+    if(DEFINED SKIP_TEST)
+      set(SKIP_FILE "${OUTPUT_DIR}/test.skip")
+      file(GENERATE OUTPUT ${SKIP_FILE} CONTENT "")
+      install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${SKIP_FILE}" DESTINATION ${OUTPUT_DIR})
+      return()
+    endif()
+
+    # create unique target name
+    get_target(TARGET ${TEST})
 
     # add executable/library
     if(SULONG_BUILD_SHARED_OBJECT)
         add_library(${TARGET} SHARED ${SOURCE})
         # do not use "lib" prefix and fix .so suffix
         set_target_properties(${TARGET} PROPERTIES PREFIX "")
-        set_target_properties(${TARGET} PROPERTIES SUFFIX ".so")
+        if (WIN32)
+          set_target_properties(${TARGET} PROPERTIES SUFFIX ".dll")
+        else()
+          set_target_properties(${TARGET} PROPERTIES SUFFIX ".so")
+        endif()
     else()
         add_executable(${TARGET} ${SOURCE})
     endif()
@@ -184,19 +201,30 @@ foreach(TEST ${SULONG_TESTS})
         setSourceLanguage(${lang} ${SOURCE} ${TARGET})
     endforeach()
 
-    set(OUTPUT_DIR "${TEST}.dir")
-
     # post-process
     if(COMMAND targetPostProcess)
         targetPostProcess(${SOURCE} ${TARGET} ${OUTPUT_DIR} ${OUTPUT})
     endif()
 
     # set the output name and directories
+    if (DEFINED SUFFIX)
+      # files such as .bc files override the suffix
+      set_target_properties(${TARGET} PROPERTIES SUFFIX ${SUFFIX})
+    endif()
+    set_target_properties(${TARGET} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${OUTPUT})
     set_target_properties(${TARGET} PROPERTIES Fortran_MODULE_DIRECTORY ${OUTPUT_DIR}/${OUTPUT}.mod)
     set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
     set_target_properties(${TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR})
+    set_target_properties(${TARGET} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR})
     # set the install destination
     # (Note: OUTPUT_DIR is just a subfolder. The directories set above and the install directory set below do not collide.)
     install(TARGETS ${TARGET} DESTINATION ${OUTPUT_DIR})
+endfunction()
+
+################################################
+# This creates the target for every test source.
+################################################
+foreach(TEST ${SULONG_TESTS})
+  add_sulong_test(${TEST})
 endforeach()

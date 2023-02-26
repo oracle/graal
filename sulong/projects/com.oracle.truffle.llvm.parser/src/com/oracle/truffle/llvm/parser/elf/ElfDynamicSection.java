@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -88,6 +88,10 @@ public final class ElfDynamicSection {
 
     private static long addressToOffset(ElfSectionHeaderTable sht, long offset) {
         for (ElfSectionHeaderTable.Entry e : sht.getEntries()) {
+            if (!e.isAllocated()) {
+                continue;
+            }
+
             long lower = e.getShAddr();
             long upper = e.getShSize() + e.getShAddr();
             if (offset >= lower && offset < upper) {

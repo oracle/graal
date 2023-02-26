@@ -214,7 +214,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
                 out.printf("//        class: %s\n", intrinsicMethod.getEnclosingElement());
                 out.printf("//       method: %s\n", intrinsicMethod);
                 out.printf("// generated-by: %s\n", getClass().getName());
-                out.printf("@JacocoIgnoreGenerated(\"deferred plugin support that is only called in libgraal\")\n");
+                out.printf("@ExcludeFromJacocoGeneratedReport(\"deferred plugin support that is only called in libgraal\")\n");
                 out.printf("final class %s implements PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction {\n", name);
                 out.printf("    static PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction FUNCTION = new %s();\n", name);
                 InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);

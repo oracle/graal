@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,6 +128,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
         private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         @Fold
         static int countOffset() {
             try {
@@ -145,10 +146,12 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
         public static class Templates extends AbstractTemplates {
 
-            private final SnippetInfo add = snippet(SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
+            private final SnippetInfo add;
 
             Templates(OptionValues options, Providers providers) {
                 super(options, providers);
+
+                this.add = snippet(providers, SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
             }
 
             public void lower(SnippetCounterNode counter, LoweringTool tool) {
@@ -157,7 +160,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
                 args.addConst("counter", counter.getCounter());
                 args.add("increment", counter.getIncrement());
 
-                template(counter, args).instantiate(providers.getMetaAccess(), counter, DEFAULT_REPLACER, args);
+                template(tool, counter, args).instantiate(tool.getMetaAccess(), counter, DEFAULT_REPLACER, args);
             }
         }
     }

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.test.wrapper.HostEntryPoint.GuestExceptionPointer;
 import com.oracle.truffle.api.test.wrapper.HostEntryPoint.HostValuePointer;
 import com.oracle.truffle.api.utilities.TriState;
@@ -101,7 +102,8 @@ class HostGuestValue implements TruffleObject {
     }
 
     static boolean isGuestPrimitive(Object result) {
-        return result instanceof String || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType || result instanceof SourceSection;
+        return result instanceof String || result instanceof TruffleString || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType ||
+                        result instanceof SourceSection;
     }
 
     static Object[] marshalToRemote(HostEntryPoint hostToGuest, Object[] args) {
@@ -109,7 +111,7 @@ class HostGuestValue implements TruffleObject {
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
             if (arg instanceof Long) {
-                // TODO handle long
+                // TODO GR-38632 handle long
                 throw new UnsupportedOperationException();
             } else if (arg instanceof HostGuestValue) {
                 newArgs[i] = ((HostGuestValue) arg).id;
@@ -118,12 +120,12 @@ class HostGuestValue implements TruffleObject {
             } else if (arg instanceof Object[]) {
                 newArgs[i] = marshalToRemote(hostToGuest, (Object[]) arg);
             } else if (arg instanceof InteropLibrary) {
-                // TODO many more types to serialize
+                // TODO GR-38632 many more types to serialize
                 newArgs[i] = null;
             } else if (arg instanceof String) {
                 newArgs[i] = arg;
             } else {
-                // TODO many more types to serialize
+                // TODO GR-38632 many more types to serialize
                 throw new UnsupportedOperationException(arg.getClass().getName());
             }
         }

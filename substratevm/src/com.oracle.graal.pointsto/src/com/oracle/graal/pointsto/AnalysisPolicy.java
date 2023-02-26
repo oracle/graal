@@ -24,25 +24,34 @@
  */
 package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import java.util.BitSet;
+
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.MultiTypeState;
+import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,6 +74,8 @@ public abstract class AnalysisPolicy {
         typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
     }
 
+    public abstract boolean isContextSensitiveAnalysis();
+
     public boolean aliasArrayTypeFlows() {
         return aliasArrayTypeFlows;
     }
@@ -81,13 +92,7 @@ public abstract class AnalysisPolicy {
         return typeFlowSaturationCutoff;
     }
 
-    /** Provide an analysis context policy. */
-    protected abstract AnalysisContextPolicy<? extends AnalysisContext> contextPolicy();
-
-    @SuppressWarnings("unchecked")
-    public AnalysisContextPolicy<AnalysisContext> getContextPolicy() {
-        return (AnalysisContextPolicy<AnalysisContext>) contextPolicy();
-    }
+    public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
 
     /**
      * Specifies if this policy models constants objects context sensitively, i.e., by creating a
@@ -115,33 +120,55 @@ public abstract class AnalysisPolicy {
     public abstract boolean isContextSensitiveAllocation(PointsToAnalysis bb, AnalysisType type, AnalysisContext allocationContext);
 
     /** Create a heap allocated object abstraction. */
-    public abstract AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext);
+    public abstract AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisType objectType, BytecodePosition allocationSite, AnalysisContext allocationContext);
 
     /** Create a constant object abstraction. */
     public abstract AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
 
-    /** Create an allocation site given the BCI and method. */
-    public abstract BytecodeLocation createAllocationSite(PointsToAnalysis bb, int bci, AnalysisMethod method);
+    /** Wrap a constant into a type state abstraction. */
+    public abstract TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
+
+    /** Create type state for dynamic new instance. */
+    public abstract TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodePosition allocationSite, AnalysisContext allocationContext);
+
+    /** Create type state for clone. */
+    public abstract TypeState cloneState(PointsToAnalysis bb, TypeState currentState, TypeState inputState, BytecodePosition cloneSite, AnalysisContext allocationContext);
 
     /**
-     * Create the allocation site given a unique key and method. The BCI might be duplicated due to
-     * Graal method substitutions and inlining. Then we use a unique object key.
+     * Link the elements of the cloned objects (array flows or field flows) to the elements of the
+     * source objects.
      */
-    public BytecodeLocation createAllocationSite(PointsToAnalysis bb, Object key, AnalysisMethod method) {
-        return createAllocationSite(bb, BytecodeLocation.keyToBci(key), method);
-    }
+    public abstract void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source);
 
-    public abstract FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe);
+    public abstract FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe);
 
     public abstract ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe);
 
     /** Provides implementation for the virtual invoke type flow. */
     public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
 
-    /** Provides implementation for the virtual invoke type flow. */
+    /** Provides implementation for the special invoke type flow. */
     public abstract AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+
+    /** Provides implementation for the static invoke type flow. */
+    public abstract AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey);
+
+    public abstract MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method);
+
+    public abstract AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph);
+
+    public abstract TypeFlow<?> proxy(BytecodePosition source, TypeFlow<?> input);
+
+    public abstract boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> use);
+
+    public abstract boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> observer);
+
+    public abstract void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke);
+
+    public abstract void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method);
 
     @SuppressWarnings("unused")
     public int makeProperties(BigBang bb, AnalysisObject... objects) {
@@ -154,4 +181,74 @@ public abstract class AnalysisPolicy {
         /* The default analysis policy doesn't use properties. */
         return 0;
     }
+
+    /**
+     * Simplifies a type state by replacing all context sensitive objects with context insensitive
+     * objects.
+     */
+    public abstract TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state);
+
+    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects);
+
+    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
+    @SuppressWarnings("static-method")
+    public final TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
+        if (s1.exactType().equals(s2.exactType())) {
+            /* The inputs have the same type, the result will be s1. */
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            /* The inputs have different types then the result is empty or null. */
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    public final TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
+        if (s2.containsType(s1.exactType())) {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    public abstract TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
+    @SuppressWarnings("static-method")
+    public final TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
+        if (s1.exactType().equals(s2.exactType())) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    public final TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
+        if (s2.containsType(s1.exactType())) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
 }

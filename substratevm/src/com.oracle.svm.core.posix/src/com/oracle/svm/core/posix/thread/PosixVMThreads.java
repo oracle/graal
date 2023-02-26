@@ -24,19 +24,17 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
@@ -47,6 +45,7 @@ import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
+@AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -83,8 +82,9 @@ public final class PosixVMThreads extends VMThreads {
         Sched.NoTransitions.sched_yield();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean supportsPatientSafepoints() {
+    public boolean supportsNativeYieldAndSleep() {
         return true;
     }
 
@@ -112,13 +112,5 @@ public final class PosixVMThreads extends VMThreads {
         FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
         fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
         LibC.exit(code);
-    }
-}
-
-@AutomaticFeature
-class PosixVMThreadsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VMThreads.class, new PosixVMThreads());
     }
 }

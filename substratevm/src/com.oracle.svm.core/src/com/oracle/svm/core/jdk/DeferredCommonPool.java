@@ -38,7 +38,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Pure delegate implementation to ForkJoinPool.commonPool().
  */
-public class DeferredCommonPool extends ForkJoinPool {
+public final class DeferredCommonPool extends ForkJoinPool {
 
     public DeferredCommonPool() {
         super(1, new DisallowingForkJoinWorkerThreadFactory(), null, false);

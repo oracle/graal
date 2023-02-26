@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.polyglot.scala;
 
-// Checkstyle: stop
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -39,14 +37,12 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.ModuleSupport;
 
-// Checkstyle: resume
-@AutomaticFeature
-public class ScalaFeature implements GraalFeature {
+public class ScalaFeature implements InternalFeature {
 
     public static final String UNSUPPORTED_SCALA_VERSION = "This is not a supported Scala version. native-image supports Scala 2.11.x and onwards.";
 
@@ -69,10 +65,14 @@ public class ScalaFeature implements GraalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol$");
         /* Initialized through an invokedynamic in `scala.Option` */
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
+        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.StructuralCallSite");
+        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.EmptyMethodCache");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
         if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             plugins.appendNodePlugin(new ScalaAnalysisPlugin());
         }

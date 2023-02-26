@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,17 +50,21 @@ import org.graalvm.word.UnsignedWord;
 
 public interface CTypeConversionSupport {
 
-    UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize);
+    CCharPointerHolder toCString(CharSequence javaString);
 
     UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize);
 
-    CCharPointerHolder toCString(CharSequence javaString);
+    UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize);
 
     String toJavaString(CCharPointer cString);
 
     String toJavaString(CCharPointer cString, UnsignedWord length);
 
     String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset);
+
+    String utf8ToJavaString(CCharPointer utf8String);
+
+    CCharPointerHolder toCBytes(byte[] bytes);
 
     ByteBuffer asByteBuffer(PointerBase address, int size);
 }

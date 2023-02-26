@@ -58,7 +58,7 @@ meth public void dispose()
 meth public {com.oracle.truffle.api.instrumentation.EventBinding%0} getElement()
 supr java.lang.Object
 hfds attached,attachedSemaphore,disposed,disposing,element,instrumenter
-hcls Allocation,Execution,LoadSource,Source,SourceExecuted,SourceLoaded,SourceSectionLoaded
+hcls Allocation,Execution,LoadNearestSection,LoadSource,LoadedNotifier,NearestExecution,NearestSourceSection,Source,SourceExecuted,SourceLoaded,SourceSectionLoaded
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
 meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
@@ -68,7 +68,7 @@ meth public com.oracle.truffle.api.nodes.Node getInstrumentedNode()
 meth public com.oracle.truffle.api.source.SourceSection getInstrumentedSourceSection()
 meth public java.lang.Object getNodeObject()
 meth public java.lang.RuntimeException createError(java.lang.RuntimeException)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.3")
 meth public java.lang.String toString()
 meth public java.lang.ThreadDeath createUnwind(java.lang.Object)
 meth public java.lang.ThreadDeath createUnwind(java.lang.Object,com.oracle.truffle.api.instrumentation.EventBinding<?>)
@@ -90,7 +90,7 @@ meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrumenta
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public java.lang.Object onUnwind(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public void onInputValue(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.instrumentation.EventContext,int,java.lang.Object)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.0")
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode
 cons protected init()
@@ -142,6 +142,7 @@ meth public abstract boolean isInstrumentable()
 meth public abstract com.oracle.truffle.api.instrumentation.InstrumentableNode$WrapperNode createWrapper(com.oracle.truffle.api.instrumentation.ProbeNode)
 meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
 meth public com.oracle.truffle.api.instrumentation.InstrumentableNode materializeInstrumentableNodes(java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
+meth public com.oracle.truffle.api.nodes.Node findNearestNodeAt(int,int,java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
 meth public com.oracle.truffle.api.nodes.Node findNearestNodeAt(int,java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
 meth public java.lang.Object getNodeObject()
 meth public static com.oracle.truffle.api.nodes.Node findInstrumentableParent(com.oracle.truffle.api.nodes.Node)
@@ -158,13 +159,16 @@ meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.Contexts
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecuteSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecuteSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecuteSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> createExecuteSourceBinding(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.0")
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.NearestSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> createLoadSourceBinding(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.NearestSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> createLoadSourceSectionBinding(com.oracle.truffle.api.instrumentation.NearestSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> createLoadSourceSectionBinding(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ThreadsListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachThreadsListener({%%0},boolean)
 meth public abstract <%0 extends java.io.OutputStream> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachErrConsumer({%%0})
@@ -194,6 +198,21 @@ hfds node,sourceSection
 
 CLSS public abstract interface com.oracle.truffle.api.instrumentation.LoadSourceSectionListener
 meth public abstract void onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent)
+
+CLSS public final com.oracle.truffle.api.instrumentation.NearestSectionFilter
+innr public final static Builder
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.instrumentation.NearestSectionFilter$Builder newBuilder(int,int)
+supr java.lang.Object
+hfds anchorStart,position,tagClasses,tags
+
+CLSS public final static com.oracle.truffle.api.instrumentation.NearestSectionFilter$Builder
+ outer com.oracle.truffle.api.instrumentation.NearestSectionFilter
+meth public !varargs com.oracle.truffle.api.instrumentation.NearestSectionFilter$Builder tagIs(java.lang.Class<?>[])
+meth public com.oracle.truffle.api.instrumentation.NearestSectionFilter build()
+meth public com.oracle.truffle.api.instrumentation.NearestSectionFilter$Builder anchorStart(boolean)
+supr java.lang.Object
+hfds anchorStart,column,line,theTags
 
 CLSS public final com.oracle.truffle.api.instrumentation.ProbeNode
 fld public final static java.lang.Object UNWIND_ACTION_REENTER
@@ -389,8 +408,12 @@ meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.In
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.TruffleContext getEnteredContext()
+meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.lang.String)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFile(com.oracle.truffle.api.TruffleContext,java.net.URI)
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.net.URI)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
@@ -402,6 +425,8 @@ meth public java.io.OutputStream out()
 meth public java.lang.Object getLanguageView(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.Object getPolyglotBindings()
 meth public java.lang.Object getScope(com.oracle.truffle.api.nodes.LanguageInfo)
+meth public java.lang.Thread createSystemThread(java.lang.Runnable)
+meth public java.lang.Thread createSystemThread(java.lang.Runnable,java.lang.ThreadGroup)
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getLanguages()
 meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(com.oracle.truffle.api.TruffleContext,java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
@@ -431,6 +456,7 @@ meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
+meth public abstract !hasdefault java.lang.String website()
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
@@ -438,12 +464,8 @@ innr public abstract interface static !annotation Child
 innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
-meth protected final <%0 extends com.oracle.truffle.api.TruffleLanguage> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> lookupLanguageReference(java.lang.Class<{%%0}>)
- anno 0 java.lang.Deprecated()
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
-meth protected final <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> com.oracle.truffle.api.TruffleLanguage$ContextReference<{%%0}> lookupContextReference(java.lang.Class<{%%1}>)
- anno 0 java.lang.Deprecated()
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
 meth protected final void reportPolymorphicSpecialize()
@@ -468,7 +490,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds GIL_LOCK,parent
+hfds GIL_LOCK,PARENT_LIMIT,parent
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Inherited()
@@ -494,6 +516,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -543,4 +566,5 @@ meth public java.util.function.Predicate<{java.util.function.Predicate%0}> and(j
 meth public java.util.function.Predicate<{java.util.function.Predicate%0}> negate()
 meth public java.util.function.Predicate<{java.util.function.Predicate%0}> or(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
 meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> isEqual(java.lang.Object)
+meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> not(java.util.function.Predicate<? super {%%0}>)
 

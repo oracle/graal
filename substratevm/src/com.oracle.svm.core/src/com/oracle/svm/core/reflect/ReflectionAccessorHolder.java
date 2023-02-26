@@ -24,15 +24,17 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.InvocationTargetException;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.reflect.SubstrateConstructorAccessor.ConstructorNewInstanceFunctionPointer;
-import com.oracle.svm.core.reflect.SubstrateMethodAccessor.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.reflect.ConstructorAccessor;
+import jdk.internal.reflect.MethodAccessor;
 
 /**
  * This class is used as the declaring class for reflection invocation methods. These methods have
@@ -47,30 +49,41 @@ public final class ReflectionAccessorHolder {
      * Signature prototype for invoking a method via a {@link SubstrateMethodAccessor}. Must match
      * the signature of {@link MethodInvokeFunctionPointer#invoke}
      */
-    static Object invokePrototype(boolean invokeSpecial, Object obj, Object[] args) {
+    private static Object invokePrototype(Object obj, Object[] args, CFunctionPointer invokedMethod) {
         throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
     }
 
-    /**
-     * Signature prototype for allocating a new instance via a {@link SubstrateConstructorAccessor}.
-     * Must match * the signature of {@link ConstructorNewInstanceFunctionPointer#invoke}
-     */
-    static Object newInstancePrototype(Object[] args) {
+    public interface MethodInvokeFunctionPointer extends CFunctionPointer {
+        /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
+        @InvokeJavaFunctionPointer
+        Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod);
+    }
+
+    private static Object invokePrototypeForCallerSensitiveAdapter(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass) {
         throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
+    }
+
+    public interface MethodInvokeFunctionPointerForCallerSensitiveAdapter extends CFunctionPointer {
+        /**
+         * Must match the signature of
+         * {@link ReflectionAccessorHolder#invokePrototypeForCallerSensitiveAdapter}.
+         */
+        @InvokeJavaFunctionPointer
+        Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass);
     }
 
     /*
      * Methods for throwing exceptions when a method or constructor is used in an illegal way. These
-     * methods are invoked via function pointers, so must have the same signature as the prototypes
+     * methods are invoked via function pointers, so must have the same signature as the prototype
      * above.
      */
 
-    private static void methodHandleInvokeError(boolean invokeSpecial, Object obj, Object[] args) throws InvocationTargetException {
+    private static void methodHandleInvokeError(Object obj, Object[] args, CFunctionPointer invokedMethod) throws InvocationTargetException {
         /* The nested exceptions are required by the specification. */
         throw new InvocationTargetException(new UnsupportedOperationException("MethodHandle.invoke() and MethodHandle.invokeExact() cannot be invoked through reflection"));
     }
 
-    private static Object newInstanceError(Object[] args) throws InstantiationException {
+    private static Object newInstanceError(Object obj, Object[] args, CFunctionPointer invokedMethod) throws InstantiationException {
         throw new InstantiationException("Only non-abstract instance classes can be instantiated using reflection");
     }
 
@@ -80,30 +93,30 @@ public final class ReflectionAccessorHolder {
      */
 
     @NeverInline("Exception slow path")
-    private static InvocationTargetException throwInvocationTargetException(Throwable target) throws InvocationTargetException {
-        throw new InvocationTargetException(target);
+    private static void throwIllegalArgumentExceptionWithReceiver(Object obj, Object[] args) {
+        throw throwIllegalArgumentException(true, obj, args);
     }
 
     @NeverInline("Exception slow path")
-    private static void throwIllegalArgumentExceptionForMethod(Object member, Object obj, Object[] args) {
-        throwIllegalArgumentException(member, false, obj, args);
-    }
-
-    @NeverInline("Exception slow path")
-    private static void throwIllegalArgumentExceptionForConstructor(Object member, Object[] args) {
-        throwIllegalArgumentException(member, true, null, args);
+    private static void throwIllegalArgumentExceptionWithoutReceiver(Object[] args) {
+        throw throwIllegalArgumentException(false, null, args);
     }
 
     /**
-     * We do not know which check in the generated metod caused the exception, so we cannot print
-     * detailed information about that. But printing the signature of the method and all the types
-     * of the actual arguments should make it obvious what the problem is.
+     * We do not know which check in the generated method caused the exception, so we cannot print
+     * detailed information about that. We also do not know which member we are trying to invoke:
+     * {@link MethodAccessor#invoke} and {@link ConstructorAccessor#newInstance} do not propagate
+     * the invoked member into the accessor, and storing the member in
+     * {@link SubstrateMethodAccessor} and {@link SubstrateConstructorAccessor} would add a lot of
+     * objects to the image heap.
+     *
+     * But printing all the types of the actual arguments should help diagnose what the problem is.
      */
-    private static void throwIllegalArgumentException(Object member, boolean constructor, Object obj, Object[] args) {
+    private static RuntimeException throwIllegalArgumentException(boolean withReceiver, Object obj, Object[] args) {
         String sep = System.lineSeparator();
         StringBuilder msg = new StringBuilder();
-        msg.append("Illegal arguments for invoking ").append(member);
-        if (!constructor) {
+        msg.append("Illegal arguments for reflective invocation");
+        if (withReceiver) {
             msg.append(sep).append("  obj: ").append(obj == null ? "null" : obj.getClass().getTypeName());
         }
         if (args == null) {

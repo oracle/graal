@@ -54,14 +54,18 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Test;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SLHostClassLoadingTest {
 
     @Test
     public void testSLHostClassLoading() throws IOException {
+        TruffleTestAssumptions.assumeNotAOT();
         HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.ALL).build();
-        try (Context context = Context.newBuilder().allowIO(true).allowHostAccess(accessPolicy).allowHostClassLookup(cls -> true).allowHostClassLoading(true).build()) {
+        try (Context context = Context.newBuilder().allowIO(IOAccess.ALL).allowHostAccess(accessPolicy).allowHostClassLookup(cls -> true).allowHostClassLoading(true).build()) {
             final Class<?> hostClass = HostClassLoadingTestClass1.class;
             Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
             Path jar = createJar(tempDir);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@
 #include <ffi.h>
 #include "internal.h"
 
-
 struct cif_data {
     ffi_cif cif;
     ffi_type *args[0];
@@ -63,7 +62,8 @@ static int align_up(int index, int alignment) {
     return index;
 }
 
-static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *cif, jlong address, jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
+static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *cif, jlong address, jbyteArray primArgs, jint patchCount,
+                          jintArray patch, jobjectArray objArgs) {
     struct __TruffleEnvInternal truffleEnv;
     void **argPtrs;
     jbyte *primArgValues;
@@ -104,7 +104,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
 
         switch (tag) {
             case OBJECT:
-                *((jobject*) argPtr) = arg;
+                *((jobject *) argPtr) = arg;
                 break;
             case STRING:
                 objectsForRelease[releaseCount] = arg;
@@ -118,46 +118,46 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
                  */
                 break;
             case ENV:
-                *((TruffleEnv**) argPtr) = (TruffleEnv*) &truffleEnv;
+                *((TruffleEnv **) argPtr) = (TruffleEnv *) &truffleEnv;
                 break;
             case BOOLEAN_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jboolean**) argPtr) = (*env)->GetBooleanArrayElements(env, (jbooleanArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jboolean **) argPtr) = (*env)->GetBooleanArrayElements(env, (jbooleanArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case BYTE_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jbyte**) argPtr) = (*env)->GetByteArrayElements(env, (jbyteArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jbyte **) argPtr) = (*env)->GetByteArrayElements(env, (jbyteArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case CHAR_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jchar**) argPtr) = (*env)->GetCharArrayElements(env, (jcharArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jchar **) argPtr) = (*env)->GetCharArrayElements(env, (jcharArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case SHORT_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jshort**) argPtr) = (*env)->GetShortArrayElements(env, (jshortArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jshort **) argPtr) = (*env)->GetShortArrayElements(env, (jshortArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case INT_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jint**) argPtr) = (*env)->GetIntArrayElements(env, (jintArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jint **) argPtr) = (*env)->GetIntArrayElements(env, (jintArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case LONG_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jlong**) argPtr) = (*env)->GetLongArrayElements(env, (jlongArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jlong **) argPtr) = (*env)->GetLongArrayElements(env, (jlongArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case FLOAT_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jfloat**) argPtr) = (*env)->GetFloatArrayElements(env, (jfloatArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jfloat **) argPtr) = (*env)->GetFloatArrayElements(env, (jfloatArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
             case DOUBLE_ARRAY:
                 objectsForRelease[releaseCount] = arg;
-                ptrsForRelease[releaseCount] = *((jdouble**) argPtr) = (*env)->GetDoubleArrayElements(env, (jdoubleArray) arg, NULL);
+                ptrsForRelease[releaseCount] = *((jdouble **) argPtr) = (*env)->GetDoubleArrayElements(env, (jdoubleArray) arg, NULL);
                 tagsForRelease[releaseCount++] = tag;
                 break;
         }
@@ -169,7 +169,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
 
     errno = errnoMirror;
 
-    ffi_call(cif, (void (*)(void))(intptr_t)address, ret, argPtrs);
+    ffi_call(cif, (void (*)(void))(intptr_t) address, ret, argPtrs);
 
     errnoMirror = errno;
 
@@ -186,93 +186,103 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
                 (*env)->ReleaseStringUTFChars(env, (jstring) objectsForRelease[i], (const char *) ptrsForRelease[i]);
                 break;
             case BOOLEAN_ARRAY:
-                (*env)->ReleaseBooleanArrayElements(env, (jbooleanArray) objectsForRelease[i], (jboolean*) ptrsForRelease[i], 0);
+                (*env)->ReleaseBooleanArrayElements(env, (jbooleanArray) objectsForRelease[i], (jboolean *) ptrsForRelease[i], 0);
                 break;
             case BYTE_ARRAY:
-                (*env)->ReleaseByteArrayElements(env, (jbyteArray) objectsForRelease[i], (jbyte*) ptrsForRelease[i], 0);
+                (*env)->ReleaseByteArrayElements(env, (jbyteArray) objectsForRelease[i], (jbyte *) ptrsForRelease[i], 0);
                 break;
             case CHAR_ARRAY:
-                (*env)->ReleaseCharArrayElements(env, (jcharArray) objectsForRelease[i], (jchar*) ptrsForRelease[i], 0);
+                (*env)->ReleaseCharArrayElements(env, (jcharArray) objectsForRelease[i], (jchar *) ptrsForRelease[i], 0);
                 break;
             case SHORT_ARRAY:
-                (*env)->ReleaseShortArrayElements(env, (jshortArray) objectsForRelease[i], (jshort*) ptrsForRelease[i], 0);
+                (*env)->ReleaseShortArrayElements(env, (jshortArray) objectsForRelease[i], (jshort *) ptrsForRelease[i], 0);
                 break;
             case INT_ARRAY:
-                (*env)->ReleaseIntArrayElements(env, (jintArray) objectsForRelease[i], (jint*) ptrsForRelease[i], 0);
+                (*env)->ReleaseIntArrayElements(env, (jintArray) objectsForRelease[i], (jint *) ptrsForRelease[i], 0);
                 break;
             case LONG_ARRAY:
-                (*env)->ReleaseLongArrayElements(env, (jlongArray) objectsForRelease[i], (jlong*) ptrsForRelease[i], 0);
+                (*env)->ReleaseLongArrayElements(env, (jlongArray) objectsForRelease[i], (jlong *) ptrsForRelease[i], 0);
                 break;
             case FLOAT_ARRAY:
-                (*env)->ReleaseFloatArrayElements(env, (jfloatArray) objectsForRelease[i], (jfloat*) ptrsForRelease[i], 0);
+                (*env)->ReleaseFloatArrayElements(env, (jfloatArray) objectsForRelease[i], (jfloat *) ptrsForRelease[i], 0);
                 break;
             case DOUBLE_ARRAY:
-                (*env)->ReleaseDoubleArrayElements(env, (jdoubleArray) objectsForRelease[i], (jdouble*) ptrsForRelease[i], 0);
+                (*env)->ReleaseDoubleArrayElements(env, (jdoubleArray) objectsForRelease[i], (jdouble *) ptrsForRelease[i], 0);
                 break;
         }
     }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
-        jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs, jbyteArray retArray) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext,
+                                                                                              jlong cif, jlong address, jbyteArray primArgs,
+                                                                                              jint patchCount, jintArray patch, jobjectArray objArgs,
+                                                                                              jbyteArray retArray) {
     jbyte *ret = retArray ? (*env)->GetByteArrayElements(env, retArray, NULL) : NULL;
-    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
     if (retArray) {
         (*env)->ReleaseByteArrayElements(env, retArray, ret, 0);
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
-        jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext,
+                                                                                                  jlong cif, jlong address, jbyteArray primArgs,
+                                                                                                  jint patchCount, jintArray patch,
+                                                                                                  jobjectArray objArgs) {
     ffi_arg ret;
-    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, &ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
     return (jlong) ret;
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
-        jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext,
+                                                                                                 jlong cif, jlong address, jbyteArray primArgs,
+                                                                                                 jint patchCount, jintArray patch,
+                                                                                                 jobjectArray objArgs) {
     jobject ret;
-    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, &ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext *) (intptr_t) truffleContext, &ret, (ffi_cif *) (intptr_t) cif, address, primArgs, patchCount, patch, objArgs);
     return ret;
 }
 
-
 static struct cif_data *prepareArgs(JNIEnv *env, struct __TruffleContextInternal *ctx, int nargs, jobjectArray argTypes) {
-    struct cif_data *data = (struct cif_data *) malloc(sizeof(struct cif_data) + nargs * sizeof(ffi_type*));
+    struct cif_data *data = (struct cif_data *) malloc(sizeof(struct cif_data) + nargs * sizeof(ffi_type *));
     int i;
     for (i = 0; i < nargs; i++) {
         jobject type = (*env)->GetObjectArrayElement(env, argTypes, i);
-        data->args[i] = (ffi_type*)(intptr_t)(*env)->GetLongField(env, type, ctx->LibFFIType_type);
+        data->args[i] = (ffi_type *) (intptr_t) (*env)->GetLongField(env, type, ctx->LibFFIType_type);
     }
     return data;
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jobjectArray argTypes) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)nativeContext;
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext,
+                                                                                                  jobject retType, jint nargs,
+                                                                                                  jobjectArray argTypes) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
-    ffi_type *ret = (ffi_type*)(intptr_t)(*env)->GetLongField(env, retType, ctx->LibFFIType_type);
+    ffi_type *ret = (ffi_type *) (intptr_t) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif(&data->cif, FFI_DEFAULT_ABI, nargs, ret, data->args);
 
     if (result == FFI_OK) {
-        return (jlong)(intptr_t)data;
+        return (jlong) (intptr_t) data;
     } else {
         free(data);
         return 0;
     }
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jint nFixedArgs, jobjectArray argTypes) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)nativeContext;
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self,
+                                                                                                         jlong nativeContext, jobject retType,
+                                                                                                         jint nargs, jint nFixedArgs,
+                                                                                                         jobjectArray argTypes) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
-    ffi_type *ret = (ffi_type*)(intptr_t)(*env)->GetLongField(env, retType, ctx->LibFFIType_type);
+    ffi_type *ret = (ffi_type *) (intptr_t) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif_var(&data->cif, FFI_DEFAULT_ABI, nFixedArgs, nargs, ret, data->args);
 
     if (result == FFI_OK) {
-        return (jlong)(intptr_t)data;
+        return (jlong) (intptr_t) data;
     } else {
         free(data);
         return 0;

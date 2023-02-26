@@ -70,24 +70,19 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
 
     protected final ForeignCallDescriptor descriptor;
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
+    private boolean validateDeoptFrameStates = true;
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter ForeignCallsProvider foreignCalls,
                     ForeignCallSignature signature, ValueNode... arguments) {
         ForeignCallDescriptor descriptor = foreignCalls.getDescriptor(signature);
-        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+        return finishIntrinsification(b, returnStamp, new ForeignCallNode(descriptor, arguments));
     }
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        return doIntrinsify(b, returnStamp, descriptor, arguments, false);
+        return finishIntrinsification(b, returnStamp, new ForeignCallNode(descriptor, arguments));
     }
 
-    static boolean doIntrinsify(GraphBuilderContext b, Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode[] arguments, boolean withException) {
-        ForeignCall node;
-        if (withException) {
-            node = new ForeignCallWithExceptionNode(descriptor, arguments);
-        } else {
-            node = new ForeignCallNode(descriptor, arguments);
-        }
+    public static boolean finishIntrinsification(GraphBuilderContext b, Stamp returnStamp, ForeignCall node) {
         node.asNode().setStamp(returnStamp);
 
         /*
@@ -123,12 +118,6 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
-    }
-
-    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
-        super(TYPE, stamp);
-        this.arguments = new NodeInputList<>(this);
-        this.descriptor = descriptor;
     }
 
     protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
@@ -194,5 +183,14 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         debugProperties.put("descriptorName", descriptor.getName());
         return debugProperties;
+    }
+
+    @Override
+    public boolean validateDeoptFrameStates() {
+        return validateDeoptFrameStates;
+    }
+
+    public void setValidateDeoptFrameStates(boolean value) {
+        validateDeoptFrameStates = value;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,23 @@ package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.TruffleLogger;
 
+/**
+ * DFA compilation loggers. Enable with:
+ * 
+ * <pre>
+ * {@code
+ *  -Dpolyglot.log.regex.SwitchToEager.level=ALL
+ *  -Dpolyglot.log.regex.TotalCompilationTime.level=ALL
+ *  -Dpolyglot.log.regex.Phases.level=ALL
+ *  -Dpolyglot.log.regex.BailoutMessages.level=ALL
+ *  -Dpolyglot.log.regex.AutomatonSizes.level=ALL
+ *  -Dpolyglot.log.regex.CompilerFallback.level=ALL
+ *  -Dpolyglot.log.regex.InternalErrors.level=ALL
+ *  -Dpolyglot.log.regex.TRegexCompilations.level=ALL
+ *  -Dpolyglot.log.regex.MatchingStrategy.level=ALL
+ * }
+ * </pre>
+ */
 public final class Loggers {
 
     public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
@@ -52,4 +69,5 @@ public final class Loggers {
     public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
     public static final TruffleLogger LOG_INTERNAL_ERRORS = TruffleLogger.getLogger("regex", "InternalErrors");
     public static final TruffleLogger LOG_TREGEX_COMPILATIONS = TruffleLogger.getLogger("regex", "TRegexCompilations");
+    public static final TruffleLogger LOG_MATCHING_STRATEGY = TruffleLogger.getLogger("regex", "MatchingStrategy");
 }

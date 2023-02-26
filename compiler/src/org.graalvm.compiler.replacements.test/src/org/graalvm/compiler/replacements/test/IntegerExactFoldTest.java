@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,14 +41,15 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.replacements.nodes.arithmetic.BinaryIntegerExactArithmeticSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticSplitNode;
+import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNode;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -89,7 +90,9 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
 
         List<ParameterNode> params = graph.getNodes(ParameterNode.TYPE).snapshot();
         params.get(0).replaceAtMatchingUsages(graph.addOrUnique(new PiNode(params.get(0), a)), x -> x instanceof IntegerExactArithmeticNode);
-        params.get(1).replaceAtMatchingUsages(graph.addOrUnique(new PiNode(params.get(1), b)), x -> x instanceof IntegerExactArithmeticNode);
+        if (!(operation instanceof NegOperation)) {
+            params.get(1).replaceAtMatchingUsages(graph.addOrUnique(new PiNode(params.get(1), b)), x -> x instanceof IntegerExactArithmeticNode);
+        }
 
         Node originalNode = graph.getNodes().filter(x -> x instanceof IntegerExactArithmeticNode).first();
         assertNotNull("original node must be in the graph", originalNode);
@@ -111,7 +114,7 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
         assertNotNull("original node must be in the graph", originalNode);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         HighTierContext highTierContext = getDefaultHighTierContext();
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highTierContext);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, highTierContext);
         MidTierContext midTierContext = getDefaultMidTierContext();
         new GuardLoweringPhase().apply(graph, midTierContext);
         createCanonicalizerPhase().apply(graph, midTierContext);
@@ -119,8 +122,16 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
         IntegerExactArithmeticSplitNode loweredNode = graph.getNodes().filter(IntegerExactArithmeticSplitNode.class).first();
         assertNotNull("the lowered node must be in the graph", loweredNode);
 
-        loweredNode.getX().setStamp(StampFactory.forInteger(bits, lowerBoundA, upperBoundA));
-        loweredNode.getY().setStamp(StampFactory.forInteger(bits, lowerBoundB, upperBoundB));
+        if (loweredNode instanceof BinaryIntegerExactArithmeticSplitNode) {
+            BinaryIntegerExactArithmeticSplitNode binaryLoweredNode = (BinaryIntegerExactArithmeticSplitNode) loweredNode;
+            binaryLoweredNode.getX().setStamp(StampFactory.forInteger(bits, lowerBoundA, upperBoundA));
+            binaryLoweredNode.getY().setStamp(StampFactory.forInteger(bits, lowerBoundB, upperBoundB));
+        } else if (loweredNode instanceof IntegerNegExactSplitNode) {
+            IntegerNegExactSplitNode negExactSplitNode = (IntegerNegExactSplitNode) loweredNode;
+            negExactSplitNode.getValue().setStamp(StampFactory.forInteger(bits, lowerBoundA, upperBoundA));
+        } else {
+            fail("Unknown integer exact split node type: %s", loweredNode.getClass());
+        }
         createCanonicalizerPhase().apply(graph, midTierContext);
 
         ValueNode node = findNode(graph);
@@ -156,7 +167,7 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
 
-        Operation[] operations = new Operation[]{new AddOperation(), new SubOperation(), new MulOperation()};
+        Operation[] operations = new Operation[]{new AddOperation(), new SubOperation(), new MulOperation(), new NegOperation()};
         for (Operation operation : operations) {
             for (int bits : new int[]{32, 64}) {
                 // zero related
@@ -301,4 +312,38 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
             return Math.multiplyExact(a, b);
         }
     }
+
+    private static final class NegOperation extends Operation {
+        @Override
+        public void verifyOverflow(long lowerBoundA, long upperBoundA, long lowerBoundB, long upperBoundB, int bits, boolean overflowExpected, IntegerStamp resultStamp) {
+            try {
+                long res = negExact(lowerBoundA, bits);
+                Assert.assertTrue(resultStamp.contains(res));
+                res = negExact(upperBoundA, bits);
+                Assert.assertTrue(resultStamp.contains(res));
+                Assert.assertFalse(overflowExpected);
+            } catch (ArithmeticException e) {
+                Assert.assertTrue(overflowExpected);
+            }
+        }
+
+        private static long negExact(long x, int bits) {
+            if (bits == 32) {
+                return Math.negateExact((int) x);
+            } else {
+                return Math.negateExact(x);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        public static int snippetInt32(int a) {
+            return Math.negateExact(a);
+        }
+
+        @SuppressWarnings("unused")
+        public static long snippetInt64(long a) {
+            return Math.negateExact(a);
+        }
+    }
+
 }

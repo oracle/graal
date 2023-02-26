@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -188,7 +188,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     @TruffleBoundary
     private Object decorateForeign(Object function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
-        FunctionType newFunctionType = new FunctionType(wrapperFunction.getLLVMFunction().getType().getReturnType(), 0, true);
+        FunctionType newFunctionType = new FunctionType(wrapperFunction.getLLVMFunction().getType().getReturnType(), 0, 0);
         DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(getLanguage(), newFunctionType, function, wrapperFunction);
         return registerRoot(wrapperFunction.getLLVMFunction().getStringPath(), newFunctionType, decoratedRoot);
     }

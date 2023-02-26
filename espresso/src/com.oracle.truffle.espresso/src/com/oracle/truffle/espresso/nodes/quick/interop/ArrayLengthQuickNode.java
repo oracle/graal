@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLength;
 import com.oracle.truffle.espresso.nodes.bytecodes.ArrayLengthFactory;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -47,8 +47,8 @@ public final class ArrayLengthQuickNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 1));
-        BytecodeNode.putInt(frame, top - 1, arrayLength.execute(array));
+        StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 1));
+        EspressoFrame.putInt(frame, top - 1, arrayLength.execute(array));
         return stackEffectOf_ARRAYLENGTH;
     }
 }

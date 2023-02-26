@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import jdk.vm.ci.code.BytecodePosition;
-
 import java.util.Collection;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Provides analysis related information for each invoke in AnalysisMethod's StructuredGraph. It was
@@ -38,7 +38,18 @@ public interface InvokeInfo {
 
     AnalysisMethod getTargetMethod();
 
-    Collection<AnalysisMethod> getCallees();
+    /**
+     * Retrieves a list of all callees whose MultiMethodKey is {@code ORIGINAL_METHOD}. All of these
+     * callees will also be {@link AnalysisMethod#isImplementationInvoked()}.
+     */
+    Collection<AnalysisMethod> getOriginalCallees();
+
+    /**
+     * Retrieves list of all callees. Note that callees in this list can have a MultiMethodKey
+     * different from ORIGINAL_METHOD and also may not be
+     * {@link AnalysisMethod#isImplementationInvoked()}.
+     */
+    Collection<AnalysisMethod> getAllCallees();
 
     BytecodePosition getPosition();
 

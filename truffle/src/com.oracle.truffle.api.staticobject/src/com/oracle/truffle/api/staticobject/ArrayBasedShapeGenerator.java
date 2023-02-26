@@ -157,6 +157,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return sg;
     }
 
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
     private static int getObjectFieldOffset(Class<?> c, String fieldName) {
         try {
             return Math.toIntExact(UNSAFE.objectFieldOffset(c.getField(fieldName)));
@@ -228,13 +229,16 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", storageConstructorDescriptor, null, null);
             mv.visitCode();
             mv.visitVarInsn(ALOAD, 0);
-            int var = 1;
+            int maxStack = 1; // this
+            int maxLocals = 1; // ALOAD_0
             Class<?>[] constructorParameters = superConstructor.getParameterTypes();
-            for (int i = 0; i < constructorParameters.length; i++) {
-                Class<?> constructorParameter = constructorParameters[i];
+            for (Class<?> constructorParameter : constructorParameters) {
                 Type parameterType = Type.getType(constructorParameter);
                 int loadOpcode = parameterType.getOpcode(ILOAD);
-                mv.visitVarInsn(loadOpcode, var++);
+                mv.visitVarInsn(loadOpcode, maxLocals);
+                int parameterSize = parameterType.getSize();
+                maxStack += parameterSize;
+                maxLocals += parameterSize;
             }
             mv.visitMethodInsn(INVOKESPECIAL, storageSuperName, "<init>", superConstructorDescriptor, false);
 
@@ -243,15 +247,15 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
             // this.shape = shape;
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ALOAD, var);
+            mv.visitVarInsn(ALOAD, maxLocals++);
             mv.visitFieldInsn(PUTFIELD, storageName, "shape", STATIC_SHAPE_DESCRIPTOR);
 
             // primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null;
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ILOAD, var + 1);
+            mv.visitVarInsn(ILOAD, maxLocals);
             Label lNoPrimitives = new Label();
             mv.visitJumpInsn(IFLE, lNoPrimitives);
-            mv.visitVarInsn(ILOAD, var + 1);
+            mv.visitVarInsn(ILOAD, maxLocals++);
             mv.visitIntInsn(NEWARRAY, T_BYTE);
             Label lSetPrimitive = new Label();
             mv.visitJumpInsn(GOTO, lSetPrimitive);
@@ -264,10 +268,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
             // object = objectArraySize > 0 ? new Object[objectArraySize] : null;
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ILOAD, var + 2);
+            mv.visitVarInsn(ILOAD, maxLocals);
             Label lNoObjects = new Label();
             mv.visitJumpInsn(IFLE, lNoObjects);
-            mv.visitVarInsn(ILOAD, var + 2);
+            mv.visitVarInsn(ILOAD, maxLocals++);
             mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
             Label lSetObject = new Label();
             mv.visitJumpInsn(GOTO, lSetObject);
@@ -279,7 +283,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitFieldInsn(PUTFIELD, storageName, "object", "[Ljava/lang/Object;");
 
             mv.visitInsn(RETURN);
-            mv.visitMaxs(Math.max(var, 3), var + 3);
+            mv.visitMaxs(Math.max(maxStack, 3), maxLocals);
 
             mv.visitEnd();
         }
@@ -389,17 +393,20 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitCode();
             mv.visitTypeInsn(NEW, Type.getInternalName(storageClass));
             mv.visitInsn(DUP);
-            int maxStack = 2;
             StringBuilder constructorDescriptor = new StringBuilder();
             constructorDescriptor.append('(');
             Class<?>[] params = m.getParameterTypes();
-            for (int i = 0; i < params.length; i++) {
-                int loadOpcode = Type.getType(params[i]).getOpcode(ILOAD);
-                mv.visitVarInsn(loadOpcode, i + 1);
-                constructorDescriptor.append(Type.getDescriptor(params[i]));
-                maxStack++;
+            int maxStack = 2; // DUP
+            int maxLocals = 1; // this
+            for (Class<?> param : params) {
+                Type parameterType = Type.getType(param);
+                int loadOpcode = parameterType.getOpcode(ILOAD);
+                mv.visitVarInsn(loadOpcode, maxLocals);
+                int parameterSize = parameterType.getSize();
+                maxStack += parameterSize;
+                maxLocals += parameterSize;
+                constructorDescriptor.append(Type.getDescriptor(param));
             }
-            int maxLocals = maxStack - 1;
 
             constructorDescriptor.append(STATIC_SHAPE_DESCRIPTOR);
             mv.visitVarInsn(ALOAD, 0);

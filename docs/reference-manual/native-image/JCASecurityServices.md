@@ -1,9 +1,11 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: JCA Security Services on Native Image
-permalink: /reference-manual/native-image/JCASecurityServices/
+layout: ni-docs
+toc_group: dynamic-features
+link_title: JCA Security Services
+permalink: /reference-manual/native-image/dynamic-features/JCASecurityServices/
+redirect_from: /$version/reference-manual/native-image/featuresJCASecurityServices/
 ---
+
 # JCA Security Services in Native Image
 
 This section refers to the use of the services provided by the Java Cryptography Architecture (JCA) framework.
@@ -17,7 +19,8 @@ Then a custom reflection configuraion file or feature can be used to register th
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
 In this case, you must manually mark used providers with `-H:AdditionalSecurityProviders`.
 
-# Security services automatic registration
+## Security Services Automatic Registration
+
 The mechanism, implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
 
 Each JCA provider registers concrete implementation classes for the algorithms it supports.
@@ -33,11 +36,13 @@ The report will detail all registered service classes, the API methods that trig
 Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.
 
 ## Provider Registration
+
 The native image builder captures the list of providers and their preference order from the underlying JVM.
 The provider order is specified in the `java.security` file under `<java-home>/lib/security/java.security`.
 New security providers cannot be registered at run time; all providers must be statically configured during a native image building.
 
-## Provider Reordering At Runtime
+## Provider Reordering at Runtime
+
 It is possible to reorder security providers at runtime, however only existing provider instances can be used.
 For example, if the BouncyCastle provider was registered at build time and we wish to insert it at position 1 at runtime:
 ```java
@@ -58,3 +63,7 @@ By default, only services specified in the JCA are automatically registered. To 
 Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same simple name as the service type.
 If relying on third party code that doesn't comply to the above requirements, manual configuration will be required. In that case, providers for such services must explicitly be registered using `-H:AdditionalSecurityProviders`.
 Note that these options are only required in very specific cases and should not normally be needed.
+
+### Further Reading
+
+* [URL Protocols in Native Image](URLProtocols.md)

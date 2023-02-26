@@ -26,9 +26,10 @@ You probably want to use a sampling delay with `--cpusampler.Delay=MILLISECONDS`
 
 See `language-launcher --help:tools` for more `--cpusampler` options.
 
-### Getting compilation data from the CPU Sampler
+### Getting Compilation Data from the CPU Sampler
 
-Since versions 21.3.0 the CPU sampler CLI output was simplified to not include information about time spent in compiled code. This was, at least in part, motivated by the introduction of multi-tier compilation where "compiled code" was not descriptive enough.
+The CPU sampler does not show information about time spent in compiled code. 
+This was, at least in part, motivated by the introduction of multi-tier compilation where "compiled code" was not descriptive enough.
 Using the `--cpusampler.ShowTiers` option allows users to control whether they wish to see compilation data at all, as well as to specify exactly which compilation tiers should be considered in the report.
 For example, adding `--cpusampler.ShowTiers=true` will show all the compilation tiers encountered during execution as shown bellow.
 

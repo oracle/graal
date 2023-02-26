@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,7 +120,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private int nextDumpId() {
-        int depth = previousInlineContext.size();
+        int depth = previousInlineContext.size() - 1;
         if (dumpIds.length < depth + 1) {
             dumpIds = Arrays.copyOf(dumpIds, depth + 1);
         }
@@ -198,12 +198,12 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     } catch (Throwable t) {
                         properties.put("node-cost-exception", t.getMessage());
                     }
-                    properties.put("StageFlags", ((StructuredGraph) graph).getStageFlags());
+                    properties.put("StageFlags", ((StructuredGraph) graph).getGraphState().getStageFlags());
                 }
-                if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getModificationCount()) {
+                if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
                     printer.print(debug, graph, properties, nextDumpId(), format, arguments);
                     lastGraph = graph;
-                    lastModCount = graph.getModificationCount();
+                    lastModCount = graph.getEdgeModificationCount();
                 }
             } catch (IOException e) {
                 handleException(debug, e);
@@ -264,14 +264,25 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     lastMethodOrGraph = o;
                 }
             }
-            // Truffle compilations don't have a standard inline context.
-            // Since TruffleDebugJavaMethod specifies the declaring class for truffle compilations
-            // as "LTruffleGraal" we identify truffle compilations as starting with "TruffleGraal"
-            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                String name = result.get(1).replace("TruffleGraal.", "TruffleIR::");
-                result.clear();
-                result.add(name);
+
+            for (int i = 0; i < result.size(); i++) {
+                /*
+                 * Truffle compilations don't have a standard inline context. Since
+                 * TruffleDebugJavaMethod specifies the declaring class for truffle compilations as
+                 * "LTruffleGraal" we identify truffle compilations as starting with "TruffleGraal"
+                 */
+                String name = result.get(i);
+                String search = "TruffleGraal.";
+                if (name.startsWith(search)) {
+                    result.set(i, "TruffleIR::" + name.substring(search.length(), name.length()));
+                    if (i > 0) {
+                        // we can drop previous entry which is just profiledPERoot
+                        result.remove(i - 1);
+                    }
+                    break;
+                }
             }
+
             if (result.isEmpty()) {
                 result.add(graph.toString());
                 graphSeen = true;

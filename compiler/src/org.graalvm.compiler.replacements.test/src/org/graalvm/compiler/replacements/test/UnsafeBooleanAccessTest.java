@@ -42,8 +42,8 @@ public class UnsafeBooleanAccessTest extends GraalCompilerTest {
     static {
         try {
             Field staticField = UnsafeBooleanAccessTest.class.getDeclaredField("onHeapMemory");
-            onHeapMemoryBase = UNSAFE.staticFieldBase(staticField);
-            onHeapMemoryOffset = UNSAFE.staticFieldOffset(staticField);
+            onHeapMemoryBase = getStaticFieldBase(staticField);
+            onHeapMemoryOffset = getStaticFieldOffset(staticField);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

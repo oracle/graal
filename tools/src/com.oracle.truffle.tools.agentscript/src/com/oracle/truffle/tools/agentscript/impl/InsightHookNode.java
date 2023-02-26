@@ -115,6 +115,7 @@ final class InsightHookNode extends ExecutionEventNode {
         }
     }
 
+    @SuppressWarnings("serial")
     private static final class ReturnNow extends ControlFlowException {
         static final long serialVersionUID = 49092343L;
         final Object returnValue;

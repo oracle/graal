@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,12 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -66,20 +63,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl.LocationVisitor;
 import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
-import com.oracle.truffle.object.Transition.PropertyTransition;
 import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 import com.oracle.truffle.object.Transition.ShareShapeTransition;
 
@@ -124,8 +117,6 @@ public abstract class ShapeImpl extends Shape {
     protected final int primitiveArraySize;
     /** @since 0.17 or earlier */
     protected final int primitiveArrayCapacity;
-    /** @since 0.17 or earlier */
-    protected final boolean hasPrimitiveArray;
 
     /** @since 0.17 or earlier */
     protected final int depth;
@@ -171,12 +162,9 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
-     *
-     * @see #ShapeImpl(com.oracle.truffle.api.object.Layout, ShapeImpl, Object, Object, PropertyMap,
-     *      Transition, BaseAllocator, int)
      */
     private ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent,
-                    int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int flags, Assumption singleContextAssumption) {
+                    int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, int flags, Assumption singleContextAssumption) {
         this.layout = (LayoutImpl) layout;
         this.objectType = Objects.requireNonNull(objectType);
         this.propertyMap = Objects.requireNonNull(propertyMap);
@@ -189,7 +177,6 @@ public abstract class ShapeImpl extends Shape {
         this.primitiveFieldSize = primitiveFieldSize;
         this.primitiveArraySize = primitiveArraySize;
         this.primitiveArrayCapacity = capacityFromSize(primitiveArraySize);
-        this.hasPrimitiveArray = hasPrimitiveArray;
 
         if (parent != null) {
             this.propertyCount = makePropertyCount(parent, propertyMap, transitionFromParent);
@@ -227,7 +214,7 @@ public abstract class ShapeImpl extends Shape {
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
                     Transition transition, Allocator allocator, int flags) {
         this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
-                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, ((BaseAllocator) allocator).hasPrimitiveArray, flags, null);
+                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, flags, null);
     }
 
     /** @since 0.17 or earlier */
@@ -237,7 +224,7 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
-        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, true, flags, constantObjectAssumption);
+        this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, flags, constantObjectAssumption);
     }
 
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap, Transition transitionFromParent) {
@@ -260,12 +247,6 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final Property getLastProperty() {
         return propertyMap.getLastProperty();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public final int getId() {
-        return getObjectFlags(flags);
     }
 
     @Override
@@ -338,7 +319,7 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     public final boolean hasPrimitiveArray() {
-        return hasPrimitiveArray;
+        return getLayout().hasPrimitiveExtensionArray();
     }
 
     /**
@@ -561,8 +542,6 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl addProperty(Property property) {
-        assert isValid();
-
         return getLayoutStrategy().addProperty(this, property);
     }
 
@@ -579,9 +558,6 @@ public abstract class ShapeImpl extends Shape {
                 propertyAssumptions.invalidatePropertyAssumption(propertyKey);
             }
         }
-        if (sharedData instanceof com.oracle.truffle.api.object.ShapeListener) {
-            ((com.oracle.truffle.api.object.ShapeListener) sharedData).onPropertyTransition(propertyKey);
-        }
     }
 
     /** @since 0.17 or earlier */
@@ -594,7 +570,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
-    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, LocationFactory locationFactory) {
+    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
         return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
     }
 
@@ -636,22 +612,7 @@ public abstract class ShapeImpl extends Shape {
         PropertyMap newPropertyMap = parent.propertyMap.putCopy(addend);
 
         ShapeImpl newShape = parent.createShape(parent.layout, parent.sharedData, parent, parent.objectType, newPropertyMap, addTransition, allocator, parent.flags);
-        assert ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0 || newShape.hasPrimitiveArray;
-        assert newShape.depth == allocator.depth;
-        return newShape;
-    }
-
-    /**
-     * Create a new shape that reserves the primitive extension array field.
-     *
-     * @since 0.17 or earlier
-     */
-    protected static ShapeImpl makeShapeWithPrimitiveExtensionArray(ShapeImpl parent, Transition transition) {
-        assert parent.getLayout().hasPrimitiveExtensionArray();
-        assert !parent.hasPrimitiveArray();
-        BaseAllocator allocator = parent.allocator().addLocation(parent.getLayout().getPrimitiveArrayLocation());
-        ShapeImpl newShape = parent.createShape(parent.layout, parent.sharedData, parent, parent.objectType, parent.propertyMap, transition, allocator, parent.flags);
-        assert newShape.hasPrimitiveArray();
+        assert newShape.hasPrimitiveArray() || ((LocationImpl) addend.getLocation()).primitiveArrayCount() == 0;
         assert newShape.depth == allocator.depth;
         return newShape;
     }
@@ -663,7 +624,6 @@ public abstract class ShapeImpl extends Shape {
      * @return true if one shape is an upcast of the other, or the Shapes are equal
      * @since 0.17 or earlier
      */
-    @Override
     public boolean isRelated(Shape other) {
         if (this == other) {
             return true;
@@ -672,25 +632,6 @@ public abstract class ShapeImpl extends Shape {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Get a list of all properties that this Shape stores.
-     *
-     * @return list of properties
-     * @since 0.17 or earlier
-     */
-    @TruffleBoundary
-    @Override
-    public final List<Property> getPropertyList(Pred<Property> filter) {
-        ArrayDeque<Property> props = new ArrayDeque<>();
-        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
-            Property currentProperty = it.next();
-            if (!currentProperty.isHidden() && filter.test(currentProperty)) {
-                props.addFirst(currentProperty);
-            }
-        }
-        return Arrays.asList(props.toArray(new Property[0]));
     }
 
     /** @since 0.17 or earlier */
@@ -733,25 +674,6 @@ public abstract class ShapeImpl extends Shape {
             }
         }
         return Arrays.asList(props);
-    }
-
-    /**
-     * Get a list of all (visible) property names in insertion order.
-     *
-     * @return list of property names
-     * @since 0.17 or earlier
-     */
-    @TruffleBoundary
-    @Override
-    public final List<Object> getKeyList(Pred<Property> filter) {
-        ArrayDeque<Object> keys = new ArrayDeque<>();
-        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
-            Property currentProperty = it.next();
-            if (!currentProperty.isHidden() && filter.test(currentProperty)) {
-                keys.addFirst(currentProperty.getKey());
-            }
-        }
-        return Arrays.asList(keys.toArray(new Object[0]));
     }
 
     /** @since 0.17 or earlier */
@@ -825,7 +747,7 @@ public abstract class ShapeImpl extends Shape {
                     return prev;
                 } else {
                     boolean isLeafShape = transitionMap == null;
-                    next = isLeafShape ? createLeafAssumption() : neverValidAssumption();
+                    next = isLeafShape ? createLeafAssumption() : Assumption.NEVER_VALID;
                 }
             } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, next));
             return next;
@@ -841,13 +763,13 @@ public abstract class ShapeImpl extends Shape {
         Assumption prev;
         do {
             prev = LEAF_ASSUMPTION_UPDATER.get(this);
-            if (prev == neverValidAssumption()) {
+            if (prev == Assumption.NEVER_VALID) {
                 break;
             }
             if (prev != null) {
                 prev.invalidate();
             }
-        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, neverValidAssumption()));
+        } while (!LEAF_ASSUMPTION_UPDATER.compareAndSet(this, prev, Assumption.NEVER_VALID));
     }
 
     /** @since 0.17 or earlier */
@@ -908,13 +830,6 @@ public abstract class ShapeImpl extends Shape {
         onPropertyTransition(prop);
 
         return getLayoutStrategy().removeProperty(this, prop);
-    }
-
-    /** @since 0.17 or earlier */
-    @TruffleBoundary
-    @Override
-    public final ShapeImpl append(Property oldProperty) {
-        return addProperty(oldProperty.relocate(allocator().moveLocation(oldProperty.getLocation())));
     }
 
     /** @since 0.17 or earlier */
@@ -1008,9 +923,6 @@ public abstract class ShapeImpl extends Shape {
         if (getDynamicType() == newObjectType) {
             return this;
         }
-        if (getLayout().isLegacyLayout() && !(newObjectType instanceof ObjectType)) {
-            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-        }
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
@@ -1095,27 +1007,12 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
-    /** @since 0.17 or earlier */
-    @TruffleBoundary
-    @Override
-    public final boolean hasTransitionWithKey(Object key) {
-        for (Transition transition : getTransitionMapForRead().keySet()) {
-            if (transition instanceof PropertyTransition) {
-                if (((PropertyTransition) transition).getPropertyKey().equals(key)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     /**
      * Clone off a separate shape with new shared data.
      *
      * @since 0.17 or earlier
      */
     @TruffleBoundary
-    @Override
     public final ShapeImpl createSeparateShape(Object newSharedData) {
         if (parent == null) {
             return cloneRoot(this, newSharedData);
@@ -1127,7 +1024,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     @TruffleBoundary
-    public final ShapeImpl changeType(ObjectType newObjectType) {
+    public final ShapeImpl changeType(com.oracle.truffle.api.object.ObjectType newObjectType) {
         return setDynamicType(newObjectType);
     }
 
@@ -1153,15 +1050,6 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     @Override
-    public final ShapeImpl reservePrimitiveExtensionArray() {
-        if (layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray()) {
-            return getLayoutStrategy().addPrimitiveExtensionArray(this);
-        }
-        return this;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public final Iterable<Property> getProperties() {
         return getPropertyList();
     }
@@ -1169,36 +1057,13 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObject newInstance() {
-        return layout.newInstance(this);
+        throw DefaultLayout.unsupported();
     }
 
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObjectFactory createFactory() {
-        if (!layout.isLegacyLayout()) {
-            throw DefaultLayout.unsupported();
-        }
-
-        List<Property> properties = getPropertyListInternal(true);
-        List<Property> filtered = null;
-        for (ListIterator<Property> iterator = properties.listIterator(); iterator.hasNext();) {
-            Property property = iterator.next();
-            // skip non-instance fields
-            assert property.getLocation() != layout.getPrimitiveArrayLocation();
-            if (property.getLocation().isValue()) {
-                if (filtered == null) {
-                    filtered = new ArrayList<>();
-                    filtered.addAll(properties.subList(0, iterator.previousIndex()));
-                }
-            } else if (filtered != null) {
-                filtered.add(property);
-            }
-        }
-
-        if (filtered != null) {
-            properties = filtered;
-        }
-        return new DynamicObjectFactoryImpl(this, properties);
+        throw DefaultLayout.unsupported();
     }
 
     /** @since 0.17 or earlier */
@@ -1263,7 +1128,7 @@ public abstract class ShapeImpl extends Shape {
                 return propertyAssumption;
             }
         }
-        return neverValidAssumption();
+        return Assumption.NEVER_VALID;
     }
 
     protected boolean testPropertyFlags(IntPredicate predicate) {
@@ -1291,48 +1156,6 @@ public abstract class ShapeImpl extends Shape {
         return true;
     }
 
-    public static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
-        private final ShapeImpl shape;
-        @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields;
-        private static final PropertyImpl[] EMPTY = new PropertyImpl[0];
-
-        private DynamicObjectFactoryImpl(ShapeImpl shape, List<Property> properties) {
-            this.shape = shape;
-            this.instanceFields = properties.toArray(EMPTY);
-        }
-
-        public DynamicObject newInstance(Object... initialValues) {
-            assert initialValues.length == instanceFields.length : wrongArguments(initialValues.length);
-            CompilerAsserts.partialEvaluationConstant(shape);
-            DynamicObject store = shape.layout.construct(shape);
-            return fillValues(store, initialValues);
-        }
-
-        @ExplodeLoop
-        private DynamicObject fillValues(DynamicObject store, Object... initialValues) {
-            CompilerAsserts.partialEvaluationConstant(instanceFields.length);
-            for (int i = 0; i < instanceFields.length; i++) {
-                instanceFields[i].setInternal(store, initialValues[i]);
-            }
-            return store;
-        }
-
-        private String wrongArguments(int givenLength) {
-            String message = givenLength + " arguments given but the factory takes " + instanceFields.length + ": ";
-            for (int i = 0; i < instanceFields.length; i++) {
-                message += instanceFields[i].getKey();
-                if (i != instanceFields.length - 1) {
-                    message += ", ";
-                }
-            }
-            return message;
-        }
-
-        public Shape getShape() {
-            return shape;
-        }
-    }
-
     /** @since 0.17 or earlier */
     public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
         /** @since 0.17 or earlier */
@@ -1345,8 +1168,6 @@ public abstract class ShapeImpl extends Shape {
         protected int primitiveFieldSize;
         /** @since 0.17 or earlier */
         protected int primitiveArraySize;
-        /** @since 0.17 or earlier */
-        protected boolean hasPrimitiveArray;
         /** @since 0.17 or earlier */
         protected int depth;
         /** @since 0.18 */
@@ -1364,7 +1185,6 @@ public abstract class ShapeImpl extends Shape {
             this.objectFieldSize = shape.objectFieldSize;
             this.primitiveFieldSize = shape.primitiveFieldSize;
             this.primitiveArraySize = shape.primitiveArraySize;
-            this.hasPrimitiveArray = shape.hasPrimitiveArray;
             this.depth = shape.depth;
             this.shared = shape.isShared();
         }
@@ -1438,14 +1258,8 @@ public abstract class ShapeImpl extends Shape {
         protected <T extends Location> T advance(T location0) {
             if (location0 instanceof LocationImpl) {
                 LocationImpl location = (LocationImpl) location0;
-                if (location != layout.getPrimitiveArrayLocation()) {
-                    location.accept(this);
-                }
-                if (layout.hasPrimitiveExtensionArray()) {
-                    hasPrimitiveArray |= location == layout.getPrimitiveArrayLocation() || primitiveArraySize > 0;
-                } else {
-                    assert !hasPrimitiveArray && primitiveArraySize == 0;
-                }
+                location.accept(this);
+                assert layout.hasPrimitiveExtensionArray() || primitiveArraySize == 0;
             }
             depth++;
             return location0;
@@ -1499,7 +1313,7 @@ public abstract class ShapeImpl extends Shape {
         public Location existingLocationForValue(Object value, Location oldLocation, ShapeImpl oldShape) {
             assert oldShape.getLayout() == this.layout;
             Location newLocation;
-            if (oldLocation.canSet(value)) {
+            if (oldLocation.canStore(value)) {
                 newLocation = oldLocation;
             } else {
                 newLocation = oldShape.allocator().locationForValueUpcast(value, oldLocation);
@@ -1534,9 +1348,9 @@ public abstract class ShapeImpl extends Shape {
             CompilerAsserts.neverPartOfCompilation();
             EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
             Assumption assumption = map.get(propertyName);
-            if (assumption != null && assumption != neverValidAssumption()) {
+            if (assumption != null && assumption != Assumption.NEVER_VALID) {
                 assumption.invalidate("invalidatePropertyAssumption");
-                map.put(propertyName, neverValidAssumption());
+                map.put(propertyName, Assumption.NEVER_VALID);
                 propertyAssumptionsRemoved.inc();
             }
         }

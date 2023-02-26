@@ -24,18 +24,14 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -81,6 +77,7 @@ public abstract class RecordSupport {
  * Placeholder implementation for JDK versions that do not have Record classes. Since
  * {@link #isRecord} always returns false, the other methods must never be invoked.
  */
+@AutomaticallyRegisteredImageSingleton(value = RecordSupport.class, onlyWith = JDK11OrEarlier.class)
 final class RecordSupportJDK11OrEarlier extends RecordSupport {
     @Override
     public boolean isRecord(Class<?> clazz) {
@@ -100,18 +97,5 @@ final class RecordSupportJDK11OrEarlier extends RecordSupport {
     @Override
     public Constructor<?> getCanonicalRecordConstructor(Class<?> clazz) {
         throw VMError.shouldNotReachHere();
-    }
-}
-
-@AutomaticFeature
-final class RecordFeatureBeforeJDK17 implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC <= 11;
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RecordSupport.class, new RecordSupportJDK11OrEarlier());
     }
 }

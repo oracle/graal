@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,40 +42,31 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
-import com.oracle.truffle.nfi.NFILibrary.Keys;
-import static com.oracle.truffle.nfi.NFISignature.NO_SIGNATURE;
+import com.oracle.truffle.nfi.api.NativePointerLibrary;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISymbol implements TruffleObject {
 
-    static Object createBindable(String backend, Object nativeSymbol) {
-        return new NFISymbol(backend, nativeSymbol, NO_SIGNATURE);
+    static Object createBound(Object nativeSymbol, NFISignature signature) {
+        return new NFISymbol(nativeSymbol, signature);
     }
 
-    static Object createBound(String backend, Object nativeSymbol, NFISignature signature) {
-        return new NFISymbol(backend, nativeSymbol, signature);
-    }
-
-    final String backend;
     final Object nativeSymbol;
     final NFISignature signature;
 
-    private NFISymbol(String backend, Object nativeSymbol, NFISignature signature) {
+    private NFISymbol(Object nativeSymbol, NFISignature signature) {
         assert signature != null;
-        this.backend = backend;
         this.nativeSymbol = nativeSymbol;
         this.signature = signature;
     }
@@ -83,60 +74,15 @@ final class NFISymbol implements TruffleObject {
     // executing
 
     @ExportMessage
-    boolean isExecutable() {
-        return signature != NO_SIGNATURE;
-    }
-
-    @ExportMessage
-    static class Execute {
-
-        @Specialization(guards = "symbol.isExecutable()")
-        static Object doGeneric(NFISymbol symbol, Object[] args,
-                        @Cached CachedCallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            return call.execute(symbol.signature, symbol.nativeSymbol, args);
-        }
-
-        @Specialization(guards = "!symbol.isExecutable()")
-        @SuppressWarnings("unused")
-        static Object doFail(NFISymbol symbol, Object[] args) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    // binding
-
-    @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasMembers() {
+    boolean isExecutable() {
         return true;
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new Keys("bind");
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberInvocable(String member) {
-        return "bind".equals(member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String member, Object[] args,
-                    @Cached BindSignatureNode bind,
-                    @Exclusive @Cached BranchProfile exception) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        if (!"bind".equals(member)) {
-            exception.enter();
-            throw UnknownIdentifierException.create(member);
-        }
-        if (args.length != 1) {
-            exception.enter();
-            throw ArityException.create(1, 1, args.length);
-        }
-
-        return bind.execute(this, args[0]);
+    Object execute(Object[] args,
+                    @Cached CachedCallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        return call.execute(signature, nativeSymbol, args);
     }
 
     // reexports
@@ -146,13 +92,23 @@ final class NFISymbol implements TruffleObject {
         return library.isNull(nativeSymbol);
     }
 
-    @ExportMessage
-    boolean isPointer(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
+    @ExportMessage(name = "isPointer", library = InteropLibrary.class)
+    boolean isPointerInterop(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
         return library.isPointer(nativeSymbol);
     }
 
-    @ExportMessage
-    long asPointer(@CachedLibrary("this.nativeSymbol") InteropLibrary library) throws UnsupportedMessageException {
+    @ExportMessage(name = "isPointer", library = NativePointerLibrary.class)
+    boolean isPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) {
+        return library.isPointer(nativeSymbol);
+    }
+
+    @ExportMessage(name = "asPointer", library = InteropLibrary.class)
+    long asPointerInterop(@CachedLibrary("this.nativeSymbol") InteropLibrary library) throws UnsupportedMessageException {
+        return library.asPointer(nativeSymbol);
+    }
+
+    @ExportMessage(name = "asPointer", library = NativePointerLibrary.class)
+    long asPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) throws UnsupportedMessageException {
         return library.asPointer(nativeSymbol);
     }
 

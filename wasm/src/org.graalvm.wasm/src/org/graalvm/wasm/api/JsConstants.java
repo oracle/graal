@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,10 +55,12 @@ public final class JsConstants {
     private static final int EXPORT_COUNT_LIMIT = 100000;
     private static final int GLOBAL_COUNT_LIMIT = 1000000;
     private static final int DATA_SEGMENT_LIMIT = 100000;
+    private static final int TABLE_COUNT_LIMIT = 100000;
     private static final int ELEMENT_SEGMENT_LIMIT = 10000000;
     private static final int FUNCTION_SIZE_LIMIT = 7654321;
     private static final int PARAM_COUNT_LIMIT = 1000;
-    private static final int RETURN_COUNT_LIMIT = 1;
+    private static final int RESULT_COUNT_LIMIT = 1;
+    private static final int MULTI_VALUE_RESULT_COUNT_LIMIT = 1000;
     private static final int LOCAL_COUNT_LIMIT = 50000;
     private static final int TABLE_SIZE_LIMIT = 10000000;
     private static final int MEMORY_SIZE_LIMIT = 32767;
@@ -67,6 +69,7 @@ public final class JsConstants {
                     MODULE_SIZE_LIMIT,
                     TYPE_COUNT_LIMIT,
                     FUNCTION_COUNT_LIMIT,
+                    TABLE_COUNT_LIMIT,
                     IMPORT_COUNT_LIMIT,
                     EXPORT_COUNT_LIMIT,
                     GLOBAL_COUNT_LIMIT,
@@ -74,7 +77,8 @@ public final class JsConstants {
                     ELEMENT_SEGMENT_LIMIT,
                     FUNCTION_SIZE_LIMIT,
                     PARAM_COUNT_LIMIT,
-                    RETURN_COUNT_LIMIT,
+                    RESULT_COUNT_LIMIT,
+                    MULTI_VALUE_RESULT_COUNT_LIMIT,
                     LOCAL_COUNT_LIMIT,
                     TABLE_SIZE_LIMIT,
                     MEMORY_SIZE_LIMIT);

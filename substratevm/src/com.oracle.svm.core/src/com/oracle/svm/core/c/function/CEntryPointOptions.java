@@ -28,7 +28,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.Isolate;
@@ -38,8 +37,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointSetup.EnterIsolatePrologue;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointSetup.EnterByIsolatePrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveEpilogue;
 
@@ -69,46 +68,6 @@ public @interface CEntryPointOptions {
      */
     Class<? extends Function<String, String>> nameTransformation() default DefaultNameTransformation.class;
 
-    /**
-     * If the supplier returns true, this entry point is added automatically when building a shared
-     * library. This means the method is a root method for compilation, and everything reachable
-     * from it is compiled too.
-     * <p>
-     * The provided class must have a nullary constructor, which is used to instantiate the class.
-     * Then the supplier function is called on the newly instantiated instance.
-     *
-     * @deprecated Use {@link CEntryPoint#include()}.
-     */
-    @Deprecated
-    Class<? extends BooleanSupplier> include() default CEntryPointOptions.AlwaysIncluded.class;
-
-    /**
-     * A {@link BooleanSupplier} that always returns {@code true}.
-     *
-     * @deprecated Use {@link org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded}.
-     */
-    @Deprecated
-    class AlwaysIncluded implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return true;
-        }
-    }
-
-    /**
-     * A {@link BooleanSupplier} that always returns {@code false}.
-     *
-     * @deprecated Use
-     *             {@link org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically}.
-     */
-    @Deprecated
-    class NotIncludedAutomatically implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return false;
-        }
-    }
-
     /** Marker interface for all prologue classes. */
     interface Prologue {
     }
@@ -116,7 +75,7 @@ public @interface CEntryPointOptions {
     /**
      * Special placeholder class for {@link #prologue()} for examining the entry point method's
      * signature and, in the case of an {@link IsolateThread} parameter, using {@link EnterPrologue}
-     * or, in the case of an {@link Isolate} parameter, using {@link EnterIsolatePrologue}.
+     * or, in the case of an {@link Isolate} parameter, using {@link EnterByIsolatePrologue}.
      */
     final class AutomaticPrologue implements Prologue {
     }
@@ -206,21 +165,4 @@ public @interface CEntryPointOptions {
      */
     Class<? extends Epilogue> epilogue() default LeaveEpilogue.class;
 
-    enum Publish {
-        /**
-         * Do not publish the entry point method.
-         */
-        NotPublished,
-        /**
-         * Create a symbol for the entry point method in the native image.
-         */
-        SymbolOnly,
-        /**
-         * Create a symbol for the entry point method in the native image, and if building a shared
-         * library image, also include a C declaration in the generated C header file.
-         */
-        SymbolAndHeader,
-    }
-
-    Publish publishAs() default Publish.SymbolAndHeader;
 }

@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.lang.annotation.Annotation;
 import java.util.Objects;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -42,8 +42,8 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
 
     /**
      * Defines the {@link Uninterruptible} annotation returned for all call stub methods. The
-     * synthetic graphs set up the the fixed registers used for safepoint and stack overflow checks,
-     * so they must be uninterruptible. The method then called by the stub does not need to be
+     * synthetic graphs set up the fixed registers used for safepoint and stack overflow checks, so
+     * they must be uninterruptible. The method then called by the stub does not need to be
      * uninterruptible itself.
      */
     @Uninterruptible(reason = "Entry point", calleeMustBe = false)
@@ -52,23 +52,10 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
     }
 
     private static final Uninterruptible UNINTERRUPTIBLE_ANNOTATION = Objects.requireNonNull(
-                    ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder").getAnnotation(Uninterruptible.class));
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder")));
 
     @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass == Uninterruptible.class) {
-            return annotationClass.cast(UNINTERRUPTIBLE_ANNOTATION);
-        }
-        return null;
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
+    public Annotation[] getInjectedAnnotations() {
         return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
     }
 }

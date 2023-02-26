@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,26 +25,33 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
-
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.gc.WriteBarrier;
-import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
-import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
-import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
+import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
+import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
+import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaKind;
 
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
+
+    @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        // amd64 traps on a division overflow
+        return false;
+    }
 
     @Override
     default Integer smallestCompareWidth() {
@@ -56,68 +63,60 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
         return true;
     }
 
+    @Override
+    default boolean writesStronglyOrdered() {
+        /*
+         * While AMD64 supports non-temporal stores, these are not used by Graal for Java code.
+         */
+        return true;
+    }
+
+    @Override
+    default boolean narrowsUseCastValue() {
+        return false;
+    }
+
+    @Override
+    default boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
+        return false;
+    }
+
     /**
      * Performs AMD64-specific lowerings. Returns {@code true} if the given Node {@code n} was
      * lowered, {@code false} otherwise.
      */
-    default boolean lowerAMD64(Node n, LoweringTool tool) {
-        if (n instanceof AMD64ArrayIndexOfWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayIndexOfWithMaskNode) n);
-            return true;
-        }
-        if (n instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayRegionEqualsWithMaskNode) n);
-            return true;
-        }
-        if (n instanceof VolatileWriteNode) {
-            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-                return false;
-            }
-            VolatileWriteNode write = (VolatileWriteNode) n;
-            if (hasFollowingVolatileBarrier(write)) {
-                StructuredGraph graph = write.graph();
-
-                WriteNode add = graph.add(new WriteNode(write.getAddress(), write.getLocationIdentity(), write.value(), write.getBarrierType()));
-                add.setLastLocationAccess(write.getLastLocationAccess());
-                graph.replaceFixedWithFixed(write, add);
+    default boolean lowerAMD64(Node n) {
+        if (n instanceof CountLeadingZerosNode) {
+            AMD64 arch = (AMD64) getTarget().arch;
+            CountLeadingZerosNode count = (CountLeadingZerosNode) n;
+            if (!arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) || !arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
+                StructuredGraph graph = count.graph();
+                JavaKind kind = count.getValue().getStackKind();
+                ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
+                LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
+                ValueNode result = new SubNode(ConstantNode.forIntegerKind(JavaKind.Int, kind.getBitCount() - 1), new BitScanReverseNode(count.getValue()));
+                ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), result, NodeView.DEFAULT);
+                conditional = graph.addOrUniqueWithInputs(conditional);
+                count.replaceAndDelete(conditional);
                 return true;
             }
         }
-        return false;
-    }
 
-    default boolean hasFollowingVolatileBarrier(VolatileWriteNode n) {
-        FixedWithNextNode cur = n;
-        while (cur != null) {
-            // Check the memory usages of the current write
-            for (Node usage : cur.usages()) {
-                if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {
-                    // Other kinds of usages won't be visited in the traversal and likely
-                    // invalidates elimination of the barrier instruction.
-                    return false;
-                }
+        if (n instanceof CountTrailingZerosNode) {
+            AMD64 arch = (AMD64) getTarget().arch;
+            CountTrailingZerosNode count = (CountTrailingZerosNode) n;
+            if (!arch.getFeatures().contains(AMD64.CPUFeature.BMI1) || !arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
+                StructuredGraph graph = count.graph();
+                JavaKind kind = count.getValue().getStackKind();
+                ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
+                LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
+                ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), new BitScanForwardNode(count.getValue()), NodeView.DEFAULT);
+                conditional = graph.addOrUniqueWithInputs(conditional);
+                count.replaceAndDelete(conditional);
+                return true;
             }
-            FixedNode next = cur.next();
-            // We can safely ignore GC barriers
-            while (next instanceof WriteBarrier) {
-                next = ((WriteBarrier) next).next();
-            }
-
-            if (next instanceof OrderedMemoryAccess) {
-                if (next instanceof AbstractWriteNode || next instanceof AbstractCompareAndSwapNode) {
-                    return ((OrderedMemoryAccess) next).getMemoryOrder() == VOLATILE;
-                }
-                return false;
-            }
-
-            // Sequential normal writes are ok as well.
-            if (next instanceof WriteNode) {
-                cur = (FixedWithNextNode) next;
-            } else {
-                return false;
-            }
-
         }
+
         return false;
     }
 }

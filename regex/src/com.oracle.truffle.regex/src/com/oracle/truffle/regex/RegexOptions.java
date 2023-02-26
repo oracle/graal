@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -60,7 +61,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>Flavor</b>: specifies the regex dialect to use. Possible values:
  * <ul>
  * <li><b>ECMAScript</b>: ECMAScript/JavaScript syntax (default).</li>
- * <li><b>Python</b>: Python 3 syntax.</li>
+ * <li><b>Python</b>: Python 3 syntax</li>
  * <li><b>Ruby</b>: Ruby syntax.</li>
  * </ul>
  * </li>
@@ -71,6 +72,14 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>UTF-32</b></li>
  * <li><b>LATIN-1</b></li>
  * <li><b>BYTES</b> (equivalent to LATIN-1)</li>
+ * </ul>
+ * </li>
+ * <li><b>PythonMethod</b>: specifies which Python {@code Pattern} method was called (Python flavors
+ * only). Possible values:
+ * <ul>
+ * <li><b>search</b></li>
+ * <li><b>match</b></li>
+ * <li><b>fullmatch</b></li>
  * </ul>
  * </li>
  * <li><b>Validate</b>: don't generate a regex matcher object, just check the regex for syntax
@@ -89,8 +98,12 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * generate debugging dumps of most relevant data structures in JSON, GraphViz and LaTex
  * format.</li>
  * <li><b>StepExecution</b>: dump tracing information about all DFA matcher runs.</li>
+ * <li><b>IgnoreAtomicGroups</b>: treat atomic groups as ordinary groups (experimental).</li>
+ * <li><b>MustAdvance</b>: force the matcher to advance by at least one character, either by finding
+ * a non-zero-width match or by skipping at least one character before matching.</li>
  * </ul>
- * All options except {@code Flavor} and {@code Encoding} are boolean and {@code false} by default.
+ * All options except {@code Flavor}, {@code Encoding} and {@code PythonMethod} are boolean and
+ * {@code false} by default.
  */
 public final class RegexOptions {
 
@@ -110,27 +123,39 @@ public final class RegexOptions {
     public static final String VALIDATE_NAME = "Validate";
     private static final int IGNORE_ATOMIC_GROUPS = 1 << 7;
     public static final String IGNORE_ATOMIC_GROUPS_NAME = "IgnoreAtomicGroups";
+    private static final int GENERATE_DFA_IMMEDIATELY = 1 << 8;
+    private static final String GENERATE_DFA_IMMEDIATELY_NAME = "GenerateDFAImmediately";
+    private static final int BOOLEAN_MATCH = 1 << 9;
+    private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
+    private static final int MUST_ADVANCE = 1 << 10;
+    public static final String MUST_ADVANCE_NAME = "MustAdvance";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
-    public static final String FLAVOR_PYTHON_STR = "PythonStr";
-    public static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
     public static final String FLAVOR_RUBY = "Ruby";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
-    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
 
     public static final String ENCODING_NAME = "Encoding";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW);
+    public static final String PYTHON_METHOD_NAME = "PythonMethod";
+    public static final String PYTHON_METHOD_SEARCH = "search";
+    public static final String PYTHON_METHOD_MATCH = "match";
+    public static final String PYTHON_METHOD_FULLMATCH = "fullmatch";
+    private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
+
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null);
 
     private final int options;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
+    private final PythonMethod pythonMethod;
 
-    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding) {
+    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod) {
         this.options = options;
         this.flavor = flavor;
         this.encoding = encoding;
+        this.pythonMethod = pythonMethod;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -156,11 +181,29 @@ public final class RegexOptions {
         return isBitSet(DUMP_AUTOMATA);
     }
 
+    public boolean isDumpAutomataWithSourceSections() {
+        return isDumpAutomata() && getFlavor() == ECMAScriptFlavor.INSTANCE;
+    }
+
     /**
      * Trace the execution of automata in JSON files.
      */
     public boolean isStepExecution() {
         return isBitSet(STEP_EXECUTION);
+    }
+
+    /**
+     * Generate DFA matchers immediately after parsing the expression.
+     */
+    public boolean isGenerateDFAImmediately() {
+        return isBitSet(GENERATE_DFA_IMMEDIATELY);
+    }
+
+    /**
+     * Don't track capture groups, just return a boolean match result instead.
+     */
+    public boolean isBooleanMatch() {
+        return isBitSet(BOOLEAN_MATCH);
     }
 
     /**
@@ -193,6 +236,15 @@ public final class RegexOptions {
         return isBitSet(IGNORE_ATOMIC_GROUPS);
     }
 
+    /**
+     * Do not return zero-width matches at the beginning of the search string. The matcher must
+     * advance by at least one character by either finding a match of non-zero width or finding a
+     * match after advancing skipping several characters.
+     */
+    public boolean isMustAdvance() {
+        return isBitSet(MUST_ADVANCE);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
@@ -201,8 +253,24 @@ public final class RegexOptions {
         return encoding;
     }
 
+    public PythonMethod getPythonMethod() {
+        return pythonMethod;
+    }
+
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc);
+        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod);
+    }
+
+    public RegexOptions withoutPythonMethod() {
+        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null);
+    }
+
+    public RegexOptions withBooleanMatch() {
+        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod);
+    }
+
+    public RegexOptions withoutBooleanMatch() {
+        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod);
     }
 
     @Override
@@ -211,6 +279,7 @@ public final class RegexOptions {
         int hash = options;
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
+        hash = prime * hash + Objects.hashCode(pythonMethod);
         return hash;
     }
 
@@ -223,7 +292,7 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding;
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod;
     }
 
     @Override
@@ -253,12 +322,27 @@ public final class RegexOptions {
         if (isIgnoreAtomicGroups()) {
             sb.append(IGNORE_ATOMIC_GROUPS_NAME + "=true,");
         }
-        if (flavor == PythonFlavor.STR_INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
-        } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
-            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
+        if (isGenerateDFAImmediately()) {
+            sb.append(GENERATE_DFA_IMMEDIATELY_NAME + "=true,");
+        }
+        if (isBooleanMatch()) {
+            sb.append(BOOLEAN_MATCH_NAME + "=true,");
+        }
+        if (isMustAdvance()) {
+            sb.append(MUST_ADVANCE_NAME + "=true,");
+        }
+        if (flavor == PythonFlavor.INSTANCE) {
+            sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON + ",");
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
+        }
+        sb.append(ENCODING_NAME + "=" + encoding.getName() + ",");
+        if (pythonMethod == PythonMethod.search) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_SEARCH + ",");
+        } else if (pythonMethod == PythonMethod.match) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_MATCH + ",");
+        } else if (pythonMethod == PythonMethod.fullmatch) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
         }
         return sb.toString();
     }
@@ -270,6 +354,7 @@ public final class RegexOptions {
         private int options;
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
+        private PythonMethod pythonMethod;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
@@ -286,6 +371,9 @@ public final class RegexOptions {
                     case 'A':
                         i = parseBooleanOption(i, ALWAYS_EAGER_NAME, ALWAYS_EAGER);
                         break;
+                    case 'B':
+                        i = parseBooleanOption(i, BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
+                        break;
                     case 'D':
                         i = parseBooleanOption(i, DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
                         break;
@@ -295,8 +383,17 @@ public final class RegexOptions {
                     case 'F':
                         i = parseFlavor(i);
                         break;
+                    case 'G':
+                        i = parseBooleanOption(i, GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
+                        break;
                     case 'I':
                         i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
+                        break;
+                    case 'M':
+                        i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
+                        break;
+                    case 'P':
+                        i = parsePythonMethod(i);
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -372,20 +469,8 @@ public final class RegexOptions {
                     flavor = RubyFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
                 case 'P':
-                    if (iVal + 6 >= src.length()) {
-                        flavor = PythonFlavor.INSTANCE;
-                        return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
-                    }
-                    switch (src.charAt(iVal + 6)) {
-                        case 'B':
-                            flavor = PythonFlavor.BYTES_INSTANCE;
-                            return expectValue(iVal, FLAVOR_PYTHON_BYTES, FLAVOR_OPTIONS);
-                        case 'S':
-                            flavor = PythonFlavor.STR_INSTANCE;
-                            return expectValue(iVal, FLAVOR_PYTHON_STR, FLAVOR_OPTIONS);
-                        default:
-                            throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
-                    }
+                    flavor = PythonFlavor.INSTANCE;
+                    return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
             }
@@ -401,7 +486,7 @@ public final class RegexOptions {
                     encoding = Encodings.ASCII;
                     return expectValue(iVal, Encodings.ASCII.getName(), Encodings.ALL_NAMES);
                 case 'B':
-                    encoding = Encodings.LATIN_1;
+                    encoding = Encodings.BYTES;
                     return expectValue(iVal, "BYTES", Encodings.ALL_NAMES);
                 case 'L':
                     encoding = Encodings.LATIN_1;
@@ -425,6 +510,26 @@ public final class RegexOptions {
                     }
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
+            }
+        }
+
+        private int parsePythonMethod(int i) throws RegexSyntaxException {
+            int iVal = expectOptionName(i, PYTHON_METHOD_NAME);
+            if (iVal >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
+            }
+            switch (src.charAt(iVal)) {
+                case 's':
+                    pythonMethod = PythonMethod.search;
+                    return expectValue(iVal, PYTHON_METHOD_SEARCH, PYTHON_METHOD_OPTIONS);
+                case 'm':
+                    pythonMethod = PythonMethod.match;
+                    return expectValue(iVal, PYTHON_METHOD_MATCH, PYTHON_METHOD_OPTIONS);
+                case 'f':
+                    pythonMethod = PythonMethod.fullmatch;
+                    return expectValue(iVal, PYTHON_METHOD_FULLMATCH, PYTHON_METHOD_OPTIONS);
+                default:
+                    throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
             }
         }
 
@@ -494,6 +599,21 @@ public final class RegexOptions {
             return this;
         }
 
+        public Builder generateDFAImmediately(boolean enabled) {
+            updateOption(enabled, GENERATE_DFA_IMMEDIATELY);
+            return this;
+        }
+
+        public Builder booleanMatch(boolean enabled) {
+            updateOption(enabled, BOOLEAN_MATCH);
+            return this;
+        }
+
+        public Builder mustAdvance(boolean enabled) {
+            updateOption(enabled, MUST_ADVANCE);
+            return this;
+        }
+
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
             this.flavor = flavor;
             return this;
@@ -512,8 +632,17 @@ public final class RegexOptions {
             return encoding;
         }
 
+        public Builder pythonMethod(@SuppressWarnings("hiding") PythonMethod pythonMethod) {
+            this.pythonMethod = pythonMethod;
+            return this;
+        }
+
+        public PythonMethod getPythonMethod() {
+            return pythonMethod;
+        }
+
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor, this.encoding);
+            return new RegexOptions(this.options, this.flavor, this.encoding, this.pythonMethod);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

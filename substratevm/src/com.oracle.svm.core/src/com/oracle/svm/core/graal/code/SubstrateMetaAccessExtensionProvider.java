@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 
@@ -72,6 +72,11 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
             }
         }
 
+        return true;
+    }
+
+    @Override
+    public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
     }
 }

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.loop.test;
 
-import static org.graalvm.compiler.core.common.util.ReversedList.reversed;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -97,7 +95,7 @@ public class LoopsDataTest extends GraalCompilerTest {
         LoopsData loops = getLoopsData();
 
         Set<LoopEx> seen = new HashSet<>();
-        for (LoopEx loop : reversed(loops.outerFirst())) {
+        for (LoopEx loop : loops.innerFirst()) {
             assertFalse(seen.contains(loop), "%s has already been seen", loop);
             if (loop.parent() != null) {
                 assertFalse(seen.contains(loop.parent()), "%s's parent (%s) should not have already been seen", loop, loop.parent());
@@ -107,7 +105,7 @@ public class LoopsDataTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testouterFirst() {
+    public void testOuterFirst() {
         LoopsData loops = getLoopsData();
 
         Set<LoopEx> seen = new HashSet<>();

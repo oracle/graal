@@ -31,12 +31,13 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.OSThreadId;
@@ -77,6 +78,17 @@ public class Pthread {
     public interface pthread_condattr_t extends PointerBase {
     }
 
+    public interface pthread_key_t extends UnsignedWord {
+    }
+
+    @CPointerTo(nameOfCType = "size_t")
+    public interface pthread_key_tPointer extends PointerBase {
+        pthread_key_t read();
+    }
+
+    @CConstant
+    public static native int PTHREAD_KEYS_MAX();
+
     @CConstant
     public static native int PTHREAD_CREATE_JOINABLE();
 
@@ -102,17 +114,29 @@ public class Pthread {
     @CFunction
     public static native int pthread_attr_init(pthread_attr_t attr);
 
+    @CFunction(value = "pthread_attr_init", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_init_no_transition(pthread_attr_t attr);
+
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_destroy(pthread_attr_t attr);
 
+    @CFunction(value = "pthread_attr_destroy", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_destroy_no_transition(pthread_attr_t attr);
+
     @CFunction
     public static native int pthread_attr_setdetachstate(pthread_attr_t attr, int detachstate);
+
+    @CFunction(value = "pthread_attr_setdetachstate", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_setdetachstate_no_transition(pthread_attr_t attr, int detachstate);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getguardsize(pthread_attr_t attr, WordPointer guardsize);
 
     @CFunction
     public static native int pthread_attr_setstacksize(pthread_attr_t attr, UnsignedWord stacksize);
+
+    @CFunction(value = "pthread_attr_setstacksize", transition = Transition.NO_TRANSITION)
+    public static native int pthread_attr_setstacksize_no_transition(pthread_attr_t attr, UnsignedWord stacksize);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getstack(pthread_attr_t attr, WordPointer stackaddr, WordPointer stacksize);
@@ -122,6 +146,9 @@ public class Pthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_mutex_init(pthread_mutex_t mutex, pthread_mutexattr_t mutexattr);
+
+    @CFunction(value = "pthread_mutex_trylock", transition = Transition.NO_TRANSITION)
+    public static native int pthread_mutex_trylock_no_transition(pthread_mutex_t mutex);
 
     @CFunction(transition = Transition.TO_NATIVE)
     public static native int pthread_mutex_lock(pthread_mutex_t mutex);
@@ -161,4 +188,16 @@ public class Pthread {
 
     @CFunction
     public static native int pthread_kill(pthread_t thread, Signal.SignalEnum sig);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_key_create(pthread_key_tPointer key, PointerBase keyDestructor);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_key_delete(pthread_key_t key);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_setspecific(pthread_key_t key, VoidPointer value);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native VoidPointer pthread_getspecific(pthread_key_t key);
 }

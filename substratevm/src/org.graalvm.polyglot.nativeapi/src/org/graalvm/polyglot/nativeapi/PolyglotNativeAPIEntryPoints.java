@@ -29,19 +29,21 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolate;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateParameters;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolatePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThreadPointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.CConst;
-import com.oracle.svm.core.c.CHeader;
-import com.oracle.svm.core.c.CTypedef;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -50,9 +52,47 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.UnchangedNameTransformation;
 
+// Checkstyle: stop method name check
+
 @CHeader(PolyglotIsolateHeader.class)
 public final class PolyglotNativeAPIEntryPoints {
     private static final String UNINTERRUPTIBLE_REASON = "Unsafe state in case of failure";
+
+    @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
+    @CEntryPoint(name = "poly_set_isolate_params", documentation = {
+                    "Initializes passed poly_isolate_params with the provided arguments.",
+                    "Later, when the isolate is created, these arguments will be passed to the isolate creation process.",
+                    "Note the first passed argument is reserved and must be a null pointer.",
+                    "",
+                    " @param params pointer to the poly_isolate_params struct to initialize.",
+                    " @param argc number of arguments within argv.",
+                    " @param argv a char** containing the arguments. Note the first argument is reserved",
+                    " and must be a null pointer.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "@since 22.3",
+    })
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
+    public static @CTypedef(name = "poly_status") int polySetIsolateParams(PolyglotIsolateParameters params, int argc, CCharPointerPointer argv) {
+        if (params.isNull()) {
+            return Poly.generic_failure();
+        }
+        if (argc > 0) {
+            if (argv.isNull()) {
+                return Poly.generic_failure();
+            }
+            CCharPointer arg = argv.read(0);
+            if (arg.isNonNull()) {
+                return Poly.generic_failure();
+            }
+        }
+
+        params.setVersion(4);
+        params.setArgc(argc);
+        params.setArgv(argv);
+        params.setIgnoreUnrecognizedArguments(false);
+        params.setExitWhenArgumentParsingFails(false);
+        return Poly.ok();
+    }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "poly_create_isolate", documentation = {

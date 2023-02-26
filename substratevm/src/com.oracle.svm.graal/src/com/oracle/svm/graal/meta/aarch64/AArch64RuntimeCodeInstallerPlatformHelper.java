@@ -25,28 +25,28 @@
  */
 package com.oracle.svm.graal.meta.aarch64;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CodeSynchronizationOperations;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeCache;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.UserError;
 
-@AutomaticFeature
+@AutomaticallyRegisteredImageSingleton(RuntimeCodeInstallerPlatformHelper.class)
 @Platforms(Platform.AARCH64.class)
-class AArch64RuntimeCodeInstallerPlatformHelperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInstallerPlatformHelper.class, new AArch64RuntimeCodeInstallerPlatformHelper());
-    }
-}
-
 public class AArch64RuntimeCodeInstallerPlatformHelper implements RuntimeCodeInstallerPlatformHelper {
+    AArch64RuntimeCodeInstallerPlatformHelper() {
+        RuntimeOptionKey<Boolean> writeableCodeOption = RuntimeCodeCache.Options.WriteableCodeCache;
+        if (writeableCodeOption.getValue()) {
+            throw UserError.abort("Enabling %s is not supported on this platform.", writeableCodeOption.getName());
+        }
+    }
 
     @Override
     public void performCodeSynchronization(CodeInfo codeInfo) {

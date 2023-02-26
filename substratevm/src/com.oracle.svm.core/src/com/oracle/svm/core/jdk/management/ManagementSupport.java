@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-// Checkstyle: stop
-
 import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.PlatformManagedObject;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +34,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.management.DynamicMBean;
 import javax.management.JMException;
@@ -50,14 +50,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
-
-// Checkstyle: resume
-// Checkstyle: allow synchronization
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
@@ -65,15 +65,14 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  * parts: The beans (implementations of {@link PlatformManagedObject}) themselves; and the singleton
  * {@link ManagementFactory#getPlatformMBeanServer() MBean server}.
  *
- * Support for {@link PlatformManagedObject}: All MXBean that provide VM introspection are allocated
- * eagerly at image build time, and stored in {@link #platformManagedObjectsMap} as well as
- * {@link #platformManagedObjectsSet}. The registration is decentralized: while some general beans
- * are registered in this class, the OS specific and GC specific beans are registered in the
- * respective OS or GC code. To find all registrations, look for the usages of
- * {@link #addPlatformManagedObjectSingleton} and {@link #addPlatformManagedObjectList}. Eager
- * allocation of all the beans avoids the complicated registry that the JDK maintains for lazy
- * loading (the code in PlatformComponent - note that this code and even the package of the class is
- * significantly different between JDK 8 and JDK 11).
+ * Support for {@link PlatformManagedObject}: All MXBean that provide VM introspection are
+ * registered (but not necessarily allocated) eagerly at image build time, and stored in
+ * {@link #platformManagedObjectsMap} as well as {@link #platformManagedObjectsSet}. The
+ * registration is decentralized: while some general beans are registered in this class, the GC
+ * specific beans are registered in the respective GC code. To find all registrations, look for the
+ * usages of {@link #addPlatformManagedObjectSingleton} and {@link #addPlatformManagedObjectList}.
+ * Eager registration of all the beans avoids the complicated registry that the JDK maintains for
+ * lazy loading (the code in PlatformComponent).
  *
  * Support for {@link ManagementFactory#getPlatformMBeanServer()}: The {@link MBeanServer} that
  * makes all MXBean available too is allocated lazily at run time. This has advantages and
@@ -118,6 +117,9 @@ public final class ManagementSupport implements ThreadListener {
     private final SubstrateRuntimeMXBean runtimeMXBean;
     private final SubstrateThreadMXBean threadMXBean;
 
+    /* Initialized lazily at run time. */
+    private OperatingSystemMXBean osMXBean;
+
     /** The singleton MBean server for the platform, initialized lazily at run time. */
     MBeanServer platformMBeanServer;
 
@@ -133,7 +135,7 @@ public final class ManagementSupport implements ThreadListener {
 
         /*
          * Register the platform objects defined in this package. Note that more platform objects
-         * are registered in OS and GC specific code.
+         * are registered in GC specific code.
          */
         addPlatformManagedObjectSingleton(java.lang.management.ClassLoadingMXBean.class, classLoadingMXBean);
         addPlatformManagedObjectSingleton(java.lang.management.CompilationMXBean.class, compilationMXBean);
@@ -145,6 +147,30 @@ public final class ManagementSupport implements ThreadListener {
          */
         addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Collections.emptyList());
         addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
+        /*
+         * Register the platform object for the OS using a supplier that lazily initializes it at
+         * run time.
+         */
+        doAddPlatformManagedObjectSingleton(getOsMXBeanInterface(), (PlatformManagedObjectSupplier) this::getOsMXBean);
+    }
+
+    private static Class<?> getOsMXBeanInterface() {
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+            return Platform.includedIn(Platform.WINDOWS.class)
+                            ? com.sun.management.OperatingSystemMXBean.class
+                            : com.sun.management.UnixOperatingSystemMXBean.class;
+        }
+        return java.lang.management.OperatingSystemMXBean.class;
+    }
+
+    private synchronized OperatingSystemMXBean getOsMXBean() {
+        if (osMXBean == null) {
+            Object osMXBeanImpl = Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)
+                            ? new Target_com_sun_management_internal_OperatingSystemImpl(null)
+                            : new Target_sun_management_BaseOperatingSystemImpl(null);
+            osMXBean = SubstrateUtil.cast(osMXBeanImpl, OperatingSystemMXBean.class);
+        }
+        return osMXBean;
     }
 
     @Fold
@@ -256,7 +282,7 @@ public final class ManagementSupport implements ThreadListener {
             /* Modified version of JDK 11: ManagementFactory.getPlatformMBeanServer */
             platformMBeanServer = MBeanServerFactory.createMBeanServer();
             for (PlatformManagedObject platformManagedObject : platformManagedObjectsSet) {
-                addMXBean(platformMBeanServer, platformManagedObject);
+                addMXBean(platformMBeanServer, handleLazyPlatformManagedObjectSingleton(platformManagedObject));
             }
         }
         return platformMBeanServer;
@@ -292,7 +318,7 @@ public final class ManagementSupport implements ThreadListener {
         } else if (result instanceof List) {
             throw new IllegalArgumentException(mxbeanInterface.getName() + " can have more than one instance");
         }
-        return mxbeanInterface.cast(result);
+        return mxbeanInterface.cast(handleLazyPlatformManagedObjectSingleton(result));
     }
 
     @SuppressWarnings("unchecked")
@@ -304,7 +330,33 @@ public final class ManagementSupport implements ThreadListener {
         if (result instanceof List) {
             return (List<T>) result;
         } else {
-            return Collections.singletonList(mxbeanInterface.cast(result));
+            return Collections.singletonList(mxbeanInterface.cast(handleLazyPlatformManagedObjectSingleton(result)));
         }
+    }
+
+    /**
+     * A {@link PlatformManagedObject} supplier that is itself a {@link PlatformManagedObject} for
+     * easier integration with the rest of the {@link ManagementSupport} machinery.
+     *
+     * This in particular allows for transparent storage in {@link #platformManagedObjectsMap} and
+     * {@link #platformManagedObjectsSet} at the expense of
+     * {@linkplain #handleLazyPlatformManagedObjectSingleton special handling} when retrieving
+     * stored platform objects.
+     */
+    private interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
+        @Override
+        default ObjectName getObjectName() {
+            throw VMError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * Provides {@link PlatformManagedObjectSupplier} handling when retrieving singleton platform
+     * objects from {@link #platformManagedObjectsMap} and {@link #platformManagedObjectsSet}.
+     */
+    private static PlatformManagedObject handleLazyPlatformManagedObjectSingleton(Object object) {
+        assert object instanceof PlatformManagedObject;
+        return object instanceof PlatformManagedObjectSupplier ? ((PlatformManagedObjectSupplier) object).get()
+                        : (PlatformManagedObject) object;
     }
 }

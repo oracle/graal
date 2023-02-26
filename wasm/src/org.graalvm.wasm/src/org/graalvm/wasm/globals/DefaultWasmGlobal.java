@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import org.graalvm.wasm.api.ValueType;
 
 public class DefaultWasmGlobal extends WasmGlobal {
     private long globalValue;
+    private Object globalReferenceValue;
 
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
         super(valueType, mutable);
@@ -56,23 +57,45 @@ public class DefaultWasmGlobal extends WasmGlobal {
         storeLong(value);
     }
 
+    public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
+        super(valueType, mutable);
+        storeReference(value);
+    }
+
     @Override
     public int loadAsInt() {
+        assert ValueType.isNumberType(getValueType());
         return (int) globalValue;
     }
 
     @Override
     public long loadAsLong() {
+        assert ValueType.isNumberType(getValueType());
         return globalValue;
     }
 
     @Override
+    public Object loadAsReference() {
+        assert globalReferenceValue != null;
+        assert ValueType.isReferenceType(getValueType());
+        return globalReferenceValue;
+    }
+
+    @Override
     public void storeInt(int value) {
+        assert ValueType.isNumberType(getValueType());
         this.globalValue = value;
     }
 
     @Override
     public void storeLong(long value) {
+        assert ValueType.isNumberType(getValueType());
         this.globalValue = value;
+    }
+
+    @Override
+    public void storeReference(Object value) {
+        assert ValueType.isReferenceType(getValueType());
+        this.globalReferenceValue = value;
     }
 }

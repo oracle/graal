@@ -27,15 +27,15 @@ package com.oracle.svm.hosted.option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-public class RuntimeOptionFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class RuntimeOptionFeature implements InternalFeature {
 
     private RuntimeOptionParser runtimeOptionParser;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 
@@ -59,7 +60,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * execution where the state is consistent, and other operations can read its state.
  * <p>
  * <h3>Supporting Safepoints in a Language</h3>
- *
+ * <p>
  * Safepoints are explicitly polled by invoking the {@link #poll(Node)} method. Safepoints are
  * {@link #poll(Node) polled} with relaxed location or with {@link #pollHere(Node) exact location}.
  * A poll with a relaxed location is significantly more efficient than a poll with a precise
@@ -70,8 +71,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * time dependent on the array size. This typically means that safepoints are best polled at the end
  * of loops and at the end of function or method calls to cover recursion. In addition, any guest
  * language code that blocks the execution, like guest language locks, need to use the
- * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable) blocking API} to
- * allow polling of safepoints while the thread is waiting.
+ * {@link #setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+ * blocking API} to allow polling of safepoints while the thread is waiting.
  * <p>
  * Truffle's {@link LoopNode loop node} and {@link RootNode root node} support safepoint polling
  * automatically. No further calls to {@link #poll(Node)} are therefore necessary. Custom loops or
@@ -84,7 +85,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <p>
  *
  * <h3>Submitting thread local actions</h3>
- *
+ * <p>
  * See {@link ThreadLocalAction} for details on how to submit actions.
  * <p>
  * Further information can be found in the
@@ -147,7 +148,10 @@ public abstract class TruffleSafepoint {
      * @since 21.1
      */
     public static void poll(Node location) {
-        Objects.requireNonNull(location);
+        if (location == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new NullPointerException();
+        }
         HANDSHAKE.poll(location);
     }
 
@@ -178,6 +182,21 @@ public abstract class TruffleSafepoint {
     public static void pollHere(Node location) {
         Objects.requireNonNull(location);
         HANDSHAKE.poll(location);
+    }
+
+    /**
+     * @see #setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+     * @since 21.1
+     * @deprecated in 22.1. Use
+     *             {@link #setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}.
+     *             Though similar in functionality, this method costs an additional lambda
+     *             expression, which may be unfavorable in partial evaluated code.
+     */
+    @Deprecated(since = "22.1")
+    public final <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        setBlockedWithException(location, interrupter, interruptible, object, beforeInterrupt,
+                        // Runnable -> Consumer<Throwable>
+                        afterInterrupt == null ? null : (t) -> afterInterrupt.run());
     }
 
     /**
@@ -213,11 +232,17 @@ public abstract class TruffleSafepoint {
      * the parameter must be a {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
      * evaluation constant}.
      * <p>
-     * The <code>beforeInterrupt</code> and <code>afterInterrupt</code> {@link Runnable runnable}
-     * optional parameter allow to run code before and after a thread got interrupted and safepoint
-     * events are processed. If <code>null</code> is provided then no action will be performed.
-     * Arbitrary code may be executed in this runnable. Note that the blocked state is temporarily
-     * reset to its previous state while the afterInterrupt is called.
+     * The <code>beforeInterrupt</code> {@link Runnable runnable} and <code>afterInterrupt</code>
+     * {@link Consumer consumer} optional parameters allow to run code before and after a thread got
+     * interrupted and safepoint events are processed. If <code>null</code> is provided then no
+     * action will be performed. Arbitrary code may be executed in this runnable. Note that the
+     * blocked state is temporarily reset to its previous state while the afterInterrupt is called.
+     * <p>
+     * If an exception is thrown during the processing of the safepoint, <code>afterInterrupt</code>
+     * will receive the throwable as argument, or <code>null</code> if the safepoint successfully
+     * completed. This exception will still be thrown after completion of
+     * <code>afterInterrupt</code>, unless <code>afterInterrupt</code> throws an exception of its
+     * own.
      *
      * <p>
      * Multiple recursive invocations of this method is supported. The previous blocked state will
@@ -235,9 +260,9 @@ public abstract class TruffleSafepoint {
      * </pre>
      *
      * @see TruffleSafepoint
-     * @since 21.1
+     * @since 22.1
      */
-    public abstract <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt);
+    public abstract <T> void setBlockedWithException(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt);
 
     /**
      * Short-cut method to allow setting the blocked status for methods that throw
@@ -250,11 +275,46 @@ public abstract class TruffleSafepoint {
      */
     public static <T> void setBlockedThreadInterruptible(Node location, Interruptible<T> interruptible, T object) {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        safepoint.setBlocked(location, Interrupter.THREAD_INTERRUPT, interruptible, object, null, null);
+        safepoint.setBlockedWithException(location, Interrupter.THREAD_INTERRUPT, interruptible, object, null, (Consumer<Throwable>) null);
     }
 
     /**
-     * Allows to temporarily delay side-effecting thread local actions on this thread. It is
+     * Allows to temporarily delay all thread local actions on the current thread. It is recommended
+     * to delay actions only for a constant period of time and while trusted and internal guest code
+     * is running. Please consider using {@link #setAllowSideEffects(boolean)} before using this
+     * method. While actions are disabled the value of {@link #setAllowSideEffects(boolean)} has no
+     * effect. When {@link #setAllowActions(boolean) actions} are enabled again the value of
+     * {@link #setAllowSideEffects(boolean)} will be interpreted again.
+     * <p>
+     * Currently this method may only be used during {@link TruffleLanguage#finalizeContext(Object)
+     * context finalization}. This could be necessary to free up native resources through guest code
+     * when a context is cancelled to avoid resource leakage. Any usage of this method should be
+     * subject to a detailed security review to ensure only internal and well-known guest code is
+     * executed. Disabling thread local actions may delay thread local actions like exit,
+     * cancellation and interruption.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
+     * boolean prev = sp.setAllowActions(false);
+     * try {
+     *     // critical section
+     * } finally {
+     *     sp.setAllowActions(prev);
+     * }
+     * </pre>
+     *
+     * @throws IllegalStateException if allow actions can currently not be set, for example outside
+     *             the scope of a {@link TruffleLanguage#finalizeContext(Object) context
+     *             finalization}.
+     * @see TruffleLanguage#finalizeContext(Object)
+     * @since 22.1
+     */
+    public abstract boolean setAllowActions(boolean enabled) throws IllegalStateException;
+
+    /**
+     * Allows to temporarily delay side-effecting thread local actions on the current thread. It is
      * recommended to delay side-effecting actions only for a short and constant period of time.
      * <p>
      * While side-effecting thread local actions are delayed on this thread, only non-side-effecting
@@ -293,8 +353,8 @@ public abstract class TruffleSafepoint {
     /**
      * Returns the current safepoint configuration for the current thread. This method is useful to
      * access configuration methods like
-     * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)} or
-     * {@link #setAllowSideEffects(boolean)}.
+     * {@link #setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}
+     * or {@link #setAllowSideEffects(boolean)}.
      * <p>
      * Important: The result of this method must not be stored or used on a different thread than
      * the current thread.
@@ -349,8 +409,8 @@ public abstract class TruffleSafepoint {
      * to allow the Truffle safepoint mechanism to interrupt a blocked thread and schedule a
      * safepoint.
      *
-     * @see TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable,
-     *      Runnable)
+     * @see TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object,
+     *      Runnable, Consumer)
      * @see Interrupter#THREAD_INTERRUPT
      * @since 21.1
      */
@@ -362,7 +422,6 @@ public abstract class TruffleSafepoint {
          * that could cause deadlocks.
          *
          * @param thread the thread to interrupt
-         *
          * @since 21.1
          */
         void interrupt(Thread thread);

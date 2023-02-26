@@ -70,4 +70,13 @@ public enum StabilityLevel {
         }
         return Undefined;
     }
+
+    public static StabilityLevel fromName(String name) {
+        for (StabilityLevel level : values()) {
+            if (level.val.equals(name)) {
+                return level;
+            }
+        }
+        return StabilityLevel.Undefined;
+    }
 }

@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 
 import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -61,7 +60,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -89,7 +87,6 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
-    private boolean parsingIntrinsic;
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
@@ -317,7 +314,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public boolean parsingIntrinsic() {
-        return parsingIntrinsic;
+        return false;
     }
 
     @Override
@@ -337,7 +334,6 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @SuppressWarnings("try")
     public final StructuredGraph buildGraph(InvocationPlugin plugin) {
-        parsingIntrinsic = plugin instanceof MethodSubstitutionPlugin;
         // The caller is expected to have filtered out decorator plugins since they cannot be
         // processed without special handling.
         assert !plugin.isDecorator() : plugin;
@@ -372,16 +368,6 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public boolean canMergeIntrinsicReturns() {
         return true;
-    }
-
-    @Override
-    public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        return false;
-    }
-
-    @Override
-    public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, Receiver receiver, ValueNode[] argsIncludingReceiver) {
-        return false;
     }
 
     @Override

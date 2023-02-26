@@ -132,7 +132,7 @@ public class GetRootNodeCompilationTest extends PartialEvaluationTest {
     }
 
     private void compileRootNode(Supplier<RootNode> rootNodeFactory, int nodeLimit) {
-        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootNode rootNode = rootNodeFactory.get();
         RootCallTarget target = rootNode.getCallTarget();
         Object[] arguments = {};

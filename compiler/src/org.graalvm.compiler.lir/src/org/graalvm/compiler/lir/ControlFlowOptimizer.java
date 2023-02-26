@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer(lir).deleteEmptyBlocks(lir.codeEmittingOrder());
+        new Optimizer(lir).deleteEmptyBlocks(lir.getBlocks());
     }
 
     private static final class Optimizer {
@@ -62,7 +62,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
 
         /**
          * Checks whether a block can be deleted. Only blocks with exactly one successor and an
-         * unconditional branch to this successor are eligable.
+         * unconditional branch to this successor are eligible.
          *
          * @param block the block checked for deletion
          * @return whether the block can be deleted
@@ -84,13 +84,16 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
         }
 
-        private void alignBlock(AbstractBlockBase<?> block) {
-            if (!block.isAligned()) {
+        private StandardOp.LabelOp getLabel(AbstractBlockBase<?> block) {
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+            return (StandardOp.LabelOp) instructions.get(0);
+        }
+
+        private void copyAlignment(AbstractBlockBase<?> from, AbstractBlockBase<?> block) {
+            if (from.isAligned() && !block.isAligned()) {
                 block.setAlign(true);
-                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
-                assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
-                StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
-                instructions.set(0, new StandardOp.LabelOp(label.getLabel(), true));
+                getLabel(block).setAlignment(getLabel(from).getAlignment());
             }
         }
 
@@ -103,9 +106,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     block.delete();
                     // adjust successor and predecessor lists
                     AbstractBlockBase<?> other = block.getSuccessors()[0];
-                    if (block.isAligned()) {
-                        alignBlock(other);
-                    }
+                    copyAlignment(block, other);
 
                     BLOCKS_DELETED.increment(lir.getDebug());
                     blocks[i] = null;

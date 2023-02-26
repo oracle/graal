@@ -440,7 +440,7 @@ public final class HeapMonitor implements Closeable {
     }
 
     static ProfilerToolFactory<HeapMonitor> createFactory() {
-        return new ProfilerToolFactory<HeapMonitor>() {
+        return new ProfilerToolFactory<>() {
             @Override
             public HeapMonitor create(TruffleInstrument.Env env) {
                 return new HeapMonitor(env);

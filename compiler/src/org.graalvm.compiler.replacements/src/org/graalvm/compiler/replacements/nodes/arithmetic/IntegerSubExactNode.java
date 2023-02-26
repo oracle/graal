@@ -28,8 +28,8 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -48,7 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class IntegerSubExactNode extends SubNode implements GuardedNode, IntegerExactArithmeticNode {
+public final class IntegerSubExactNode extends SubNode implements GuardedNode, IntegerExactArithmeticNode, IterableNodeType {
     public static final NodeClass<IntegerSubExactNode> TYPE = NodeClass.create(IntegerSubExactNode.class);
 
     @Input(InputType.Guard) protected GuardingNode guard;

@@ -30,13 +30,12 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version2;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version3;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -124,16 +123,16 @@ public class GraalHotSpotVMConfigAccess {
      */
     public final String osArch;
 
-    protected static final Version JVMCI_0_55 = new Version2(0, 55);
-    protected static final Version JVMCI_21_1_b02 = new Version3(21, 1, 2);
-    public static final Version JVMCI_20_3_b04 = new Version3(20, 3, 4);
-    protected static final Version JVMCI_20_2_b04 = new Version3(20, 2, 4);
-    protected static final Version JVMCI_20_2_b01 = new Version3(20, 2, 1);
-    protected static final Version JVMCI_20_1_b01 = new Version3(20, 1, 1);
-    protected static final Version JVMCI_20_0_b03 = new Version3(20, 0, 3);
-    protected static final Version JVMCI_19_3_b03 = new Version3(19, 3, 3);
-    protected static final Version JVMCI_19_3_b04 = new Version3(19, 3, 4);
-    protected static final Version JVMCI_19_3_b07 = new Version3(19, 3, 7);
+    protected static final Version JVMCI_22_1_b01 = new Version(22, 1, 1);
+    protected static final Version JVMCI_21_1_b02 = new Version(21, 1, 2);
+    public static final Version JVMCI_20_3_b04 = new Version(20, 3, 4);
+    protected static final Version JVMCI_20_2_b04 = new Version(20, 2, 4);
+    protected static final Version JVMCI_20_2_b01 = new Version(20, 2, 1);
+    protected static final Version JVMCI_20_1_b01 = new Version(20, 1, 1);
+    protected static final Version JVMCI_20_0_b03 = new Version(20, 0, 3);
+    protected static final Version JVMCI_19_3_b03 = new Version(19, 3, 3);
+    protected static final Version JVMCI_19_3_b04 = new Version(19, 3, 4);
+    protected static final Version JVMCI_19_3_b07 = new Version(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
@@ -147,7 +146,7 @@ public class GraalHotSpotVMConfigAccess {
     public static final boolean JDK_PRERELEASE;
     static {
         String vmVersion = getProperty("java.vm.version");
-        JVMCI_VERSION = Version.parse(vmVersion, Services.getSavedProperties());
+        JVMCI_VERSION = Version.parse(vmVersion);
         JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
         JVMCI = JVMCI_VERSION != null;
     }
@@ -279,6 +278,22 @@ public class GraalHotSpotVMConfigAccess {
             return access.getConstant(name, type, notPresent);
         }
         return notPresent;
+    }
+
+    /**
+     * Verifies that if the constant described by {@code name} and {@code type} is defined by the
+     * VM, it has the value {@code expect}.
+     *
+     * @return {@code expect}
+     */
+    public <T> T verifyConstant(String name, Class<T> type, T expect) {
+        if (vmConstants.containsKey(name)) {
+            T value = access.getConstant(name, type, expect);
+            if (!Objects.equals(value, expect)) {
+                recordError(name, unexpected, String.valueOf(value));
+            }
+        }
+        return expect;
     }
 
     /**

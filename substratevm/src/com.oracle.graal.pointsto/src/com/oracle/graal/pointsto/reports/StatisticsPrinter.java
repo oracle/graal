@@ -26,18 +26,19 @@ package com.oracle.graal.pointsto.reports;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.util.Map;
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
@@ -106,7 +107,9 @@ public final class StatisticsPrinter {
     }
 
     public static void print(PrintWriter out, String key, double value) {
-        out.format("%s\"%s\": %.2f,%n", INDENT, key, value);
+        NumberFormat nf = NumberFormat.getInstance(Locale.ENGLISH);
+        nf.setGroupingUsed(false);
+        out.format("%s\"%s\": %s,%n", INDENT, key, nf.format(value));
     }
 
     public static void printLast(PrintWriter out, String key, long value) {
@@ -132,7 +135,7 @@ public final class StatisticsPrinter {
         int reachable = 0;
         int appReachable = 0;
         for (AnalysisType type : bb.getUniverse().getTypes()) {
-            if (type.isInstantiated()) {
+            if (type.isReachable()) {
                 reachable++;
                 if (!isRuntimeLibraryType(type)) {
                     appReachable++;
@@ -175,25 +178,33 @@ public final class StatisticsPrinter {
             /*- Type check stats are only available if points-to analysis is on. */
             return new long[4];
         }
-        PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+        PointsToAnalysis pta = (PointsToAnalysis) bb;
         long totalFilters = 0;
         long totalRemovableFilters = 0;
         long appTotalFilters = 0;
         long appTotalRemovableFilters = 0;
 
-        for (AnalysisMethod method : pointsToAnalysis.getUniverse().getMethods()) {
+        for (AnalysisMethod method : pta.getUniverse().getMethods()) {
+
+            if (!method.isImplementationInvoked()) {
+                continue;
+            }
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-            MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
+            if (!methodFlow.flowsGraphCreated()) {
+                continue;
+            }
+            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
 
-            for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {
-                if (BytecodeLocation.isValidBci(entry.getKey())) {
+            var cursor = originalFlows.getInstanceOfFlows().getEntries();
+            while (cursor.advance()) {
+                if (StaticAnalysisResultsBuilder.isValidBci(cursor.getKey())) {
                     totalFilters++;
-                    InstanceOfTypeFlow originalInstanceOf = entry.getValue();
+                    InstanceOfTypeFlow originalInstanceOf = cursor.getValue();
 
-                    boolean isSaturated = methodFlow.isSaturated(pointsToAnalysis, originalInstanceOf);
-                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pointsToAnalysis, originalInstanceOf);
+                    boolean isSaturated = methodFlow.isSaturated(pta, originalInstanceOf);
+                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pta, originalInstanceOf);
                     if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
                         totalRemovableFilters++;
                     }

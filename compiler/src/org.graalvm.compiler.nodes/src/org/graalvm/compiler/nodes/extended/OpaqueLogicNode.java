@@ -47,19 +47,6 @@ public final class OpaqueLogicNode extends LogicNode implements LIRLowerable, No
         this.value = value;
     }
 
-    public ValueNode getValue() {
-        return value;
-    }
-
-    public void setValue(ValueNode value) {
-        this.updateUsages(this.value, value);
-        this.value = value;
-    }
-
-    public void remove() {
-        replaceAndDelete(getValue());
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.operand(value));

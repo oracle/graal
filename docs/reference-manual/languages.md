@@ -17,5 +17,5 @@ If you are mostly interested in GraalVM's support for a specific language, here 
 * [LLVM Languages](llvm/README.md)
 * [Python](https://github.com/oracle/graalpython/blob/master/docs/user/README.md)
 * [R](https://github.com/oracle/fastr/blob/master/documentation/user/README.md)
-* [Ruby](https://github.com/oracle/truffleruby/blob/master/doc/user/README.md)
+* [Ruby](https://github.com/oracle/truffleruby/blob/master/README.md)
 * [WebAssembly](wasm/README.md)

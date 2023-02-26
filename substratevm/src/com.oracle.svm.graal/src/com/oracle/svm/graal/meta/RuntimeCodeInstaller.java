@@ -38,10 +38,11 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller;
 import com.oracle.svm.core.code.CodeInfo;
@@ -128,11 +129,15 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                 dataOffset = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset), CommittedMemoryProvider.get().getGranularity()));
             }
             codeAndDataMemorySize = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset + dataSize), CommittedMemoryProvider.get().getGranularity()));
+
             code = allocateCodeMemory(codeAndDataMemorySize);
             compiledBytes = compilation.getTargetCode();
 
-            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                makeCodeMemoryWriteableNonExecutable(code.add(dataOffset), codeAndDataMemorySize - dataOffset);
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                UnsignedWord alignedAfterCodeOffset = UnsignedUtils.roundUp(WordFactory.unsigned(codeSize), CommittedMemoryProvider.get().getGranularity());
+                assert alignedAfterCodeOffset.belowOrEqual(codeAndDataMemorySize);
+
+                makeCodeMemoryExecutableWritable(code, alignedAfterCodeOffset);
             }
 
             codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(debug, method, compilation, code, codeSize);
@@ -208,7 +213,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
         // remove write access from code
         if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-            makeCodeMemoryReadOnly(code, codeSize);
+            makeCodeMemoryExecutableReadOnly(code, WordFactory.unsigned(codeSize));
         }
 
         /* Write primitive constants to the buffer, record object constants with offsets */
@@ -229,6 +234,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
         createCodeChunkInfos(codeInfo, adjuster);
+
         compilation = null;
     }
 
@@ -247,10 +253,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
-        codeInfoEncoder.addMethod(method, compilation, 0);
+        codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
@@ -287,12 +293,12 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         }
 
         @Override
-        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
             return true;
         }
 
         @Override
-        protected boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint) {
             return false;
         }
     }

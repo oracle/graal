@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -36,8 +37,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -529,7 +530,7 @@ public final class PathExhibitor {
         private final PathEdge result;
 
         FindPathToObjectOperation(PathExhibitor exhibitor, Object object, PathEdge result) {
-            super("FindPathToObjectOperation", SystemEffect.SAFEPOINT);
+            super(VMOperationInfos.get(FindPathToObjectOperation.class, "Find path to object", SystemEffect.SAFEPOINT));
             this.exhibitor = exhibitor;
             this.object = object;
             this.result = result;

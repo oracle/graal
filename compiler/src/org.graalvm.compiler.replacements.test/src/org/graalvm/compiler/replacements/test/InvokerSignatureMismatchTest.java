@@ -33,7 +33,6 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import org.graalvm.compiler.core.test.CustomizedBytecodePatternTest;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Test;
@@ -48,12 +47,8 @@ public class InvokerSignatureMismatchTest extends CustomizedBytecodePatternTest 
     public void test() throws Throwable {
         List<String> args = withoutDebuggerArguments(getVMCommandLine());
         try (TemporaryDirectory temp = new TemporaryDirectory(null, getClass().getSimpleName())) {
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                args.add("--class-path=" + temp);
-                args.add("--patch-module=java.base=" + temp);
-            } else {
-                args.add("-Xbootclasspath/a:" + temp);
-            }
+            args.add("--class-path=" + temp);
+            args.add("--patch-module=java.base=" + temp);
             args.add("-XX:-TieredCompilation");
             args.add("-XX:+UnlockExperimentalVMOptions");
             args.add("-XX:+EnableJVMCI");

@@ -333,10 +333,6 @@ public class CountedLoopInfo {
         }
     }
 
-    public IfNode getCountCheck() {
-        return ifNode;
-    }
-
     /**
      * @return true if the loop has constant bounds.
      */
@@ -416,7 +412,8 @@ public class CountedLoopInfo {
 
     @Override
     public String toString() {
-        return "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() + (isLimitIncluded ? getBodyIV().direction() == Direction.Up ? "+1" : "-1" : "") + " bodyIV=" + getBodyIV();
+        return (isInverted() ? "Inverted " : "") + "iv=" + getLimitCheckedIV() + " until " + getTripCountLimit() + (isLimitIncluded ? getBodyIV().direction() == Direction.Up ? "+1" : "-1" : "") +
+                        " bodyIV=" + getBodyIV();
     }
 
     /**

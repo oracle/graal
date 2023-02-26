@@ -31,6 +31,8 @@ public interface MultiOptionValue<T> {
 
     Class<T> getValueType();
 
+    String getDelimiter();
+
     /**
      * @return a list of option values, one for each place where the option is used.
      */

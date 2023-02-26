@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugException;
@@ -70,7 +69,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
-
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.CancellableRunnable;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.NoSuspendedThreadException;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.SuspendedThreadExecutor;
@@ -90,8 +88,8 @@ import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 import com.oracle.truffle.tools.chromeinspector.types.StackTrace;
 import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
-
-import org.graalvm.collections.Pair;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class InspectorDebugger extends DebuggerDomain {
 
@@ -161,8 +159,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         debuggerSession = tdbg.startSession(suspendedCallback, SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSourcePath(context.getSourcePath());
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
-        scriptsHandler = context.acquireScriptsHandler();
-        scriptsHandler.setDebuggerSession(debuggerSession);
+        scriptsHandler = context.acquireScriptsHandler(debuggerSession);
         breakpointsHandler = new BreakpointsHandler(debuggerSession, scriptsHandler, () -> eventHandler);
     }
 
@@ -1004,7 +1001,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                     } while (srcMapLine > 0 && (line.length() == 0 || "});".equals(line)));
                     CharSequence sourceMapURL = (srcMapLine > 0) ? getSourceMapURL(source, srcMapLine) : null;
                     if (sourceMapURL != null) {
-                        jsonParams.put("sourceMapURL", sourceMapURL);
+                        jsonParams.put("sourceMapURL", sourceMapURL.toString());
                         lastLine = srcMapLine - 1;
                         lastColumn = source.getLineLength(lastLine + 1);
                     }
@@ -1027,7 +1024,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
         private CharSequence getSourceMapURL(Source source, int lastLine) {
             String mapKeyword = "sourceMappingURL=";
-            int mapKeywordLenght = mapKeyword.length();
+            int mapKeywordLength = mapKeyword.length();
             CharSequence line = source.getCharacters(lastLine + 1);
             int lineLength = line.length();
             int i = 0;
@@ -1043,8 +1040,8 @@ public final class InspectorDebugger extends DebuggerDomain {
             while (i < lineLength && Character.isWhitespace(line.charAt(i))) {
                 i++;
             }
-            if (i + mapKeywordLenght < lineLength && line.subSequence(i, i + mapKeywordLenght).equals(mapKeyword)) {
-                i += mapKeywordLenght;
+            if (i + mapKeywordLength < lineLength && line.subSequence(i, i + mapKeywordLength).equals(mapKeyword)) {
+                i += mapKeywordLength;
             } else {
                 return null;
             }
@@ -1083,7 +1080,10 @@ public final class InspectorDebugger extends DebuggerDomain {
                                         (se.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
                             // We're at the begining of a `RootTag` node, or
                             // we're at the end of `RootTag` node and have no return value.
-                            // Do not suspend in this case, not to cause distrations.
+                            // We use `RootTag` to intercept return values of functions during
+                            // stepping.
+                            // But if there's no return value, there's no point in suspending at the
+                            // end of a function. That would cause an unnecessary distraction.
                             se.prepareStepInto(STEP_CONFIG);
                             return;
                         }

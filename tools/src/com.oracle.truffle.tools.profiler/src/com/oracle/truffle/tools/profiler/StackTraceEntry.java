@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -223,12 +223,12 @@ public final class StackTraceEntry {
         if (stack != null) {
             return stack;
         }
-        LanguageInfo languageInfo = getInstrumentedNode().getRootNode().getLanguageInfo();
-        String declaringClass;
-        if (languageInfo != null) {
-            declaringClass = languageInfo.getId();
-        } else {
-            declaringClass = "";
+        String declaringClass = "";
+        if (getInstrumentedNode() != null) {
+            LanguageInfo languageInfo = getInstrumentedNode().getRootNode().getLanguageInfo();
+            if (languageInfo != null) {
+                declaringClass = languageInfo.getId();
+            }
         }
         SourceSection sourceLocation = getSourceSection();
         String methodName = rootName == null ? "" : rootName;

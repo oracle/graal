@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -56,19 +56,13 @@ import org.graalvm.nativeimage.ImageInfo;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
-
-import sun.misc.Unsafe;
 
 @SuppressWarnings("deprecation")
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
     private final LongLocation[] primitiveFields;
-    private final CoreLocation objectArrayLocation;
-    private final CoreLocation primitiveArrayLocation;
 
     static final ObjectLocation[] NO_OBJECT_FIELDS = new ObjectLocation[0];
     static final LongLocation[] NO_LONG_FIELDS = new LongLocation[0];
@@ -77,16 +71,12 @@ class DefaultLayout extends LayoutImpl {
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, int implicitCastFlags, ObjectLocation[] objectFields, LongLocation[] primitiveFields) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
-        this.primitiveArrayLocation = CoreLocations.PRIMITIVE_ARRAY_LOCATION;
-        this.objectArrayLocation = CoreLocations.OBJECT_ARRAY_LOCATION;
         this.objectFields = objectFields;
         this.primitiveFields = primitiveFields;
     }
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, int implicitCastFlags) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
-        this.primitiveArrayLocation = CoreLocations.PRIMITIVE_ARRAY_LOCATION;
-        this.objectArrayLocation = CoreLocations.OBJECT_ARRAY_LOCATION;
         if (DynamicObject.class == dynamicObjectClass) {
             this.objectFields = NO_OBJECT_FIELDS;
             this.primitiveFields = NO_LONG_FIELDS;
@@ -99,14 +89,12 @@ class DefaultLayout extends LayoutImpl {
         }
     }
 
-    public static LayoutImpl createCoreLayout(com.oracle.truffle.api.object.Layout.Builder builder) {
-        Class<? extends DynamicObject> type = getType(builder);
-        EnumSet<ImplicitCast> allowedImplicitCasts = getAllowedImplicitCasts(builder);
-        int implicitCastFlags = implicitCastFlags(allowedImplicitCasts);
+    static LayoutImpl createCoreLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
         return getOrCreateLayout(type, implicitCastFlags);
     }
 
     private static DefaultLayout getOrCreateLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
+        Objects.requireNonNull(type, "DynamicObject layout class");
         Key key = new Key(type, implicitCastFlags);
         DefaultLayout layout = LAYOUT_MAP.get(key);
         if (layout != null) {
@@ -117,14 +105,8 @@ class DefaultLayout extends LayoutImpl {
         return layout == null ? newLayout : layout;
     }
 
-    @Override
-    public DynamicObject newInstance(Shape shape) {
-        throw unsupported();
-    }
-
-    @Override
-    protected DynamicObject construct(Shape shape) {
-        throw unsupported();
+    static void registerLayoutClass(Class<? extends DynamicObject> type) {
+        createCoreLayout(type, 0);
     }
 
     @Override
@@ -138,7 +120,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    protected Shape newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
+    protected ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
         return new ShapeBasic(this, sharedData, objectType, flags, singleContextAssumption);
     }
 
@@ -162,16 +144,6 @@ class DefaultLayout extends LayoutImpl {
         return primitiveFields.length;
     }
 
-    @Override
-    protected CoreLocation getObjectArrayLocation() {
-        return objectArrayLocation;
-    }
-
-    @Override
-    protected CoreLocation getPrimitiveArrayLocation() {
-        return primitiveArrayLocation;
-    }
-
     protected ObjectLocation getObjectFieldLocation(int index) {
         return objectFields[index];
     }
@@ -185,7 +157,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    public Allocator createAllocator() {
+    public ShapeImpl.BaseAllocator createAllocator() {
         LayoutImpl layout = this;
         return getStrategy().createAllocator(layout);
     }
@@ -226,7 +198,6 @@ class DefaultLayout extends LayoutImpl {
         final LongLocation[] primitiveFields;
 
         private static final ConcurrentMap<Class<? extends DynamicObject>, LayoutInfo> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
-        private static final Unsafe UNSAFE = CoreLocations.getUnsafe();
 
         static LayoutInfo getOrCreateLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass) {
             LayoutInfo layoutInfo = LAYOUT_INFO_MAP.get(dynamicObjectClass);
@@ -295,7 +266,7 @@ class DefaultLayout extends LayoutImpl {
                     if (field.getType() == Object.class) {
                         objectFieldList.add(new CoreLocations.DynamicObjectFieldLocation(objectFieldList.size(), field));
                     } else if (field.getType() == long.class) {
-                        long offset = UNSAFE.objectFieldOffset(field);
+                        long offset = UnsafeAccess.objectFieldOffset(field);
                         if (offset % Long.BYTES == 0) {
                             primitiveFieldList.add(new CoreLocations.DynamicLongFieldLocation(primitiveFieldList.size(), offset, clazz));
                         }

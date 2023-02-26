@@ -24,25 +24,17 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -74,7 +66,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        boolean deoptimizationTarget = method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
@@ -107,21 +99,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
             if (!isPrimitiveOrWord(providers, parameterTypes[i])) {
                 ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
-                    ValueNode argumentValue = arguments.get(i);
-
-                    IsNullNode isNull = kit.unique(new IsNullNode(argumentValue));
-                    kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
-                    kit.thenPart();
-                    ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
-                    NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));
-                    Iterator<ResolvedJavaMethod> enumExceptionCtor = Arrays.stream(enumExceptionType.getDeclaredConstructors()).filter(
-                                    c -> c.getSignature().getParameterCount(false) == 1 && c.getSignature().getParameterType(0, null).equals(metaAccess.lookupJavaType(String.class))).iterator();
-                    ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
-                    kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
-                    assert !enumExceptionCtor.hasNext();
-                    kit.append(new UnwindNode(enumException));
-                    kit.endIf();
-
+                    ValueNode argumentValue = kit.maybeCreateExplicitNullCheck(arguments.get(i));
                     CInterfaceEnumTool tool = new CInterfaceEnumTool(metaAccess, providers.getSnippetReflection());
                     argumentValue = tool.createEnumValueInvoke(kit, (EnumInfo) typeInfo, cEnumKind, argumentValue);
 

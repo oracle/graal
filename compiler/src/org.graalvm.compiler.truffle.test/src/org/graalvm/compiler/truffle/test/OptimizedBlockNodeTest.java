@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.sl.runtime.SLStrings;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode.PartialBlocks;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -524,9 +525,10 @@ public class OptimizedBlockNodeTest {
 
     @Test
     public void testBlockCompilationTrigger() {
-        // the number 200 for the maximum compile limit is heavily dependent
+        // the number 150 for the maximum compile limit is heavily dependent
         // on implementation details and might need to be updated the future.
-        setup(10, 200);
+        // expects graph too big permanent bailout
+        setup(10, 150, new String[]{"engine.CompilationFailureAction", "Silent"});
 
         // test not triggering the limit
         OptimizedBlockNode<?> block = createBlock(1, 1);
@@ -631,7 +633,7 @@ public class OptimizedBlockNodeTest {
         context.getBindings("sl").getMember(name).execute();
         context.enter();
         try {
-            OptimizedCallTarget target = ((OptimizedCallTarget) SLContext.get(null).getFunctionRegistry().getFunction(name).getCallTarget());
+            OptimizedCallTarget target = ((OptimizedCallTarget) SLContext.get(null).getFunctionRegistry().getFunction(SLStrings.fromJavaString(name)).getCallTarget());
             // we invalidate to make sure the call counts are updated.
             target.invalidate("invalidate for test");
             return target;
@@ -678,13 +680,23 @@ public class OptimizedBlockNodeTest {
     }
 
     private void setup(int blockCompilationSize, int maxGraalNodeCount) {
+        setup(blockCompilationSize, maxGraalNodeCount, new String[0]);
+    }
+
+    private void setup(int blockCompilationSize, int maxGraalNodeCount, String... additionalContextOptions) {
+        assert additionalContextOptions.length % 2 == 0 : "additionalContextOptions length must be even";
         clearContext();
-        context = Context.newBuilder().allowAllAccess(true)//
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true)//
                         .option("engine.BackgroundCompilation", "false") //
                         .option("engine.MultiTier", "false") //
                         .option("engine.PartialBlockCompilationSize", String.valueOf(blockCompilationSize))//
-                        .option("engine.MaximumGraalNodeCount", String.valueOf(maxGraalNodeCount))//
-                        .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD)).build();
+                        .option("engine.MaximumGraalGraphSize", String.valueOf(maxGraalNodeCount))//
+                        .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD))//
+                        .option("engine.EncodedGraphCache", "false");
+        for (int i = 0; i < additionalContextOptions.length; i += 2) {
+            builder.option(additionalContextOptions[i], additionalContextOptions[i + 1]);
+        }
+        context = builder.build();
         context.enter();
     }
 

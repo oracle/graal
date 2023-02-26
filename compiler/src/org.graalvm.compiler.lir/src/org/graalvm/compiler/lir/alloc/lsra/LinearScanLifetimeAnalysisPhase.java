@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.util.BitMap2D;
 import org.graalvm.compiler.debug.Assertions;
@@ -105,8 +104,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     }
 
     /**
-     * Numbers all instructions in all blocks. The numbering follows the
-     * {@linkplain ComputeBlockOrder linear scan order}.
+     * Numbers all instructions in all blocks.
      */
     protected void numberInstructions() {
 

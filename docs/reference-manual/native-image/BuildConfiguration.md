@@ -1,34 +1,35 @@
 ---
-layout: docs
-toc_group: native-image
+layout: ni-docs
+toc_group: build-overview
 link_title: Build Configuration
-permalink: /reference-manual/native-image/BuildConfiguration/
+permalink: /reference-manual/native-image/overview/BuildConfiguration/
+redirect_from: /$version/reference-manual/native-image/BuildConfiguration/
 ---
+
 # Native Image Build Configuration
 
-* [Embedding a Configuration File](#embedding-a-configuration-file)
+Native Image supports a wide range of options to configure the `native-image` builder.
+
+### Table of Contents
+
+* [Embed a Configuration File](#embed-a-configuration-file)
 * [Configuration File Format](#configuration-file-format)
+* [Order of Arguments Evaluation](#order-of-arguments-evaluation)
 * [Memory Configuration for Native Image Build](#memory-configuration-for-native-image-build)
-* [Runtime vs Build-Time Initialization](#runtime-vs-build-time-initialization)
-* [Assisted Configuration of Native Image Builds](Agent.md#assisted-configuration-of-native-image-builds)
-* [Building Native Image with Java Reflection Example](Agent.md#building-native-image-with-java-reflection-example)
-* [Agent Advanced Usage](Agent.md#agent-advanced-usage)
+* [Specify Types Required to Be Defined at Build Time](#specify-types-required-to-be-defined-at-build-time)
+ 
+## Embed a Configuration File
 
-Native Image supports a wide range of options to configure a native image build process.
+We recommend that you provide the configuration for the `native-image` builder by embedding a _native-image.properties_ file into a project JAR file.
+The `native-image` builder will also automatically pick up all configuration options provided in the _META-INF/native-image/_ directory (or any of its subdirectories) and use it to construct `native-image` command-line options.
 
-## Embedding a Configuration File
-
-A recommended way to provide configuration is to embed a **native-image.properties** file into a project JAR file.
-The Native Image builder will automatically pick up all configuration options provided anywhere below the resource location `META-INF/native-image/` and use it to construct `native-image` command line arguments.
-
-To avoid a situation when constituent parts of a project are built with overlapping configurations, it is recommended to use "subdirectories" within `META-INF/native-image`.
-That way a JAR file built from multiple maven projects cannot suffer from overlapping `native-image` configurations.
+To avoid a situation when constituent parts of a project are built with overlapping configurations, we recommended you use subdirectories within _META-INF/native-image_: a JAR file built from multiple maven projects cannot suffer from overlapping `native-image` configurations.
 For example:
-* _foo.jar_ has its configurations in `META-INF/native-image/foo_groupID/foo_artifactID`
-* _bar.jar_ has its configurations in `META-INF/native-image/bar_groupID/bar_artifactID`
+* _foo.jar_ has its configurations in _META-INF/native-image/foo_groupID/foo_artifactID_
+* _bar.jar_ has its configurations in _META-INF/native-image/bar_groupID/bar_artifactID_
 
-The JAR file that contains `foo` and `bar` will then contain both configurations without conflicting with one another.
-Therefore the recommended layout for storing native image configuration data in JAR files is the following:
+The JAR file that contains `foo` and `bar` will then contain both configurations without conflict.
+Therefore the recommended layout to store configuration data in JAR files is as follows:
 ```
 META-INF/
 └── native-image
@@ -38,24 +39,23 @@ META-INF/
 ```
 
 Note that the use of `${.}` in a _native-image.properties_ file expands to the resource location that contains that exact configuration file.
-This can be useful if the _native-image.properties_ file wants to refer to resources within its "subfolder", for example, `-H:SubstitutionResources=${.}/substitutions.json`.
-Always make sure to use the option variants that take resources, i.e., use `-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
-Other options that are known to work in this context are:
+This can be useful if the _native-image.properties_ file refers to resources within its subdirectory, for example, `-H:ResourceConfigurationResources=${.}/custom_resources.json`.
+Always make sure you use the option variants that take resources, that is, use `-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
+Other options that work in this context are:
 * `-H:DynamicProxyConfigurationResources`
 * `-H:JNIConfigurationResources`
 * `-H:ReflectionConfigurationResources`
 * `-H:ResourceConfigurationResources`
-* `-H:SubstitutionResources`
 * `-H:SerializationConfigurationResources`
 
-By having such a composable _native-image.properties_ file, building an image does not require any additional arguments specified on command line.
-It is sufficient to just run the following command:
+By having such a composable _native-image.properties_ file, building a native executable does not require any additional option on the command line.
+It is sufficient to run the following command:
 ```shell
 $JAVA_HOME/bin/native-image -jar target/<name>.jar
 ```
 
-To debug which configuration data gets applied for the image building, use `native-image --verbose`.
-This will show from where `native-image` picks up the configurations to construct the final composite configuration command line options for the native image builder.
+To identify which configuration is applied when building a native executable, use `native-image --verbose`.
+This shows from where `native-image` picks up the configurations to construct the final composite configuration command-line options for the native image builder.
 ```shell
 native-image --verbose -jar build/basic-app-0.1-all.jar
 Apply jar:file://~/build/basic-app-0.1-all.jar!/META-INF/native-image/io.netty/common/native-image.properties
@@ -69,95 +69,101 @@ Executing [
 ]
 ```
 
-Typical examples of `META-INF/native-image` based native image configuration can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+Typical examples of configurations that use a configuration from _META-INF/native-image_ can be found in [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
 
 ## Configuration File Format
 
-A `native-image.properties` file is a regular Java properties file that can be
-used to specify native image configurations. The following properties are
-supported.
+A _native-image.properties_ file is a Java properties file that specifies configurations for `native-image`. 
+The following properties are supported.
 
 **Args**
 
-Use this property if your project requires custom `native-image` command line options to build correctly.
-For example, the `native-image-configure-examples/configure-at-runtime-example` has `Args = --initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access` in its `native-image.properties` file to ensure the class `com.fasterxml.jackson.annotation.JsonProperty$Access` gets initialized at image build time.
+Use this property if your project requires custom `native-image` command-line options to build correctly.
+For example, the `native-image-configure-examples/configure-at-runtime-example` contains `Args = --initialize-at-build-time=com.fasterxml.jackson.annotation.JsonProperty$Access` in its _native-image.properties_ file to ensure the class `com.fasterxml.jackson.annotation.JsonProperty$Access` is initialized at executable build time.
 
 **JavaArgs**
 
-Sometimes it can be necessary to provide custom options to the JVM that runs the native image builder.
-The `JavaArgs` property can be used in this case.
+Sometimes it can be necessary to provide custom options to the JVM that runs the `native-image` builder.
+Use the `JavaArgs` property in this case.
 
 **ImageName**
 
-This property can be used to specify a user-defined name for the image.
-If `ImageName` is not used, a name gets automatically chosen:
-* `native-image -jar <name.jar>` has a default image name `<name>`
-* `native-image -cp ... fully.qualified.MainClass` has a default image name `fully.qualified.mainclass`
+This property specifies a user-defined name for the executable.
+If `ImageName` is not used, a name is automatically chosen:
+    * `native-image -jar <name.jar>` has a default executable name `<name>`
+    * `native-image -cp ... fully.qualified.MainClass` has a default executable name `fully.qualified.mainclass`
 
-Note that using `ImageName` does not prevent the user to override the name later via command line.
+Note that using `ImageName` does not prevent you from overriding the name via the command line.
 For example, if `foo.bar` contains `ImageName=foo_app`:
-* `native-image -jar foo.bar` generates the image `foo_app` but
-* `native-image -jar foo.bar application` generates the image `application`
+    * `native-image -jar foo.bar` generates the executable `foo_app` but
+    * `native-image -jar foo.bar application` generates the executable `application`
 
-### Order of Arguments Evaluation
-The arguments passed to `native-image` are evaluated left-to-right.
-This also extends to arguments that get passed indirectly via `META-INF/native-image` based native image configuration.
-Suppose you have a JAR file that contains _native-image.properties_ with `Args = -H:Optimize=0`.
-Then by using the `-H:Optimize=2` option after `-cp <jar-file>` you can override the setting that comes from the JAR file.
+### Changing the Default Configuration Directory
 
-### Specifying Default Options for Native Image
-If there is a need to pass some options for every image build unconditionally, for example, to always generate an image in verbose mode (`--verbose`), you can make use of the `NATIVE_IMAGE_CONFIG_FILE` environment variable.
-If it is set to a Java properties file, the Native Image builder will use the default setting defined in there on each invocation.
-Write a configuration file and export `NATIVE_IMAGE_CONFIG_FILE=$HOME/.native-image/default.properties` in `~/.bash_profile`.
-Every time `native-image` gets used, it will implicitly use the arguments specified as `NativeImageArgs`, plus the arguments specified on the command line.
-Here is an example of a configuration file, saved as `~/.native-image/default.properties`:
-
-```
-NativeImageArgs = --configurations-path /home/user/custom-image-configs \
-                  -O1
-```
-
-### Changing the Configuration Directory
-
-Native Image by default stores the configuration information in user's home directory -- `$HOME/.native-image/`.
-In order to change the output directory, set the environment variable `NATIVE_IMAGE_USER_HOME` to a different location. For example:
+Native Image by default stores configuration information in the user's home directory: _$HOME/.native-image/_.
+To change this default, set the environment variable `NATIVE_IMAGE_USER_HOME` to a different location. For example:
 ```shell
 export NATIVE_IMAGE_USER_HOME= $HOME/.local/share/native-image
 ```
 
+## Order of Arguments Evaluation
+The options passed to `native-image` are evaluated from left to right.
+This also extends to options that are passed indirectly via configuration files in the _META-INF/native-image_ directory.
+Consider the example where there is a JAR file that includes _native-image.properties_ containing `Args = -H:Optimize=0`.
+You can override the setting that is contained in the JAR file by using the `-H:Optimize=2` option after `-cp <jar-file>`.
+
 ## Memory Configuration for Native Image Build
 
-The native image build runs on the Java HotSpot VM and uses the memory management of the underlying platform.
-The usual Java HotSpot command-line options for garbage collection apply to the native image builder.
+The `native-image` builder runs on a JVM and uses the memory management of the underlying platform.
+The usual Java command-line options for garbage collection apply to the `native-image` builder.
 
-During the native image build, the representation of a whole program is created to figure out which classes and methods will be used at run time.
-It is a computationally intensive process.
-The default values for memory usage at image build time are:
+During the creation of a native executable, the representation of the whole application is created to determine which classes and methods will be used at runtime.
+It is a computationally intensive process that uses the following default values for memory usage:
 ```
 -Xss10M \
 -Xms1G \
 ```
-These defaults can be changed by passing `-J + <jvm option for memory>` to the native image builder.
+These defaults can be changed by passing `-J + <jvm option for memory>` to the `native-image` tool.
 
-The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per server.
-Providing a larger value for `-Xmx` on command line is possible, e.g., `-J-Xmx26G`.
+The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per host.
+You can provide a larger value for `-Xmx` on the command line, for example, `-J-Xmx26G`.
 
-By default, image building uses of up to 32 threads (but not more than the number of processors available). For custom values `-H:NumberOfThreads=...` can be used.
+By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the option `-H:NumberOfThreads=...`.
 
-Check other related options to the native image builder from the `native-image --expert-options-all` list.
+For other related options available to the `native-image` tool, see the output from the command `native-image --expert-options-all`.
 
-## Runtime vs Build-Time Initialization
+## Specify Types Required to Be Defined at Build Time
 
-Building your application into a native image allows you to decide which parts of your application should be run at image build time and which parts have to run at image run time.
+A well-structured library or application should handle linking of Java types (ensuring all reachable Java types are fully defined at build time) when building a native binary by itself.
+The default behavior is to throw linking errors, if they occur, at runtime. 
+However, you can prevent unwanted linking errors by specifying which classes are required to be fully linked at build time.
+For that, use the `--link-at-build-time` option. 
+If the option is used in the right context (see below), you can specify required classes to link at build time without explicitly listing classes and packages.
+It is designed in a way that libraries can only configure their own classes, to avoid any side effects on other libraries.
+You can pass the option to the `native-image` tool on the command line, embed it in a `native-image.properties` file on the module-path or the classpath.
 
-All class-initialization code (static initializers and static field initialization) of the application you build an image for is executed at image run time by default.
-Sometimes it is beneficial to allow class initialization code to get executed at image build time for faster startup (e.g., if some static fields get initialized to run-time independent data).
-This can be controlled with the following `native-image` options:
+Depending on how and where the option is used it behaves differently:
 
-* `--initialize-at-build-time=<comma-separated list of packages and classes>`
-* `--initialize-at-run-time=<comma-separated list of packages and classes>`
+* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. If used without arguments on command line, all classes will be treated as "link-at-build-time" classes. If used without arguments embedded in a `native-image.properties` file on the module-path, all classes of the module will be treated as "link-at-build-time" classes. If you use `--link-at-build-time` embedded in a `native-image.properties` file on the classpath, the following error will be thrown:
+    ```shell
+    Error: Using '--link-at-build-time' without args only allowed on module-path. 'META-INF/native-image/org.mylibrary/native-image.properties' in 'file:///home/test/myapp/MyLibrary.jar' not part of module-path.
+    ```
+* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
 
-In addition to that, arbitrary computations are allowed at build time that can be put into `ImageSingletons` that are accessible at image run time.
-For more information please have a look at [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+Another handy option is `--link-at-build-time-paths` which allows to specify which classes are required to be fully defined at build time by other means.
+This variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
 
-For more information, continue reading to the [Class Initialization in Native Image](ClassInitialization.md) guide.
+```shell
+--link-at-build-time-paths <class search path of directories and zip/jar files>
+```
+
+The given entries are searched and all classes inside are registered as `--link-at-build-time` classes.
+This option is only allowed to be used on command line.
+
+### Related Documentation
+
+- [Class Initialization in Native Image](ClassInitialization.md)
+- [Native Image Basics](NativeImageBasics.md)
+- [Native Image Build Options](BuildOptions.md)
+- [Native Image Build Overview](BuildOverview.md)
+- [Reachability Metadata](ReachabilityMetadata.md)

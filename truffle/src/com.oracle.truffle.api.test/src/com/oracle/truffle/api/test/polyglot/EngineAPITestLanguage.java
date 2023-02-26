@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.EngineAPITestLanguage.LanguageContext;
+import org.graalvm.options.OptionMap;
 
 @TruffleLanguage.Registration(id = EngineAPITestLanguage.ID, implementationName = EngineAPITestLanguage.IMPL_NAME, name = EngineAPITestLanguage.NAME, version = EngineAPITestLanguage.VERSION, characterMimeTypes = EngineAPITestLanguage.MIME)
 public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
@@ -66,6 +67,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
     static final OptionCategory Option1_CATEGORY = OptionCategory.USER;
     static final String Option1_NAME = EngineAPITestLanguage.ID + ".Option1";
     static final String Option1_DEFAULT = EngineAPITestLanguage.ID + "Option1_Default";
+    static final String Option1_UsageSyntax = EngineAPITestLanguage.ID + "Option1_UsageSyntax";
 
     static final String Option2_HELP = "Option2_HELP";
     static final boolean Option2_DEPRECATED = true;
@@ -79,7 +81,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
     static final String Option3_NAME = EngineAPITestLanguage.ID + ".Option3";
     static final String Option3_DEFAULT = EngineAPITestLanguage.ID + "Option3_Default";
 
-    @Option(category = OptionCategory.USER, help = Option1_HELP, deprecated = Option1_DEPRECATED) //
+    @Option(category = OptionCategory.USER, help = Option1_HELP, deprecated = Option1_DEPRECATED, usageSyntax = Option1_UsageSyntax) //
     static final OptionKey<String> Option1 = new OptionKey<>(Option1_DEFAULT);
 
     @Option(category = OptionCategory.EXPERT, name = "", help = Option2_HELP, deprecated = Option2_DEPRECATED) //
@@ -87,6 +89,37 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Option(category = OptionCategory.INTERNAL, help = Option3_HELP, deprecated = Option3_DEPRECATED) //
     static final OptionKey<String> Option3 = new OptionKey<>(Option3_DEFAULT);
+
+    static final String BooleanFalseOptionName = EngineAPITestLanguage.ID + ".BooleanFalseOption";
+
+    @Option(category = OptionCategory.INTERNAL, help = "") //
+    static final OptionKey<Boolean> BooleanFalseOption = new OptionKey<>(false);
+
+    static final String BooleanTrueOptionName = EngineAPITestLanguage.ID + ".BooleanTrueOption";
+
+    @Option(category = OptionCategory.INTERNAL, help = "") //
+    static final OptionKey<Boolean> BooleanTrueOption = new OptionKey<>(true);
+
+    static final String EnumOptionName = EngineAPITestLanguage.ID + ".EnumOption";
+
+    @Option(category = OptionCategory.INTERNAL, help = "") //
+    static final OptionKey<OptionEnum> EnumOption = new OptionKey<>(OptionEnum.TWO);
+
+    static final String MapOptionName = EngineAPITestLanguage.ID + ".MapOption";
+
+    @Option(category = OptionCategory.INTERNAL, help = "") //
+    static final OptionKey<OptionMap<String>> MapOption = OptionKey.mapOf(String.class);
+
+    enum OptionEnum {
+        ONE,
+        TWO,
+        THREE;
+
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
+    }
 
     static class LanguageContext {
     }

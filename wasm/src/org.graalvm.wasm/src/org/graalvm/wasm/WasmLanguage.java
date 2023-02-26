@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import java.io.IOException;
 
+import com.oracle.truffle.api.ContextThreadLocal;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -55,7 +56,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(id = WasmLanguage.ID, name = WasmLanguage.NAME, defaultMimeType = WasmLanguage.WASM_MIME_TYPE, byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                fileTypeDetectors = WasmFileDetector.class, interactive = false)
+                fileTypeDetectors = WasmFileDetector.class, interactive = false, website = "https://www.graalvm.org/")
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
     public static final String NAME = "WebAssembly";
@@ -66,6 +67,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private boolean isFirst = true;
     @CompilationFinal private volatile boolean isMultiContext;
+
+    private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = createContextThreadLocal(((context, thread) -> new MultiValueStack()));
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -83,7 +86,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         isFirst = false;
         final Source source = request.getSource();
         final byte[] data = source.getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data, null, source);
+        final WasmModule module = context.readModule(moduleName, data, null);
         final WasmInstance instance = context.readInstance(module);
         return new RootNode(this) {
             @Override
@@ -130,4 +133,30 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return REFERENCE.get(node);
     }
 
+    public MultiValueStack multiValueStack() {
+        return multiValueStackThreadLocal.get();
+    }
+
+    static final class MultiValueStack {
+        private long[] primitiveStack;
+        private Object[] referenceStack;
+        // Initialize size to 1, so we only create the stack for more than 1 result value.
+        private int size = 1;
+
+        public long[] primitiveStack() {
+            return primitiveStack;
+        }
+
+        public Object[] referenceStack() {
+            return referenceStack;
+        }
+
+        public void resize(int expectedSize) {
+            if (expectedSize > size) {
+                primitiveStack = new long[expectedSize];
+                referenceStack = new Object[expectedSize];
+                size = expectedSize;
+            }
+        }
+    }
 }

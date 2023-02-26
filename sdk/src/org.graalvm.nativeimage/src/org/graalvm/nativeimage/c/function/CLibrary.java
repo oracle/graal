@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,9 @@ import java.lang.annotation.Target;
 public @interface CLibrary {
 
     /**
-     * The name of the library.
+     * The name of the library without a file extension (e.g., "hello"). The name of the actual file
+     * is platform-specific, e.g., <code>libhello.so</code> on Linux, <code>libhello.dylib</code> on
+     * macOS, and <code>hello.dll</code> on Windows.
      *
      * @since 19.0
      */
@@ -71,7 +73,7 @@ public @interface CLibrary {
 
     /**
      * Specifies the name of the libraries this library depends on.
-     * 
+     *
      * @since 20.1.0
      */
     String[] dependsOn() default {};

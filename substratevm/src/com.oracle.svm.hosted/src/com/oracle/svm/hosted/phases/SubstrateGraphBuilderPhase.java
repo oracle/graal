@@ -27,11 +27,16 @@ package com.oracle.svm.hosted.phases;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,6 +56,21 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         public SubstrateBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
+        }
+
+        @Override
+        protected InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
+            InlineInfo inlineInfo = super.tryInline(args, targetMethod);
+            if (inlineInfo == InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION && targetMethod instanceof AnalysisMethod) {
+                /*
+                 * The target methods of intrinsified calls are still present in the image so their
+                 * type is reachable. The methods are used as keys in the
+                 * InvocationPlugins.resolvedRegistrations map reachable from
+                 * SubstrateReplacements.snippetInvocationPlugins.
+                 */
+                ((AnalysisType) targetMethod.getDeclaringClass()).registerAsReachable("declared method " + targetMethod.format("%H.%n(%p)") + " is inlined");
+            }
+            return inlineInfo;
         }
     }
 }

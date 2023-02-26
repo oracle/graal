@@ -110,6 +110,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public TruffleContextTest() {
         needsLanguageEnv = true;
         needsInstrumentEnv = true;
+        ignoreCancelOnClose = true;
+        ignoreExitOnClose = true;
     }
 
     @After
@@ -121,7 +123,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testCreate() {
         setupEnv();
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().build();
         assertNotEquals(tc, languageEnv.getContext());
         assertFalse(tc.isEntered());
         assertFalse(tc.isClosed());
@@ -144,7 +146,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testSimpleForceClose() {
         setupEnv();
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().build();
         assertFalse(tc.isClosed());
         assertFalse(tc.isCancelling());
         tc.closeCancelled(null, "testreason");
@@ -163,7 +165,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                             }
                         });
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
         List<Thread> threads = new ArrayList<>();
         List<AtomicReference<Throwable>> exceptions = new ArrayList<>();
         Semaphore waitUntilStart = new Semaphore(0);
@@ -220,7 +222,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testCloseInEntered() {
         setupEnv();
 
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
 
         Node node = new Node() {
         };
@@ -446,8 +448,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testContextHierarchy() {
         setupEnv();
 
-        TruffleContext tc1 = languageEnv.newContextBuilder().build();
-        TruffleContext tc2 = languageEnv.newContextBuilder().build();
+        TruffleContext tc1 = languageEnv.newInnerContextBuilder().build();
+        TruffleContext tc2 = languageEnv.newInnerContextBuilder().build();
 
         assertFalse(tc1.isActive());
         assertFalse(tc1.isEntered());
@@ -525,7 +527,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     @Test
     public void testInitializeCreatorContext() {
         setupEnv();
-        TruffleContext innerContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(false).build();
         Object prev = innerContext.enter(null);
         try {
             assertNull(ProxyLanguage.LanguageContext.get(null));
@@ -534,7 +536,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         }
         innerContext.close();
 
-        innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         prev = innerContext.enter(null);
         try {
             assertNotNull(ProxyLanguage.LanguageContext.get(null));
@@ -555,7 +557,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                             "Use TruffleLanguage.Env.parseInternal(Source) or TruffleInstrument.Env.parse(Source) instead.", e.getMessage());
         });
 
-        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
 
         // inner context must not be entered for eval
         Object prev = innerContext.enter(null);
@@ -579,7 +581,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             throw innerException;
         });
 
-        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         innerException.expectedContext = innerContext;
         outerObject.expectedContext = languageEnv.getContext();
 
@@ -654,7 +656,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testPublicEvalInnerContext() {
         // test that primitive values can just be passed through
         setupLanguageThatReturns(() -> 42);
-        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object result = innerContext.evalPublic(null, newTruffleSource());
         assertEquals(42, result);
 
@@ -667,7 +669,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public void testEvalInnerContext() throws InteropException {
         // test that primitive values can just be passed through
         setupLanguageThatReturns(() -> 42);
-        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        TruffleContext innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         Object result = innerContext.evalInternal(null, newTruffleSource());
         assertEquals(42, result);
 
@@ -676,7 +678,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         EvalContextTestObject outerObject = new EvalContextTestObject();
         innerContext.close();
         setupLanguageThatReturns(() -> innerObject);
-        innerContext = languageEnv.newContextBuilder().build();
+        innerContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         innerObject.expectedContext = innerContext;
         outerObject.expectedContext = this.languageEnv.getContext();
 
@@ -744,7 +746,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                 return true;
             }
         });
-        TruffleContext internalContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        TruffleContext internalContext = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).initializeCreatorContext(false).build();
         internalContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build());
         assertFalse(multiContextInitialized.get());
         internalContext.close();
@@ -770,7 +772,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                 return true;
             }
         });
-        TruffleContext ic = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        TruffleContext ic = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         assertTrue(multiContextInitialized.get());
         ic.close();
     }
@@ -803,7 +805,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         setupEnv();
 
         TruffleContext parent = languageEnv.getContext();
-        TruffleContext tc = languageEnv.newContextBuilder().build();
+        TruffleContext tc = languageEnv.newInnerContextBuilder().initializeCreatorContext(true).build();
         assertFalse(tc.isEntered());
         assertEquals(parent, tc.getParent());
 
@@ -868,7 +870,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         @TruffleBoundary
         private Object executeImpl() {
             TruffleLanguage.Env env = LanguageContext.get(this).getEnv();
-            TruffleContext creatorContext = env.newContextBuilder().build();
+            TruffleContext creatorContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
             CountDownLatch running = new CountDownLatch(1);
             Thread t = env.createThread(() -> {
                 CallTarget target = LanguageContext.get(null).getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(

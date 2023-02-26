@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,8 +39,8 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat.FP80Node;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.Manage
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedSubNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedXorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.nodes.util.LLVMSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -95,7 +94,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         abstract double doDouble(double left, double right);
 
-        abstract LLVMArithmeticOpNode createFP80Node();
+        abstract FP80Node createFP80Node();
     }
 
     abstract static class ManagedArithmeticNode extends LLVMNode {
@@ -423,14 +422,14 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             super(op);
         }
 
-        LLVMArithmeticOpNode createFP80Node() {
+        FP80Node createFP80Node() {
             return fpOp().createFP80Node();
         }
 
         @Specialization
         LLVM80BitFloat do80BitFloat(LLVM80BitFloat left, LLVM80BitFloat right,
-                        @Cached("createFP80Node()") LLVMArithmeticOpNode node) {
-            return (LLVM80BitFloat) node.execute(left, right);
+                        @Cached("createFP80Node()") FP80Node node) {
+            return node.execute(left, right);
         }
     }
 
@@ -495,8 +494,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        LLVMArithmeticOpNode createFP80Node() {
-            return LLVMArithmeticFactory.createAddNode();
+        FP80Node createFP80Node() {
+            return LLVM80BitFloat.createAddNode();
+        }
+
+        @Override
+        public String toString() {
+            return "ADD";
         }
     };
 
@@ -581,8 +585,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        LLVMArithmeticOpNode createFP80Node() {
-            return LLVMArithmeticFactory.createMulNode();
+        FP80Node createFP80Node() {
+            return LLVM80BitFloat.createMulNode();
+        }
+
+        @Override
+        public String toString() {
+            return "MUL";
         }
     };
 
@@ -656,8 +665,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        LLVMArithmeticOpNode createFP80Node() {
-            return LLVMArithmeticFactory.createSubNode();
+        FP80Node createFP80Node() {
+            return LLVM80BitFloat.createSubNode();
+        }
+
+        @Override
+        public String toString() {
+            return "SUB";
         }
     };
 
@@ -699,8 +713,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        LLVMArithmeticOpNode createFP80Node() {
-            return LLVMArithmeticFactory.createDivNode();
+        FP80Node createFP80Node() {
+            return LLVM80BitFloat.createDivNode();
+        }
+
+        @Override
+        public String toString() {
+            return "DIV";
         }
     };
 
@@ -729,6 +748,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedDiv(right);
+        }
+
+        @Override
+        public String toString() {
+            return "UDIV";
         }
     };
 
@@ -770,8 +794,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        LLVMArithmeticOpNode createFP80Node() {
-            return LLVMArithmeticFactory.createRemNode();
+        FP80Node createFP80Node() {
+            return LLVM80BitFloat.createRemNode();
+        }
+
+        @Override
+        public String toString() {
+            return "REM";
         }
     };
 
@@ -800,6 +829,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedRem(right);
+        }
+
+        @Override
+        public String toString() {
+            return "UREM";
         }
     };
 
@@ -878,6 +912,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.and(right);
         }
+
+        @Override
+        public String toString() {
+            return "ADD";
+        }
     };
 
     private static final LLVMArithmeticOp OR = new LLVMArithmeticOp() {
@@ -910,6 +949,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.or(right);
+        }
+
+        @Override
+        public String toString() {
+            return "OR";
         }
     };
 
@@ -970,6 +1014,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.xor(right);
         }
+
+        @Override
+        public String toString() {
+            return "XOR";
+        }
     };
 
     private static final LLVMArithmeticOp SHL = new LLVMArithmeticOp() {
@@ -1002,6 +1051,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.leftShift(right);
+        }
+
+        @Override
+        public String toString() {
+            return "SHL";
         }
     };
 
@@ -1036,6 +1090,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.logicalRightShift(right);
         }
+
+        @Override
+        public String toString() {
+            return "LSHL";
+        }
     };
 
     private static final LLVMArithmeticOp ASHR = new LLVMArithmeticOp() {
@@ -1068,6 +1127,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.arithmeticRightShift(right);
+        }
+
+        @Override
+        public String toString() {
+            return "ASHR";
         }
     };
 }

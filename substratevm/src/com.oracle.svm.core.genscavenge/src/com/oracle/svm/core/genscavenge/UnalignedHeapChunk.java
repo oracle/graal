@@ -30,17 +30,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -164,6 +162,7 @@ public final class UnalignedHeapChunk {
         return ImageSingletons.lookup(UnalignedHeapChunk.MemoryWalkerAccessImpl.class);
     }
 
+    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
     static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<UnalignedHeapChunk.UnalignedHeader> {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -179,18 +178,5 @@ public final class UnalignedHeapChunk {
         public UnsignedWord getAllocationStart(UnalignedHeapChunk.UnalignedHeader heapChunk) {
             return getObjectStart(heapChunk);
         }
-    }
-}
-
-@AutomaticFeature
-class UnalignedHeapChunkMemoryWalkerAccessFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.UseSerialGC.getValue();
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UnalignedHeapChunk.MemoryWalkerAccessImpl.class, new UnalignedHeapChunk.MemoryWalkerAccessImpl());
     }
 }

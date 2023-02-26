@@ -24,10 +24,19 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
+import java.lang.reflect.AnnotatedElement;
+
+import com.oracle.svm.util.AnnotationWrapper;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public interface WrappedJavaMethod extends WrappedElement, ResolvedJavaMethod {
+public interface WrappedJavaMethod extends WrappedElement, ResolvedJavaMethod, AnnotationWrapper {
 
     @Override
     ResolvedJavaMethod getWrapped();
+
+    @Override
+    default AnnotatedElement getAnnotationRoot() {
+        return getWrapped();
+    }
 }

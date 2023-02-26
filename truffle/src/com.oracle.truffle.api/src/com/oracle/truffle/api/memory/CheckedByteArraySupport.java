@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,8 +60,20 @@ final class CheckedByteArraySupport extends ByteArraySupport {
         }
     }
 
+    private void checkBounds(byte[] buffer, long startByteOffset, long length) {
+        if (!inBounds(buffer, startByteOffset, length)) {
+            throw new ByteArrayOutOfBoundsException();
+        }
+    }
+
     @Override
     public byte getByte(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Byte.BYTES);
+        return access.getByte(buffer, byteOffset);
+    }
+
+    @Override
+    public byte getByte(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Byte.BYTES);
         return access.getByte(buffer, byteOffset);
     }
@@ -73,7 +85,19 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putByte(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Byte.BYTES);
+        access.putByte(buffer, byteOffset, value);
+    }
+
+    @Override
     public short getShort(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        return access.getShort(buffer, byteOffset);
+    }
+
+    @Override
+    public short getShort(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Short.BYTES);
         return access.getShort(buffer, byteOffset);
     }
@@ -85,7 +109,19 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putShort(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        access.putShort(buffer, byteOffset, value);
+    }
+
+    @Override
     public int getInt(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        return access.getInt(buffer, byteOffset);
+    }
+
+    @Override
+    public int getInt(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Integer.BYTES);
         return access.getInt(buffer, byteOffset);
     }
@@ -97,7 +133,19 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putInt(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        access.putInt(buffer, byteOffset, value);
+    }
+
+    @Override
     public long getLong(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        return access.getLong(buffer, byteOffset);
+    }
+
+    @Override
+    public long getLong(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Long.BYTES);
         return access.getLong(buffer, byteOffset);
     }
@@ -109,7 +157,19 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putLong(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        access.putLong(buffer, byteOffset, value);
+    }
+
+    @Override
     public float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Float.BYTES);
+        return access.getFloat(buffer, byteOffset);
+    }
+
+    @Override
+    public float getFloat(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Float.BYTES);
         return access.getFloat(buffer, byteOffset);
     }
@@ -121,13 +181,31 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putFloat(byte[] buffer, long byteOffset, float value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Float.BYTES);
+        access.putFloat(buffer, byteOffset, value);
+    }
+
+    @Override
     public double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Double.BYTES);
         return access.getDouble(buffer, byteOffset);
     }
 
     @Override
+    public double getDouble(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Double.BYTES);
+        return access.getDouble(buffer, byteOffset);
+    }
+
+    @Override
     public void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Double.BYTES);
+        access.putDouble(buffer, byteOffset, value);
+    }
+
+    @Override
+    public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Double.BYTES);
         access.putDouble(buffer, byteOffset, value);
     }

@@ -28,6 +28,7 @@ import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionForma
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -49,12 +50,14 @@ import com.oracle.svm.core.util.UserError;
 
 public class HostedOptionParser implements HostedOptionProvider {
 
+    private final List<String> arguments;
     private EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
     private EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
     private EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
     private EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
 
-    public HostedOptionParser(ClassLoader imageClassLoader) {
+    public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
+        this.arguments = Collections.unmodifiableList(arguments);
         collectOptions(ServiceLoader.load(OptionDescriptors.class, imageClassLoader), allHostedOptions, allRuntimeOptions);
     }
 
@@ -83,12 +86,12 @@ public class HostedOptionParser implements HostedOptionProvider {
         });
     }
 
-    public List<String> parse(List<String> args) {
+    public List<String> parse() {
 
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
         InterruptImageBuilding interrupt = null;
-        for (String arg : args) {
+        for (String arg : arguments) {
             boolean isImageBuildOption = false;
             try {
                 isImageBuildOption |= SubstrateOptionsParser.parseHostedOption(SubstrateOptionsParser.HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, errors, arg, System.out);
@@ -123,6 +126,10 @@ public class HostedOptionParser implements HostedOptionProvider {
         }
 
         return remainingArgs;
+    }
+
+    public List<String> getArguments() {
+        return arguments;
     }
 
     @Override

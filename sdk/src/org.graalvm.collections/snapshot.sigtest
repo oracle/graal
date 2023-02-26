@@ -1,15 +1,30 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract interface java.io.Serializable
+
 CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
 meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
 meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
 meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
 
+CLSS public abstract java.lang.Number
+cons public init()
+intf java.io.Serializable
+meth public abstract double doubleValue()
+meth public abstract float floatValue()
+meth public abstract int intValue()
+meth public abstract long longValue()
+meth public byte byteValue()
+meth public short shortValue()
+supr java.lang.Object
+hfds serialVersionUID
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -19,6 +34,48 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public java.util.concurrent.atomic.AtomicLong
+cons public init()
+cons public init(long)
+intf java.io.Serializable
+meth public double doubleValue()
+meth public final boolean compareAndSet(long,long)
+meth public final boolean weakCompareAndSet(long,long)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+meth public final boolean weakCompareAndSetAcquire(long,long)
+meth public final boolean weakCompareAndSetPlain(long,long)
+meth public final boolean weakCompareAndSetRelease(long,long)
+meth public final boolean weakCompareAndSetVolatile(long,long)
+meth public final long accumulateAndGet(long,java.util.function.LongBinaryOperator)
+meth public final long addAndGet(long)
+meth public final long compareAndExchange(long,long)
+meth public final long compareAndExchangeAcquire(long,long)
+meth public final long compareAndExchangeRelease(long,long)
+meth public final long decrementAndGet()
+meth public final long get()
+meth public final long getAcquire()
+meth public final long getAndAccumulate(long,java.util.function.LongBinaryOperator)
+meth public final long getAndAdd(long)
+meth public final long getAndDecrement()
+meth public final long getAndIncrement()
+meth public final long getAndSet(long)
+meth public final long getAndUpdate(java.util.function.LongUnaryOperator)
+meth public final long getOpaque()
+meth public final long getPlain()
+meth public final long incrementAndGet()
+meth public final long updateAndGet(java.util.function.LongUnaryOperator)
+meth public final void lazySet(long)
+meth public final void set(long)
+meth public final void setOpaque(long)
+meth public final void setPlain(long)
+meth public final void setRelease(long)
+meth public float floatValue()
+meth public int intValue()
+meth public java.lang.String toString()
+meth public long longValue()
+supr java.lang.Number
+hfds U,VALUE,VM_SUPPORTS_LONG_CAS,serialVersionUID,value
 
 CLSS public abstract interface org.graalvm.collections.EconomicMap<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableEconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>
@@ -33,11 +90,21 @@ meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> or
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence,int)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> emptyMap()
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> of({%%0},{%%1})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> of({%%0},{%%1},{%%0},{%%1})
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> wrapMap(java.util.Map<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.MapCursor<{%%0},{%%1}> emptyCursor()
 meth public void putAll(org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>)
 meth public void putAll(org.graalvm.collections.UnmodifiableEconomicMap<? extends {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
 meth public {org.graalvm.collections.EconomicMap%1} putIfAbsent({org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1})
+
+CLSS public final org.graalvm.collections.EconomicMapUtil
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> boolean equals(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> int hashCode(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> java.util.Comparator<org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>> lexicographicalComparator(java.util.Comparator<{%%0}>,java.util.Comparator<{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> keySet(org.graalvm.collections.EconomicMap<{%%0},{%%1}>)
+supr java.lang.Object
 
 CLSS public org.graalvm.collections.EconomicMapWrap<%0 extends java.lang.Object, %1 extends java.lang.Object>
 cons public init(java.util.Map<{org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1}>)
@@ -85,9 +152,29 @@ meth public abstract boolean equals(java.lang.Object,java.lang.Object)
 meth public abstract int hashCode(java.lang.Object)
 supr java.lang.Object
 
+CLSS public org.graalvm.collections.LockFreePrefixTree
+cons public init()
+innr public static Node
+meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
+meth public org.graalvm.collections.LockFreePrefixTree$Node root()
+supr java.lang.Object
+hfds root
+
+CLSS public static org.graalvm.collections.LockFreePrefixTree$Node
+ outer org.graalvm.collections.LockFreePrefixTree
+meth public java.lang.String toString()
+meth public long incValue()
+meth public long value()
+meth public org.graalvm.collections.LockFreePrefixTree$Node at(long)
+meth public void setValue(long)
+supr java.util.concurrent.atomic.AtomicLong
+hfds CHILDREN_UPDATER,FROZEN_NODE,INITIAL_HASH_NODE_SIZE,INITIAL_LINEAR_NODE_SIZE,MAX_HASH_SKIPS,MAX_LINEAR_NODE_SIZE,children,key,serialVersionUID
+hcls FrozenNode,HashChildren,LinearChildren
+
 CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.MapCursor%0},{org.graalvm.collections.MapCursor%1}>
 meth public abstract void remove()
+meth public {org.graalvm.collections.MapCursor%1} setValue({org.graalvm.collections.MapCursor%1})
 
 CLSS public final org.graalvm.collections.Pair<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public boolean equals(java.lang.Object)
@@ -102,6 +189,26 @@ meth public {org.graalvm.collections.Pair%1} getRight()
 supr java.lang.Object
 hfds EMPTY,left,right
 
+CLSS public org.graalvm.collections.SeqLockPrefixTree
+cons public init()
+innr public final static Node
+meth public org.graalvm.collections.SeqLockPrefixTree$Node root()
+supr java.lang.Object
+hfds EMPTY_KEY,HASH_NODE_LOAD_FACTOR,INITIAL_HASH_NODE_SIZE,INITIAL_LINEAR_NODE_SIZE,MAX_LINEAR_NODE_SIZE,root
+hcls Visitor
+
+CLSS public final static org.graalvm.collections.SeqLockPrefixTree$Node
+ outer org.graalvm.collections.SeqLockPrefixTree
+meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
+meth public java.lang.String toString()
+meth public long incValue()
+meth public long seqlockValue()
+meth public long value()
+meth public org.graalvm.collections.SeqLockPrefixTree$Node at(long)
+meth public void setValue(long)
+supr java.util.concurrent.atomic.AtomicLong
+hfds arity,children,keys,seqlock,serialVersionUID
+
 CLSS public abstract interface org.graalvm.collections.UnmodifiableEconomicMap<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public abstract boolean containsKey({org.graalvm.collections.UnmodifiableEconomicMap%0})
 meth public abstract boolean isEmpty()
@@ -110,6 +217,7 @@ meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEco
 meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicMap%1}> getValues()
 meth public abstract org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1}> getEntries()
 meth public abstract {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0})
+meth public org.graalvm.collections.Equivalence getEquivalenceStrategy()
 meth public {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1})
 
 CLSS public abstract interface org.graalvm.collections.UnmodifiableEconomicSet<%0 extends java.lang.Object>

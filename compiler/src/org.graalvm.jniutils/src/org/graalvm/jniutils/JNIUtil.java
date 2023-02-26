@@ -24,16 +24,20 @@
  */
 package org.graalvm.jniutils;
 
+import static org.graalvm.jniutils.JNI.JNI_OK;
+import static org.graalvm.jniutils.JNI.JNI_VERSION_10;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
+import static org.graalvm.word.WordFactory.nullPointer;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.jniutils.JNI.JArray;
-import org.graalvm.jniutils.JNI.JavaVM;
-import org.graalvm.jniutils.JNI.JavaVMAttachArgs;
-import org.graalvm.jniutils.JNI.JavaVMPointer;
 import org.graalvm.jniutils.JNI.JBooleanArray;
 import org.graalvm.jniutils.JNI.JByteArray;
-import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JCharArray;
+import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JDoubleArray;
 import org.graalvm.jniutils.JNI.JFieldID;
 import org.graalvm.jniutils.JNI.JFloatArray;
@@ -48,6 +52,10 @@ import org.graalvm.jniutils.JNI.JShortArray;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.jniutils.JNI.JValue;
+import org.graalvm.jniutils.JNI.JWeak;
+import org.graalvm.jniutils.JNI.JavaVM;
+import org.graalvm.jniutils.JNI.JavaVMAttachArgs;
+import org.graalvm.jniutils.JNI.JavaVMPointer;
 import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -62,26 +70,12 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.WordFactory;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
-import static org.graalvm.jniutils.JNI.JNI_OK;
-import static org.graalvm.jniutils.JNI.JNI_VERSION_1_8;
-import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
-import static org.graalvm.word.WordFactory.nullPointer;
-
 /**
  * Helpers for calling JNI functions.
  */
 
 public final class JNIUtil {
 
-    private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
-
-    private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
-                    "getJVMCIClassLoader",
-                    "()Ljava/lang/ClassLoader;"
-    };
     private static final String[] METHOD_GET_PLATFORM_CLASS_LOADER = {
                     "getPlatformClassLoader",
                     "()Ljava/lang/ClassLoader;"
@@ -395,7 +389,7 @@ public final class JNIUtil {
     public static JNIEnv GetEnv(JavaVM vm) {
         traceJNI("GetEnv");
         JNIEnvPointer envPointer = StackValue.get(JNIEnvPointer.class);
-        if (vm.getFunctions().getGetEnv().call(vm, envPointer, JNI_VERSION_1_8) == JNI_OK) {
+        if (vm.getFunctions().getGetEnv().call(vm, envPointer, JNI_VERSION_10) == JNI_OK) {
             return envPointer.readJNIEnv();
         } else {
             return WordFactory.nullPointer();
@@ -476,6 +470,31 @@ public final class JNIUtil {
             trace(3, "Delete global reference 0x%x", ref.rawValue());
         }
         env.getFunctions().getDeleteGlobalRef().call(env, ref);
+    }
+
+    /**
+     * Creates a new weak global reference.
+     *
+     * @param env the JNIEnv
+     * @param ref JObject to create JNI weak global reference for
+     * @param type type of the object, used only for tracing to distinguish global references
+     * @return JNI weak global reference for given {@link JObject}
+     */
+    public static JWeak NewWeakGlobalRef(JNIEnv env, JObject ref, String type) {
+        traceJNI("NewWeakGlobalRef");
+        JWeak res = env.getFunctions().getNewWeakGlobalRef().call(env, ref);
+        if (tracingAt(3)) {
+            trace(3, "New weak global reference for 0x%x of type %s -> 0x%x", ref.rawValue(), type, res.rawValue());
+        }
+        return res;
+    }
+
+    public static void DeleteWeakGlobalRef(JNIEnv env, JWeak ref) {
+        traceJNI("DeleteWeakGlobalRef");
+        if (tracingAt(3)) {
+            trace(3, "Delete weak global reference 0x%x", ref.rawValue());
+        }
+        env.getFunctions().getDeleteWeakGlobalRef().call(env, ref);
     }
 
     public static VoidPointer GetDirectBufferAddress(JNIEnv env, JObject buf) {
@@ -686,6 +705,21 @@ public final class JNIUtil {
         JDoubleArray array = NewDoubleArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
         return array;
+    }
+
+    public static JObjectArray createHSArray(JNIEnv jniEnv, Object[] array, int sourcePosition, int length, String componentTypeBinaryName) {
+        JObjectArray hsArray;
+        if (array != null) {
+            hsArray = JNIUtil.NewObjectArray(jniEnv, length, JNIUtil.findClass(jniEnv, WordFactory.nullPointer(), componentTypeBinaryName, true), WordFactory.nullPointer());
+            for (int i = 0; i < length; i++) {
+                HSObject element = (HSObject) array[sourcePosition + i];
+                JObject hsElement = element != null ? element.getHandle() : WordFactory.nullPointer();
+                JNIUtil.SetObjectArrayElement(jniEnv, hsArray, i, hsElement);
+            }
+        } else {
+            hsArray = WordFactory.nullPointer();
+        }
+        return hsArray;
     }
 
     public static void arrayCopy(JNIEnv jniEnv, JBooleanArray src, int srcPos, boolean[] dest, int destPos, int length) {
@@ -1037,33 +1071,18 @@ public final class JNIUtil {
      * Returns a ClassLoader used to load the compiler classes.
      */
     public static JObject getJVMCIClassLoader(JNIEnv env) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            JClass clazz;
-            try (CCharPointerHolder className = CTypeConversion.toCString(CLASS_SERVICES)) {
-                clazz = JNIUtil.FindClass(env, className.get());
-            }
-            if (clazz.isNull()) {
-                throw new InternalError("No such class " + CLASS_SERVICES);
-            }
-            JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_JVMCI_CLASS_LOADER[0], METHOD_GET_JVMCI_CLASS_LOADER[1]);
-            if (getClassLoaderId.isNull()) {
-                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_JVMCI_CLASS_LOADER[0], CLASS_SERVICES));
-            }
-            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
-        } else {
-            JClass clazz;
-            try (CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
-                clazz = JNIUtil.FindClass(env, className.get());
-            }
-            if (clazz.isNull()) {
-                throw new InternalError("No such class " + ClassLoader.class.getName());
-            }
-            JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
-            if (getClassLoaderId.isNull()) {
-                throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
-            }
-            return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        JClass clazz;
+        try (CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
+            clazz = JNIUtil.FindClass(env, className.get());
         }
+        if (clazz.isNull()) {
+            throw new InternalError("No such class " + ClassLoader.class.getName());
+        }
+        JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_PLATFORM_CLASS_LOADER[0], METHOD_GET_PLATFORM_CLASS_LOADER[1]);
+        if (getClassLoaderId.isNull()) {
+            throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
+        }
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
     }
 
     /**
@@ -1119,7 +1138,7 @@ public final class JNIUtil {
     public static JNIEnv attachCurrentThread(JavaVM vm, boolean daemon, String name, JObject threadGroup) {
         try (CCharPointerHolder cname = CTypeConversion.toCString(name)) {
             JavaVMAttachArgs args = StackValue.get(JavaVMAttachArgs.class);
-            args.setVersion(JNI_VERSION_1_8);
+            args.setVersion(JNI_VERSION_10);
             args.setGroup(threadGroup);
             args.setName(cname.get());
             return daemon ? AttachCurrentThreadAsDaemon(vm, args) : AttachCurrentThread(vm, args);

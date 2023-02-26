@@ -24,10 +24,14 @@
  */
 package org.graalvm.compiler.api.replacements;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.Objects;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -93,4 +97,23 @@ public interface SnippetReflectionProvider {
      *         cannot map {@link ResolvedJavaType} instances to {@link Class} instances
      */
     Class<?> originalClass(ResolvedJavaType type);
+
+    /**
+     * Get the original Java method/constructor corresponding to a {@link ResolvedJavaMethod}.
+     *
+     * @param method the method for which the original Java method/constructor is requested
+     * @return the original Java method corresponding to {@code method} or {@code null} if this
+     *         object cannot map {@link ResolvedJavaMethod} instances to {@link Executable}
+     *         instances
+     */
+    Executable originalMethod(ResolvedJavaMethod method);
+
+    /**
+     * Get the original Java field corresponding to a {@link ResolvedJavaField}.
+     *
+     * @param field the field for which the original Java field is requested
+     * @return the original Java field corresponding to {@code field} or {@code null} if this object
+     *         cannot map {@link ResolvedJavaField} instances to {@link Field} instances.
+     */
+    Field originalField(ResolvedJavaField field);
 }

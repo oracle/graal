@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -263,7 +263,7 @@ public final class Source {
      *             instead. The implementation is inefficient and can not distinguish byte and
      *             character based sources.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public InputStream getInputStream() {
         return dispatch.getInputStream(receiver);
     }
@@ -917,7 +917,7 @@ public final class Source {
          * @since 19.0
          */
         public Source build() throws IOException {
-            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
+            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding, null, null);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {

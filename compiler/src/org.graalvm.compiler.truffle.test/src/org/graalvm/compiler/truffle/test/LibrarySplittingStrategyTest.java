@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -37,18 +38,21 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 
 public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
+    final Shape rootShape = Shape.newBuilder().dynamicType(new SplittingObjectType()).build();
+
     @SuppressWarnings("deprecation")
-    private static DynamicObject newInstance() {
-        return com.oracle.truffle.api.object.Layout.createLayout().createShape(new SplittingObjectType()).newInstance();
+    private DynamicObject newInstance() {
+        return new DynamicallyDispatchedObject(rootShape);
     }
 
     @Before
@@ -122,28 +126,71 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
         }
     }
 
-    @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
-    public static final class SplittingObjectType extends ObjectType {
+    @ExportLibrary(DynamicDispatchLibrary.class)
+    static class DynamicallyDispatchedObject extends DynamicObject {
+        protected DynamicallyDispatchedObject(Shape shape) {
+            super(shape);
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        static class Accepts {
+            @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+            @SuppressWarnings("unused")
+            static boolean doCachedShape(DynamicallyDispatchedObject receiver,
+                            @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
+                            @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getDynamicType().getClass()", allowUncached = true) Class<? extends Object> typeClass) {
+                return true;
+            }
+
+            @Specialization(replaces = "doCachedShape")
+            static boolean doCachedTypeClass(DynamicallyDispatchedObject receiver,
+                            @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getDynamicType().getClass()", allowUncached = true) Class<? extends Object> typeClass) {
+                return typeClass == receiver.getShape().getDynamicType().getClass();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        static class Dispatch {
+            @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+            static Class<?> doCachedShape(DynamicallyDispatchedObject receiver,
+                            @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
+                            @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getDynamicType().getClass()", allowUncached = true) Class<? extends Object> typeClass) {
+                return ((SplittingObjectType) cachedShape.getDynamicType()).dispatch();
+            }
+
+            @Specialization(replaces = "doCachedShape")
+            static Class<?> doCachedTypeClass(DynamicallyDispatchedObject receiver,
+                            @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getDynamicType().getClass()", allowUncached = true) Class<? extends Object> typeClass) {
+                return ((SplittingObjectType) receiver.getShape().getDynamicType()).dispatch();
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicallyDispatchedObject.class)
+    public static final class SplittingObjectType {
 
         @ExportMessage
         @SuppressWarnings("unused")
-        static boolean hasMembers(DynamicObject receiver) {
+        static boolean hasMembers(DynamicallyDispatchedObject receiver) {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("unused")
-        static boolean isMemberReadable(DynamicObject receiver, String memeber) {
+        static boolean isMemberReadable(DynamicallyDispatchedObject receiver, String member) {
             return true;
         }
 
         @ExportMessage
         @SuppressWarnings("unused")
-        static Object getMembers(DynamicObject receiver, boolean includeInternal) {
+        static Object getMembers(DynamicallyDispatchedObject receiver, boolean includeInternal) {
             return receiver;
         }
 
-        @Override
+        @SuppressWarnings("static-method")
         public Class<?> dispatch() {
             return SplittingObjectType.class;
         }
@@ -157,13 +204,13 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
             @Specialization(guards = "name == CACHED_NAME")
             @ReportPolymorphism.Exclude
-            static Object readStaticCached(DynamicObject receiver, @SuppressWarnings("unused") String name,
+            static Object readStaticCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") String name,
                             @SuppressWarnings("unused") @Cached("name") String cachedName) {
                 return receiver;
             }
 
             @Specialization(limit = "3", guards = "name == cachedName")
-            static Object readCached(DynamicObject receiver, @SuppressWarnings("unused") String name,
+            static Object readCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") String name,
                             @SuppressWarnings("unused") @Cached("name") String cachedName) {
                 return receiver;
             }

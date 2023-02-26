@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(classNameProvider = Package_jdk_nio.class, className = "zipfs.ZipFileSystemProvider")
+@TargetClass(className = "jdk.nio.zipfs.ZipFileSystemProvider")
 final class Target_jdk_nio_zipfs_ZipFileSystemProvider {
 
     /*

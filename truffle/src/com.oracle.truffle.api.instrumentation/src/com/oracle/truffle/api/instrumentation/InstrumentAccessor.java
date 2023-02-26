@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,6 @@ final class InstrumentAccessor extends Accessor {
 
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
-    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
@@ -177,8 +176,8 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public void collectEnvServices(Set<Object> collectTo, Object polyglotLanguage, TruffleLanguage<?> language) {
-            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguage);
+        public void collectEnvServices(Set<Object> collectTo, Object polyglotLanguageContext, TruffleLanguage<?> language) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotLanguageContext);
             Instrumenter instrumenter = instrumentationHandler.forLanguage(language);
             collectTo.add(instrumenter);
             AllocationReporter allocationReporter = instrumentationHandler.getAllocationReporter(InstrumentAccessor.langAccess().getLanguageInfo(language));

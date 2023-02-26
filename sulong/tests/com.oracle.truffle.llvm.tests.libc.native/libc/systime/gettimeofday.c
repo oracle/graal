@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,6 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifdef _WIN32
+
+#include <Windows.h>
+int main() {
+    FILETIME ft;
+    GetSystemTimePreciseAsFileTime(&ft);
+    return 0;
+}
+
+#else
+
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
@@ -46,3 +57,4 @@ int main() {
         exit(1);
     }
 }
+#endif

@@ -25,10 +25,11 @@
 package org.graalvm.polyglot.nativeapi;
 
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.c.CHeader.Header;
+import org.graalvm.nativeimage.c.CHeader.Header;
 
 public class PolyglotAPIHeader implements Header {
     @Override
@@ -43,12 +44,23 @@ public class PolyglotAPIHeader implements Header {
 
     @Override
     public void writePreamble(PrintWriter writer) {
-        writer.println("#include <polyglot_types.h>");
-        writer.println("/*");
-        writer.println(" * Polyglot Native API is in experimental phase of development and should not be used in production environments.");
-        writer.println(" *");
-        writer.println(" * Future versions will introduce modifications to the API in backward incompatible ways. Feel free to use the API");
-        writer.println(" * for examples and experiments and keep us posted about the features that you need or you feel are awkward.");
-        writer.println(" */");
+        String[] preambleText = {
+                        "#include <polyglot_types.h>",
+                        "/*",
+                        " * The Polyglot Native API provides a way to interact with GraalVM SDK polyglot API via a shared library.",
+                        " *",
+                        " * Much of the functionality provided here is wrappers for either:",
+                        " * (1) The corresponding Java calls within the SDK",
+                        " * (2) The calls needed for Isolate management from a shared library.",
+                        " *",
+                        " * The Javadoc for the GraalVM SDK polyglot API can be found at https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html",
+                        " * Likewise, information about the Native Image C API for isolate management can be found at https://www.graalvm.org/22.3/reference-manual/native-image/native-code-interoperability/C-API/",
+                        " *",
+                        " * Please note that the Polyglot Native API is currently still experimental should not be used in production environments.",
+                        " * Future versions will introduce modifications to the API in backward incompatible ways.",
+                        " * Feel free to use the API for examples and experiments and keep us posted about the features that you need or you feel are awkward.",
+                        " */",
+        };
+        Arrays.stream(preambleText).forEach(writer::println);
     }
 }

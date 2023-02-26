@@ -38,7 +38,7 @@ import com.oracle.truffle.tools.profiler.MemoryTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.2", services = {MemoryTracer.class})
+@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.2", services = {MemoryTracer.class}, website = "https://www.graalvm.org/tools/profiling/")
 public class MemoryTracerInstrument extends TruffleInstrument {
 
     /**
@@ -117,8 +117,8 @@ public class MemoryTracerInstrument extends TruffleInstrument {
         final boolean statements = env.getOptions().get(MemoryTracerCLI.TRACE_STATEMENTS);
         final boolean calls = env.getOptions().get(MemoryTracerCLI.TRACE_CALLS);
         final boolean internals = env.getOptions().get(MemoryTracerCLI.TRACE_INTERNAL);
-        final Object[] filterRootName = env.getOptions().get(MemoryTracerCLI.FILTER_ROOT);
-        final Object[] filterFile = env.getOptions().get(MemoryTracerCLI.FILTER_FILE);
+        final WildcardFilter filterRootName = env.getOptions().get(MemoryTracerCLI.FILTER_ROOT);
+        final WildcardFilter filterFile = env.getOptions().get(MemoryTracerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(MemoryTracerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(MemoryTracerCLI.FILTER_LANGUAGE);
         return MemoryTracerCLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterMimeType, filterLanguage);

@@ -25,7 +25,10 @@
 package org.graalvm.compiler.core.test;
 
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Formatter;
+import java.util.Map;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -34,6 +37,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -65,7 +69,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
     public static void snippetDownUnsigned() {
         int i = 56;
         while (true) {
-            if (Integer.compareUnsigned(i, 8) >= 0) {
+            if (GraalDirectives.injectIterationCount(100, Integer.compareUnsigned(i, 8) >= 0)) {
                 GraalDirectives.sideEffect(i);
                 i = Math.subtractExact(i, 8);
                 continue;
@@ -97,42 +101,85 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
         return OptimisticOptimizations.ALL;
     }
 
+    private static Map<DeoptimizationReason, Integer> getDeoptCounts(ResolvedJavaMethod method) {
+        Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
+        ProfilingInfo profile = method.getProfilingInfo();
+        for (DeoptimizationReason reason : DeoptimizationReason.values()) {
+            deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
+        }
+        return deoptCounts;
+    }
+
+    private static String deoptsToString(ResolvedJavaMethod method, Map<DeoptimizationReason, Integer> deoptCountsBefore) {
+        ProfilingInfo profile = method.getProfilingInfo();
+        Formatter buf = new Formatter();
+        buf.format("Deoptimization Counts for method %s:", method);
+        for (DeoptimizationReason reason : DeoptimizationReason.values()) {
+            buf.format("%nDeoptimization count for reason %s=%d (vs before %d)", reason, profile.getDeoptimizationCount(reason), deoptCountsBefore.get(reason));
+        }
+        return buf.toString();
+    }
+
     @Test
     public void testDownOverflow() {
         try {
-            snippetDown();
+            for (int i = 0; i < 10000; i++) {
+                snippetDown();
+            }
         } catch (Throwable t) {
             fail("Caught exception that should not be thrown %s", t.getMessage());
         }
         ResolvedJavaMethod method = getResolvedJavaMethod("snippetDown");
         // first should deopt with a failed speculation, second not
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
+        try {
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            deoptCountsBefore = getDeoptCounts(method);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        } catch (Throwable t) {
+            throw new AssertionError(deoptsToString(method, deoptCountsBefore), t);
+        }
     }
 
     @Test
     public void testDownOverflowUnsigned() {
         try {
-            snippetDownUnsigned();
+            for (int i = 0; i < 10000; i++) {
+                snippetDownUnsigned();
+            }
         } catch (Throwable t) {
             fail("Caught exception that should not be thrown %s", t.getMessage());
         }
         ResolvedJavaMethod method = getResolvedJavaMethod("snippetDownUnsigned");
         // first should deopt with a failed speculation, second not
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
+        try {
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            deoptCountsBefore = getDeoptCounts(method);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        } catch (Throwable t) {
+            throw new AssertionError(deoptsToString(method, deoptCountsBefore), t);
+        }
     }
 
     @Test
     public void testUpOverflow() {
         try {
-            snippetUp();
+            for (int i = 0; i < 10000; i++) {
+                snippetUp();
+            }
         } catch (Throwable t) {
             fail("Caught exception that should not be thrown %s", t.getMessage());
         }
         ResolvedJavaMethod method = getResolvedJavaMethod("snippetUp");
         // first should deopt with a failed speculation, second not
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        Map<DeoptimizationReason, Integer> deoptCountsBefore = getDeoptCounts(method);
+        try {
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, Collections.emptySet(), null);
+            deoptCountsBefore = getDeoptCounts(method);
+            executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.FullUnroll, false), method, EnumSet.allOf(DeoptimizationReason.class), null);
+        } catch (Throwable t) {
+            throw new AssertionError(deoptsToString(method, deoptCountsBefore), t);
+        }
     }
 }

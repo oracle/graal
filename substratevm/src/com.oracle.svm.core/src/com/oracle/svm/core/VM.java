@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,25 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.util.VMError;
 
 public final class VM {
 
     public final String version;
+    public final String vendor;
+    public final String vendorUrl;
+    public final String runtimeName;
+    public final String supportURL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public VM(String config) {
-        String versionStr = System.getProperty("org.graalvm.version");
-        VMError.guarantee(versionStr != null);
-        versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
-        versionStr += " " + config;
-        version = versionStr;
+    public VM() {
+        String versionStr = System.getProperty("org.graalvm.version", "Unknown Version");
+        String edition = System.getProperty("org.graalvm.config", "CE");
+        version = String.format("GraalVM %s Java %s %s", versionStr, Runtime.version(), edition);
+        vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+        runtimeName = System.getProperty("java.runtime.name", "Unknown Runtime Environment");
+        supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
     }
 }

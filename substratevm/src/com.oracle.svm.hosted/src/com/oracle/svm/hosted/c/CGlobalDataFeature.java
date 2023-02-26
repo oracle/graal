@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,15 @@ import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -58,25 +59,24 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -88,8 +88,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@AutomaticFeature
-public class CGlobalDataFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+public class CGlobalDataFeature implements InternalFeature {
 
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
     private final Field offsetField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "offset");
@@ -124,7 +124,7 @@ public class CGlobalDataFeature implements GraalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), CGlobalData.class);
-        r.register1("get", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode cGlobalDataNode = receiver.get();
@@ -142,7 +142,7 @@ public class CGlobalDataFeature implements GraalFeature {
 
                     ResolvedJavaType infoType = b.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
                     if (infoType instanceof AnalysisType) {
-                        ((AnalysisType) infoType).registerAsReachable();
+                        ((AnalysisType) infoType).registerAsReachable("registered by " + CGlobalDataFeature.class.getName());
                     }
 
                     ValueNode offset = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(offsetField)));
@@ -156,7 +156,7 @@ public class CGlobalDataFeature implements GraalFeature {
                     ValueNode isSymbolReference = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(isSymbolReferenceField)));
                     LogicNode condition = IntegerEqualsNode.create(isSymbolReference, ConstantNode.forBoolean(false, b.getGraph()), NodeView.DEFAULT);
                     ReadNode readValue = b.add(new ReadNode(b.add(OffsetAddressNode.create(address)), NamedLocationIdentity.ANY_LOCATION,
-                                    baseAddress.stamp(NodeView.DEFAULT), OnHeapMemoryAccess.BarrierType.NONE));
+                                    baseAddress.stamp(NodeView.DEFAULT), OnHeapMemoryAccess.BarrierType.NONE, MemoryOrderMode.PLAIN));
 
                     AbstractBeginNode trueBegin = b.add(new BeginNode());
                     FixedWithNextNode predecessor = (FixedWithNextNode) trueBegin.predecessor();
@@ -235,37 +235,46 @@ public class CGlobalDataFeature implements GraalFeature {
         return obj;
     }
 
+    private static CGlobalDataInfo assignCGlobalDataSize(Map.Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry, int wordSize) {
+        CGlobalDataImpl<?> data = entry.getKey();
+        CGlobalDataInfo info = entry.getValue();
+
+        if (data.bytesSupplier != null) {
+            byte[] bytes = data.bytesSupplier.get();
+            info.assignSize(bytes.length);
+            info.assignBytes(bytes);
+        } else {
+            if (data.sizeSupplier != null) {
+                info.assignSize(data.sizeSupplier.getAsInt());
+            } else {
+                assert data.symbolName != null : "CGlobalData without bytes, size, or referenced symbol";
+                /*
+                 * A symbol reference: we support only instruction-pointer-relative addressing with
+                 * 32-bit immediates, which might not be sufficient for the target symbol's address.
+                 * Therefore, reserve space for a word with the symbol's true address.
+                 */
+                info.assignSize(wordSize);
+            }
+        }
+        return info;
+    }
+
     private void layout() {
         assert !isLayouted() : "Already layouted";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
-        int offset = 0;
-        for (Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry : map.entrySet()) {
-            CGlobalDataImpl<?> data = entry.getKey();
-            CGlobalDataInfo info = entry.getValue();
-            int size;
-            byte[] bytes = null;
-            if (data.bytesSupplier != null) {
-                bytes = data.bytesSupplier.get();
-                size = bytes.length;
-            } else {
-                if (data.sizeSupplier != null) {
-                    size = data.sizeSupplier.getAsInt();
-                } else {
-                    assert data.symbolName != null : "CGlobalData without bytes, size, or referenced symbol";
-                    /*
-                     * A symbol reference: we support only instruction-pointer-relative addressing
-                     * with 32-bit immediates, which might not be sufficient for the target symbol's
-                     * address. Therefore, reserve space for a word with the symbol's true address.
-                     */
-                    size = wordSize;
-                }
-            }
-            info.assign(offset, bytes);
+        /*
+         * Put larger blobs at the end so that offsets are reasonable (<24bit imm) for smaller
+         * entries
+         */
+        totalSize = map.entrySet().stream()
+                        .map(entry -> assignCGlobalDataSize(entry, wordSize))
+                        .sorted(Comparator.comparing(CGlobalDataInfo::getSize))
+                        .reduce(0, (currentOffset, info) -> {
+                            info.assignOffset(currentOffset);
 
-            offset += size;
-            offset = (offset + (wordSize - 1)) & ~(wordSize - 1); // align
-        }
-        totalSize = offset;
+                            int nextOffset = currentOffset + info.getSize();
+                            return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
+                        }, Integer::sum);
         assert isLayouted();
     }
 
@@ -286,14 +295,14 @@ public class CGlobalDataFeature implements GraalFeature {
         for (CGlobalDataInfo info : map.values()) {
             byte[] bytes = info.getBytes();
             if (bytes != null) {
-                BufferUtil.asBaseBuffer(bufferBytes).position(start + info.getOffset());
+                bufferBytes.position(start + info.getOffset());
                 bufferBytes.put(bytes, 0, bytes.length);
             }
             CGlobalDataImpl<?> data = info.getData();
             if (data.symbolName != null && !info.isSymbolReference()) {
                 createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
-            if (data.nonConstant) {
+            if (data.nonConstant && data.symbolName != null) {
                 createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }

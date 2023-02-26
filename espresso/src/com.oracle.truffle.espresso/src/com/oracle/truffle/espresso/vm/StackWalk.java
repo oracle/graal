@@ -343,7 +343,8 @@ public final class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                meta.getInterpreterToVM().setArrayObject(m.getDeclaringKlass().mirror(), index, frames);
+                Klass klass = m.getDeclaringKlass();
+                meta.getInterpreterToVM().setArrayObject(klass.getContext().getLanguage(), klass.mirror(), index, frames);
             }
         }
 
@@ -353,7 +354,7 @@ public final class StackWalk {
          * , and injecting a BCI.
          */
         private void fillFrame(FrameInstance frameInstance, Method m, int index) {
-            StaticObject frame = frames.get(index);
+            StaticObject frame = frames.get(meta.getLanguage(), index);
             StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());

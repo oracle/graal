@@ -24,43 +24,33 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.nio.file.Path;
 import java.util.Map;
 
+import com.oracle.svm.hosted.HostedConfiguration;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
-import com.oracle.svm.hosted.image.NativeImageCodeCache;
-import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
-import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import org.graalvm.nativeimage.ImageSingletons;
 
-@AutomaticFeature
-class SubstrateLIRBackendFeature implements Feature, GraalFeature {
+@AutomaticallyRegisteredFeature
+class SubstrateLIRBackendFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !SubstrateOptions.useLLVMBackend();
+        return SubstrateOptions.useLIRBackend();
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
-            @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
-                return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
-            }
-        });
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.add(NativeImageCodeCacheFactory.class, HostedConfiguration.instance().newCodeCacheFactory());
     }
 
     @Override

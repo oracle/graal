@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicExpressionNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace.Element;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -57,9 +58,9 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     protected Object doOp() {
         SulongStackTrace trace = getStackTrace(this, "__sulong_print_stacktrace", true);
         List<Element> elements = trace.getTrace();
-        System.err.println("C stack trace:");
+        LLVMContext.stackTraceLog("C stack trace:");
         for (Element element : elements) {
-            System.err.print(element);
+            LLVMContext.stackTraceLog(element.toString());
         }
         return LLVMNativePointer.createNull();
     }
@@ -86,6 +87,10 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     }
 
     private static void fillStackTrace(SulongStackTrace stackTrace, Node node) {
+        if (node == null) {
+            return;
+        }
+
         LLVMBasicBlockNode block = NodeUtil.findParent(node, LLVMBasicBlockNode.class);
         LLVMFunctionStartNode f = NodeUtil.findParent(node, LLVMFunctionStartNode.class);
 

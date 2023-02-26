@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -50,6 +52,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
 public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -129,7 +132,17 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        initID(atomicGroup);
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
         initID(characterClass);
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
     }
 }

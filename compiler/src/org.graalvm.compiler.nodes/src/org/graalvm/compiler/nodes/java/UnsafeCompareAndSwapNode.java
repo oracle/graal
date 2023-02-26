@@ -55,9 +55,7 @@ public final class UnsafeCompareAndSwapNode extends AbstractUnsafeCompareAndSwap
     @Override
     protected void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode currentValue) {
         ValueNode result = ConditionalNode.create(equalsNode, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph()), NodeView.DEFAULT);
-        if (!result.isAlive()) {
-            tool.addNode(result);
-        }
+        tool.ensureAdded(result);
         tool.replaceWith(result);
     }
 }

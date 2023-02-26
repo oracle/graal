@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,19 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorageFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
+final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
 
     /**
      * We don't know anything about this platform.
@@ -57,6 +60,11 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     }
 
     @Override
+    public String[] getSulongDefaultLibraries() {
+        return new String[]{getLibsulongFilename(), getLibsulongxxFilename()};
+    }
+
+    @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         return LLVMUnsupportedSyscallNode.create(index);
     }
@@ -67,19 +75,27 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType) {
+        return LLVMMaybeVaPointer.createWithAlloca(vaListStackPtr, allocaNode);
     }
 
     @Override
-    public Type getVAListType() {
-        // not yet implemented
-        return MetaType.UNKNOWN;
+    public Object createActualVAListStorage() {
+        return new LLVMX86_64_WinVaListStorage();
+    }
+
+    @Override
+    public Type getGlobalVAListType(Type type) {
+        return PointerType.I8.equals(type) ? PointerType.I8 : null;
     }
 
     @Override
     public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
+        return cached ? LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.create() : LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.getUncached();
     }
 
+    @Override
+    public OS getOS() {
+        return OS.Windows;
+    }
 }

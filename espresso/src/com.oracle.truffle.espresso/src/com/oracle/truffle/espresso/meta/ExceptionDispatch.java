@@ -25,31 +25,22 @@ package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
- * Allows fast-path runtime guest exception creation.
+ * Allows fast-path creation of well-known guest runtime exceptions .
  */
-public final class ExceptionDispatch implements ContextAccess {
+public final class ExceptionDispatch extends ContextAccessImpl {
     private final Meta meta;
 
     private final ObjectKlass runtimeException;
 
-    @Override
-    public EspressoContext getContext() {
-        return meta.getContext();
-    }
-
-    @Override
-    public Meta getMeta() {
-        return meta;
-    }
-
     public ExceptionDispatch(Meta meta) {
+        super(meta.getContext());
         this.meta = meta;
         this.runtimeException = meta.java_lang_RuntimeException;
     }
@@ -67,8 +58,7 @@ public final class ExceptionDispatch implements ContextAccess {
     }
 
     private StaticObject fastPath(ObjectKlass klass, StaticObject message, StaticObject cause) {
-        StaticObject ex = klass.allocateInstance();
-
+        StaticObject ex = allocateException(klass);
         // TODO: Remove this when truffle exceptions are reworked.
         InterpreterToVM.fillInStackTrace(ex, false, meta);
 
@@ -81,23 +71,22 @@ public final class ExceptionDispatch implements ContextAccess {
         return ex;
     }
 
+    private StaticObject allocateException(ObjectKlass klass) {
+        EspressoContext ctx = getContext();
+        // avoid PE recursion in the checks in klass.allocateInstance
+        // the exception types allocated here should be well-known and well-behaved
+        assert !klass.isAbstract() && !klass.isInterface();
+        return ctx.getAllocator().createNew(klass);
+    }
+
     private StaticObject slowPath(ObjectKlass klass, StaticObject message, StaticObject cause) {
         assert meta.java_lang_Throwable.isAssignableFrom(klass);
         StaticObject ex;
-        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            // if klass was a compilation constant, the constantness of the klass field in ex should
-            // propagate even through the boundary.
-            ex = klass.allocateInstance();
-        } else {
-            ex = allocate(klass);
-        }
+        // if klass was a compilation constant, the constantness of the klass field in ex should
+        // propagate even through the boundary.
+        ex = allocateException(klass);
         slowInitEx(ex, klass, message, cause);
         return ex;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static StaticObject allocate(ObjectKlass klass) {
-        return klass.allocateInstance();
     }
 
     private void slowInitEx(StaticObject ex, ObjectKlass klass, StaticObject message, StaticObject cause) {

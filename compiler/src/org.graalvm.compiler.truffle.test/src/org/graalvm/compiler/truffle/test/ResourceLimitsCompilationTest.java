@@ -131,7 +131,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                 }
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
-                Assert.assertEquals(2, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
             }
         }
     }
@@ -150,7 +150,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
             Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
         }
         Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-        Assert.assertEquals(2, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+        Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
         Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
     }
 
@@ -176,7 +176,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  * read/write for the statement counts.
                  */
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(2, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
+                Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }

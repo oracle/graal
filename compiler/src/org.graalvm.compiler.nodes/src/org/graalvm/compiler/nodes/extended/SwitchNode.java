@@ -291,7 +291,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
+    protected NodeSize dynamicNodeSizeEstimate() {
         if (keyCount() == 1) {
             // if
             return SIZE_2;

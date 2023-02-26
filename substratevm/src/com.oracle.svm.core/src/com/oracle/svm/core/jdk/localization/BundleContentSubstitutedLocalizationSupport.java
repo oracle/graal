@@ -37,20 +37,19 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
-import org.graalvm.compiler.debug.GraalError;
+import com.oracle.svm.core.util.UserError;
 
-// Checkstyle: stop
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
-// Checkstyle: resume
 
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 

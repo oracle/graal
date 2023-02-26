@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 import jdk.internal.loader.BootLoader;
@@ -42,8 +42,8 @@ import jdk.internal.loader.BootLoader;
  * jdk.internal.loader.BootLoader
  */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@AutomaticFeature
-final class JNIRegistrationSupport_JDK17OrLater implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class JNIRegistrationSupport_JDK17OrLater implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return JavaVersionUtil.JAVA_SPEC >= 17;

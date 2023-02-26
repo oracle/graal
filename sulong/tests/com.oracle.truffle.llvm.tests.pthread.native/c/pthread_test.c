@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ void *set_named_thread() {
 
     const pthread_t self = pthread_self();
 
-#ifdef __linux__
+#if !defined(__APPLE__)
     const int setname_rv_self = pthread_setname_np(self, "self pthread");
 #else
     const int setname_rv_self = pthread_setname_np("self pthread");

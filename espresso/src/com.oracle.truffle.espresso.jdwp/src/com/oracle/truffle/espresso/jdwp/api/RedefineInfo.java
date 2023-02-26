@@ -26,10 +26,12 @@ public final class RedefineInfo {
 
     private KlassRef klass;
     private final byte[] classBytes;
+    private final boolean isInnerTestKlass;
 
     public RedefineInfo(KlassRef klass, byte[] classBytes) {
         this.klass = klass;
         this.classBytes = classBytes;
+        this.isInnerTestKlass = klass == null;
     }
 
     public KlassRef getKlass() {
@@ -42,5 +44,9 @@ public final class RedefineInfo {
 
     public void clearKlass() {
         klass = null;
+    }
+
+    public boolean isInnerTestKlass() {
+        return isInnerTestKlass;
     }
 }

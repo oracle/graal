@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -32,13 +34,25 @@ import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -47,17 +61,29 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -83,19 +109,48 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
+        private int currentDeoptIndex;
+
         private final boolean explicitExceptionEdges;
-        private final boolean allowIncompleteClassPath;
+        private final boolean linkAtBuildTime;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
-            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue());
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, LinkAtBuildTimeSupport.singleton().linkAtBuildTime(method.getDeclaringClass()));
         }
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean allowIncompleteClasspath) {
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean linkAtBuildTime) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
-            this.allowIncompleteClassPath = allowIncompleteClasspath;
+            this.linkAtBuildTime = linkAtBuildTime;
+        }
+
+        @Override
+        protected BciBlockMapping generateBlockMap() {
+            if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
+                /*
+                 * Need to add blocks representing where deoptimization entrypoint nodes will be
+                 * inserted.
+                 */
+                return DeoptimizationTargetBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
+            } else {
+                return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
+            }
+        }
+
+        @Override
+        protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            super.build(startInstruction, startFrameState);
+
+            if (isMethodDeoptTarget()) {
+                /*
+                 * All DeoptProxyNodes should be valid.
+                 */
+                for (DeoptProxyNode deoptProxy : graph.getNodes(DeoptProxyNode.TYPE)) {
+                    assert deoptProxy.hasProxyPoint();
+                }
+            }
         }
 
         @Override
@@ -183,16 +238,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleIllegalNewInstance(JavaType type) {
             /*
-             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-             * otherwise report the error during image building.
+             * If linkAtBuildTime was set for type, report the error during image building,
+             * otherwise defer the error reporting to runtime.
              */
-            if (allowIncompleteClassPath) {
-                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
-            } else {
-                String message = "Cannot instantiate " + type.toJavaName() +
-                                ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                                " option. The instantiation error is then reported at run time.";
+            if (linkAtBuildTime) {
+                String message = "Cannot instantiate " + type.toJavaName() + ". " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
                 throw new TypeInstantiationException(message);
+            } else {
+                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
             }
         }
 
@@ -213,12 +267,42 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
+            // The INSTANCEOF byte code refers to a type that could not be resolved.
+            // INSTANCEOF must not throw an exception if the object is null.
+            BeginNode nullObj = graph.add(new BeginNode());
+            BeginNode nonNullObj = graph.add(new BeginNode());
+            append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)),
+                            nullObj, nonNullObj, BranchProbabilityNode.NOT_FREQUENT_PROFILE));
+
+            // Case where the object is not null, and type could not be resolved: Throw an
+            // exception.
+            lastInstr = nonNullObj;
             handleUnresolvedType(type);
+
+            // Case where the object is null: INSTANCEOF does not care about the type.
+            // Push zero to the byte code stack, then continue running normally.
+            lastInstr = nullObj;
+            frameState.push(JavaKind.Int, appendConstant(JavaConstant.INT_0));
         }
 
         @Override
         protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
+            // The CHECKCAST byte code refers to a type that could not be resolved.
+            // CHECKCAST must throw an exception if, and only if, the object is not null.
+            BeginNode nullObj = graph.add(new BeginNode());
+            BeginNode nonNullObj = graph.add(new BeginNode());
+            append(new IfNode(graph.addOrUniqueWithInputs(IsNullNode.create(object)),
+                            nullObj, nonNullObj, BranchProbabilityNode.NOT_FREQUENT_PROFILE));
+
+            // Case where the object is not null, and type could not be resolved: Throw an
+            // exception.
+            lastInstr = nonNullObj;
             handleUnresolvedType(type);
+
+            // Case where the object is null: CHECKCAST does not care about the type.
+            // Push "null" to the byte code stack, then continue running normally.
+            lastInstr = nullObj;
+            frameState.push(JavaKind.Object, appendConstant(JavaConstant.NULL_POINTER));
         }
 
         @Override
@@ -246,15 +330,75 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
+        @Override
+        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
+            if (linkAtBuildTime) {
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
+            } else {
+                replaceWithThrowingAtRuntime(this, bme);
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that throws an instance like the one given as throwable in
+         * the given GraphBuilderContext. If the given throwable has a non-null cause, a
+         * cause-instance of the same type with a proper cause-message is created first that is then
+         * passed to the method that creates and throws the outer throwable-instance.
+         */
+        public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
+            Throwable cause = throwable.getCause();
+            if (cause != null) {
+                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                /* Invoke method that creates a cause-instance with cause-message */
+                var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+                ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode});
+                /*
+                 * Invoke method that creates and throws throwable-instance with message and cause
+                 */
+                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+                ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()});
+                b.add(new LoweredDeadEndNode());
+            } else {
+                replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that creates an instance of type throwableClass with
+         * throwableMessage as argument and then throws that instance in the given
+         * GraphBuilderContext.
+         */
+        public static void replaceWithThrowingAtRuntime(SharedBytecodeParser b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+            /*
+             * This method is currently not able to replace
+             * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because
+             * there are places where GraphBuilderContext.getMetaAccess() does not contain a
+             * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If
+             * we can access the ParsingReason in here we will be able to get rid of throwException.
+             */
+            var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
+            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+            ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode});
+            b.add(new LoweredDeadEndNode());
+        }
+
         private void handleUnresolvedType(JavaType type) {
             /*
-             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-             * otherwise report the error during image building.
+             * If linkAtBuildTime was set for type, report the error during image building,
+             * otherwise defer the error reporting to runtime.
              */
-            if (allowIncompleteClassPath) {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
-            } else {
+            if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
+            } else {
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
             }
         }
 
@@ -265,13 +409,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 handleUnresolvedType(declaringClass);
             } else {
                 /*
-                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-                 * otherwise report the error during image building.
+                 * If linkAtBuildTime was set for type, report the error during image building,
+                 * otherwise defer the error reporting to runtime.
                  */
-                if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
-                } else {
+                if (linkAtBuildTime) {
                     reportUnresolvedElement("field", field.format("%H.%n"));
+                } else {
+                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
                 }
             }
         }
@@ -283,26 +427,25 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 handleUnresolvedType(declaringClass);
             } else {
                 /*
-                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-                 * otherwise report the error during image building.
+                 * If linkAtBuildTime was set for type, report the error during image building,
+                 * otherwise defer the error reporting to runtime.
                  */
-                if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
-                } else {
+                if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+                } else {
+                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
 
-        private static void reportUnresolvedElement(String elementKind, String elementAsString) {
-            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString +
-                            ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                            " option. The missing " + elementKind + " is then reported at run time when it is accessed the first time.";
-            throw new UnresolvedElementException(message);
+        private void reportUnresolvedElement(String elementKind, String elementAsString) {
+            reportUnresolvedElement(elementKind, elementAsString, null);
         }
 
-        private static String allowIncompleteClassPathOption() {
-            return SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+");
+        private void reportUnresolvedElement(String elementKind, String elementAsString, Throwable cause) {
+            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString + ". " +
+                            LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
+            throw new UnresolvedElementException(message, cause);
         }
 
         @Override
@@ -337,7 +480,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 checkWordType(args[i + (isStatic ? 0 : 1)], targetMethod.getSignature().getParameterType(i, null), "call argument");
             }
 
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null);
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null, profile);
         }
 
         @Override
@@ -384,12 +527,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
         }
 
-        protected boolean isMethodDeoptTarget() {
-            return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        protected final boolean isMethodDeoptTarget() {
+            return MultiMethod.isDeoptTarget(method);
         }
 
         @Override
         protected boolean asyncExceptionLiveness() {
+            if (SubstrateOptions.parseOnce()) {
+                /*
+                 * Only methods which can deoptimize need to consider live locals from asynchronous
+                 * exception handlers.
+                 */
+                if (method instanceof MultiMethod) {
+                    return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+                }
+
+            } else {
+                if (method instanceof HostedMethod) {
+                    /*
+                     * Only methods which can deoptimize need to consider live locals from
+                     * asynchronous exception handlers.
+                     */
+                    return ((HostedMethod) method).canDeoptimize();
+                }
+            }
+
             /*
              * If deoptimization is enabled, then must assume that any method can deoptimize at any
              * point while throwing an exception.
@@ -401,7 +563,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected void clearNonLiveLocalsAtTargetCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
             /*
              * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
-             * possible to clear non-live locals at the start of a exception dispatch block if
+             * possible to clear non-live locals at the start of an exception dispatch block if
              * deoptimizations can be present, as exception dispatch blocks have the same deopt bci
              * as the exception.
              */
@@ -420,5 +582,143 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 super.clearNonLiveLocalsAtLoopExitCreation(block, state);
             }
         }
+
+        @Override
+        protected void createExceptionDispatch(BciBlockMapping.ExceptionDispatchBlock block) {
+            if (block instanceof DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) {
+                /*
+                 * If this block is an DeoptEntryInsertionPoint, then a DeoptEntry must be inserted.
+                 * Afterwards, this block should jump to either the original ExceptionDispatchBlock
+                 * or the UnwindBlock if there is no handler.
+                 */
+                assert block instanceof DeoptimizationTargetBciBlockMapping.DeoptExceptionDispatchBlock;
+                insertDeoptNode((DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) block);
+                List<BciBlockMapping.BciBlock> successors = block.getSuccessors();
+                assert successors.size() <= 1;
+                BciBlockMapping.BciBlock successor = successors.isEmpty() ? blockMap.getUnwindBlock() : successors.get(0);
+                appendGoto(successor);
+            } else {
+                super.createExceptionDispatch(block);
+            }
+        }
+
+        @Override
+        protected void iterateBytecodesForBlock(BciBlockMapping.BciBlock block) {
+            if (block instanceof DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) {
+                /*
+                 * If this block is an DeoptEntryInsertionPoint, then a DeoptEntry must be inserted.
+                 * Afterwards, this block should jump to the original BciBlock.
+                 */
+                assert block instanceof DeoptimizationTargetBciBlockMapping.DeoptBciBlock;
+                assert block.getSuccessors().size() == 1 || block.getSuccessors().size() == 2;
+                assert block.getSuccessor(0).isInstructionBlock();
+                stream.setBCI(block.getStartBci());
+                insertDeoptNode((DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint) block);
+                appendGoto(block.getSuccessor(0));
+            } else {
+                super.iterateBytecodesForBlock(block);
+            }
+        }
+
+        /**
+         * Inserts either a DeoptEntryNode or DeoptProxyAnchorNode into the graph.
+         */
+        private void insertDeoptNode(DeoptimizationTargetBciBlockMapping.DeoptEntryInsertionPoint deopt) {
+            /*
+             * Ensuring current frameState matches the expectations of the DeoptEntryInsertionPoint.
+             */
+            if (deopt instanceof DeoptimizationTargetBciBlockMapping.DeoptBciBlock) {
+                assert !frameState.rethrowException();
+            } else {
+                assert deopt instanceof DeoptimizationTargetBciBlockMapping.DeoptExceptionDispatchBlock;
+                assert frameState.rethrowException();
+            }
+
+            DeoptEntrySupport deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
+            FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
+            deoptNode.setStateAfter(stateAfter);
+            if (lastInstr != null) {
+                lastInstr.setNext(deoptNode.asFixedNode());
+            }
+
+            if (deopt.isProxy()) {
+                lastInstr = (DeoptProxyAnchorNode) deoptNode;
+            } else {
+                assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
+                DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
+                deoptEntryNode.setNext(graph.add(new DeoptEntryBeginNode()));
+
+                /*
+                 * DeoptEntries for positions not during an exception dispatch (rethrowException)
+                 * also must be linked to their exception target.
+                 */
+                if (!deopt.rethrowException()) {
+                    /*
+                     * Saving frameState so that different modifications can be made for next() and
+                     * exceptionEdge().
+                     */
+                    FrameStateBuilder originalFrameState = frameState.copy();
+
+                    /* Creating exception object and its state after. */
+                    ExceptionObjectNode newExceptionObject = graph.add(new ExceptionObjectNode(getMetaAccess()));
+                    frameState.clearStack();
+                    frameState.push(JavaKind.Object, newExceptionObject);
+                    frameState.setRethrowException(true);
+                    int bci = ((DeoptimizationTargetBciBlockMapping.DeoptBciBlock) deopt).getStartBci();
+                    newExceptionObject.setStateAfter(frameState.create(bci, newExceptionObject));
+                    deoptEntryNode.setExceptionEdge(newExceptionObject);
+
+                    /* Inserting proxies for the exception edge. */
+                    insertProxies(newExceptionObject, frameState);
+
+                    /* Linking exception object to exception target. */
+                    newExceptionObject.setNext(handleException(newExceptionObject, bci, false));
+
+                    /* Now restoring FrameState so proxies can be inserted for the next() edge. */
+                    frameState = originalFrameState;
+                } else {
+                    /* Otherwise, indicate that the exception edge is not reachable. */
+                    AbstractBeginNode newExceptionEdge = graph.add(new UnreachableBeginNode());
+                    newExceptionEdge.setNext(graph.add(new LoweredDeadEndNode()));
+                    deoptEntryNode.setExceptionEdge(newExceptionEdge);
+                }
+
+                /* Correctly setting last instruction. */
+                lastInstr = deoptEntryNode.next();
+            }
+
+            insertProxies(deoptNode.asFixedNode(), frameState);
+        }
+
+        private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {
+            /*
+             * At a deoptimization point we wrap non-constant locals (and java stack elements) with
+             * proxy nodes. This is to avoid global value numbering on locals (or derived
+             * expressions). The effect is that when a local is accessed after a deoptimization
+             * point it is really loaded from its location. This is similar to what happens in the
+             * GraphBuilderPhase if entryBCI is set for OSR.
+             */
+            state.insertProxies(value -> createProxyNode(value, deoptTarget));
+            currentDeoptIndex++;
+        }
+
+        private ValueNode createProxyNode(ValueNode value, FixedNode deoptTarget) {
+            ValueNode v = DeoptProxyNode.create(value, deoptTarget, currentDeoptIndex);
+            if (v.graph() != null) {
+                return v;
+            }
+            return graph.addOrUniqueWithInputs(v);
+        }
+
+        @Override
+        protected boolean forceLoopPhis() {
+            return isMethodDeoptTarget() || super.forceLoopPhis();
+        }
+
+        @Override
+        public boolean allowDeoptInPlugins() {
+            return super.allowDeoptInPlugins();
+        }
+
     }
 }

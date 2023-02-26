@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.DoubleAdder;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
-final class CompilationTimeMetric implements Metric {
+final class CompilationTimeMetric extends Metric {
 
     enum MetricType {
         COMPILATION,
@@ -76,7 +76,14 @@ final class CompilationTimeMetric implements Metric {
 
     @Override
     public String name() {
-        return "compilation time";
+        switch (this.logHandler.metricType) {
+            case COMPILATION:
+                return "compilation time";
+            case PARTIAL_EVALUATION:
+                return "partial evaluation time";
+            default:
+                throw new IllegalStateException();
+        }
     }
 
     @Override
@@ -173,7 +180,8 @@ final class CompilationTimeMetric implements Metric {
 
         void reset() {
             iterationTime.reset();
-            allIterationsTime = 0d;
+            // allIterationsTime not reset here since metric is reset between warmup and running and
+            // we want to report all the iteration times
         }
 
         Optional<Double> iterationTime() {

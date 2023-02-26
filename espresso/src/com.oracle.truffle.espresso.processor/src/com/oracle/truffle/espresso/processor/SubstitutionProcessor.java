@@ -23,11 +23,6 @@
 
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -48,11 +43,18 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+
 public final class SubstitutionProcessor extends EspressoProcessor {
     // @EspressoSubstitutions
     private TypeElement espressoSubstitutions;
     // @Substitution
     private TypeElement substitutionAnnotation;
+    // @InlineInBytecode
+    private TypeElement inlineInBytecodeAnnotation;
 
     // @JavaType
     private TypeElement javaType;
@@ -60,6 +62,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement noProvider;
     // NoFilter.class
     private TypeElement noFilter;
+
+    // InlinedMethodPredicate.class
+    private TypeElement noPredicate;
 
     // StaticObject
     private TypeElement staticObjectElement;
@@ -70,6 +75,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
     private static final String SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
+    private static final String INLINE_IN_BYTECODE = SUBSTITUTION_PACKAGE + "." + "InlineInBytecode";
     private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
@@ -80,9 +86,18 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
     private static final String VERSION_FILTER_METHOD = "isValidFor";
+    private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
     private static final String JAVA_VERSION = "com.oracle.truffle.espresso.runtime.JavaVersion";
 
     private static final String INSTANCE = "INSTANCE";
+
+    private static final String VIRTUAL_FRAME_IMPORT = "com.oracle.truffle.api.frame.VirtualFrame";
+    private static final String ESPRESSO_FRAME = "EspressoFrame";
+    private static final String ESPRESSO_FRAME_IMPORT = "com.oracle.truffle.espresso.nodes.EspressoFrame";
+    private static final String INLINED_FRAME_ACCESS = "InlinedFrameAccess";
+    private static final String INLINED_FRAME_ACCESS_IMPORT = "com.oracle.truffle.espresso.nodes.quick.invoke.inline." + INLINED_FRAME_ACCESS;
+    private static final String INLINED_METHOD_PREDICATE = "InlinedMethodPredicate";
+    private static final String INLINED_METHOD_PREDICATE_IMPORT = "com.oracle.truffle.espresso.nodes.quick.invoke.inline." + INLINED_METHOD_PREDICATE;
 
     public SubstitutionProcessor() {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR);
@@ -96,9 +111,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final boolean hasReceiver;
         final TypeMirror nameProvider;
         final TypeMirror versionFilter;
+        final boolean inlineInBytecode;
+        final TypeMirror guardValue;
 
         SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
+                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter, boolean inlineInBytecode, TypeMirror guardValue) {
             super(processor, target, processor.getTypeElement(SUBSTITUTION));
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
@@ -107,6 +124,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             this.hasReceiver = hasReceiver;
             this.nameProvider = nameProvider;
             this.versionFilter = versionFilter;
+            this.inlineInBytecode = inlineInBytecode;
+            this.guardValue = guardValue;
         }
 
     }
@@ -127,7 +146,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             str.append(ARG_NAME).append(i);
         }
         first = appendInvocationMetaInformation(str, first, helper);
-        str.append(");\n");
+        str.append(")");
         return str.toString();
     }
 
@@ -184,7 +203,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                             headerMessage + " must be annotated with @Inject", element);
         }
 
-        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
         boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
@@ -270,6 +289,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
         String targetPackage = env().getElementUtils().getPackageOf(declaringClass).getQualifiedName().toString();
 
+        // Class wide @InlineInBytecode annotation.
+        AnnotationMirror classWideInline = getAnnotation(declaringClass, inlineInBytecodeAnnotation);
+
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
@@ -280,10 +302,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             // Obtain the name of the element to be substituted in.
             String targetMethodName = getSubstutitutedMethodName(element);
 
-            /**
+            /*
              * Obtain the actual target method to call in the substitution. This is the method that
              * will be called in the substitution: Either element itself, for method substitutions.
-             * Or the execute* method of the Truffle node, for node substitutions.
+             * Or the execute method of the Truffle node, for node substitutions.
              */
             ExecutableElement targetMethod = getTargetMethod(element);
 
@@ -308,7 +330,17 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
             TypeMirror versionFilter = getVersionFilter(subst);
-            SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
+
+            TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
+            boolean inlineInBytecode = encodedInlineGuard != null ||
+                            // Implicit inlining of trivial substitutions.
+                            isTrivial(element, substitutionAnnotation);
+            TypeMirror decodedInlineGuard = (encodedInlineGuard == null || processingEnv.getTypeUtils().isSameType(encodedInlineGuard, noPredicate.asType()))
+                            ? null
+                            : encodedInlineGuard;
+
+            SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter,
+                            inlineInBytecode, decodedInlineGuard);
 
             // Create the contents of the source file
             String classFile = spawnSubstitutor(
@@ -339,6 +371,24 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             }
         }
         return null;
+    }
+
+    /**
+     * Returns a tri-state String, depending on the return value:
+     * <ul>
+     * <li>If {@code null}: No bytecode-level inlining for this substitution.</li>
+     * <li>If equals {@code noPredicate}: No guard for a bytecode-level inlined substitution.</li>
+     * <li>Else: Guarded bytecode-level inlining for this substitution.</li>
+     * </ul>
+     */
+    private TypeMirror getInlineValue(AnnotationMirror classWideAnnotation, Element element) {
+        AnnotationMirror inline = getAnnotation(element, inlineInBytecodeAnnotation);
+        inline = (inline == null) ? classWideAnnotation : inline;
+        if (inline == null) {
+            // No bytecode-level inlining.
+            return null;
+        }
+        return getAnnotationValue(inline, "guard", TypeMirror.class);
     }
 
     String getReturnTypeFromHost(ExecutableElement method) {
@@ -518,12 +568,15 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         this.espressoSubstitutions = getTypeElement(ESPRESSO_SUBSTITUTIONS);
         this.substitutionAnnotation = getTypeElement(SUBSTITUTION);
         this.staticObjectElement = getTypeElement(STATIC_OBJECT);
+        this.inlineInBytecodeAnnotation = getTypeElement(INLINE_IN_BYTECODE);
         this.javaType = getTypeElement(JAVA_TYPE);
         this.noProvider = getTypeElement(NO_PROVIDER);
         this.noFilter = getTypeElement(NO_FILTER);
+        this.noPredicate = getTypeElement(INLINED_METHOD_PREDICATE_IMPORT);
 
         verifyAnnotationMembers(espressoSubstitutions, "value", "nameProvider");
         verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "versionFilter");
+        verifyAnnotationMembers(inlineInBytecodeAnnotation, "guard");
         verifyAnnotationMembers(javaType, "value", "internalName");
 
         // Actual process
@@ -550,6 +603,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         List<String> expectedImports = new ArrayList<>();
         SubstitutorHelper h = (SubstitutorHelper) helper;
         expectedImports.add(substitutorPackage + "." + SUBSTITUTOR);
+        if (h.inlineInBytecode) {
+            expectedImports.add(VIRTUAL_FRAME_IMPORT);
+            expectedImports.add(INLINED_FRAME_ACCESS_IMPORT);
+            if (!parameterTypeName.isEmpty()) {
+                expectedImports.add(ESPRESSO_FRAME_IMPORT);
+            }
+            if (h.guardValue != null) {
+                expectedImports.add(INLINED_METHOD_PREDICATE_IMPORT);
+            }
+        }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
         }
@@ -586,6 +649,19 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return factoryBuilder;
     }
 
+    @Override
+    protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        super.generateAdditionalFactoryMethods(factoryBuilder, className, targetMethodName, parameterTypeName, helper);
+        SubstitutorHelper h = (SubstitutorHelper) helper;
+        if (h.inlineInBytecode) {
+            factoryBuilder.withMethod(generateInlinedInBytecode());
+            if (h.guardValue != null) {
+                factoryBuilder.withMethod(generateGuard(h.guardValue));
+            }
+        }
+        return factoryBuilder;
+    }
+
     private static MethodBuilder generateGetMethodNames(String targetMethodName, SubstitutorHelper h) {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
         MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME) //
@@ -617,6 +693,30 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return generateIsValidForMethod;
     }
 
+    /**
+     * Generates guard getter.
+     */
+    private static MethodBuilder generateGuard(TypeMirror guardValue) {
+        MethodBuilder guardMethod = new MethodBuilder(GUARD) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withReturnType(INLINED_METHOD_PREDICATE) //
+                        .addBodyLine("return ", guardValue.toString(), ".", INSTANCE, ';');
+        return guardMethod;
+    }
+
+    /**
+     * Generates inlinedInBytecode method.
+     */
+    private static MethodBuilder generateInlinedInBytecode() {
+        MethodBuilder guardMethod = new MethodBuilder(INLINE_IN_BYTECODE_METHOD) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withReturnType("boolean") //
+                        .addBodyLine("return true;");
+        return guardMethod;
+    }
+
     @Override
     ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
@@ -630,12 +730,85 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", castTo(ARGS_NAME + "[" + argIndex + "]", argType), ";");
             argIndex++;
         }
+        setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
-            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim());
+            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim(), ";\n");
             invoke.addBodyLine("return StaticObject.NULL;");
         } else {
-            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim());
+            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim(), ";\n");
+        }
+        classBuilder.withMethod(invoke);
+        if (h.inlineInBytecode) {
+            return generateInvokeInlined(classBuilder, className, parameterTypeName, helper);
+        }
+        return classBuilder;
+    }
+
+    @SuppressWarnings("fallthrough")
+    private ClassBuilder generateInvokeInlined(ClassBuilder classBuilder, String className, List<String> parameterTypeName, SubstitutionHelper helper) {
+        SubstitutorHelper h = (SubstitutorHelper) helper;
+        MethodBuilder invoke = new MethodBuilder("invokeInlined") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withParams("VirtualFrame frame", "int top", "InlinedFrameAccess frameAccess") //
+                        .withReturnType("void");
+        int delta = 1;
+        int argCount = parameterTypeName.size();
+        for (int argIndex = argCount - 1; argIndex >= 0; argIndex--) {
+
+            String argType = parameterTypeName.get(argIndex);
+            String popMethod;
+            boolean doCast = false;
+            int slotCount = 1;
+
+            switch (argType) {
+                case "byte":
+                case "boolean":
+                case "char":
+                case "short":
+                    doCast = true;
+                    // fall through
+                case "int":
+                    popMethod = "popInt";
+                    break;
+                case "float":
+                    popMethod = "popFloat";
+                    break;
+                case "long":
+                    slotCount = 2;
+                    popMethod = "popLong";
+                    break;
+                case "double":
+                    slotCount = 2;
+                    popMethod = "popDouble";
+                    break;
+                default:
+                    popMethod = "popObject";
+                    break;
+            }
+
+            if (argType.equals("boolean")) {
+                invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ") != 0", ";");
+            } else {
+                String cast = doCast ? "(" + argType + ") " : "";
+                invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", cast, ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ")", ";");
+            }
+            delta += slotCount;
+        }
+        setEspressoContextVar(invoke, helper);
+        if (h.returnType.equals("V")) {
+            invoke.addBodyLine(extractInvocation(className, argCount, helper).trim(), ";");
+        } else {
+            invoke.addBodyLine("frameAccess.pushResult(frame, ", extractResultToPush(extractInvocation(className, argCount, helper).trim(), h), ");");
         }
         return classBuilder.withMethod(invoke);
+    }
+
+    private static String extractResultToPush(String invocation, SubstitutorHelper h) {
+        if (h.returnType.equals("Z")) {
+            return "(" + invocation + ") ? 1 : 0";
+        } else {
+            return invocation;
+        }
     }
 }

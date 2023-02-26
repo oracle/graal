@@ -31,8 +31,12 @@ public final class HeapApi {
     private HeapApi() {
     }
 
-    static Object invokeDump(Value heap, Integer depth, Object[] args) {
+    public static Object invokeDump(Value heap, Integer depth, Object[] args) {
         return heap.invokeMember("dump", new Config("1.0", depth, args));
+    }
+
+    public static Object invokeFlush(Value heap) {
+        return heap.invokeMember("flush");
     }
 
     public abstract static class Event {
@@ -47,7 +51,7 @@ public final class HeapApi {
     public static final class StackEvent extends Event {
         @HostAccess.Export public final Object stack;
 
-        StackEvent(Object stack) {
+        public StackEvent(Object stack) {
             this.stack = stack;
         }
     }
@@ -56,7 +60,7 @@ public final class HeapApi {
         @HostAccess.Export public final Object at;
         @HostAccess.Export public final Object frame;
 
-        StackElement(Object at, Object frame) {
+        public StackElement(Object at, Object frame) {
             this.at = at;
             this.frame = frame;
         }
@@ -69,7 +73,7 @@ public final class HeapApi {
         @HostAccess.Export public final String uri;
         @HostAccess.Export public final String characters;
 
-        Source(String name, String mimeType, String language, String uri, String characters) {
+        public Source(String name, String mimeType, String language, String uri, String characters) {
             this.name = name;
             this.mimeType = mimeType;
             this.language = language;
@@ -85,7 +89,7 @@ public final class HeapApi {
         @HostAccess.Export public final Integer charIndex;
         @HostAccess.Export public final Integer charLength;
 
-        At(String name, Source source, Integer line, Integer charIndex, Integer charLength) {
+        public At(String name, Source source, Integer line, Integer charIndex, Integer charLength) {
             this.name = name;
             this.source = source;
             this.line = line;

@@ -53,15 +53,14 @@ import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.AllSynchronizedTypeFlow;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -70,14 +69,9 @@ import com.oracle.graal.pointsto.flow.MergeTypeFlow;
 import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AtomicReadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.JavaReadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AtomicWriteTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.CompareAndSwapTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.JavaWriteTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
@@ -340,7 +334,7 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
-    static void registerTypeState(PointsToAnalysis bb, TypeState state) {
+    public static void registerTypeState(PointsToAnalysis bb, TypeState state) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -379,7 +373,7 @@ public class PointsToStats {
 
     private static ConcurrentHashMap<UnionOperation, AtomicInteger> unionStats = new ConcurrentHashMap<>();
 
-    static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
+    public static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -495,8 +489,8 @@ public class PointsToStats {
             return "AllInstantiated(" + formatType(flow.getDeclaredType(), true) + ")";
         } else if (flow instanceof AllSynchronizedTypeFlow) {
             return "AllSynchronized";
-        } else if (flow instanceof FieldSinkTypeFlow) {
-            FieldSinkTypeFlow sink = (FieldSinkTypeFlow) flow;
+        } else if (flow instanceof ContextInsensitiveFieldTypeFlow) {
+            ContextInsensitiveFieldTypeFlow sink = (ContextInsensitiveFieldTypeFlow) flow;
             return "FieldSink(" + formatField(sink.getSource()) + ")";
         } else if (flow instanceof FieldTypeFlow) {
             FieldTypeFlow fieldFlow = (FieldTypeFlow) flow;
@@ -523,22 +517,12 @@ public class PointsToStats {
         } else if (flow instanceof UnsafeWriteSinkTypeFlow) {
             UnsafeWriteSinkTypeFlow sink = (UnsafeWriteSinkTypeFlow) flow;
             return "UnsafeWriteSink(" + formatField(sink.getSource()) + ")";
-        } else if (flow instanceof JavaWriteTypeFlow) {
-            return "JavaWrite @ " + formatSource(flow);
-        } else if (flow instanceof AtomicWriteTypeFlow) {
-            return "AtomicWrite @ " + formatSource(flow);
-        } else if (flow instanceof CompareAndSwapTypeFlow) {
-            return "CompareAndSwap @ " + formatSource(flow);
         } else if (flow instanceof LoadIndexedTypeFlow) {
             return "IndexedLoad @ " + formatSource(flow);
         } else if (flow instanceof UnsafeLoadTypeFlow) {
             return "UnsafeLoad @ " + formatSource(flow);
         } else if (flow instanceof UnsafePartitionLoadTypeFlow) {
             return "UnsafePartitionLoad @ " + formatSource(flow);
-        } else if (flow instanceof JavaReadTypeFlow) {
-            return "JavaRead @ " + formatSource(flow);
-        } else if (flow instanceof AtomicReadTypeFlow) {
-            return "AtomicRead @ " + formatSource(flow);
         } else if (flow instanceof ArrayElementsTypeFlow) {
             ArrayElementsTypeFlow arrayFlow = (ArrayElementsTypeFlow) flow;
             return "ArrayElements(" + (arrayFlow.object() != null ? arrayFlow.object().type().toJavaName(false) : "?") + ")";
@@ -567,9 +551,6 @@ public class PointsToStats {
         } else if (flow instanceof InvokeTypeFlow) {
             InvokeTypeFlow invoke = (InvokeTypeFlow) flow;
             return "Invoke(" + formatMethod(invoke.getTargetMethod()) + ")@" + formatSource(flow);
-        } else if (flow instanceof InitialParamTypeFlow) {
-            InitialParamTypeFlow param = (InitialParamTypeFlow) flow;
-            return "InitialParam(" + param.position() + ")@" + formatMethod(param.method());
         } else if (flow instanceof FormalParamTypeFlow) {
             FormalParamTypeFlow param = (FormalParamTypeFlow) flow;
             return "Parameter(" + param.position() + ")@" + formatMethod(param.method());
@@ -587,7 +568,7 @@ public class PointsToStats {
             return "Clone @ " + formatSource(flow);
         } else if (flow instanceof MonitorEnterTypeFlow) {
             MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getMethod());
+            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }
@@ -651,8 +632,8 @@ public class PointsToStats {
             return "<Null>";
         }
 
-        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s.isSingleTypeState() ? "Single" : s.isMultiTypeState() ? "Multi" : "";
-        String sSizeOrType = s.isMultiTypeState() ? s.typesCount() + "" : s.exactType().toJavaName(false);
+        String sKind = s.isAllocation() ? "Alloc" : s.asConstant() != null ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
+        String sSizeOrType = s instanceof MultiTypeState ? s.typesCount() + "" : s.exactType().toJavaName(false);
         int objectsNumber = s.objectsCount();
         String canBeNull = s.canBeNull() ? "null" : "!null";
 

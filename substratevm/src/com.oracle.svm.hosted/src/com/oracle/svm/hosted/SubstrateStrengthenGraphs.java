@@ -38,10 +38,11 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -89,5 +90,14 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     @Override
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
         ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
+    }
+
+    protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
+        ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
+    }
+
+    @Override
+    protected String getTypeName(AnalysisType type) {
+        return HostedStringDeduplication.singleton().deduplicate(type.toJavaName(true), false);
     }
 }

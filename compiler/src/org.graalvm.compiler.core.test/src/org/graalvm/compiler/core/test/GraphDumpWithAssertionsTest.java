@@ -31,6 +31,7 @@ import java.util.Arrays;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -47,9 +48,10 @@ public class GraphDumpWithAssertionsTest extends GraalCompilerTest {
         return Arrays.toString(array);
     }
 
+    @SuppressWarnings("try")
     @Test
     public void testDump() throws IOException {
-        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpWithAssertionsTest")) {
+        try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpWithAssertionsTest")) {
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());
             overrides.put(DebugOptions.Dump, ":3");

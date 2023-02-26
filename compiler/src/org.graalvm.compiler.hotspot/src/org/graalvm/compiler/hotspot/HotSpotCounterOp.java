@@ -153,7 +153,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
      * @param asm
      * @param increment
      */
-    public void patchCounterIncrement(Assembler asm, int[] increment) {
+    public void patchCounterIncrement(Assembler<?> asm, int[] increment) {
         throw GraalError.unimplemented();
     }
 

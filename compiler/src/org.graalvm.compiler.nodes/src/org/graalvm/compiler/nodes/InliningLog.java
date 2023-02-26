@@ -26,13 +26,13 @@ package org.graalvm.compiler.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 
@@ -80,14 +80,6 @@ public class InliningLog {
 
         public String getReason() {
             return reason;
-        }
-
-        public String getPhase() {
-            return phase;
-        }
-
-        public ResolvedJavaMethod getTarget() {
-            return target;
         }
 
         @Override
@@ -145,15 +137,11 @@ public class InliningLog {
 
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
-    private final boolean enabled;
-    private final DebugContext debug;
 
-    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled, DebugContext debug) {
+    public InliningLog(ResolvedJavaMethod rootMethod) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create();
-        this.enabled = enabled;
-        this.debug = debug;
     }
 
     /**
@@ -163,17 +151,9 @@ public class InliningLog {
      * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
-    public void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
-        if (debug.hasCompilationListener()) {
-            String message = String.format(reason, args);
-            debug.notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
-        }
-        if (!enabled) {
-            return;
-        }
+    void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
         assert leaves.containsKey(invoke) : invoke;
-        assert (!positive && replacements == null && calleeLog == null) || (positive && replacements != null && calleeLog != null) ||
-                        (positive && replacements == null && calleeLog == null);
+        assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog);
         Callsite callsite = leaves.get(invoke);
         callsite.target = callsite.invoke.getTargetMethod();
         Decision decision = new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod());
@@ -204,38 +184,40 @@ public class InliningLog {
     }
 
     /**
-     * Append the inlining decision tree from the specified log.
+     * Appends the inlining decision tree from {@code replacementLog} to this log.
      *
-     * The subtrees of the specified log are appended below the root of this log. This is usually
-     * called when a node in the graph is replaced with its snippet.
+     * This is called for example when a node in a graph is replaced with a snippet.
      *
+     * @param replacementLog if non-null, its subtrees are appended below the root of this log.
      * @see InliningLog#addDecision
      */
     public void addLog(UnmodifiableEconomicMap<Node, Node> replacements, InliningLog replacementLog) {
-        EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        for (Callsite calleeChild : replacementLog.root.children) {
-            Callsite child = root.addChild(calleeChild.invoke);
-            copyTree(child, calleeChild, replacements, mapping);
-        }
-        MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
-        while (entries.advance()) {
-            FixedNode replacementInvoke = entries.getKey().asFixedNodeOrNull();
-            Callsite replacementCallsite = entries.getValue();
-            if (replacementInvoke == null || replacementInvoke.isDeleted()) {
-                // Some invoke nodes could have been removed by optimizations.
-                continue;
+        if (replacementLog != null) {
+            EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+            for (Callsite calleeChild : replacementLog.root.children) {
+                Callsite child = root.addChild(calleeChild.invoke);
+                copyTree(child, calleeChild, replacements, mapping);
             }
-            Invokable invoke = (Invokable) replacements.get(replacementInvoke);
-            Callsite callsite = mapping.get(replacementCallsite);
-            leaves.put(invoke, callsite);
+            MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
+            while (entries.advance()) {
+                FixedNode replacementInvoke = entries.getKey().asFixedNodeOrNull();
+                Callsite replacementCallsite = entries.getValue();
+                if (replacementInvoke == null || replacementInvoke.isDeleted()) {
+                    // Some invoke nodes could have been removed by optimizations.
+                    continue;
+                }
+                Invokable invoke = (Invokable) replacements.get(replacementInvoke);
+                Callsite callsite = mapping.get(replacementCallsite);
+                leaves.put(invoke, callsite);
+            }
         }
     }
 
     /**
-     * Completely replace the current log with the copy of the specified log.
+     * Completely replace this log's contents with a copy of {@code replacementLog}'s contents.
      *
-     * The precondition is that the current inlining log is completely empty. This is usually called
-     * when copying the entire graph.
+     * The precondition is that this inlining log is completely empty. This is usually called as
+     * part of graph copying.
      *
      * @see InliningLog#addDecision
      */
@@ -264,8 +246,7 @@ public class InliningLog {
         FixedNode replacementSiteInvoke = replacementSite.invoke != null ? replacementSite.invoke.asFixedNodeOrNull() : null;
         site.invoke = replacementSiteInvoke != null && replacementSiteInvoke.isAlive() ? (Invokable) replacements.get(replacementSiteInvoke) : null;
         for (Callsite replacementChild : replacementSite.children) {
-            Callsite child = new Callsite(site, null);
-            site.children.add(child);
+            Callsite child = site.addChild(null);
             copyTree(child, replacementChild, replacements, mapping);
         }
     }
@@ -310,10 +291,8 @@ public class InliningLog {
 
         @Override
         public void close() {
-            if (enabled) {
-                assert currentUpdateScope != null;
-                currentUpdateScope = null;
-            }
+            assert currentUpdateScope != null;
+            currentUpdateScope = null;
         }
 
         public BiConsumer<Invokable, Invokable> getUpdater() {
@@ -340,17 +319,13 @@ public class InliningLog {
      * @return a bound {@link UpdateScope} object, or a {@code null} if tracing is disabled
      */
     public UpdateScope openUpdateScope(BiConsumer<Invokable, Invokable> updater) {
-        if (enabled) {
-            UpdateScope scope = new UpdateScope(updater);
-            scope.activate();
-            return scope;
-        } else {
-            return null;
-        }
+        UpdateScope scope = new UpdateScope(updater);
+        scope.activate();
+        return scope;
     }
 
     /**
-     * Creates a new update scope that does not update the log.
+     * Creates a new update scope that does not update {@code log}.
      *
      * This update scope will not add a newly created {@code Invokable} to the log, nor will it
      * amend its position if it was cloned. Instead, users need to update the inlining log with the
@@ -358,13 +333,12 @@ public class InliningLog {
      *
      * @see #openUpdateScope
      */
-    public UpdateScope openDefaultUpdateScope() {
-        if (enabled) {
-            noUpdates.activate();
-            return noUpdates;
-        } else {
+    public static UpdateScope openDefaultUpdateScope(InliningLog log) {
+        if (log == null) {
             return null;
         }
+        log.noUpdates.activate();
+        return log.noUpdates;
     }
 
     private RootScope currentRootScope = null;
@@ -401,11 +375,9 @@ public class InliningLog {
 
         @Override
         public void close() {
-            if (enabled) {
-                assert currentRootScope != null;
-                removeLeafCallsite(replacementRoot.invoke);
-                currentRootScope = parent;
-            }
+            assert currentRootScope != null;
+            removeLeafCallsite(replacementRoot.invoke);
+            currentRootScope = parent;
         }
     }
 
@@ -470,18 +442,14 @@ public class InliningLog {
     }
 
     public RootScope openRootScope(Invokable invoke) {
-        if (enabled) {
-            if (!leaves.containsKey(invoke)) {
-                // Create the invoke if it was not added to the graph yet.
-                trackNewCallsite(invoke);
-            }
-            RootScope scope = new RootScope(currentRootScope, leaves.get(invoke));
-            scope.replacementRoot.target = invoke.getTargetMethod();
-            scope.activate();
-            return scope;
-        } else {
-            return null;
+        if (!leaves.containsKey(invoke)) {
+            // Create the invoke if it was not added to the graph yet.
+            trackNewCallsite(invoke);
         }
+        RootScope scope = new RootScope(currentRootScope, leaves.get(invoke));
+        scope.replacementRoot.target = invoke.getTargetMethod();
+        scope.activate();
+        return scope;
     }
 
     public boolean containsLeafCallsite(Invokable invokable) {
@@ -502,8 +470,7 @@ public class InliningLog {
     public void trackNewCallsite(Invokable invoke) {
         assert !leaves.containsKey(invoke);
         Callsite currentRoot = findCurrentRoot();
-        Callsite callsite = new Callsite(currentRoot, invoke);
-        currentRoot.children.add(callsite);
+        Callsite callsite = currentRoot.addChild(invoke);
         leaves.put(invoke, callsite);
     }
 
@@ -516,13 +483,6 @@ public class InliningLog {
         Callsite parentCallsite = siblingCallsite.parent;
         Callsite callsite = parentCallsite.addChild(newInvoke);
         leaves.put(newInvoke, callsite);
-    }
-
-    public void updateExistingCallsite(Invokable previousInvoke, Invokable newInvoke) {
-        Callsite callsite = leaves.get(previousInvoke);
-        leaves.removeKey(previousInvoke);
-        leaves.put(newInvoke, callsite);
-        callsite.invoke = newInvoke;
     }
 
     /**
@@ -548,7 +508,7 @@ public class InliningLog {
         builder.append(indent).append(position).append(": ");
         if (site.decisions.isEmpty()) {
             if (site.parent != null) {
-                builder.append("(no decisions made about ").append(site.target != null ? site.target.format("%H.%n(%p)") : "").append(")");
+                builder.append("(no decisions made about ").append(site.target != null ? site.target.format("%H.%n(%p)") : "callee").append(")");
             }
             builder.append(System.lineSeparator());
         } else if (site.decisions.size() == 1) {
@@ -565,5 +525,12 @@ public class InliningLog {
         for (Callsite child : site.children) {
             formatAsTree(child, indent + "  ", builder);
         }
+    }
+
+    /**
+     * Gets the callsite representing the root method.
+     */
+    public Callsite getRootCallsite() {
+        return root;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
 package com.oracle.svm.truffle.nfi;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.AMD64;
+import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.c.CGlobalData;
@@ -49,6 +52,7 @@ public final class NFIInitialization {
     private static final CGlobalData<ffi_type> ffi_type_sint64 = CGlobalDataFactory.forSymbol("ffi_type_sint64");
     private static final CGlobalData<ffi_type> ffi_type_float = CGlobalDataFactory.forSymbol("ffi_type_float");
     private static final CGlobalData<ffi_type> ffi_type_double = CGlobalDataFactory.forSymbol("ffi_type_double");
+    private static final CGlobalData<ffi_type> ffi_type_longdouble = CGlobalDataFactory.forSymbol("ffi_type_longdouble");
     // Checkstyle: resume
 
     interface InitializeNativeSimpleTypeCallback extends CFunctionPointer {
@@ -76,6 +80,13 @@ public final class NFIInitialization {
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.SINT64, ffi_type_sint64.get());
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.FLOAT, ffi_type_float.get());
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.DOUBLE, ffi_type_double.get());
+        if (Platform.includedIn(AMD64.class) && !Platform.includedIn(WINDOWS.class)) {
+            /*
+             * On Windows, our LibFFI is compiled with the Visual Studio compiler, and that does not
+             * support FP80, it treats `long double` as double precision only.
+             */
+            initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.FP80, ffi_type_longdouble.get());
+        }
 
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.STRING, ffi_type_pointer.get());
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.OBJECT, ffi_type_pointer.get());

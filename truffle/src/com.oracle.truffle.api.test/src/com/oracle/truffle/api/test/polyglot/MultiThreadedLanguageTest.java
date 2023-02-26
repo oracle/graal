@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -396,7 +396,7 @@ public class MultiThreadedLanguageTest {
                     createdThreads.add(t);
                     return t;
                 });
-                TruffleContext innerContext = env.newContextBuilder().build();
+                TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
 
                 List<Future<LanguageContext>> futures = new ArrayList<>();
                 List<Future<LanguageContext>> innerContextFutures = new ArrayList<>();
@@ -476,13 +476,13 @@ public class MultiThreadedLanguageTest {
                 List<Thread> threads = new ArrayList<>();
                 List<TruffleContext> contexts = new ArrayList<>();
                 for (int i = 0; i < iterations; i++) {
-                    TruffleContext context = env.newContextBuilder().build();
+                    TruffleContext context = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
                     Thread thread = env.createThread(() -> {
                         assertUniqueContext();
                         List<Thread> innerThreads = new ArrayList<>();
                         List<TruffleContext> innerContexts = new ArrayList<>();
                         for (int j = 0; j < innerIterations; j++) {
-                            TruffleContext innerContext = env.newContextBuilder().build();
+                            TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true).build();
                             Thread innerThread = env.createThread(() -> {
                                 assertUniqueContext();
                             }, innerContext);

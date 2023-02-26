@@ -26,7 +26,7 @@ package com.oracle.svm.core.hub;
 
 import org.graalvm.compiler.core.common.NumUtil;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 @DuplicatedInNativeCode
 public enum ReferenceType {

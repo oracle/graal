@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,7 +90,6 @@ import org.graalvm.tools.lsp.server.types.TextDocumentPositionParams;
 import org.graalvm.tools.lsp.server.types.TextDocumentSyncKind;
 import org.graalvm.tools.lsp.server.types.TextEdit;
 import org.graalvm.tools.lsp.server.types.WorkspaceEdit;
-import org.graalvm.tools.lsp.server.types.WorkspaceFolder;
 import org.graalvm.tools.lsp.server.types.WorkspaceSymbolParams;
 
 import com.oracle.truffle.api.source.Source;
@@ -164,7 +163,8 @@ public final class LanguageServerImpl extends LanguageServer {
         });
 
         this.serverCapabilities = capabilities;
-        CompletableFuture.runAsync(() -> parseWorkspace(initializeParams.getWorkspaceFolders()));
+        // The workspace folder can be scanned here to gather static code information.
+        // Not used currently.
 
         return CompletableFuture.completedFuture(InitializeResult.create(capabilities));
     }
@@ -394,15 +394,6 @@ public final class LanguageServerImpl extends LanguageServer {
                 truffleAdapter.getLogger().log(level, msg, thrown);
             }
         };
-    }
-
-    private void parseWorkspace(List<WorkspaceFolder> workspaces) {
-        for (WorkspaceFolder workspace : workspaces) {
-            List<Future<?>> parsingTasks = truffleAdapter.parseWorkspace(URI.create(workspace.getUri()));
-            for (Future<?> future : parsingTasks) {
-                waitForResultAndHandleExceptions(future);
-            }
-        }
     }
 
     private <T> T waitForResultAndHandleExceptions(Future<T> future) {

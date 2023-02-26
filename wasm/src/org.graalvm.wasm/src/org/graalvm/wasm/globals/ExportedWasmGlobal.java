@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,11 @@ public class ExportedWasmGlobal extends WasmGlobal {
     }
 
     @Override
+    public Object loadAsReference() {
+        return globals.loadAsReference(address);
+    }
+
+    @Override
     public void storeInt(int value) {
         globals.storeInt(address, value);
     }
@@ -71,5 +76,10 @@ public class ExportedWasmGlobal extends WasmGlobal {
     @Override
     public void storeLong(long value) {
         globals.storeLong(address, value);
+    }
+
+    @Override
+    public void storeReference(Object value) {
+        globals.storeReference(address, value);
     }
 }

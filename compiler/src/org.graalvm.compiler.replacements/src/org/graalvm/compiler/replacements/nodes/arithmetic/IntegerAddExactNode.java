@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
-import static org.graalvm.compiler.core.common.type.IntegerStamp.addOverflowsNegatively;
-import static org.graalvm.compiler.core.common.type.IntegerStamp.addOverflowsPositively;
-import static org.graalvm.compiler.core.common.type.IntegerStamp.carryBits;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
@@ -85,43 +82,18 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
         int bits = a.getBits();
         assert bits == b.getBits();
 
+        // if an overflow is possible the node will throw so do not expose bound information to
+        // avoid
+        // optimizations believing (because of a precise range) that the node can be folded etc
+        if (IntegerStamp.addCanOverflow(a, b)) {
+            return a.unrestricted();
+        }
+
         long defaultMask = CodeUtil.mask(bits);
-        long variableBits = (a.downMask() ^ a.upMask()) | (b.downMask() ^ b.upMask());
-        long variableBitsWithCarry = variableBits | (carryBits(a.downMask(), b.downMask()) ^ carryBits(a.upMask(), b.upMask()));
-        long newDownMask = (a.downMask() + b.downMask()) & ~variableBitsWithCarry;
-        long newUpMask = (a.downMask() + b.downMask()) | variableBitsWithCarry;
+        long newLowerBound = CodeUtil.signExtend((a.lowerBound() + b.lowerBound()) & defaultMask, bits);
+        long newUpperBound = CodeUtil.signExtend((a.upperBound() + b.upperBound()) & defaultMask, bits);
 
-        newDownMask &= defaultMask;
-        newUpMask &= defaultMask;
-
-        long newLowerBound;
-        long newUpperBound;
-        boolean lowerOverflowsPositively = addOverflowsPositively(a.lowerBound(), b.lowerBound(), bits);
-        boolean upperOverflowsPositively = addOverflowsPositively(a.upperBound(), b.upperBound(), bits);
-        boolean lowerOverflowsNegatively = addOverflowsNegatively(a.lowerBound(), b.lowerBound(), bits);
-        boolean upperOverflowsNegatively = addOverflowsNegatively(a.upperBound(), b.upperBound(), bits);
-        if (lowerOverflowsPositively) {
-            newLowerBound = CodeUtil.maxValue(bits);
-        } else if (lowerOverflowsNegatively) {
-            newLowerBound = CodeUtil.minValue(bits);
-        } else {
-            newLowerBound = CodeUtil.signExtend((a.lowerBound() + b.lowerBound()) & defaultMask, bits);
-        }
-
-        if (upperOverflowsPositively) {
-            newUpperBound = CodeUtil.maxValue(bits);
-        } else if (upperOverflowsNegatively) {
-            newUpperBound = CodeUtil.minValue(bits);
-        } else {
-            newUpperBound = CodeUtil.signExtend((a.upperBound() + b.upperBound()) & defaultMask, bits);
-        }
-
-        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-        newUpMask &= limit.upMask();
-        newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
-        newDownMask |= limit.downMask();
-        newLowerBound |= newDownMask;
-        return IntegerStamp.create(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+        return StampFactory.forInteger(bits, newLowerBound, newUpperBound);
     }
 
     @Override

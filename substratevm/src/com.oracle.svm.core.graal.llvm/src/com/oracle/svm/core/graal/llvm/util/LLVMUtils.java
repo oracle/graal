@@ -173,7 +173,7 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             LLVMIRBuilder builder = gen.getBuilder();
-            LLVMValueRef register = gen.getSpecialRegister(reg);
+            LLVMValueRef register = gen.getSpecialRegisterValue(reg);
             return offset == null ? register : builder.buildGEP(builder.buildIntToPtr(register, builder.rawPointerType()), offset);
         }
     }

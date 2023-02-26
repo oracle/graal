@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,10 @@ package org.graalvm.wasm.predefined.testutil;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -78,7 +78,7 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
         final int dataPtr = (int) frame.getArguments()[1];
         final int size = (int) frame.getArguments()[2];
         saveFile(filenamePtr, dataPtr, size);
-        return WasmVoidResult.getInstance();
+        return WasmConstant.VOID;
     }
 
     @CompilerDirectives.TruffleBoundary

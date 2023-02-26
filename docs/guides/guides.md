@@ -1,9 +1,11 @@
 ---
 layout: docs
 toc_group: getting-started
-link_title: Guides
+link_title: Using Intellij IDEA
 permalink: /guides/
 ---
+
+# Using GraalVM in Intellij IDEA
 
 Here you will find information about how to:
 * [Run Java Applications on GraalVM from the CLI](#run-java-applications-on-graalvm-from-the-cli)
@@ -15,7 +17,7 @@ Here you will find information about how to:
 ## Run Java Applications on GraalVM from the CLI
 
 Any application that runs on a Java Virtual Machine (JVM) can run on GraalVM.
-GraalVM includes a JDK based on the Java HotSpot VM, and integrates an optimizing, just-in-time (JIT) compiler, written in Java: [the GraalVM compiler](../reference-manual/compiler.md).
+GraalVM includes a JDK based on the Java HotSpot VM, and integrates an optimizing, just-in-time (JIT) compiler, written in Java: [the GraalVM compiler](../reference-manual/java/compiler.md).
 At runtime, an application is loaded and executed normally by the JVM.
 
 In order to follow the steps in this guide, you must have GraalVM installed.
@@ -86,13 +88,13 @@ Give it a name, and press Apply.
 ![](/img/add-project-sdk.png)
 
 If you wish to add GraalVM SDK platform-wise, navigate to Project Structure -> Platform Settings -> SDK.
-Then press the plus button (+)  -> Add JDK and open the folder where you installed GraalVM.
-Give it a name and press Apply.
+Then press the plus button, click Add JDK and open the folder where you installed GraalVM.
+Give it a name and click Apply.
 
 4&#46; Run the project. Setting GraalVM SDK as default for all project modules ensures that you run the project on GraalVM.
 To double-check that, verify the project's Run configurations: from the main menu select Run -> Run... -> Edit Configurations, expand Environment, and check the provided value.
 It should show GraalVM.
-Press Run.
+Click Run.
 
 ![](/img/run-jre-configurations.png)
 
@@ -106,7 +108,6 @@ It should show GraalVM.
 Press Debug.
 
 This will run the application and start a debugger session in the background.
-
 
 ## Configure JVM Options for Applications Running on GraalVM
 

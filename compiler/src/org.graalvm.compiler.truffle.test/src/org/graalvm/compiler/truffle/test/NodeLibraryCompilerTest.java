@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.test.InstrumentationCompilerTest.DUMMY_SECTION;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,15 +58,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import static org.graalvm.compiler.truffle.test.InstrumentationCompilerTest.DUMMY_SECTION;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 
 /**
  * Test that implementation of a NodeLibrary efficiently partially evaluates.
  */
-@SuppressWarnings("deprecation")
 public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
     private static final String VAR = "var";
@@ -79,15 +78,16 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
     @Test
     public void testScopeRead() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        com.oracle.truffle.api.frame.FrameSlot varSlot = frameDescriptor.addFrameSlot(VAR);
-        frameDescriptor.setFrameSlotKind(varSlot, FrameSlotKind.Long);
+        var builder = FrameDescriptor.newBuilder();
+        int varSlot = builder.addSlot(FrameSlotKind.Illegal, "var", null);
+        FrameDescriptor frameDescriptor = builder.build();
+        frameDescriptor.setSlotKind(varSlot, FrameSlotKind.Long);
         RootNode expectedRootNode = createRoot(frameDescriptor, new ReadVarNode(varSlot), varSlot, false);
         RootNode instrumentedRootNode = createRoot(frameDescriptor, new DummyInstrumentableNode(varSlot), varSlot, true);
         assertPartialEvalEquals(expectedRootNode, instrumentedRootNode, new Object[0]);
     }
 
-    private RootNode createRoot(FrameDescriptor frameDescriptor, InstrumentationCompilerTestScopeNode node, com.oracle.truffle.api.frame.FrameSlot varSlot, boolean allowInstrumentation) {
+    private RootNode createRoot(FrameDescriptor frameDescriptor, InstrumentationCompilerTestScopeNode node, int varSlot, boolean allowInstrumentation) {
         return new RootNode(language, frameDescriptor) {
             @Child InstrumentationCompilerTestScopeNode child = node;
 
@@ -202,9 +202,9 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
     static final class ReadVarNode extends InstrumentationCompilerTestScopeNode {
 
-        private final com.oracle.truffle.api.frame.FrameSlot varSlot;
+        private final int varSlot;
 
-        ReadVarNode(com.oracle.truffle.api.frame.FrameSlot varSlot) {
+        ReadVarNode(int varSlot) {
             this.varSlot = varSlot;
         }
 
@@ -229,7 +229,7 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
 
         private final ReadVarNode readVar;
 
-        DummyInstrumentableNode(com.oracle.truffle.api.frame.FrameSlot varSlot) {
+        DummyInstrumentableNode(int varSlot) {
             this.readVar = new ReadVarNode(varSlot);
         }
 

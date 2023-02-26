@@ -24,9 +24,15 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
+import com.oracle.svm.core.SubstrateUtil;
+
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
@@ -34,6 +40,19 @@ import jdk.vm.ci.meta.Signature;
  * A straightforward implementation of {@link Signature}.
  */
 public class SimpleSignature implements Signature {
+    public static SimpleSignature fromKinds(JavaKind[] paramKinds, JavaKind returnKind, MetaAccessProvider metaAccess) {
+        ResolvedJavaType[] paramTypes = new ResolvedJavaType[paramKinds.length];
+        for (int i = 0; i < paramKinds.length; i++) {
+            paramTypes[i] = SimpleSignature.resolveType(paramKinds[i], metaAccess);
+        }
+        JavaType returnType = SimpleSignature.resolveType(returnKind, metaAccess);
+        return new SimpleSignature(paramTypes, returnType);
+    }
+
+    private static ResolvedJavaType resolveType(JavaKind kind, MetaAccessProvider metaAccess) {
+        return metaAccess.lookupJavaType(kind.isObject() ? Object.class : kind.toJavaClass());
+    }
+
     private final JavaType[] parameterTypes;
     private final JavaType returnType;
 
@@ -59,5 +78,39 @@ public class SimpleSignature implements Signature {
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
         return returnType;
+    }
+
+    public String getIdentifier() {
+        StringBuilder sb = new StringBuilder(1 + parameterTypes.length);
+        boolean digest = false;
+        for (JavaType type : parameterTypes) {
+            if (type.getJavaKind().isPrimitive() || (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isJavaLangObject())) {
+                sb.append(type.getJavaKind().getTypeChar());
+            } else {
+                sb.append(type.toClassName());
+                digest = true;
+            }
+        }
+        sb.append('_').append(returnType.getJavaKind().getTypeChar());
+        return digest ? SubstrateUtil.digest(sb.toString()) : sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this != obj && obj instanceof SimpleSignature) {
+            var other = (SimpleSignature) obj;
+            return Arrays.equals(parameterTypes, other.parameterTypes) && Objects.equals(returnType, other.returnType);
+        }
+        return (this == obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(parameterTypes) * 31 + Objects.hashCode(returnType);
+    }
+
+    @Override
+    public String toString() {
+        return getIdentifier();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * The global registry holds the global values in the WebAssembly engine instance.
- *
+ * <p>
  * Global values that are declared in some WebAssembly module are stored in an array of longs.
  * Global values can also be external objects that are accessed via Interop -- such globals are
  * stored inside an array of objects, and their addresses are negative.
@@ -62,12 +62,18 @@ public class GlobalRegistry {
     // Such an assumption can be invalidated if the late-linking causes this array
     // to be replaced with a larger array.
     @CompilationFinal(dimensions = 0) private long[] globals;
+    @CompilationFinal(dimensions = 0) private Object[] globalReferences;
     @CompilationFinal(dimensions = 1) private WasmGlobal[] externalGlobals;
     private int globalCount;
     private int externalGlobalCount;
 
-    public GlobalRegistry() {
+    public GlobalRegistry(boolean useReferenceTypes) {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
+        if (useReferenceTypes) {
+            this.globalReferences = new Object[INITIAL_GLOBALS_SIZE];
+        } else {
+            this.globalReferences = null;
+        }
         this.externalGlobals = new WasmGlobal[INITIAL_GLOBALS_SIZE];
         this.globalCount = 0;
         this.externalGlobalCount = 0;
@@ -82,6 +88,11 @@ public class GlobalRegistry {
             final long[] nGlobals = new long[globals.length * 2];
             System.arraycopy(globals, 0, nGlobals, 0, globals.length);
             globals = nGlobals;
+            if (globalReferences != null) {
+                final Object[] nGlobalReferences = new Object[globalReferences.length * 2];
+                System.arraycopy(globalReferences, 0, nGlobalReferences, 0, globalReferences.length);
+                globalReferences = nGlobalReferences;
+            }
         }
     }
 
@@ -96,6 +107,9 @@ public class GlobalRegistry {
     public int allocateGlobal() {
         ensureGlobalCapacity();
         globals[globalCount] = 0;
+        if (globalReferences != null) {
+            globalReferences[globalCount] = null;
+        }
         int idx = globalCount;
         globalCount++;
         return idx;
@@ -121,6 +135,15 @@ public class GlobalRegistry {
         return globals[address];
     }
 
+    public Object loadAsReference(int address) {
+        assert globalReferences != null;
+        if (address < 0) {
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return global.loadAsReference();
+        }
+        return globalReferences[address];
+    }
+
     public void storeInt(int address, int value) {
         storeLong(address, value);
     }
@@ -134,12 +157,24 @@ public class GlobalRegistry {
         }
     }
 
-    public GlobalRegistry duplicate() {
-        final GlobalRegistry other = new GlobalRegistry();
+    public void storeReference(int address, Object value) {
+        assert globalReferences != null;
+        if (address < 0) {
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.storeReference(value);
+        } else {
+            globalReferences[address] = value;
+        }
+    }
+
+    public GlobalRegistry duplicate(boolean useReferenceTypes) {
+        final GlobalRegistry other = new GlobalRegistry(useReferenceTypes);
         for (int i = 0; i < globalCount; i++) {
             final int address = other.allocateGlobal();
             final long value = this.loadAsLong(address);
+            final Object referenceValue = this.loadAsReference(address);
             other.storeLong(address, value);
+            other.storeReference(address, referenceValue);
         }
         for (int i = 0; i < externalGlobalCount; i++) {
             other.allocateExternalGlobal(this.externalGlobals[i]);

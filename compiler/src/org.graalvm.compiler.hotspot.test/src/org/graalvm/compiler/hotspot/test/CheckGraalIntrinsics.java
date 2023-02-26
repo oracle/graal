@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.compiler.hotspot.meta.UnimplementedGraalIntrinsics;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
@@ -63,9 +62,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class CheckGraalIntrinsics extends GraalTest {
 
-    public static boolean match(String type, Binding binding, VMIntrinsicMethod intrinsic) {
-        if (intrinsic.name.equals(binding.name)) {
-            if (intrinsic.descriptor.startsWith(binding.argumentsDescriptor)) {
+    public static boolean match(String type, InvocationPlugin plugin, VMIntrinsicMethod intrinsic) {
+        if (intrinsic.name.equals(plugin.name)) {
+            if (intrinsic.descriptor.startsWith(plugin.argumentsDescriptor)) {
                 if (type.equals(intrinsic.declaringClass)) {
                     return true;
                 }
@@ -74,14 +73,14 @@ public class CheckGraalIntrinsics extends GraalTest {
         return false;
     }
 
-    public static InvocationPlugin findPlugin(EconomicMap<String, List<Binding>> bindings, VMIntrinsicMethod intrinsic) {
-        MapCursor<String, List<Binding>> cursor = bindings.getEntries();
+    public static InvocationPlugin findPlugin(EconomicMap<String, List<InvocationPlugin>> invocationPluginsMap, VMIntrinsicMethod intrinsic) {
+        MapCursor<String, List<InvocationPlugin>> cursor = invocationPluginsMap.getEntries();
         while (cursor.advance()) {
             // Match format of VMIntrinsicMethod.declaringClass
             String type = MetaUtil.internalNameToJava(cursor.getKey(), true, false).replace('.', '/');
-            for (Binding binding : cursor.getValue()) {
-                if (match(type, binding, intrinsic)) {
-                    return binding.plugin;
+            for (InvocationPlugin plugin : cursor.getValue()) {
+                if (match(type, plugin, intrinsic)) {
+                    return plugin;
                 }
             }
         }
@@ -143,9 +142,9 @@ public class CheckGraalIntrinsics extends GraalTest {
         List<String> missing = new ArrayList<>();
         List<String> mischaracterizedAsToBeInvestigated = new ArrayList<>();
         List<String> mischaracterizedAsIgnored = new ArrayList<>();
-        EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings(true);
+        EconomicMap<String, List<InvocationPlugin>> invocationPluginsMap = invocationPlugins.getInvocationPlugins(true);
         for (VMIntrinsicMethod intrinsic : intrinsics) {
-            InvocationPlugin plugin = findPlugin(bindings, intrinsic);
+            InvocationPlugin plugin = findPlugin(invocationPluginsMap, intrinsic);
             String m = String.format("%s.%s%s", intrinsic.declaringClass, intrinsic.name, intrinsic.descriptor);
             if (plugin == null) {
                 ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
@@ -170,17 +169,17 @@ public class CheckGraalIntrinsics extends GraalTest {
         Formatter errorMsgBuf = new Formatter();
         if (!missing.isEmpty()) {
             Collections.sort(missing);
-            String missingString = missing.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = missing.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("missing Graal intrinsics for:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
             Collections.sort(mischaracterizedAsToBeInvestigated);
-            String missingString = mischaracterizedAsToBeInvestigated.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = mischaracterizedAsToBeInvestigated.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("found plugins for intrinsics characterized as toBeInvestigated:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsIgnored.isEmpty()) {
             Collections.sort(mischaracterizedAsIgnored);
-            String missingString = mischaracterizedAsIgnored.stream().collect(Collectors.joining(String.format("%n    ")));
+            String missingString = mischaracterizedAsIgnored.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("found plugins for intrinsics characterized as IGNORED:%n    %s%n", missingString);
         }
         String errorMsg = errorMsgBuf.toString();

@@ -26,7 +26,11 @@ package com.oracle.svm.core.c.enums;
 
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public abstract class EnumRuntimeData {
+    private static final NullPointerException CACHED_NULL_EXCEPTION = new NullPointerException(
+                    "null enum object cannot be converted to C enum integer (typically for automatic conversions on return to C code)");
 
     private final long[] javaToC;
 
@@ -34,9 +38,10 @@ public abstract class EnumRuntimeData {
         this.javaToC = javaToC;
     }
 
+    @Uninterruptible(reason = "Used in uninterruptible entry point code.", mayBeInlined = true)
     protected long convertJavaToCLong(Enum<?> javaValue) {
         if (javaValue == null) {
-            throw new RuntimeException("null return value cannot be converted to a C enum value");
+            throw CACHED_NULL_EXCEPTION;
         }
         return javaToC[javaValue.ordinal()];
     }
@@ -46,6 +51,7 @@ public abstract class EnumRuntimeData {
      * a call to the {@link CEnumValue} annotated method, we must match the slot-count of the
      * original method otherwise frame state handling gets confused.
      */
+    @Uninterruptible(reason = "Used in uninterruptible entry point code.", mayBeInlined = true)
     protected int convertJavaToCInt(Enum<?> javaValue) {
         return (int) convertJavaToCLong(javaValue);
     }

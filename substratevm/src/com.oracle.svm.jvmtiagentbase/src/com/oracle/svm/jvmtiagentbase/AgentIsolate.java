@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -51,7 +51,7 @@ public final class AgentIsolate {
 
         @Uninterruptible(reason = "prologue")
         static void enter() {
-            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), true);
+            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), false, true);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
@@ -65,7 +65,7 @@ public final class AgentIsolate {
             if (global.isNull()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            return CEntryPointActions.enterIsolate(global);
+            return CEntryPointActions.enterByIsolate(global);
         }
     }
 

@@ -55,5 +55,8 @@ public class GraalCompilerOptions {
     public static final OptionKey<Integer> MaxCompilationProblemsPerAction = new OptionKey<>(2);
     @Option(help = "Alias for CompilationFailureAction=ExitVM.", type = OptionType.User)
     public static final OptionKey<Boolean> ExitVMOnException = new OptionKey<>(false);
+    @Option(help = "The number of seconds by which to slow down each compilation. The compilations slowed down " +
+                   "can be restricted with MethodFilter. This option exists to test the compilation watchdog.", type = OptionType.Debug)
+    public static final OptionKey<Integer> InjectedCompilationDelay = new OptionKey<>(0);
     // @formatter:on
 }

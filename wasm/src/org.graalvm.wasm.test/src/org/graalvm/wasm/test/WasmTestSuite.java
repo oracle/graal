@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,25 @@
  */
 package org.graalvm.wasm.test;
 
+import org.graalvm.wasm.test.suites.ExtraDataSuite;
 import org.graalvm.wasm.test.suites.WasmImplementationLimitationsSuite;
 import org.graalvm.wasm.test.suites.arithmetic.Float32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
+import org.graalvm.wasm.test.suites.arithmetic.ReferenceTypeSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
 import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
+import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
+import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
+import org.graalvm.wasm.test.suites.table.TableSuite;
+import org.graalvm.wasm.test.suites.validation.MultiValueValidationSuite;
 import org.graalvm.wasm.test.suites.validation.ValidationSuite;
 import org.graalvm.wasm.test.suites.wasi.WasiSuite;
 import org.graalvm.wasm.test.suites.webassembly.EmscriptenSuite;
@@ -67,23 +73,30 @@ import org.junit.runners.Suite;
                 Integer64Suite.class,
                 Float32Suite.class,
                 Float64Suite.class,
+                ReferenceTypeSuite.class,
                 SimpleBlockSuite.class,
                 BlockWithLocalsSuite.class,
                 BranchBlockSuite.class,
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
                 MemorySuite.class,
+                TableSuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
+                MultiValueSuite.class,
                 EmscriptenSuite.class,
                 WasiSuite.class,
                 LinkerSuite.class,
                 WasmPolyglotTestSuite.class,
                 WasmJsApiSuite.class,
                 ValidationSuite.class,
+                MultiValueValidationSuite.class,
+                ReferenceTypesValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
+                ExtraDataSuite.class
 })
+
 public class WasmTestSuite {
     @Test
     public void test() {

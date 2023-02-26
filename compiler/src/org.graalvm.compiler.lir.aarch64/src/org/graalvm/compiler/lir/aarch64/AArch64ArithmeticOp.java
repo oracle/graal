@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.JavaConstant;
 public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported
     NEG,
+    NEGS,
     NOT,
     ADD(ADDSUBTRACT),
     ADDS(ADDSUBTRACT),
@@ -72,6 +73,10 @@ public enum AArch64ArithmeticOp {
     REM,
     UDIV,
     UREM,
+    SMAX,
+    SMIN,
+    UMAX,
+    UMIN,
     AND(LOGICAL),
     ANDS(LOGICAL),
     OR(LOGICAL),
@@ -152,6 +157,9 @@ public enum AArch64ArithmeticOp {
             switch (opcode) {
                 case NEG:
                     masm.sub(size, dst, zr, src);
+                    break;
+                case NEGS:
+                    masm.subs(size, dst, zr, src);
                     break;
                 case FNEG:
                     masm.fneg(size, dst, src);
@@ -932,6 +940,18 @@ public enum AArch64ArithmeticOp {
                     masm.neon.mulVVV(size, eSize, dst, src1, src2);
                     /* Next negate value. */
                     masm.neon.negVV(size, eSize, dst, dst);
+                    break;
+                case SMAX:
+                    masm.neon.smaxVVV(size, eSize, dst, src1, src2);
+                    break;
+                case SMIN:
+                    masm.neon.sminVVV(size, eSize, dst, src1, src2);
+                    break;
+                case UMAX:
+                    masm.neon.umaxVVV(size, eSize, dst, src1, src2);
+                    break;
+                case UMIN:
+                    masm.neon.uminVVV(size, eSize, dst, src1, src2);
                     break;
                 case FADD:
                     masm.neon.faddVVV(size, eSize, dst, src1, src2);

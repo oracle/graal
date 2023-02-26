@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,6 +27,7 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
@@ -147,7 +148,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // Pre loop: align base according to the supported bulk zeroing stride.
                 masm.jmp(preCheck);
 
-                masm.align(crb.target.wordSize * 2);
+                masm.align(PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(preLoop);
                 masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
                 masm.bind(preCheck);
@@ -157,7 +158,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // Main loop: bulk zeroing
                 masm.jmp(mainCheck);
 
-                masm.align(crb.target.wordSize * 2);
+                masm.align(PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(mainLoop);
                 masm.dc(AArch64Assembler.DataCacheOperationType.ZVA, base);
                 masm.add(64, base, base, zvaLength);
@@ -170,7 +171,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // Post loop: handle bytes after the main loop
                 masm.jmp(postCheck);
 
-                masm.align(crb.target.wordSize * 2);
+                masm.align(PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(postLoop);
                 masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
                 masm.bind(postCheck);
@@ -197,7 +198,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 masm.jmp(mainCheck);
 
                 // The STP loop that zeros 16 bytes in each iteration.
-                masm.align(crb.target.wordSize * 2);
+                masm.align(PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(mainLoop);
                 masm.stp(64, zr, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, base, 2 * 8));
                 masm.bind(mainCheck);
@@ -221,7 +222,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 masm.cbz(64, size, done);
                 // We have to ensure size > 0 when entering the following loop
-                masm.align(crb.target.wordSize * 2);
+                masm.align(PREFERRED_LOOP_ALIGNMENT);
                 masm.bind(perByteZeroingLoop);
                 masm.str(8, zr, AArch64Address.createImmediateAddress(8, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 1));
                 masm.subs(64, size, size, 1);

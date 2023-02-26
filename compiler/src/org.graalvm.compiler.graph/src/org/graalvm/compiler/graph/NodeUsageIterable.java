@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.graph;
 
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 
 import java.util.Iterator;
 
@@ -40,7 +40,7 @@ class NodeUsageIterable implements NodeIterable<Node> {
 
     @Override
     public NodeUsageIterator iterator() {
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             return new NodeUsageWithModCountIterator(node);
         } else {
             return new NodeUsageIterator(node);

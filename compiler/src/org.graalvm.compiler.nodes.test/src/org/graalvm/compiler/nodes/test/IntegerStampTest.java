@@ -28,6 +28,7 @@ import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.test.GraphTest;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -51,6 +53,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -641,5 +644,136 @@ public class IntegerStampTest extends GraphTest {
                 }
             }
         }
+    }
+
+    private static boolean readStampCanBeZero(IntegerStamp s) {
+        Field f;
+        try {
+            f = s.getClass().getDeclaredField("canBeZero");
+            f.setAccessible(true);
+            return (boolean) f.get(s);
+        } catch (Throwable t) {
+            throw GraalError.shouldNotReachHere(t);
+        }
+    }
+
+    private static void assertNeverZero(IntegerStamp s) {
+        Assert.assertFalse(s.contains(0));
+        Assert.assertFalse(readStampCanBeZero(s));
+    }
+
+    private static void assertCanBeZero(IntegerStamp s) {
+        Assert.assertTrue("Stamp " + s + " must contain zero", s.contains(0));
+        Assert.assertTrue("Stamp " + s + " must have the canBeZero flag set", readStampCanBeZero(s));
+    }
+
+    @Test
+    public void testCanBeZero01() {
+        IntegerStamp a = StampFactory.forInteger(32, 0, 0);
+        Assert.assertTrue(a.contains(0));
+        Assert.assertTrue(readStampCanBeZero(a));
+    }
+
+    @Test
+    public void testCanBeZero02() {
+        IntegerStamp a = StampFactory.forInteger(32, 1, 1);
+        assertNeverZero(a);
+    }
+
+    @Test
+    public void testCanBeZero03() {
+        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
+        IntegerStamp b = StampFactory.forInteger(32, 2, 2);
+        assertNeverZero(a);
+        assertNeverZero(b);
+        IntegerStamp union = (IntegerStamp) a.meet(b);
+        assertNeverZero(union);
+    }
+
+    @Test
+    public void testCanBeZero04() {
+        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
+        IntegerStamp b = StampFactory.forInteger(32, 0, 0);
+        assertNeverZero(a);
+        assertCanBeZero(b);
+        IntegerStamp union = (IntegerStamp) a.meet(b);
+        assertCanBeZero(union);
+    }
+
+    @Test
+    public void testCanBeZero05() {
+        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
+        IntegerStamp b = StampFactory.forInteger(32, 2, 2);
+        assertNeverZero(a);
+        assertNeverZero(b);
+        IntegerStamp joined = a.join(b);
+        assertNeverZero(joined);
+    }
+
+    @Test
+    public void testCanBeZero06() {
+        IntegerStamp a = StampFactory.forInteger(32, -2, 0);
+        IntegerStamp b = StampFactory.forInteger(32, 0, 2);
+        assertCanBeZero(a);
+        assertCanBeZero(b);
+        IntegerStamp joined = a.join(b);
+        assertCanBeZero(joined);
+    }
+
+    @Test
+    public void testCanBeZero07() {
+        IntegerStamp notReallyUnrestricted = IntegerStamp.create(32, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, CodeUtil.mask(32), false);
+        Assert.assertFalse(notReallyUnrestricted.isUnrestricted());
+    }
+
+    @Test
+    public void testCanBeZero08() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        Assert.assertNotEquals(stampWithZero.hashCode(), stampWithoutZero.hashCode());
+    }
+
+    @Test
+    public void testCanBeZero09() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        Assert.assertFalse(stampWithoutZero.equals(stampWithZero));
+    }
+
+    @Test
+    public void testCanBeZero10() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        assertNeverZero(stampWithoutZero);
+        assertCanBeZero(stampWithZero);
+        IntegerStamp union = (IntegerStamp) stampWithZero.meet(stampWithoutZero);
+        assertCanBeZero(union);
+    }
+
+    @Test
+    public void testCanBeZero11() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        Assert.assertNotEquals(stampWithZero.toString(), stampWithoutZero.toString());
+    }
+
+    @Test
+    public void testCanBeZero12() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        assertNeverZero(stampWithoutZero);
+        assertCanBeZero(stampWithZero);
+        IntegerStamp join = stampWithZero.join(stampWithoutZero);
+        assertNeverZero(join);
+    }
+
+    @Test
+    public void testCanBeZero13() {
+        IntegerStamp stampWithoutZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), false);
+        IntegerStamp stampWithZero = IntegerStamp.create(32, -2, 2, 0, CodeUtil.mask(32), true);
+        assertNeverZero(stampWithoutZero);
+        assertCanBeZero(stampWithZero);
+        IntegerStamp union = (IntegerStamp) stampWithZero.meet(stampWithoutZero);
+        assertCanBeZero(union);
     }
 }

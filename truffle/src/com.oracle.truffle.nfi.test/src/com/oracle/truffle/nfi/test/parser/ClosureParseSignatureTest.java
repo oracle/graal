@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
     }
 
     private static Matcher<Object> isClosureType(Validator v) {
-        return new TypeSafeMatcher<Object>(TestClosure.class) {
+        return new TypeSafeMatcher<>(TestClosure.class) {
 
             @Override
             protected boolean matchesSafely(Object item) {
@@ -83,7 +83,7 @@ public class ClosureParseSignatureTest extends ParseSignatureTest {
 
     private static Object[] mkCallableArgs(int argCount) {
         Object[] ret = new Object[argCount];
-        // need to have something that's executable, even though it's never actuall called
+        // need to have something that's executable, even though it's never actually called
         Arrays.fill(ret, new TestCallback(0, null));
         return ret;
     }

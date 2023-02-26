@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,14 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
+
+if(WIN32)
+  link_libraries(pthread)
+else()
+  set(CMAKE_C_FLAGS "-pthread")
+  set(CMAKE_C_LINK_FLAGS "-pthread")
+endif()
 
 include(SulongTestSuite)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,9 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 
-public final class Suites {
+import jdk.vm.ci.code.Architecture;
+
+public class Suites {
 
     private final PhaseSuite<HighTierContext> highTier;
     private final PhaseSuite<MidTierContext> midTier;
@@ -57,8 +59,8 @@ public final class Suites {
         this.lowTier = lowTier;
     }
 
-    public static Suites createSuites(CompilerConfiguration config, OptionValues options) {
-        return new Suites(config.createHighTier(options), config.createMidTier(options), config.createLowTier(options));
+    public static Suites createSuites(CompilerConfiguration config, OptionValues options, Architecture arch) {
+        return new Suites(config.createHighTier(options), config.createMidTier(options), config.createLowTier(options, arch));
     }
 
     public static LIRSuites createLIRSuites(CompilerConfiguration config, OptionValues options) {

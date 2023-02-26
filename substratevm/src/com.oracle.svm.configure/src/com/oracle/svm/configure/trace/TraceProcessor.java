@@ -29,16 +29,11 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.util.List;
-import java.util.Map;
 
-import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
-import com.oracle.svm.configure.config.ProxyConfiguration;
-import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.configure.config.SerializationConfiguration;
-import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.json.JSONParser;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.util.json.JSONParser;
+
+import com.oracle.svm.configure.config.ConfigurationSet;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -47,103 +42,30 @@ public class TraceProcessor extends AbstractProcessor {
     private final SerializationProcessor serializationProcessor;
     private final ClassLoadingProcessor classLoadingProcessor;
 
-    private final TraceProcessor omittedConfigProcessor;
-
-    public TraceProcessor(AccessAdvisor accessAdvisor, TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
-                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration,
-                    PredefinedClassesConfiguration predefinedClassesConfiguration, TraceProcessor omittedConfigProcessor) {
+    public TraceProcessor(AccessAdvisor accessAdvisor) {
         advisor = accessAdvisor;
-        jniProcessor = new JniProcessor(this.advisor, jniConfiguration, reflectionConfiguration);
-        reflectionProcessor = new ReflectionProcessor(this.advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
-        serializationProcessor = new SerializationProcessor(this.advisor, serializationConfiguration);
-        classLoadingProcessor = new ClassLoadingProcessor(predefinedClassesConfiguration);
-        this.omittedConfigProcessor = omittedConfigProcessor;
-    }
-
-    public TypeConfiguration getJniConfiguration() {
-        TypeConfiguration result = jniProcessor.getConfiguration();
-        if (omittedConfigProcessor != null) {
-            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.jniProcessor.getConfiguration());
-        }
-        return result;
-    }
-
-    public TypeConfiguration getReflectionConfiguration() {
-        TypeConfiguration result = reflectionProcessor.getConfiguration();
-        if (omittedConfigProcessor != null) {
-            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.reflectionProcessor.getConfiguration());
-        }
-        return result;
-    }
-
-    public ProxyConfiguration getProxyConfiguration() {
-        ProxyConfiguration result = reflectionProcessor.getProxyConfiguration();
-        if (omittedConfigProcessor != null) {
-            result = new ProxyConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getProxyConfiguration());
-        }
-        return result;
-    }
-
-    public ResourceConfiguration getResourceConfiguration() {
-        ResourceConfiguration result = reflectionProcessor.getResourceConfiguration();
-        if (omittedConfigProcessor != null) {
-            result = new ResourceConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getResourceConfiguration());
-        }
-        return result;
-    }
-
-    public SerializationConfiguration getSerializationConfiguration() {
-        SerializationConfiguration result = serializationProcessor.getSerializationConfiguration();
-        if (omittedConfigProcessor != null) {
-            result = new SerializationConfiguration(result);
-            result.removeAll(omittedConfigProcessor.serializationProcessor.getSerializationConfiguration());
-        }
-        return result;
-    }
-
-    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
-        return classLoadingProcessor.getPredefinedClassesConfiguration();
-    }
-
-    public ConfigurationBase getConfiguration(ConfigurationFile configFile) {
-        assert configFile.canBeGeneratedByAgent();
-        switch (configFile) {
-            case DYNAMIC_PROXY:
-                return getProxyConfiguration();
-            case JNI:
-                return getJniConfiguration();
-            case REFLECTION:
-                return getReflectionConfiguration();
-            case RESOURCES:
-                return getResourceConfiguration();
-            case SERIALIZATION:
-                return getSerializationConfiguration();
-            case PREDEFINED_CLASSES_NAME:
-                return getPredefinedClassesConfiguration();
-            default:
-                assert false; // should never reach here
-        }
-        return null;
+        jniProcessor = new JniProcessor(this.advisor);
+        reflectionProcessor = new ReflectionProcessor(this.advisor);
+        serializationProcessor = new SerializationProcessor(this.advisor);
+        classLoadingProcessor = new ClassLoadingProcessor();
     }
 
     @SuppressWarnings("unchecked")
-    public void process(Reader reader) throws IOException {
+    public void process(Reader reader, ConfigurationSet configurationSet) throws IOException {
         setInLivePhase(false);
         JSONParser parser = new JSONParser(reader);
-        List<Map<String, ?>> trace = (List<Map<String, ?>>) parser.parse();
-        processTrace(trace);
+        List<EconomicMap<String, ?>> trace = (List<EconomicMap<String, ?>>) parser.parse();
+        processTrace(trace, configurationSet);
     }
 
-    private void processTrace(List<Map<String, ?>> trace) {
-        for (Map<String, ?> entry : trace) {
-            processEntry(entry);
+    private void processTrace(List<EconomicMap<String, ?>> trace, ConfigurationSet configurationSet) {
+        for (EconomicMap<String, ?> entry : trace) {
+            processEntry(entry, configurationSet);
         }
     }
 
     @Override
-    public void processEntry(Map<String, ?> entry) {
+    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         try {
             String tracer = (String) entry.get("tracer");
             switch (tracer) {
@@ -159,16 +81,16 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
                 }
                 case "jni":
-                    jniProcessor.processEntry(entry);
+                    jniProcessor.processEntry(entry, configurationSet);
                     break;
                 case "reflect":
-                    reflectionProcessor.processEntry(entry);
+                    reflectionProcessor.processEntry(entry, configurationSet);
                     break;
                 case "serialization":
-                    serializationProcessor.processEntry(entry);
+                    serializationProcessor.processEntry(entry, configurationSet);
                     break;
                 case "classloading":
-                    classLoadingProcessor.processEntry(entry);
+                    classLoadingProcessor.processEntry(entry, configurationSet);
                     break;
                 default:
                     logWarning("Unknown tracer, ignoring: " + tracer);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -104,7 +104,7 @@ public class MultiContextBuiltinsTest {
         Assume.assumeThat("test only valid in native mode", toolchain.getIdentifier(), is("native"));
 
         List<TruffleFile> paths = toolchain.getPaths("LD_LIBRARY_PATH");
-        String libname = "libgraalvm-llvm." + NativeContextExtension.getNativeLibrarySuffixVersioned(1);
+        String libname = NativeContextExtension.getNativeLibraryVersioned("graalvm-llvm", 1);
         for (TruffleFile p : paths) {
             TruffleFile libLlvm = p.resolve(libname);
             if (libLlvm.exists()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,6 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdint.h>
+
 void abort();
 
 int add(int a, int b) {
@@ -41,14 +43,28 @@ int mul(int a, int b) {
 int div(int a, int b) {
     return a / b;
 }
-
 int rem(int a, int b) {
     return a % b;
 }
 
-long arr[5] = { (long) &add, (long) &sub, (long) &mul, (long) &div, (long) &rem };
+#ifdef _WIN32
+int64_t arr[5];
+void init_arr() {
+    // Windows does not support function pointers as compile time constants.
+    arr[0] = (int64_t) &add;
+    arr[1] = (int64_t) &sub;
+    arr[2] = (int64_t) &mul;
+    arr[3] = (int64_t) &div;
+    arr[4] = (int64_t) &rem;
+}
+#else
+int64_t arr[5] = { (int64_t) &add, (int64_t) &sub, (int64_t) &mul, (int64_t) &div, (int64_t) &rem };
+#endif
 
 int main() {
+#ifdef _WIN32
+    init_arr();
+#endif
     int i;
     int sum = 0;
     for (i = 0; i < 10000; i++) {

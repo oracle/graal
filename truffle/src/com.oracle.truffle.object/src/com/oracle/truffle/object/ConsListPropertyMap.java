@@ -138,7 +138,7 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Set<Object> keySet() {
-        return new AbstractSet<Object>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Object> iterator() {
                 return ConsListPropertyMap.this.orderedKeyIterator();
@@ -152,7 +152,7 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Collection<Property> values() {
-        return new AbstractSet<Property>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Property> iterator() {
                 return ConsListPropertyMap.this.orderedValueIterator();
@@ -166,7 +166,7 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Set<Map.Entry<Object, Property>> entrySet() {
-        return new AbstractSet<Map.Entry<Object, Property>>() {
+        return new AbstractSet<>() {
             @SuppressWarnings("unchecked")
             @Override
             public Iterator<Map.Entry<Object, Property>> iterator() {
@@ -186,10 +186,10 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Set<Map.Entry<Object, Property>> reverseOrderEntrySet() {
-        return new AbstractSet<Map.Entry<Object, Property>>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Map.Entry<Object, Property>> iterator() {
-                return new Iterator<Map.Entry<Object, Property>>() {
+                return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
                     public Entry<Object, Property> next() {
@@ -237,10 +237,10 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Set<Object> reverseOrderKeys() {
-        return new AbstractSet<Object>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Object> iterator() {
-                return new Iterator<Object>() {
+                return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
                     public Object next() {
@@ -288,10 +288,10 @@ final class ConsListPropertyMap extends PropertyMap {
     }
 
     public Set<Property> reverseOrderValues() {
-        return new AbstractSet<Property>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Property> iterator() {
-                return new Iterator<Property>() {
+                return new Iterator<>() {
                     ConsListPropertyMap current = ConsListPropertyMap.this;
 
                     public Property next() {

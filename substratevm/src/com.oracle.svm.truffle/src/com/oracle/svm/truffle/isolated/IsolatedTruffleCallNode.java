@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
@@ -57,23 +56,20 @@ final class IsolatedTruffleCallNode extends IsolatedObjectProxy<TruffleCallNode>
         return isInliningForced0(IsolatedCompileContext.get().getClient(), handle);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<SubstrateCompilableTruffleAST> getCurrentCallTarget0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         CompilableTruffleAST target = node.getCurrentCallTarget();
         return IsolatedCompileClient.get().hand((SubstrateCompilableTruffleAST) target);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static int getCallCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         return node.getCallCount();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static boolean isInliningForced0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         return node.isInliningForced();

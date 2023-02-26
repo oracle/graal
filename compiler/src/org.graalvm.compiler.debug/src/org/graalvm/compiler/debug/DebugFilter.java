@@ -107,19 +107,26 @@ final class DebugFilter {
     }
 
     /**
-     * Check whether a given input is matched by this filter, and determine the log level.
+     * Check whether {@link Scope#getQualifiedName()} is matched by this filter, and determine the
+     * log level.
      */
-    public int matchLevel(String input) {
+    public int matchLevel(DebugContext.Scope scope) {
         if (terms == null) {
             return DebugContext.BASIC_LEVEL;
         } else {
             int defaultLevel = 0;
             int level = -1;
+            String input = null;
             for (Term t : terms) {
                 if (t.isMatchAny()) {
                     defaultLevel = t.level;
-                } else if (t.matches(input)) {
-                    level = t.level;
+                } else {
+                    if (input == null) {
+                        input = scope.getQualifiedName();
+                    }
+                    if (t.matches(input)) {
+                        level = t.level;
+                    }
                 }
             }
             return level == -1 ? defaultLevel : level;

@@ -24,50 +24,118 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.reflect.MethodAccessor;
+
+interface MethodAccessorJDK19 {
+    Object invoke(Object obj, Object[] args, Class<?> caller);
+}
+
 @InternalVMMethod
-public abstract class SubstrateMethodAccessor {
+public final class SubstrateMethodAccessor extends SubstrateAccessor implements MethodAccessor, MethodAccessorJDK19 {
 
-    interface MethodInvokeFunctionPointer extends CFunctionPointer {
-        /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
-        @InvokeJavaFunctionPointer
-        Object invoke(boolean invokeSpecial, Object obj, Object[] args);
+    public static final int STATICALLY_BOUND = -1;
+    public static final int OFFSET_NOT_YET_COMPUTED = 0xdead0001;
+
+    /**
+     * The expected receiver type, which is checked before invoking the {@link #expandSignature}
+     * method, or null for static methods.
+     */
+    private final Class<?> receiverType;
+    /** The actual value is computed after static analysis using a field value transformer. */
+    private int vtableOffset;
+    private final boolean callerSensitiveAdapter;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke,
+                    boolean callerSensitiveAdapter) {
+        super(member, expandSignature, directTarget, initializeBeforeInvoke);
+        this.receiverType = receiverType;
+        this.vtableOffset = vtableOffset;
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
-    private final Executable member;
-    private final CFunctionPointer invokeFunctionPointer;
-
-    protected SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
-        this.member = member;
-        this.invokeFunctionPointer = invokeFunctionPointer;
+    public int getVTableOffset() {
+        return vtableOffset;
     }
 
-    public Object invoke(Object obj, Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
-        if (functionPointer.isNull()) {
-            throw invokeError();
+    private void preInvoke(Object obj) {
+        if (initializeBeforeInvoke != null) {
+            EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
-        return functionPointer.invoke(false, obj, args);
+        if (receiverType != null) {
+            if (obj == null) {
+                /*
+                 * The specification explicitly demands a NullPointerException and not a
+                 * IllegalArgumentException when the receiver of a non-static method is null
+                 */
+                throw new NullPointerException();
+            } else if (!receiverType.isInstance(obj)) {
+                throw new IllegalArgumentException("Receiver type " + obj.getClass().getTypeName() + " is not an instance of the declaring class " + receiverType.getTypeName());
+            }
+        }
     }
 
-    private RuntimeException invokeError() {
-        throw VMError.shouldNotReachHere("No SubstrateMethodAccessor.invokeFunctionPointer for " + member);
+    private CFunctionPointer invokeTarget(Object obj) {
+        /*
+         * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
+         * methods, the directTarget is only used when doing an invokeSpecial.
+         */
+        CFunctionPointer target;
+        if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+            throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+        } else if (vtableOffset != STATICALLY_BOUND) {
+            target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+        } else {
+            target = directTarget;
+        }
+        return target;
+    }
+
+    @Override
+    public Object invoke(Object obj, Object[] args) {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
+        }
+        preInvoke(obj);
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, invokeTarget(obj));
+    }
+
+    @Override
+    public Object invoke(Object obj, Object[] args, Class<?> caller) {
+        if (callerSensitiveAdapter) {
+            preInvoke(obj);
+            return ((MethodInvokeFunctionPointerForCallerSensitiveAdapter) expandSignature).invoke(obj, args, invokeTarget(obj), caller);
+        } else {
+            /* Not a @CallerSensitiveAdapter method, so we can ignore the caller argument. */
+            return invoke(obj, args);
+        }
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
-        if (functionPointer.isNull()) {
-            throw invokeError();
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke method that has a @CallerSensitiveAdapter without an explicit caller");
         }
-        return functionPointer.invoke(true, obj, args);
+        preInvoke(obj);
+
+        CFunctionPointer target = directTarget;
+        if (target.isNull()) {
+            throw new IllegalArgumentException("Cannot do invokespecial for an abstract method");
+        }
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(obj, args, target);
     }
 }

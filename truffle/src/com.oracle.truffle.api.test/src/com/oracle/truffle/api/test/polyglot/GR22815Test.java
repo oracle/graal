@@ -52,11 +52,17 @@ import com.oracle.truffle.sl.SLLanguage;
 @SuppressWarnings({"static-method", "unused"})
 public class GR22815Test {
 
+    /*
+     * Referenced in reflection.json
+     */
     @Export
     public static String log(String msg, Throwable thrown) {
         return "log1";
     }
 
+    /*
+     * Referenced in reflection.json
+     */
     @Export
     public static String log(Throwable thrown, String msgSupplier) {
         return "log2";

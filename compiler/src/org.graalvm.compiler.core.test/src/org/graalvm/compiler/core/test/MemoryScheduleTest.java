@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,22 +36,21 @@ import java.util.List;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -495,14 +494,18 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     /**
      * testing scheduling within a block.
      */
-    public static int testBlockScheduleSnippet() {
+    public static int testBlockScheduleSnippet(Container container2) {
         int res = 0;
+        // Introduce an aliasing write so the read isn't foldable
         container.a = 0x00;
         container.a = 0x10;
         container.a = 0x20;
         container.a = 0x30;
         container.a = 0x40;
+        // Introduce an aliasing write so read elimination can't fold the read
+        container2.a = 1;
         res = container.a;
+        container2.a = 1;
         container.a = 0x50;
         container.a = 0x60;
         container.a = 0x70;
@@ -513,33 +516,29 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     public void testBlockSchedule() {
         ScheduleResult schedule = getFinalSchedule("testBlockScheduleSnippet", TestMode.WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().graph;
-        NodeIterable<WriteNode> writeNodes = graph.getNodes().filter(WriteNode.class);
+        List<WriteNode> writes = graph.getNodes().filter(WriteNode.class).snapshot();
 
-        assertDeepEquals(8, writeNodes.count());
+        assertDeepEquals(4, writes.size());
         assertDeepEquals(1, graph.getNodes().filter(FloatingReadNode.class).count());
 
         FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
 
-        WriteNode[] writes = new WriteNode[8];
-        int i = 0;
-        for (WriteNode n : writeNodes) {
-            writes[i] = n;
-            i++;
-        }
-        assertOrderedAfterSchedule(schedule, writes[4], read);
-        assertOrderedAfterSchedule(schedule, read, writes[5]);
-        for (int j = 0; j < 7; j++) {
-            assertOrderedAfterSchedule(schedule, writes[j], writes[j + 1]);
+        assertOrderedAfterSchedule(schedule, writes.get(0), read);
+        assertOrderedAfterSchedule(schedule, read, writes.get(2));
+        for (int j = 0; j < writes.size() - 1; j++) {
+            assertOrderedAfterSchedule(schedule, writes.get(j), writes.get(j + 1));
         }
     }
 
     /**
      * read should move inside the loop (out of loop is disabled).
      */
-    public static int testBlockSchedule2Snippet(int value) {
+    public static int testBlockSchedule2Snippet(int value, Container container2) {
         int res = 0;
 
         container.a = value;
+        // Introduce an aliasing write so read elimination can't fold the read
+        container2.a = 0;
         for (int i = 0; i < 100; i++) {
             if (i == 10) {
                 return container.a;
@@ -700,24 +699,24 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                 createInliningPhase(canonicalizer).apply(graph, context);
             }
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
 
-            new FloatingReadPhase().apply(graph);
-            new RemoveValueProxyPhase().apply(graph);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
+            new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
 
             MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midContext);
+            new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
 
             if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                 graph.clearAllStateAfterForTestingOnly();
                 // disable state split verification
-                graph.setGuardsStage(GuardsStage.AFTER_FSA);
+                graph.getGraphState().setAfterFSA();
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");
 
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
             LowTierContext lowContext = new LowTierContext(getProviders(), getTargetProvider());
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, lowContext);
+            new LowTierLoweringPhase(canonicalizer).apply(graph, lowContext);
 
             SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
             schedule.apply(graph, getDefaultLowTierContext());

@@ -85,8 +85,9 @@ public final class LoopEndNode extends AbstractEndNode {
      * end. It depends on the guest language implementation framework whether this flag may ever
      * become <code>false</code>.
      * <p>
-     * If Graal is not used to compile a guest language then this flag will be always return
-     * <code>true</code>.
+     * If Graal is not used to compile a guest language then this flag will be <code>false</code>
+     * for all loops seen by the safepoint elimination phase. It will be <code>true</code> before
+     * safepoint elimination.
      * <p>
      * More information on the guest safepoint implementation in Truffle can be found
      * <a href="http://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md">here</a>.
@@ -175,7 +176,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (loopBegin() == null) {
+        if (!(loopBegin instanceof LoopBeginNode) || loopBegin() == null) {
             return CYCLES_UNKNOWN;
         }
         if (canSafepoint()) {
@@ -186,14 +187,14 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
-        if (loopBegin() == null) {
+    protected NodeSize dynamicNodeSizeEstimate() {
+        if (!(loopBegin instanceof LoopBeginNode)) {
             return SIZE_UNKNOWN;
         }
         if (canSafepoint()) {
             return SIZE_2;
         }
-        return super.estimatedNodeSize();
+        return super.dynamicNodeSizeEstimate();
     }
 
     @Override

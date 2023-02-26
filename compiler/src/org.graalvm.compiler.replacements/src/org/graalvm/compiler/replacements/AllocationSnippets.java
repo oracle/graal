@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
@@ -41,14 +43,11 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.code.MemoryBarriers;
-
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
 public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
-                    Word prototypeMarkWord,
                     UnsignedWord size,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
@@ -62,17 +61,16 @@ public abstract class AllocationSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(tlabInfo, newTop);
             emitPrefetchAllocate(newTop, false);
-            result = formatObject(hub, prototypeMarkWord, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
+            result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewInstanceStub(hub, size);
+            result = callNewInstanceStub(hub);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
     }
 
-    protected Object allocateArrayImpl(Word hub,
-                    Word prototypeMarkWord,
+    public Object allocateArrayImpl(Word hub,
                     int length,
                     int arrayBaseOffset,
                     int log2ElementSize,
@@ -97,11 +95,11 @@ public abstract class AllocationSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
+            result = formatArray(hub, allocationSize, length, top, fillContents, emitMemoryBarrier, fillStartOffset, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewArrayStub(hub, length, fillStartOffset);
+            result = callNewArrayStub(hub, length);
         }
         profileAllocation(profilingData, allocationSize);
         return verifyOop(result);
@@ -116,7 +114,7 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
-    private UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
+    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
         return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
@@ -128,8 +126,7 @@ public abstract class AllocationSnippets implements Snippets {
     public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
         long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
         long mask = ~(alignment - 1);
-        long result = size & mask;
-        return result;
+        return size & mask;
     }
 
     /**
@@ -172,13 +169,13 @@ public abstract class AllocationSnippets implements Snippets {
                     AllocationSnippetCounters snippetCounters) {
         ReplacementsUtil.dynamicAssert(endOffset.and(0x7).equal(0), "unaligned object size");
         UnsignedWord offset = WordFactory.unsigned(startOffset);
-        if (offset.and(0x7).notEqual(0)) {
+        if (probability(SLOW_PATH_PROBABILITY, offset.and(0x7).notEqual(0))) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset = offset.add(4);
         }
         ReplacementsUtil.dynamicAssert(offset.and(0x7).equal(0), "unaligned offset");
         UnsignedWord remainingSize = endOffset.subtract(offset);
-        if (manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
+        if (probability(LIKELY_PROBABILITY, manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES))) {
             ReplacementsUtil.staticAssert(!isEndOffsetConstant, "size shouldn't be constant at instantiation time");
             fillMemoryAlignedUnrollable(value, memory, offset, endOffset, supportsOptimizedFilling, snippetCounters);
         } else {
@@ -231,7 +228,7 @@ public abstract class AllocationSnippets implements Snippets {
                 snippetCounters.loopInit.inc();
             }
             UnsignedWord offset = fromOffset;
-            for (; offset.belowThan(endOffset); offset = offset.add(8)) {
+            for (; injectBranchProbability(FAST_PATH_PROBABILITY, offset.belowThan(endOffset)); offset = offset.add(8)) {
                 memory.initializeLong(offset, value, LocationIdentity.init());
             }
         }
@@ -263,55 +260,61 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatObject(Word hub,
-                    Word prototypeMarkWord,
+    public Object formatObject(Word hub,
                     UnsignedWord size,
                     Word memory,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationSnippetCounters snippetCounters) {
-        initializeObjectHeader(memory, hub, prototypeMarkWord, false);
+        initializeObjectHeader(memory, hub, false);
         int headerSize = instanceHeaderSize();
-        if (fillContents == FillContent.WITH_ZEROES) {
-            zeroMemory(memory, headerSize, size, constantSize, false, false, false, snippetCounters);
-        } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
-        }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
-        }
+        fillContents(memory, fillContents, headerSize, size, constantSize, false, false, false, snippetCounters);
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
     }
 
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatArray(Word hub,
-                    Word prototypeMarkWord,
+    public Object formatArray(Word hub,
                     UnsignedWord allocationSize,
                     int length,
                     Word memory,
                     FillContent fillContents,
-                    int fillStartOffset,
                     boolean emitMemoryBarrier,
+                    int fillStartOffset,
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
                     boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
+        /*
+         * For TLAB allocations, the initialization order does not matter. Therefore, it is also not
+         * necessary to use STORE_RELEASE semantics when storing the hub into the newly allocated
+         * object. This is a major difference to the slow-path allocation where the initialization
+         * order and the STORE_RELEASE semantics are crucial for concurrent GCs (the slow-path
+         * allocation can directly allocate in the old generation).
+         */
+        initializeObjectHeader(memory, hub, true);
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
-        // Store hub last as the concurrent garbage collectors assume length is valid if hub field
-        // is not null.
-        initializeObjectHeader(memory, hub, prototypeMarkWord, true);
-        if (fillContents == FillContent.WITH_ZEROES) {
-            zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
-        } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
-        }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
-        }
+        fillContents(memory, fillContents, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
+    }
+
+    private void fillContents(Word memory, FillContent fillContents, int startOffset, UnsignedWord endOffset, boolean isEndOffsetConstant, boolean maybeUnroll, boolean supportsBulkZeroing,
+                    boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
+        if (fillContents == FillContent.WITH_ZEROES) {
+            zeroMemory(memory, startOffset, endOffset, isEndOffsetConstant, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
+            fillWithGarbage(memory, startOffset, endOffset, isEndOffsetConstant, maybeUnroll, supportsOptimizedFilling, snippetCounters);
+        }
+    }
+
+    protected void emitMemoryBarrierIf(boolean emitMemoryBarrier) {
+        if (emitMemoryBarrier) {
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
+        }
     }
 
     public void emitPrefetchAllocate(Word address, boolean isArray) {
@@ -351,16 +354,11 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int instanceHeaderSize();
 
-    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
-
-    @SuppressWarnings("unused")
-    protected Object callNewInstanceStub(Word hub, UnsignedWord size) {
-        return callNewInstanceStub(hub);
-    }
+    public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
 
-    protected abstract Object callNewArrayStub(Word hub, int length, int fillStartOffset);
+    protected abstract Object callNewArrayStub(Word hub, int length);
 
     protected abstract Object callNewMultiArrayStub(Word hub, int rank, Word dims);
 
@@ -388,14 +386,14 @@ public abstract class AllocationSnippets implements Snippets {
     }
 
     public static class AllocationProfilingData {
-        final AllocationSnippetCounters snippetCounters;
+        public final AllocationSnippetCounters snippetCounters;
 
         public AllocationProfilingData(AllocationSnippetCounters snippetCounters) {
             this.snippetCounters = snippetCounters;
         }
     }
 
-    protected static class AllocationSnippetCounters {
+    public static class AllocationSnippetCounters {
         public AllocationSnippetCounters(SnippetCounter.Group.Factory factory) {
             Group allocations = factory.createSnippetCounterGroup("Allocations");
             unrolledInit = new SnippetCounter(allocations, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
@@ -404,9 +402,9 @@ public abstract class AllocationSnippets implements Snippets {
             stub = new SnippetCounter(allocations, "stub", "alloc and zeroing via stub");
         }
 
-        final SnippetCounter unrolledInit;
-        final SnippetCounter loopInit;
-        final SnippetCounter bulkInit;
-        final SnippetCounter stub;
+        public final SnippetCounter unrolledInit;
+        public final SnippetCounter loopInit;
+        public final SnippetCounter bulkInit;
+        public final SnippetCounter stub;
     }
 }

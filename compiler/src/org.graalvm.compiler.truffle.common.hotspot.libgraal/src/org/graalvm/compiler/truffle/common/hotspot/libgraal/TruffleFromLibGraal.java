@@ -64,7 +64,7 @@ public @interface TruffleFromLibGraal {
         CallNodeHashCode(int.class, Object.class),
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
-        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class, long.class),
         CountInlinedCalls(int.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueInlined(void.class, Object.class),
@@ -80,12 +80,10 @@ public @interface TruffleFromLibGraal {
         GetFailedSpeculationsAddress(long.class, Object.class),
         GetFrameSlotKindTagForJavaKind(int.class, Object.class, int.class),
         GetFrameSlotKindTagsCount(int.class, Object.class),
-        GetInlineKind(int.class, Object.class, long.class, boolean.class),
         GetJavaKindForFrameSlotKind(int.class, Object.class, int.class),
         GetKnownCallSiteCount(int.class, Object.class),
         GetLanguage(String.class, Object.class),
         GetLineNumber(int.class, Object.class),
-        GetLoopExplosionKind(int.class, Object.class, long.class),
         GetNodeRewritingAssumptionConstant(long.class, Object.class),
         GetValidRootAssumptionConstant(long.class, Object.class),
         GetNodeId(int.class, Object.class),
@@ -96,8 +94,6 @@ public @interface TruffleFromLibGraal {
         GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
         GetURI(String.class, Object.class),
-        IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
-        IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
@@ -106,7 +102,6 @@ public @interface TruffleFromLibGraal {
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),
         IsTrivial(boolean.class, Object.class),
-        IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
         InliningData(Object.class, Object.class),
         Log(void.class, Object.class, String.class, Object.class, String.class),
@@ -117,9 +112,9 @@ public @interface TruffleFromLibGraal {
         OnGraalTierFinished(void.class, Object.class, Object.class, long.class),
         OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class),
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
+        ReadMethodCache(Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
-        SetCallCount(void.class, Object.class, int.class),
-        SetInlinedCallCount(void.class, Object.class, int.class);
+        SetCallCounts(void.class, Object.class, int.class, int.class);
         // @formatter:on
 
         private final String signature;

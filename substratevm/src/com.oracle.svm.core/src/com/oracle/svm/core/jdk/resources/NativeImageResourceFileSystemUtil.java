@@ -28,8 +28,6 @@ package com.oracle.svm.core.jdk.resources;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.jdk.Resources;
 
 public final class NativeImageResourceFileSystemUtil {
@@ -60,11 +58,7 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static String toRegexPattern(String globPattern) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            return Target_jdk_nio_zipfs_ZipUtils_JDK11OrLater.toRegexPattern(globPattern);
-        } else {
-            return Target_com_sun_nio_zipfs_ZipUtils_JDK8OrEarlier.toRegexPattern(globPattern);
-        }
+        return Target_jdk_nio_zipfs_ZipUtils.toRegexPattern(globPattern);
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {

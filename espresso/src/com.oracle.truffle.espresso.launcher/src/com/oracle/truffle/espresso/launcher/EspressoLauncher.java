@@ -208,6 +208,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndExit;
                     break;
                 case "-showversion":
+                case "--show-version":
                     versionAction = VersionAction.PrintAndContinue;
                     break;
 
@@ -492,9 +493,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
-        int rc = 1;
-
         contextBuilder.allowCreateThread(true);
+        // We use the host system exit for compatibility with the reference implementation.
+        contextBuilder.useSystemExit(true);
+        contextBuilder.option("java.ExitHost", "true");
 
         try (Context context = contextBuilder.build()) {
 
@@ -525,7 +527,16 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 Value mainKlass = launcherHelper //
                                 .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
-                mainKlass.invokeMember("main/([Ljava/lang/String;)V", (Object) mainClassArgs.toArray(new String[0]));
+
+                // Convert arguments to a guest String[], avoiding passing a foreign object right
+                // away to Espresso.
+                Value stringArray = context.getBindings("java").getMember("[Ljava.lang.String;");
+                Value guestMainClassArgs = stringArray.newInstance(mainClassArgs.size());
+                for (int i = 0; i < mainClassArgs.size(); i++) {
+                    guestMainClassArgs.setArrayElement(i, mainClassArgs.get(i));
+                }
+
+                mainKlass.invokeMember("main/([Ljava/lang/String;)V", guestMainClassArgs);
                 if (pauseOnExit) {
                     getError().print("Press any key to continue...");
                     try {
@@ -537,48 +548,15 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             } catch (PolyglotException e) {
                 if (e.isInternalError()) {
                     e.printStackTrace();
+                    throw abort((String) null);
                 } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
-                }
-            } finally {
-                try {
-                    context.eval("java", "<DestroyJavaVM>").execute();
-                } catch (PolyglotException e) {
-                    /*
-                     * If everything went well, an exit exception is expected here. Failure to see
-                     * an exit exception most likely means something went wrong during context
-                     * initialization.
-                     */
-                    if (e.isExit()) {
-                        rc = e.getExitStatus();
-                    } else {
-                        e.printStackTrace();
-                        throw handleUnexpectedDestroy(e);
-                    }
+                    throw abort((String) null);
+                } else {
+                    throw abort((String) null, e.getExitStatus());
                 }
             }
-            /*
-             * We abruptly exit the host system for compatibility with the reference implementation,
-             * and because we have no control over un-registering thread from Truffle, which
-             * sometimes leads to getting an exception on exit when trying to close a context with a
-             * rogue thread in native.
-             * 
-             * Note that since the launcher thread and the main thread are the same, a rogue native
-             * main means we may never return.
-             */
-            System.exit(rc);
         }
-    }
-
-    private AbortException handleUnexpectedDestroy(PolyglotException e) {
-        String message = e.getMessage();
-        if (message != null) {
-            int colonIdx = message.indexOf(':');
-            if (colonIdx >= 0 && colonIdx + 1 < message.length()) {
-                throw abort(message.substring(colonIdx + 1));
-            }
-        }
-        throw abort(message);
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {
@@ -606,6 +584,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         options.add("-classpath");
         options.add("-version");
         options.add("-showversion");
+        options.add("--show-version");
         options.add("-ea");
         options.add("-enableassertions");
         options.add("-esa");

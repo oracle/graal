@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
     @Specialization
     LLVMPointer doAccess(LLVMSymbol symbol,
                     @Cached BranchProfile exception) {
-        LLVMPointer value = getContext().getSymbol(symbol, exception);
+        LLVMPointer value = getContext().getSymbolResolved(symbol, exception);
         if (value != null) {
             return value;
         }

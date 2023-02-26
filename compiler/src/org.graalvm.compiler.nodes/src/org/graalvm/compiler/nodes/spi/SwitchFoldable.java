@@ -243,7 +243,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
                     data = keyData.fromKey(key);
                     if (data.keySuccessor != KeyData.KEY_UNKNOWN) {
                         // Unreachable key: kill it manually at the end
-                        if (!newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor) && keySuccessor.isAlive()) {
+                        if (keySuccessor.isAlive() && !newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor)) {
                             // This might be a false alert, if one of the next keys points to it.
                             duplicates.add(keySuccessor);
                         }

@@ -35,10 +35,11 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 
-// Checkstyle: stop
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
+
 import sun.security.jca.GetInstance;
 
-// Checkstyle: resume
 /**
  * Tests the {@code SecurityServicesFeature}.
  */
@@ -49,6 +50,8 @@ public class SecurityServiceTest {
             // register the providers
             Security.addProvider(new NoOpProvider());
             Security.addProvider(new NoOpProviderTwo());
+            // open sun.security.jca.GetInstance
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, JCACompliantNoOpService.class, ReflectionUtil.lookupClass(false, "sun.security.jca.GetInstance"));
         }
 
         @Override
@@ -85,7 +88,7 @@ public class SecurityServiceTest {
         try {
             JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
             Assert.assertNotNull("No service instance was created", service);
-            Assert.assertThat("Unexpected service implementtation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
+            Assert.assertThat("Unexpected service implementation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
         } catch (NoSuchAlgorithmException e) {
             Assert.fail("Failed to fetch noop service with exception: " + e);
         }

@@ -32,7 +32,7 @@
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 
-JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
+JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     return w.ws_col;
@@ -42,7 +42,7 @@ JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHel
 
 #include <windows.h>
 
-JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
+JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
     CONSOLE_SCREEN_BUFFER_INFO c;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &c);
     return c.srWindow.Right - c.srWindow.Left + 1;

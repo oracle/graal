@@ -1,6 +1,16 @@
 > cp agent-location.js ${TMP_DIR}/agent.js
 > cp agent-fib.js ${TMP_DIR}/fib.js
 > cp agent-fib.js ${TMP_DIR}/fibonacci.js
+> cp distance.js ${TMP_DIR}/distance.js
+> cp distance-trace.js ${TMP_DIR}/distance-trace.js
 > cd ${TMP_DIR}
->[0?] js --experimental-options --insight=agent.js fib.js
->[0?] js --experimental-options --insight=agent.js fibonacci.js
+>[0?] js --insight=agent.js fib.js
+>[0?] js --insight=agent.js fibonacci.js
+>[0] js --insight=distance-trace.js distance.js
+Squares: 9, 16
+Loop var i = 0
+Loop var i = 1
+Loop var i = 2
+Loop var i = 3
+Loop var i = 4
+Loop var i = 5

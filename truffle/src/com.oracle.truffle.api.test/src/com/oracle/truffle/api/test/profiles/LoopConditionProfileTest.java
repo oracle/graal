@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -57,6 +54,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
@@ -74,7 +72,7 @@ public class LoopConditionProfileTest {
 
     @Before
     public void create() {
-        profile = (LoopConditionProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Enabled"), "createLazyLoadClass");
+        profile = ReflectionUtils.newInstance(LoopConditionProfile.class);
     }
 
     private static long getTrueCount(LoopConditionProfile profile) {
@@ -105,7 +103,7 @@ public class LoopConditionProfileTest {
 
     @Theory
     public void testDisabled(boolean value, long length) {
-        LoopConditionProfile p = (LoopConditionProfile) getStaticField(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Disabled"), "INSTANCE");
+        LoopConditionProfile p = LoopConditionProfile.getUncached();
         p.profileCounted(length); // not crashing
         assertThat(p.profile(value), is(value));
         assertThat(p.inject(value), is(value));

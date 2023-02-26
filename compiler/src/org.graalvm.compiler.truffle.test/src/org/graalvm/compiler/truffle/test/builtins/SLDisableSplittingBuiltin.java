@@ -54,7 +54,7 @@ public abstract class SLDisableSplittingBuiltin extends SLGraalRuntimeBuiltin {
     @Specialization
     @TruffleBoundary
     public SLNull disableSplitting(@SuppressWarnings("unused") SLNull argument) {
-        RootNode parentRoot = Truffle.getRuntime().getCallerFrame().getCallNode().getRootNode();
+        RootNode parentRoot = Truffle.getRuntime().iterateFrames((f) -> f.getCallNode().getRootNode(), 1);
         ((SLRootNode) parentRoot).setCloningAllowed(false);
         return SLNull.SINGLETON;
     }

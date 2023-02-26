@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.lang.reflect.Array;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -32,8 +31,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.BlockingSupport;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -41,10 +41,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of the Espresso object model.
@@ -60,7 +58,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
+    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create(BlockingSupport.UNINTERRUPTIBLE);
 
     private final Klass klass; // != PrimitiveKlass
 
@@ -80,182 +78,35 @@ public class StaticObject implements TruffleObject, Cloneable {
         this.klass = klass;
     }
 
-    @ExplodeLoop
-    private void initInstanceFields(ObjectKlass thisKlass) {
-        checkNotForeign();
-        CompilerAsserts.partialEvaluationConstant(thisKlass);
-        for (Field f : thisKlass.getFieldTable()) {
-            assert !f.isStatic();
-            if (!f.isHidden() && !f.isRemoved()) {
-                if (f.getKind() == JavaKind.Object) {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    @ExplodeLoop
-    private void initInitialStaticFields(ObjectKlass thisKlass) {
-        checkNotForeign();
-        CompilerAsserts.partialEvaluationConstant(thisKlass);
-        for (Field f : thisKlass.getInitialStaticFields()) {
-            assert f.isStatic();
-            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
-                if (f.isHidden()) { // extension field
-                    f.setHiddenObject(this, StaticObject.NULL);
-                } else {
-                    f.setObject(this, StaticObject.NULL);
-                }
-            }
-        }
-    }
-
-    public static StaticObject createNew(ObjectKlass klass) {
-        assert !klass.isAbstract() && !klass.isInterface();
-        StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
-        newObj.initInstanceFields(klass);
-        return trackAllocation(klass, newObj);
-    }
-
-    public static StaticObject createClass(Klass klass) {
-        assert klass != null;
-        ObjectKlass guestClass = klass.getMeta().java_lang_Class;
-        StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
-        newObj.initInstanceFields(guestClass);
-        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
-        if (klass.getContext().getJavaVersion().modulesEnabled()) {
-            newObj.setModule(klass);
-        }
-        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
-            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
-        }
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
-        // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
-        return trackAllocation(klass, newObj);
-    }
-
-    public static StaticObject createStatics(ObjectKlass klass) {
-        assert klass != null;
-        StaticObject newObj = klass.getLinkedKlass().getShape(true).getFactory().create(klass);
-        newObj.initInitialStaticFields(klass);
-        return trackAllocation(klass, newObj);
-    }
-
-    // Use an explicit method to create array, avoids confusion.
-    public static StaticObject createArray(ArrayKlass klass, Object array) {
-        assert klass != null;
-        assert array != null;
-        assert !(array instanceof StaticObject);
-        assert array.getClass().isArray();
-        StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
-        EspressoLanguage.getArrayProperty().setObject(newObj, array);
-        return trackAllocation(klass, newObj);
-    }
-
-    /**
-     * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
-     * ForeignException.
-     */
-    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject,
-                    InteropLibrary interopLibrary) {
-        assert meta.polyglot != null;
-        assert meta.getContext().Polyglot;
-        assert interopLibrary.isException(foreignObject);
-        assert !(foreignObject instanceof StaticObject);
-        return createForeign(meta.getEspressoLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
-    }
-
-    public static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
-        if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(lang, foreignObject);
-        }
-        return createForeign(lang, klass, foreignObject);
-    }
-
-    public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
-        assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(lang, null, foreignObject);
-    }
-
-    private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
-        assert foreignObject != null;
-        StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
-        EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
-        assert klass == null || klass.isInitializedOrInitializing();
-        return trackAllocation(klass, newObj);
-    }
-
-    // Shallow copy.
-    public StaticObject copy() {
-        if (isNull(this)) {
-            return this;
-        }
-        checkNotForeign();
-        StaticObject obj;
-        if (getKlass().isArray()) {
-            obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray());
-        } else {
-            try {
-                // Call `this.clone()` rather than `super.clone()` to execute the `clone()` methods
-                // of generated subtypes.
-                obj = (StaticObject) clone();
-            } catch (CloneNotSupportedException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-        return trackAllocation(getKlass(), obj);
-    }
-
     @Override
     @TruffleBoundary
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
     }
 
-    private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        if (klass == null) {
-            return obj;
-        } else {
-            return klass.getContext().trackAllocation(obj);
-        }
-    }
-
     // endregion Constructors
 
-    public boolean isString() {
+    public final boolean isString() {
         return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().java_lang_String;
     }
 
     public static boolean isNull(StaticObject object) {
         assert object != null;
-        assert (object.getKlass() != null) || object == NULL ||
-                        (object.isForeignObject() && InteropLibrary.getUncached().isNull(object.rawForeignObject())) : "klass can only be null for Espresso null (NULL) and interop nulls";
+        // GR-37710: do not call `EspressoLanguage.get(null)`
+        assert (object.getKlass() != null) || object == NULL || (object.isForeignObject() &&
+                        InteropLibrary.getUncached().isNull(object.rawForeignObject(EspressoLanguage.get(null)))) : "klass can only be null for Espresso null (NULL) and interop nulls";
         return object.getKlass() == null;
     }
 
     @ExportMessage
-    public Class<?> dispatch() {
+    public final Class<?> dispatch() {
         if (isNull(this) || isForeignObject()) {
             return BaseInterop.class;
         }
         return getKlass().getDispatch();
     }
 
-    private void setModule(Klass klass) {
-        StaticObject module = klass.module().module();
-        if (StaticObject.isNull(module)) {
-            if (klass.getRegistries().javaBaseDefined()) {
-                klass.getMeta().java_lang_Class_module.setObject(this, klass.getRegistries().getJavaBaseModule().module());
-            } else {
-                klass.getRegistries().addToFixupList(klass);
-            }
-        } else {
-            klass.getMeta().java_lang_Class_module.setObject(this, module);
-        }
-    }
-
-    public Klass getKlass() {
+    public final Klass getKlass() {
         return klass;
     }
 
@@ -270,12 +121,14 @@ public class StaticObject implements TruffleObject, Cloneable {
      * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
      * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
+     *
+     * @param context
      */
     @SuppressFBWarnings(value = "DC", justification = "Implementations of EspressoLock have only final and volatile fields")
-    public EspressoLock getLock() {
+    public final EspressoLock getLock(EspressoContext context) {
         checkNotForeign();
         if (isNull(this)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
         }
         EspressoLock l = lockOrForeignMarker;
@@ -283,7 +136,7 @@ public class StaticObject implements TruffleObject, Cloneable {
             synchronized (this) {
                 l = lockOrForeignMarker;
                 if (l == null) {
-                    lockOrForeignMarker = l = EspressoLock.create();
+                    lockOrForeignMarker = l = EspressoLock.create(context.getBlockingSupport());
                 }
             }
         }
@@ -294,27 +147,32 @@ public class StaticObject implements TruffleObject, Cloneable {
         return !isNull(object);
     }
 
-    public void checkNotForeign() {
-        if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
-        }
+    public final void checkNotForeign() {
+        assert checkNotForeignImpl();
     }
 
-    public boolean isForeignObject() {
+    private boolean checkNotForeignImpl() {
+        if (isForeignObject()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Unexpected foreign object");
+        }
+        return true;
+    }
+
+    public final boolean isForeignObject() {
         return lockOrForeignMarker == FOREIGN_MARKER;
     }
 
-    public boolean isEspressoObject() {
+    public final boolean isEspressoObject() {
         return !isForeignObject();
     }
 
-    public Object rawForeignObject() {
+    public final Object rawForeignObject(EspressoLanguage language) {
         assert isForeignObject();
-        return EspressoLanguage.getForeignProperty().getObject(this);
+        return language.getForeignProperty().getObject(this);
     }
 
-    public boolean isStaticStorage() {
+    public final boolean isStaticStorage() {
         return this == getKlass().getStatics();
     }
 
@@ -324,16 +182,20 @@ public class StaticObject implements TruffleObject, Cloneable {
      * {@code this} is not constant. If performance is a concern, rather use
      * {@link #getMirrorKlass(Meta)}, passing a constant {@link Meta} object.
      */
-    public Klass getMirrorKlass() {
+    public final Klass getMirrorKlass() {
         return getMirrorKlass(getKlass().getMeta());
+    }
+
+    public final boolean isMirrorKlass() {
+        return getKlass().getType() == Type.java_lang_Class && !isStaticStorage();
     }
 
     /**
      * Same as {@link #getMirrorKlass()}, but passing a {@code meta} argument allows some constant
      * folding, even if {@code this} is not constant.
      */
-    public Klass getMirrorKlass(Meta meta) {
-        assert getKlass().getType() == Type.java_lang_Class;
+    public final Klass getMirrorKlass(Meta meta) {
+        assert isMirrorKlass();
         checkNotForeign();
         Klass result = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(this);
         assert result != null : "Uninitialized mirror class";
@@ -342,15 +204,15 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     @TruffleBoundary
     @Override
-    public String toString() {
+    public final String toString() {
         if (this == NULL) {
             return "null";
         }
         if (isForeignObject()) {
             return "foreign object: " + getKlass().getTypeAsString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_String) {
-            Meta meta = getKlass().getMeta();
+        Meta meta = getKlass().getMeta();
+        if (getKlass() == meta.java_lang_String) {
             StaticObject value = meta.java_lang_String_value.getObject(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
@@ -359,24 +221,30 @@ public class StaticObject implements TruffleObject, Cloneable {
             return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
-            return unwrap().toString();
+            return unwrap(meta.getLanguage()).toString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_Class) {
-            return "mirror: " + getMirrorKlass().toString();
+        if (isStaticStorage()) {
+            return "statics: " + getKlass().getType();
+        }
+        if (isMirrorKlass()) {
+            return "mirror: " + getMirrorKlass().getType();
         }
         return getKlass().getType().toString();
     }
 
     @TruffleBoundary
-    public String toVerboseString() {
+    public final String toVerboseString() {
         if (this == NULL) {
             return "null";
         }
-        if (isForeignObject()) {
-            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject()));
+        if (getKlass() == null) {
+            return "foreign object: null";
         }
-        if (getKlass() == getKlass().getMeta().java_lang_String) {
-            Meta meta = getKlass().getMeta();
+        if (isForeignObject()) {
+            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject(getKlass().getContext().getLanguage())));
+        }
+        Meta meta = getKlass().getMeta();
+        if (getKlass() == meta.java_lang_String) {
             StaticObject value = meta.java_lang_String_value.getObject(this);
             if (value == null || isNull(value)) {
                 // Prevents debugger crashes when trying to inspect a string in construction.
@@ -385,20 +253,16 @@ public class StaticObject implements TruffleObject, Cloneable {
             return Meta.toHostStringStatic(this);
         }
         if (isArray()) {
-            return unwrap().toString();
+            return unwrap(meta.getLanguage()).toString();
         }
-        if (getKlass() == getKlass().getMeta().java_lang_Class) {
+        if (getKlass() == meta.java_lang_Class) {
             return "mirror: " + getMirrorKlass().toString();
         }
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
-            // Also prints hidden fields except for the extension field
-            if (!f.isHidden() && !f.isRemoved()) {
+            // Also prints hidden fields
+            if (!f.isRemoved()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
-            } else {
-                if (f != getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD) {
-                    str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObject(this)).toString());
-                }
             }
         }
         return str.toString();
@@ -407,33 +271,33 @@ public class StaticObject implements TruffleObject, Cloneable {
     /**
      * Start of Array manipulation.
      */
-    private Object getArray() {
-        return EspressoLanguage.getArrayProperty().getObject(this);
+    private Object getArray(EspressoLanguage language) {
+        return language.getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T unwrap() {
+    public final <T> T unwrap(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        return (T) getArray();
+        return (T) getArray(language);
     }
 
-    public <T> T get(int index) {
+    public final <T> T get(EspressoLanguage language, int index) {
         checkNotForeign();
         assert isArray();
-        return this.<T[]> unwrap()[index];
+        return this.<T[]> unwrap(language)[index];
     }
 
-    public int length() {
+    public final int length(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        return Array.getLength(getArray());
+        return Array.getLength(getArray(language));
     }
 
-    private Object cloneWrappedArray() {
+    final Object cloneWrappedArray(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
-        Object array = getArray();
+        Object array = getArray(language);
         if (array instanceof byte[]) {
             return ((byte[]) array).clone();
         }
@@ -458,46 +322,67 @@ public class StaticObject implements TruffleObject, Cloneable {
         return ((Object[]) array).clone();
     }
 
-    public static StaticObject wrap(StaticObject[] array, Meta meta) {
-        return createArray(meta.java_lang_Object_array, array);
+    public final StaticObject copy(EspressoContext context) {
+        return context.getAllocator().copy(this);
     }
 
-    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array) {
-        return createArray(klass, array);
+    public static StaticObject createForeign(EspressoLanguage language, Klass klass, Object value, InteropLibrary library) {
+        return GuestAllocator.createForeign(language, klass, value, library);
+    }
+
+    public static StaticObject createForeignException(EspressoContext context, Object value, InteropLibrary library) {
+        return context.getAllocator().createForeignException(context, value, library);
+    }
+
+    public static StaticObject createForeignNull(EspressoLanguage language, Object value) {
+        return GuestAllocator.createForeignNull(language, value);
+    }
+
+    public static StaticObject createArray(ArrayKlass klass, Object array, EspressoContext context) {
+        return context.getAllocator().wrapArrayAs(klass, array);
+    }
+
+    public static StaticObject wrap(StaticObject[] array, Meta meta) {
+        return meta.getAllocator().wrapArrayAs(meta.java_lang_Object_array, array);
+    }
+
+    public static StaticObject wrap(ArrayKlass klass, StaticObject[] array, Meta meta) {
+        return meta.getAllocator().wrapArrayAs(klass, array);
     }
 
     public static StaticObject wrap(byte[] array, Meta meta) {
-        return createArray(meta._byte_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._byte_array, array);
     }
 
     public static StaticObject wrap(char[] array, Meta meta) {
-        return createArray(meta._char_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._char_array, array);
     }
 
     public static StaticObject wrap(short[] array, Meta meta) {
-        return createArray(meta._short_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._short_array, array);
     }
 
     public static StaticObject wrap(int[] array, Meta meta) {
-        return createArray(meta._int_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._int_array, array);
     }
 
     public static StaticObject wrap(float[] array, Meta meta) {
-        return createArray(meta._float_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._float_array, array);
     }
 
     public static StaticObject wrap(double[] array, Meta meta) {
-        return createArray(meta._double_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._double_array, array);
     }
 
     public static StaticObject wrap(long[] array, Meta meta) {
-        return createArray(meta._long_array, array);
+        return meta.getAllocator().wrapArrayAs(meta._long_array, array);
     }
 
     public static StaticObject wrapPrimitiveArray(Object array, Meta meta) {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Cannot wrap a boolean[]. Create a byte[] and call `StaticObject.createArray(meta._boolean_array, byteArray)`.");
         }
         if (array instanceof byte[]) {
@@ -521,10 +406,11 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (array instanceof long[]) {
             return wrap((long[]) array, meta);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Not a primitive array " + array);
     }
 
-    public boolean isArray() {
+    public final boolean isArray() {
         return !isNull(this) && getKlass().isArray();
     }
 

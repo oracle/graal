@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.collections.Pair;
-
-//Checkstyle: allow reflection
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -39,11 +34,14 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.spi.LocaleServiceProvider;
 
-//Checkstyle: stop
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.ReflectionUtil;
+
 import sun.util.locale.provider.LocaleProviderAdapter;
-//Checkstyle: resume
 
 public class OptimizedLocalizationSupport extends LocalizationSupport {
     public final Map<Pair<Class<? extends LocaleServiceProvider>, Locale>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();

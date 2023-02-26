@@ -38,10 +38,16 @@ public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFa
 
     public static final String NAME = "economy";
 
+    public static final String INFO = "Graal Economy compiler";
+
     public static final int AUTO_SELECTION_PRIORITY = 1;
 
     public EconomyCompilerConfigurationFactory() {
-        super(NAME, AUTO_SELECTION_PRIORITY);
+        this(AUTO_SELECTION_PRIORITY, INFO);
+    }
+
+    protected EconomyCompilerConfigurationFactory(int autoSelectionPriority, String info) {
+        super(NAME, info, autoSelectionPriority);
     }
 
     @Override

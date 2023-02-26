@@ -24,14 +24,15 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
@@ -40,33 +41,67 @@ import org.graalvm.compiler.nodes.StructuredGraph;
  */
 public class EffectList implements Iterable<EffectList.Effect> {
 
-    public interface Effect {
-        default boolean isVisible() {
+    public abstract static class Effect {
+        private final String name;
+
+        public Effect(String name) {
+            this.name = name;
+        }
+
+        boolean isVisible() {
             return true;
         }
 
-        default boolean isCfgKill() {
+        boolean isCfgKill() {
             return false;
         }
 
-        void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
+        abstract void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
+
+        @Override
+        public final String toString() {
+            StringBuilder str = new StringBuilder();
+            str.append(name).append(" [");
+            format(str);
+            str.append(']');
+            return str.toString();
+        }
+
+        abstract void format(StringBuilder str);
+
+        void format(StringBuilder str, String[] valueNames, Object[] values) {
+            boolean first = true;
+            for (int i = 0; i < valueNames.length; i++) {
+                str.append(first ? "" : ", ").append(valueNames[i]).append("=").append(formatObject(values[i]));
+                first = false;
+            }
+        }
+
+        private static String formatObject(Object object) {
+            if (object != null && Object[].class.isAssignableFrom(object.getClass())) {
+                return Arrays.toString((Object[]) object);
+            }
+            return String.valueOf(object);
+        }
     }
 
-    public interface SimpleEffect extends Effect {
+    public abstract static class SimpleEffect extends Effect {
+        public SimpleEffect(String name) {
+            super(name);
+        }
+
         @Override
-        default void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+        void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
             apply(graph);
         }
 
-        void apply(StructuredGraph graph);
+        abstract void apply(StructuredGraph graph);
     }
 
     private static final Effect[] EMPTY_ARRAY = new Effect[0];
-    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     private final DebugContext debug;
     private Effect[] effects = EMPTY_ARRAY;
-    private String[] names = EMPTY_STRING_ARRAY;
     private int size;
 
     public EffectList(DebugContext debug) {
@@ -80,31 +115,50 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 length = Math.max(length * 2, 4);
             }
             effects = Arrays.copyOf(effects, length);
-            if (debug.isLogEnabled()) {
-                names = Arrays.copyOf(names, length);
-            }
         }
     }
 
-    public void add(String name, SimpleEffect effect) {
-        add(name, (Effect) effect);
+    public void add(SimpleEffect effect) {
+        add((Effect) effect);
     }
 
-    public void add(String name, Effect effect) {
+    public void add(Effect effect) {
         assert effect != null;
         enlarge(1);
-        if (debug.isLogEnabled()) {
-            names[size] = name;
-        }
         effects[size++] = effect;
+    }
+
+    /**
+     * Adds an effect that reports an optimization happened if the optimization log is enabled.
+     *
+     * @param optimizationLog the optimization log
+     * @param logConsumer the function that reports a transformation
+     */
+    public void addLog(OptimizationLog optimizationLog, Consumer<OptimizationLog> logConsumer) {
+        if (!optimizationLog.isOptimizationLogEnabled()) {
+            return;
+        }
+        add(new SimpleEffect("optimization log") {
+            @Override
+            public boolean isVisible() {
+                return false;
+            }
+
+            @Override
+            public void apply(StructuredGraph graph) {
+                logConsumer.accept(optimizationLog);
+            }
+
+            @Override
+            public void format(StringBuilder str) {
+
+            }
+        });
     }
 
     public void addAll(EffectList list) {
         enlarge(list.size);
         System.arraycopy(list.effects, 0, effects, size, list.size);
-        if (debug.isLogEnabled()) {
-            System.arraycopy(list.names, 0, names, size, list.size);
-        }
         size += list.size;
     }
 
@@ -113,29 +167,16 @@ public class EffectList implements Iterable<EffectList.Effect> {
         enlarge(list.size);
         System.arraycopy(effects, position, effects, position + list.size, size - position);
         System.arraycopy(list.effects, 0, effects, position, list.size);
-        if (debug.isLogEnabled()) {
-            System.arraycopy(names, position, names, position + list.size, size - position);
-            System.arraycopy(list.names, 0, names, position, list.size);
-        }
         size += list.size;
-    }
-
-    public int checkpoint() {
-        return size;
     }
 
     public int size() {
         return size;
     }
 
-    public void backtrack(int checkpoint) {
-        assert checkpoint <= size;
-        size = checkpoint;
-    }
-
     @Override
     public Iterator<Effect> iterator() {
-        return new Iterator<Effect>() {
+        return new Iterator<>() {
 
             int index;
             final int listSize = EffectList.this.size;
@@ -184,45 +225,13 @@ public class EffectList implements Iterable<EffectList.Effect> {
                 try {
                     effect.apply(graph, obsoleteNodes);
                 } catch (Throwable t) {
-                    StringBuilder str = new StringBuilder();
-                    toString(str, i);
-                    throw new GraalError(t).addContext("effect", str);
+                    throw new GraalError(t).addContext("effect", effect);
                 }
                 if (effect.isVisible() && debug.isLogEnabled()) {
-                    StringBuilder str = new StringBuilder();
-                    toString(str, i);
-                    debug.log("    %s", str);
+                    debug.log("    %s", effect);
                 }
             }
         }
-    }
-
-    private void toString(StringBuilder str, int i) {
-        Effect effect = effects[i];
-        str.append(getName(i)).append(" [");
-        boolean first = true;
-        for (Field field : effect.getClass().getDeclaredFields()) {
-            try {
-                field.setAccessible(true);
-                Object object = field.get(effect);
-                if (object == this) {
-                    // Inner classes could capture the EffectList itself.
-                    continue;
-                }
-                str.append(first ? "" : ", ").append(field.getName()).append("=").append(format(object));
-                first = false;
-            } catch (SecurityException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        str.append(']');
-    }
-
-    private static String format(Object object) {
-        if (object != null && Object[].class.isAssignableFrom(object.getClass())) {
-            return Arrays.toString((Object[]) object);
-        }
-        return "" + object;
     }
 
     @Override
@@ -231,18 +240,10 @@ public class EffectList implements Iterable<EffectList.Effect> {
         for (int i = 0; i < size(); i++) {
             Effect effect = get(i);
             if (effect.isVisible()) {
-                toString(str, i);
+                str.append(effects[i]);
                 str.append('\n');
             }
         }
         return str.toString();
-    }
-
-    private String getName(int i) {
-        if (debug.isLogEnabled()) {
-            return names[i];
-        } else {
-            return "";
-        }
     }
 }

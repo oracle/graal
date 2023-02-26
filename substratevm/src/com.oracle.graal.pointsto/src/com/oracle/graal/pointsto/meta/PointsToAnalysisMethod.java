@@ -24,49 +24,70 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
+import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
+public final class PointsToAnalysisMethod extends AnalysisMethod {
 
-public class PointsToAnalysisMethod extends AnalysisMethod {
     private MethodTypeFlow typeFlow;
 
-    private ConcurrentMap<InvokeTypeFlow, Object> invokedBy;
-    private ConcurrentMap<InvokeTypeFlow, Object> implementationInvokedBy;
+    private Set<InvokeTypeFlow> invokedBy;
+    private Set<InvokeTypeFlow> implementationInvokedBy;
+    /**
+     * Unique, per method, per multi-method key, context insensitive invoke. The context insensitive
+     * invoke uses the receiver type of the method, i.e., its declaring-class. Therefore, this
+     * invoke will link with all possible callees.
+     */
+    @SuppressWarnings("unused") private volatile Object contextInsensitiveVirtualInvoke;
+    @SuppressWarnings("unused") private volatile Object contextInsensitiveSpecialInvoke;
+
+    private static final AtomicReferenceFieldUpdater<PointsToAnalysisMethod, Object> VIRTUAL_INVOKE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(PointsToAnalysisMethod.class, Object.class,
+                    "contextInsensitiveVirtualInvoke");
+
+    private static final AtomicReferenceFieldUpdater<PointsToAnalysisMethod, Object> SPECIAL_INVOKE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(PointsToAnalysisMethod.class, Object.class,
+                    "contextInsensitiveSpecialInvoke");
 
     public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        super(universe, wrapped);
-        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
+        super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
+        typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
+    }
+
+    private PointsToAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        super(original, multiMethodKey);
+        typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
     }
 
     @Override
-    public void cleanupAfterAnalysis() {
-        super.cleanupAfterAnalysis();
-        contextInsensitiveInvoke.set(null);
-        typeFlow = null;
-        invokedBy = null;
-        implementationInvokedBy = null;
+    protected AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey) {
+        return new PointsToAnalysisMethod(analysisMethod, newMultiMethodKey);
     }
 
     @Override
     public void startTrackInvocations() {
         if (invokedBy == null) {
-            invokedBy = new ConcurrentHashMap<>();
+            invokedBy = ConcurrentHashMap.newKeySet();
         }
         if (implementationInvokedBy == null) {
-            implementationInvokedBy = new ConcurrentHashMap<>();
+            implementationInvokedBy = ConcurrentHashMap.newKeySet();
         }
     }
 
@@ -74,27 +95,47 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return typeFlow;
     }
 
-    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
-        if (invokedBy != null && invoke != null) {
-            invokedBy.put(invoke, Boolean.TRUE);
+    @Override
+    public boolean registerAsInvoked(Object reason) {
+        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        if (invokedBy != null && reason instanceof InvokeTypeFlow) {
+            invokedBy.add((InvokeTypeFlow) reason);
         }
-        return super.registerAsInvoked();
+        return super.registerAsInvoked(unwrapInvokeReason(reason));
     }
 
-    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
-        if (implementationInvokedBy != null && invoke != null) {
-            implementationInvokedBy.put(invoke, Boolean.TRUE);
+    @Override
+    public boolean registerAsImplementationInvoked(Object reason) {
+        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        if (implementationInvokedBy != null && reason instanceof InvokeTypeFlow) {
+            implementationInvokedBy.add((InvokeTypeFlow) reason);
         }
-        return super.registerAsImplementationInvoked();
+        return super.registerAsImplementationInvoked(unwrapInvokeReason(reason));
+    }
+
+    /**
+     * In general the reason for a method invocation is an {@link InvokeTypeFlow}. Special and
+     * virtual root methods have the corresponding context-insensitive invoke reason set. Static
+     * root method doesn't have any reason set.
+     */
+    public static Object unwrapInvokeReason(Object reason) {
+        if (reason == null) {
+            return "static root method";
+        }
+        if (reason instanceof InvokeTypeFlow) {
+            BytecodePosition source = ((InvokeTypeFlow) reason).getSource();
+            return source != null ? source : "root method";
+        }
+        return reason;
     }
 
     @Override
     public List<BytecodePosition> getInvokeLocations() {
         List<BytecodePosition> locations = new ArrayList<>();
-        for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
+        for (InvokeTypeFlow invoke : implementationInvokedBy) {
             if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(invoke)) {
                 locations.addAll(((AbstractVirtualInvokeTypeFlow) invoke).getInvokeLocations());
-            } else {
+            } else if (invoke.getSource() != null) {
                 locations.add(invoke.getSource());
             }
         }
@@ -102,40 +143,107 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public Collection<InvokeInfo> getInvokes() {
-        return Collections.unmodifiableCollection(getTypeFlow().getInvokes());
+    public Iterable<? extends InvokeInfo> getInvokes() {
+        return getTypeFlow().getInvokes().getValues();
     }
 
     @Override
-    public StackTraceElement[] getParsingContext() {
-        return getTypeFlow().getParsingContext();
+    public BytecodePosition getParsingReason() {
+        return typeFlow.getParsingReason();
+    }
+
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MultiMethodKey callerMultiMethodKey) {
+        var invokeUpdater = isSpecial ? SPECIAL_INVOKE_UPDATER : VIRTUAL_INVOKE_UPDATER;
+        InvokeTypeFlow flow = ConcurrentLightHashMap.computeIfAbsent(this, invokeUpdater, callerMultiMethodKey, key -> {
+            InvokeTypeFlow result = createContextInsensitiveInvoke(bb, this, originalLocation, isSpecial, key);
+            initContextInsensitiveInvoke(bb, this, result);
+            return result;
+        });
+        return flow;
     }
 
     /**
-     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
-     * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with
-     * all possible callees.
+     * Create an unique, per method, context insensitive virtual or special invoke. The context
+     * insensitive invoke uses the receiver type of the method, i.e., its declaring class. Therefore
+     * this invoke will link with all possible callees.
      */
-    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
+    private static InvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation, boolean isSpecial,
+                    MultiMethodKey callerMultiMethodKey) {
+        assert !method.isStatic();
+        /*
+         * The context insensitive invoke has actual parameters and return flows that will be linked
+         * to the original actual parameters and return flows at each call site where it will be
+         * swapped in.
+         */
+        TypeFlow<?>[] actualParameters = new TypeFlow<?>[method.getSignature().getParameterCount(true)];
 
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation) {
-        if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
-            boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
-            if (set) {
-                /*
-                 * Only register the winning context insensitive invoke as an observer of the target
-                 * method declaring class type flow.
-                 */
-                InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, invoke);
-            }
+        AnalysisType receiverType = method.getDeclaringClass();
+        /*
+         * The receiver flow of the context insensitive invoke is the type flow of its declaring
+         * class.
+         */
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+
+        actualParameters[0] = receiverFlow;
+        for (int i = 1; i < actualParameters.length; i++) {
+            actualParameters[i] = new ActualParameterTypeFlow((AnalysisType) method.getSignature().getParameterType(i - 1, null));
         }
-        return contextInsensitiveInvoke.get();
+        ActualReturnTypeFlow actualReturn = null;
+        AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
+        if (returnType.getStorageKind() == JavaKind.Object) {
+            actualReturn = new ActualReturnTypeFlow(returnType);
+        }
+
+        InvokeTypeFlow invoke;
+        if (isSpecial) {
+            invoke = bb.analysisPolicy().createSpecialInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
+                            actualReturn, callerMultiMethodKey);
+        } else {
+            invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
+                            actualReturn, callerMultiMethodKey);
+        }
+        invoke.markAsContextInsensitive();
+
+        return invoke;
     }
 
-    public InvokeTypeFlow getContextInsensitiveInvoke() {
-        InvokeTypeFlow invoke = contextInsensitiveInvoke.get();
+    /**
+     * Register the context insensitive invoke flow as an observer of its receiver type, i.e., the
+     * declaring class of its target method. This also triggers an update of the context insensitive
+     * invoke, linking all callees.
+     */
+    private static void initContextInsensitiveInvoke(PointsToAnalysis bb, AnalysisMethod method, InvokeTypeFlow invoke) {
+        AnalysisType receiverType = method.getDeclaringClass();
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        receiverFlow.addObserver(bb, invoke);
+    }
+
+    public InvokeTypeFlow getContextInsensitiveVirtualInvoke(MultiMethodKey callerMultiMethodKey) {
+        InvokeTypeFlow invoke = ConcurrentLightHashMap.get(this, VIRTUAL_INVOKE_UPDATER, callerMultiMethodKey);
         AnalysisError.guarantee(invoke != null);
         return invoke;
+    }
+
+    @Override
+    public void cleanupAfterAnalysis() {
+        super.cleanupAfterAnalysis();
+        contextInsensitiveVirtualInvoke = null;
+        contextInsensitiveSpecialInvoke = null;
+        typeFlow = null;
+        invokedBy = null;
+        implementationInvokedBy = null;
+    }
+
+    @Override
+    public boolean isImplementationInvokable() {
+        if (!getTypeFlow().flowsGraphCreated()) {
+            // flows for direct roots can be created later
+            return isDirectRootMethod();
+        } else {
+            /*
+             * If only a stub is ever created for this method, then it will not be invoked.
+             */
+            return !getTypeFlow().getMethodFlowsGraphInfo().isStub();
+        }
     }
 }

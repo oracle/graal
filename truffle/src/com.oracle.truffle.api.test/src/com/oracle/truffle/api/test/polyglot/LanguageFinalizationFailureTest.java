@@ -40,15 +40,22 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
+
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -56,9 +63,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 
-public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
+public class LanguageFinalizationFailureTest {
     private static final Node DUMMY_NODE = new Node() {
     };
 
@@ -77,83 +86,173 @@ public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
         }
     }
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
+    private static final AtomicBoolean disposeCalled = new AtomicBoolean();
+
+    @Before
+    @After
+    public void cleanStaticBooleans() {
+        disposeCalled.set(false);
+    }
+
+    @Registration
+    static class FinalizationFailureTruffleExceptionTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(FinalizationFailureTruffleExceptionTestLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectedValue = (Boolean) contextArguments[0];
+            Assert.assertEquals(expectedValue, disposeCalled.get());
+            return null;
+        }
+
+        @Override
+        protected void finalizeContext(ExecutableContext context) {
+            if (!disposeCalled.get()) {
+                throw new DummyRuntimeException(DUMMY_NODE);
+            }
+        }
+
+        @Override
+        protected void disposeContext(ExecutableContext context) {
+            disposeCalled.set(true);
+        }
     }
 
     @Test
     public void testFinalizationFailureTruffleException() {
-        AtomicBoolean disposeCalled = new AtomicBoolean();
-        setupEnv(Context.newBuilder(), new ProxyLanguage() {
-            @Override
-            protected void finalizeContext(LanguageContext languageContext) {
-                throw new DummyRuntimeException(DUMMY_NODE);
+        try (Engine engine = Engine.create()) {
+            Context context = Context.newBuilder().engine(engine).build();
+            context.initialize(FinalizationFailureTruffleExceptionTestLanguage.ID);
+            try {
+                context.close();
+                Assert.fail();
+            } catch (PolyglotException pe) {
+                if (!"Dummy runtime error.".equals(pe.getMessage())) {
+                    throw pe;
+                }
+                Assert.assertFalse(pe.isInternalError());
             }
-
-            @Override
-            protected void disposeContext(LanguageContext languageContext) {
-                disposeCalled.set(true);
+            try (Context assertContext = Context.newBuilder().engine(engine).build()) {
+                evalTestLanguage(assertContext, FinalizationFailureTruffleExceptionTestLanguage.class, "1", false);
+                context.close(true);
+                evalTestLanguage(assertContext, FinalizationFailureTruffleExceptionTestLanguage.class, "2", true);
             }
-        });
-        try {
-            context.close();
-            Assert.fail();
-        } catch (PolyglotException pe) {
-            if (!"Dummy runtime error.".equals(pe.getMessage())) {
-                throw pe;
-            }
-            Assert.assertFalse(pe.isInternalError());
         }
-        Assert.assertFalse(disposeCalled.get());
-        context.close(true);
-        Assert.assertTrue(disposeCalled.get());
+    }
+
+    @Registration
+    static class FinalizationFailureCancelExceptionTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(FinalizationFailureCancelExceptionTestLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            boolean expectedValue = (Boolean) contextArguments[0];
+            Assert.assertEquals(expectedValue, disposeCalled.get());
+            return null;
+        }
+
+        @Override
+        protected void finalizeContext(ExecutableContext context) {
+            TruffleSafepoint.pollHere(DUMMY_NODE);
+            if (!disposeCalled.get()) {
+                Assert.fail();
+            }
+        }
+
+        @Override
+        protected void disposeContext(ExecutableContext context) {
+            disposeCalled.set(true);
+        }
     }
 
     @Test
     public void testFinalizationFailureCancelException() {
-        AtomicBoolean disposeCalled = new AtomicBoolean();
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        setupEnv(Context.newBuilder().option("log.engine.level", "FINE").logHandler(outStream), new ProxyLanguage() {
-            @Override
-            protected void finalizeContext(LanguageContext languageContext) {
-                TruffleSafepoint.pollHere(DUMMY_NODE);
-                Assert.fail();
+        try (Engine engine = Engine.newBuilder().option("log.engine.level", "FINE").logHandler(outStream).build()) {
+            Context context = Context.newBuilder().engine(engine).build();
+            context.initialize(FinalizationFailureCancelExceptionTestLanguage.ID);
+            context.close(true);
+            try (Context assertContext = Context.newBuilder().engine(engine).build()) {
+                evalTestLanguage(assertContext, FinalizationFailureCancelExceptionTestLanguage.class, "1", true);
             }
+            Assert.assertTrue(outStream.toString().contains(
+                            "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting."));
+        }
+    }
 
-            @Override
-            protected void disposeContext(LanguageContext languageContext) {
+    @Registration
+    static class DisposeFailureTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(DisposeFailureTestLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+        @Override
+        protected void disposeContext(ExecutableContext context) {
+            if (!disposeCalled.get()) {
                 disposeCalled.set(true);
+                throw new DummyRuntimeException(DUMMY_NODE);
             }
-
-        });
-        context.close(true);
-        Assert.assertTrue(disposeCalled.get());
-        Assert.assertTrue(outStream.toString().contains(
-                        "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting."));
+        }
     }
 
     @Test
+    @SuppressWarnings("try")
     public void testDisposeFailure() {
-        AtomicBoolean failDispose = new AtomicBoolean(true);
-        setupEnv(Context.newBuilder(), new ProxyLanguage() {
-            @Override
-            protected void disposeContext(LanguageContext languageContext) {
-                if (failDispose.get()) {
-                    throw new DummyRuntimeException(DUMMY_NODE);
+        try (Context context = Context.create()) {
+            context.initialize(DisposeFailureTestLanguage.ID);
+            try {
+                context.close();
+                Assert.fail();
+            } catch (PolyglotException pe) {
+                if (!"java.lang.IllegalStateException: Guest language code was run during language disposal!".equals(pe.getMessage())) {
+                    throw pe;
                 }
+                Assert.assertTrue(pe.isInternalError());
             }
-        });
-        try {
-            context.close();
-            Assert.fail();
-        } catch (PolyglotException pe) {
-            if (!"java.lang.IllegalStateException: Guest language code was run during language disposal!".equals(pe.getMessage())) {
-                throw pe;
-            }
-            Assert.assertTrue(pe.isInternalError());
         }
-        failDispose.set(false);
-        context.close();
     }
+
+    @Registration
+    static class DisposeCreateThreadTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(DisposeCreateThreadTestLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+        @Override
+        protected void disposeContext(ExecutableContext context) {
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            Thread t = context.env.createThread(() -> {
+            });
+            t.setUncaughtExceptionHandler((t1, e) -> throwableRef.set(e));
+            t.start();
+            try {
+                t.join();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+            Assert.assertTrue(throwableRef.get() instanceof IllegalStateException);
+            Assert.assertEquals("The Context is already closed.", throwableRef.get().getMessage());
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testDisposeCreateThread() {
+        try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+            context.initialize(DisposeCreateThreadTestLanguage.ID);
+        }
+    }
+
 }

@@ -62,7 +62,8 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     @Override
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                    MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
+                    AbstractPolyglotHostService polyglotHostService) {
         String option = options.get("engine.SpawnRemote");
         if (option != null && Boolean.parseBoolean(option)) {
             options.remove("engine.SpawnRemote");
@@ -70,15 +71,15 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
              * indicates that the local engine ignores languages potentially on the class path.
              */
             boolean onlyHostLanguage = true;
-            Engine localEngine = getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream,
+            Engine localEngine = getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler,
                             hostLanguage,
-                            onlyHostLanguage);
+                            onlyHostLanguage, false, polyglotHostService);
             long remoteEngine = getHostToGuest().remoteCreateEngine();
             HostEngine engine = new HostEngine(remoteEngine, localEngine);
-            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine);
+            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine, registerInActiveEngines);
         } else {
-            return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
-                            false);
+            return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
+                            false, registerInActiveEngines, polyglotHostService);
         }
     }
 

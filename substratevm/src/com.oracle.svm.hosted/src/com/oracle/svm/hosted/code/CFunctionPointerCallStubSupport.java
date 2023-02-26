@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 public final class CFunctionPointerCallStubSupport {
@@ -66,8 +66,8 @@ public final class CFunctionPointerCallStubSupport {
     }
 }
 
-@AutomaticFeature
-class CFunctionPointerCallStubSupportFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class CFunctionPointerCallStubSupportFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) arg;

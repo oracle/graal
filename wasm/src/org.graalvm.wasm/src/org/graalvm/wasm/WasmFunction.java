@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,16 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class WasmFunction {
     private final SymbolTable symbolTable;
     private final int index;
     private final ImportDescriptor importDescriptor;
-    private WasmCodeEntry codeEntry;
     private final int typeIndex;
-    private int typeEquivalenceClass;
-    private String debugName;
+    @CompilationFinal private int typeEquivalenceClass;
+    @CompilationFinal private String debugName;
 
     /**
      * Represents a WebAssembly function.
@@ -58,7 +58,6 @@ public final class WasmFunction {
         this.symbolTable = symbolTable;
         this.index = index;
         this.importDescriptor = importDescriptor;
-        this.codeEntry = null;
         this.typeIndex = typeIndex;
         this.typeEquivalenceClass = -1;
     }
@@ -67,20 +66,20 @@ public final class WasmFunction {
         return symbolTable.module().name();
     }
 
-    public int numArguments() {
-        return symbolTable.functionTypeArgumentCount(typeIndex);
+    public int paramCount() {
+        return symbolTable.functionTypeParamCount(typeIndex);
     }
 
-    public byte argumentTypeAt(int argumentIndex) {
-        return symbolTable.functionTypeArgumentTypeAt(typeIndex, argumentIndex);
+    public byte paramTypeAt(int argumentIndex) {
+        return symbolTable.functionTypeParamTypeAt(typeIndex, argumentIndex);
     }
 
-    public byte returnType() {
-        return symbolTable.functionTypeReturnType(typeIndex);
+    public int resultCount() {
+        return symbolTable.functionTypeResultCount(typeIndex);
     }
 
-    int returnTypeLength() {
-        return symbolTable.functionTypeReturnTypeLength(typeIndex);
+    public byte resultTypeAt(int returnIndex) {
+        return symbolTable.functionTypeResultTypeAt(typeIndex, returnIndex);
     }
 
     void setTypeEquivalenceClass(int typeEquivalenceClass) {
@@ -109,17 +108,6 @@ public final class WasmFunction {
 
     public void setDebugName(String debugName) {
         this.debugName = debugName;
-    }
-
-    public WasmCodeEntry codeEntry() {
-        return codeEntry;
-    }
-
-    public void setCodeEntry(WasmCodeEntry codeEntry) {
-        if (isImported()) {
-            throw new RuntimeException("Cannot set the code entry for an imported function.");
-        }
-        this.codeEntry = codeEntry;
     }
 
     public boolean isImported() {

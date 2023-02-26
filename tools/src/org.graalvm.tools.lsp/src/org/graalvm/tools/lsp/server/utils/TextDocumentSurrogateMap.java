@@ -52,14 +52,14 @@ public final class TextDocumentSurrogateMap {
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, LanguageInfo languageInfo) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo));
+                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(null, anUri), languageInfo));
     }
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, Supplier<LanguageInfo> languageInfoSupplier) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
                         (anUri) -> {
                             LanguageInfo languageInfo = languageInfoSupplier.get();
-                            return new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo);
+                            return new TextDocumentSurrogate(env.getTruffleFile(null, anUri), languageInfo);
                         });
     }
 

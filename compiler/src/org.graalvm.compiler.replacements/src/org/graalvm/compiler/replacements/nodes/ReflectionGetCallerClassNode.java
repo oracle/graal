@@ -27,12 +27,11 @@ package org.graalvm.compiler.replacements.nodes;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -66,9 +65,7 @@ public abstract class ReflectionGetCallerClassNode extends MacroNode implements 
         if (callerClassNode != null) {
             graph().replaceFixedWithFloating(this, graph().addOrUniqueWithInputs(callerClassNode));
         } else {
-            InvokeNode invoke = createInvoke();
-            graph().replaceFixedWithFixed(this, invoke);
-            invoke.lower(tool);
+            super.lower(tool);
         }
     }
 

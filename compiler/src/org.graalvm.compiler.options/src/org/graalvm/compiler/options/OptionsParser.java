@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 
 /**
@@ -47,13 +48,21 @@ public class OptionsParser {
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
+    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
         if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
             return cachedOptionDescriptors;
         }
-        return ModuleSupport.getOptionsLoader();
+        /*
+         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader.
+         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
+         * need to start the provider search at the app class loader instead of the platform class
+         * loader.
+         */
+        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
     }
 
+    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
     public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
         assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
         OptionsParser.cachedOptionDescriptors = list;
@@ -77,14 +86,14 @@ public class OptionsParser {
     }
 
     /**
-     * Parses a given option setting string and adds the parsed key and value {@code dst}.
+     * Parses a given option setting string and adds the parsed key and value to {@code dst}.
      *
      * @param optionSetting a string matching the pattern {@code <name>=<value>}
      */
     public static void parseOptionSettingTo(String optionSetting, EconomicMap<String, String> dst) {
         int eqIndex = optionSetting.indexOf('=');
         if (eqIndex == -1) {
-            throw new InternalError("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
+            throw new IllegalArgumentException("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
         }
         dst.put(optionSetting.substring(0, eqIndex), optionSetting.substring(eqIndex + 1));
     }
@@ -175,6 +184,8 @@ public class OptionsParser {
                 value = valueString;
             } else if (Enum.class.isAssignableFrom(optionType)) {
                 value = ((EnumOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
+            } else if (optionType == EconomicSet.class) {
+                value = ((EnumMultiOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
             } else {
                 if (valueString.isEmpty()) {
                     throw new IllegalArgumentException("Non empty value required for option '" + desc.getName() + "'");

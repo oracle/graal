@@ -36,14 +36,14 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-final class JDKIntrinsicsFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class JDKIntrinsicsFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
@@ -68,5 +68,4 @@ final class JDKIntrinsicsFeature implements GraalFeature {
         Registration r = new Registration(plugins, System.class);
         ArrayCopySnippets.registerSystemArraycopyPlugin(r);
     }
-
 }

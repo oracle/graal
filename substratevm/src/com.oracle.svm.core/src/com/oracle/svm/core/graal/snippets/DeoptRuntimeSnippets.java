@@ -59,8 +59,12 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
         new DeoptRuntimeSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo deopt;
+
     private DeoptRuntimeSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.deopt = snippet(providers, DeoptRuntimeSnippets.class, "deoptSnippet");
 
         AbstractDeoptimizeLowering lowering = new AbstractDeoptimizeLowering();
         lowerings.put(DeoptimizeNode.class, lowering);
@@ -68,8 +72,6 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
     }
 
     protected class AbstractDeoptimizeLowering implements NodeLoweringProvider<AbstractDeoptimizeNode> {
-
-        private final SnippetInfo deopt = snippet(DeoptRuntimeSnippets.class, "deoptSnippet");
 
         @Override
         public void lower(AbstractDeoptimizeNode node, LoweringTool tool) {
@@ -80,7 +82,7 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
             Arguments args = new Arguments(deopt, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("actionAndReason", node.getActionAndReason(tool.getMetaAccess()));
             args.add("speculation", node.getSpeculation(tool.getMetaAccess()));
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

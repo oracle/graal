@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.EnumSet;
 
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
@@ -65,32 +64,6 @@ public abstract class CompositeValue extends Value {
      * @return the original CompositeValue or a copy with any modified values
      */
     public abstract CompositeValue forEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueProcedure proc);
-
-    /**
-     * A helper method to visit {@link Value}[] ensuring that a copy of the array is made if it's
-     * needed.
-     *
-     * @param inst
-     * @param values
-     * @param mode
-     * @param proc
-     * @param flags
-     * @return the original {@code values} array or a copy if values changed
-     */
-    protected Value[] visitValueArray(LIRInstruction inst, Value[] values, OperandMode mode, InstructionValueProcedure proc, EnumSet<OperandFlag> flags) {
-        Value[] newValues = null;
-        for (int i = 0; i < values.length; i++) {
-            Value value = values[i];
-            Value newValue = proc.doValue(inst, value, mode, flags);
-            if (!value.identityEquals(newValue)) {
-                if (newValues == null) {
-                    newValues = values.clone();
-                }
-                newValues[i] = value;
-            }
-        }
-        return newValues != null ? newValues : values;
-    }
 
     protected abstract void visitEachComponent(LIRInstruction inst, OperandMode mode, InstructionValueConsumer proc);
 

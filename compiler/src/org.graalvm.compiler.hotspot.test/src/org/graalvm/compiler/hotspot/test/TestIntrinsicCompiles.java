@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,15 +32,15 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Test;
@@ -62,19 +62,37 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
 
-        EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings(true);
+        EconomicMap<String, List<InvocationPlugin>> invocationPluginsMap = invocationPlugins.getInvocationPlugins(true);
         HotSpotVMConfigStore store = rt.getVMConfig().getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
         OptionValues options = getInitialOptions();
         DebugContext debug = getDebugContext(options);
         for (VMIntrinsicMethod intrinsic : intrinsics) {
-            InvocationPlugin plugin = CheckGraalIntrinsics.findPlugin(bindings, intrinsic);
-            if (plugin != null) {
-                if (plugin instanceof MethodSubstitutionPlugin) {
-                    ResolvedJavaMethod method = CheckGraalIntrinsics.resolveIntrinsic(getMetaAccess(), intrinsic);
-                    if (!method.isNative()) {
+            InvocationPlugin plugin = CheckGraalIntrinsics.findPlugin(invocationPluginsMap, intrinsic);
+            if (plugin != null && !plugin.inlineOnly()) {
+                ResolvedJavaMethod method = CheckGraalIntrinsics.resolveIntrinsic(getMetaAccess(), intrinsic);
+                if (!method.isNative()) {
+                    try {
                         StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, debug, AllowAssumptions.YES, null);
+                        if (graph != null) {
+                            boolean canCompile = true;
+                            for (ForeignCallNode foreignCall : graph.getNodes().filter(ForeignCallNode.class)) {
+                                if (foreignCall.canDeoptimize()) {
+                                    /*
+                                     * We cannot guarantee a valid framestate for this call when
+                                     * parsed in an intrinsic context.
+                                     */
+                                    canCompile = false;
+                                    break;
+                                }
+                            }
+                            if (!canCompile) {
+                                break;
+                            }
+                        }
                         getCode(method, graph);
+                    } catch (AssertionError e) {
+                        throw new GraalError(e, "Assertion error at %s", intrinsic.toString());
                     }
                 }
             }

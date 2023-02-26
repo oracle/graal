@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,17 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
+import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 
 /**
@@ -102,25 +106,28 @@ public abstract class SLAddNode extends SLBinaryNode {
     }
 
     /**
-     * Specialization for String concatenation. The SL specification says that String concatenation
-     * works if either the left or the right operand is a String. The non-string operand is
-     * converted then automatically converted to a String.
+     * Specialization for TruffleString concatenation. The SL specification says that TruffleString
+     * concatenation works if either the left or the right operand is a TruffleString. The
+     * non-string operand is converted then automatically converted to a TruffleString.
      * <p>
      * To implement these semantics, we tell the Truffle DSL to use a custom guard. The guard
      * function is defined in {@link #isString this class}, but could also be in any superclass.
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected String add(Object left, Object right) {
-        return left.toString() + right.toString();
+    protected TruffleString add(Object left, Object right,
+                    @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
+                    @Cached SLToTruffleStringNode toTruffleStringNodeRight,
+                    @Cached TruffleString.ConcatNode concatNode) {
+        return concatNode.execute(toTruffleStringNodeLeft.execute(left), toTruffleStringNodeRight.execute(right), SLLanguage.STRING_ENCODING, true);
     }
 
     /**
-     * Guard for String concatenation: returns true if either the left or the right operand is a
-     * {@link String}.
+     * Guard for TruffleString concatenation: returns true if either the left or the right operand
+     * is a {@link TruffleString}.
      */
     protected boolean isString(Object a, Object b) {
-        return a instanceof String || b instanceof String;
+        return a instanceof TruffleString || b instanceof TruffleString;
     }
 
     @Fallback

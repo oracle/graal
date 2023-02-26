@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -43,11 +46,13 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
@@ -63,7 +68,14 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+
+        private static List<String> userEnabledFeatures() {
+            return Options.Features.getValue().values();
+        }
+
+        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.")//
+        public static final HostedOptionKey<Boolean> AllowDeprecatedAutomaticFeature = new HostedOptionKey<>(true);
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
@@ -75,10 +87,10 @@ public class FeatureHandler {
         }
     }
 
-    public void forEachGraalFeature(Consumer<GraalFeature> consumer) {
+    public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
         for (Feature feature : featureInstances) {
-            if (feature instanceof GraalFeature) {
-                consumer.accept((GraalFeature) feature);
+            if (feature instanceof InternalFeature) {
+                consumer.accept((InternalFeature) feature);
             }
         }
     }
@@ -87,7 +99,39 @@ public class FeatureHandler {
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
-        LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>(loader.findAnnotatedClasses(AutomaticFeature.class, true));
+        LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>();
+        NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
+        for (var serviceRegistration : ServiceLoader.load(AutomaticallyRegisteredFeatureServiceRegistration.class, nativeImageSystemClassLoader.defaultSystemClassLoader)) {
+            Class<?> annotatedFeatureClass = loader.findClass(serviceRegistration.getClassName()).getOrFail();
+            /*
+             * For simplicity, we do not look at the Platforms annotation ourselves and instead
+             * check if the ImageClassLoader found that class too.
+             */
+            if (loader.findSubclasses(annotatedFeatureClass, true).contains(annotatedFeatureClass)) {
+                automaticFeatures.add(annotatedFeatureClass);
+            }
+        }
+        for (Class<?> annotatedFeatureClass : loader.findAnnotatedClasses(AutomaticallyRegisteredFeature.class, true)) {
+            if (!automaticFeatures.contains(annotatedFeatureClass)) {
+                throw UserError.abort("Feature " + annotatedFeatureClass + " annotated with @" + AutomaticallyRegisteredFeature.class.getSimpleName() + " was not properly registered as a service. " +
+                                "Either the annotation processor did not run for the project containing the feature, or the class is not on the class path of the image generator. " +
+                                "The annotation is only for internal usage. Applications should register a feature using the option " +
+                                SubstrateOptionsParser.commandArgument(Options.Features, annotatedFeatureClass.getName()));
+            }
+        }
+
+        for (var annotatedFeatureClass : loader.findAnnotatedClasses(AutomaticFeature.class, true)) {
+            String msg = "Feature " + annotatedFeatureClass + " is annotated with the deprecated annotation @" + AutomaticFeature.class.getSimpleName() + ". " +
+                            "Support for this annotation will be removed in a future version of GraalVM. " +
+                            "Applications should register a feature using the option " + SubstrateOptionsParser.commandArgument(Options.Features, annotatedFeatureClass.getName());
+            if (Options.AllowDeprecatedAutomaticFeature.getValue()) {
+                System.out.println("Warning: " + msg);
+            } else {
+                throw UserError.abort(msg);
+            }
+            automaticFeatures.add(annotatedFeatureClass);
+        }
+
         Map<Class<?>, Class<?>> specificAutomaticFeatures = new HashMap<>();
         for (Class<?> automaticFeature : automaticFeatures) {
 
@@ -102,7 +146,7 @@ public class FeatureHandler {
                 } else {
                     if (featureSubclasses.size() > 1) {
                         String candidates = featureSubclasses.stream().map(Class::getName).collect(Collectors.joining(" "));
-                        VMError.shouldNotReachHere("Ambiguous @AutomaticFeature extension. Conflicting candidates: " + candidates);
+                        VMError.shouldNotReachHere("Ambiguous @AutomaticallyRegisteredFeature / @AutomaticFeature extension. Conflicting candidates: " + candidates);
                     }
                     mostSpecific = (Class<Feature>) featureSubclasses.get(0);
                 }
@@ -124,24 +168,19 @@ public class FeatureHandler {
             registerFeature(featureClass, specificClassProvider, access);
         }
 
-        for (String featureName : OptionUtils.flatten(",", Options.Features.getValue())) {
+        for (String featureName : Options.userEnabledFeatures()) {
+            Class<?> featureClass;
             try {
-                registerFeature(Class.forName(featureName, true, loader.getClassLoader()), specificClassProvider, access);
+                featureClass = Class.forName(featureName, true, loader.getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
+            registerFeature(featureClass, specificClassProvider, access);
         }
         if (NativeImageOptions.PrintFeatures.getValue()) {
             ReportUtils.report("feature information", SubstrateOptions.reportsPath(), "feature_info", "csv", out -> {
                 out.println("Feature, Required Features");
-                for (Feature featureInstance : featureInstances) {
-                    out.print(featureInstance.getClass().getTypeName());
-                    String requiredFeaturesString = featureInstance.getRequiredFeatures().stream()
-                                    .map(Class::getTypeName)
-                                    .collect(Collectors.joining(" ", "[", "]"));
-                    out.print(", ");
-                    out.println(requiredFeaturesString);
-                }
+                dumpAllFeatures(out);
             });
         }
     }
@@ -196,12 +235,23 @@ public class FeatureHandler {
         featureInstances.add(feature);
     }
 
-    public List<String> getUserFeatureNames() {
+    public List<Feature> getUserSpecificFeatures() {
         ClassLoaderSupport classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
+        List<String> userEnabledFeatures = Options.userEnabledFeatures();
         return featureInstances.stream()
-                        .filter(f -> classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()))
-                        .map(f -> f.getClass().getName())
-                        .sorted()
+                        .filter(f -> (!(f instanceof InternalFeature) || !((InternalFeature) f).isHidden()) &&
+                                        (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
+    }
+
+    public void dumpAllFeatures(PrintWriter out) {
+        featureInstances.stream().sorted(Comparator.comparing(f -> f.getClass().getTypeName())).forEachOrdered(f -> {
+            out.print(f.getClass().getTypeName());
+            String requiredFeaturesString = f.getRequiredFeatures().stream()
+                            .map(Class::getTypeName)
+                            .collect(Collectors.joining(" ", "[", "]"));
+            out.print(", ");
+            out.println(requiredFeaturesString);
+        });
     }
 }

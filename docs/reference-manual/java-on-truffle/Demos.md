@@ -8,121 +8,11 @@ permalink: /reference-manual/java-on-truffle/demos/
 # Running Demo Applications
 
 Java on Truffle is an implementation of the Java Virtual Machine Specification, which offers some interesting capabilities in addition to being able to run applications in Java or other JVM languages.
-To illustrate what Java on Truffle can do, please consider the following short examples.
-
-## Enhanced HotSwap Capabilities with Java on Truffle
-
-You can use the built-in enhanced HotSwap capabilities for applications running with Java on Truffle.
-You do not have to configure anything specific besides launching your app in debug mode and attaching a standard IDE debugger to gain the advantages of enhanced HotSwap.
-
-### Debugging with Java on Truffle
-
-You can use your favorite IDE debugger to debug Java applications running in the Java on Truffle runtime.
-For example, starting a debugger session from IntelliJ IDEA is based on the Run Configurations.
-To ensure you attach the debugger to your Java application in the same environment, navigate in the main menu to Run -> Debug… -> Edit Configurations, expand Environment, check the JRE value and VM options values.
-It should show GraalVM as project's JRE and VM options should include `-truffle -XX:+IgnoreUnrecognizedVMOptions`. It is necessary to specify `-XX:+IgnoreUnrecognizedVMOptions` because Intellij automatically adds a `-javaagent` argument which is not supported yet.
-Press Debug.
-
-This will run the application and start a debugger session in the background.
-
-### Applying Code Changes in a Debugging Session
-
-Once you have your debugger session running, you will be able to apply extensive code changes (HotSwap) without needing to restart the session.
-Feel free to try this out on your own applications or by following these instructions:
-
-1. Create a new Java application.
-2. Use the following `main` method as a starting point:
-
-    ```java
-          public class HotSwapDemo {
-
-              private static final int ITERATIONS = 100;
-
-              public static void main(String[] args) {
-                  HotSwapDemo demo = new HotSwapDemo();
-                  System.out.println("Starting HotSwap demo with Java on Truffle: 'java.vm.name' = " + System.getProperty("java.vm.name"));
-                  // run something in a loop
-                  for (int i = 1; i <= ITERATIONS; i++) {
-                      demo.runDemo(i);
-                  }
-                  System.out.println("Completed HotSwap demo with Java on Truffle");
-              }
-
-              public void runDemo(int iteration) {
-                  int random = new Random().nextInt(iteration);
-                  System.out.printf("\titeration %d ran with result: %d\n", iteration, random);
-              }
-          }
-    ```
-
-3. Check that the `java.vm.name` property says you're running on Espresso.
-4. Place a line breakpoint on the first line in `runDemo()`.
-5. Setup the Run configurations to run with Java on Truffle and press Debug. You will see:
-
-    ![debug-1](/resources/img/java-on-truffle/debug-1.png)
-
-6. While paused at the breakpoint, extract a method from the body of `runDemo()`:
-
-    ![debug-2](/resources/img/java-on-truffle/debug-2.png)
-
-7. Reload the changes by navigating to Run -> Debugging Actions -> Reload Changed Classes:
-
-    ![debug-3](/resources/img/java-on-truffle/debug-3.png)
-
-8. Verify that the change was applied by noticing the `<obsolete>:-1` current frame in the Debug -> Frames view:
-
-    ![debug-4](/resources/img/java-on-truffle/debug-4.png)
-
-9. Place a breakpoint on the first line of the new extracted method and press Resume Program. The breakpoint will hit:
-
-    ![debug-5](/resources/img/java-on-truffle/debug-5.png)
-
-10. Try to change the access modifiers of `printRandom()` from `private` to `public static`. Reload the changes. Press Resume Program to verify the change was applied:
-
-    ![debug-6](/resources/img/java-on-truffle/debug-6.png)
-
-Watch  video version of the enhanced HotSwap capabilities with Java on Truffle demo.
-
-<div class="row">
-  <div class="col-sm-12">
-    <div class="vlog__video">
-      <img src="/resources/img/java-on-truffle/enhanced-hotswap-capabilities-demo.png" alt="video_1">
-          <a href="#" data-video="gfuvvV6mplo" class="btn btn-primary btn-primary--filled js-popup">watch video</a>
-    </div>
-  </div>
-</div>
-
-<div id="video-view" class="modal-window">
-  <div class="modal-window__content">
-    <button type="button" title="Close" id="js-close" class="modal-window__close"><img src="/resources/img/btn-close.svg" alt="close_video"></button>
-    <div class="modal-window__video">
-      <div id="player"></div>
-    </div>
-  </div>
-</div>
-<br>
-
-### Supported Changes
-
-The plan is to support arbitrary code changes when running applications with Java on Truffle.
-As of GraalVM 21.1.0 the following changes are supported:
-1. Add and remove methods
-2. Add and remove constructors
-3. Add and remove methods from interfaces
-4. Change access modifiers of methods
-5. Change access modifiers of constructors
-6. Changes to Lambdas
-7. Add new anonymous inner classes
-8. Remove anonymous inner classes
-
-As of GraalVM 21.1.0, the following limitations remain:
-1. Changes to fields
-2. Changes to class access modifiers, e.g., from abstract to concrete
-3. Changing the superclass
-4. Changing implemented interfaces
-5. Changes to enums
+For example, the enhanced [HotSwap capabilities](HotSwap.md) boosts developer productivity by enabling unlimited hot code reloading.
+Moreover, to illustrate what Java on Truffle can do, consider the following short examples.
 
 ## Mixing AOT and JIT for Java
+
 GraalVM Native Image technology allows compiling applications ahead-of-time (AOT) to executable native binaries which:
 * are standalone
 * start instantly
@@ -134,7 +24,7 @@ This makes using some language features like dynamic class loading or reflection
 Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](../../../truffle/docs/README.md).
 It is essentially a Java application, as are the Truffle framework itself and the GraalVM JIT compiler.
 All three of them can be compiled ahead-of-time with `native-image`.
-Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native image on the rest of your code.
+Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native executable on the rest of your code.
 
 Consider a canonical Java Shell tool (JShell) as an example command line application.
 It is a REPL capable of evaluating Java code and consists of two parts:
@@ -144,7 +34,7 @@ It is a REPL capable of evaluating Java code and consists of two parts:
 This design naturally fits the point we are trying to illustrate. We can build a native executable of the JShell's UI part, and make it include Java on Truffle to run the code dynamically specified at run time.
 
 Prerequisites:
-* [GraalVM 21.0](https://www.graalvm.org/downloads/)
+* [Latest GraalVM](https://www.graalvm.org/downloads/)
 * [Native Image](../native-image/README.md#install-native-image)
 * [Java on Truffle](README.md#install-java-on-truffle)
 
@@ -178,7 +68,7 @@ There is more code to pass the values correctly and transform the exceptions.
 To try it out, build the `espresso-jshell` binary using the provided script, which will:
 1. Build the Java sources to the bytecode
 2. Build the JAR file
-3. Build a native image
+3. Build a native executable
 
 The most important configuration line in the `native-image` command is `--language:java` which instructs to include the Java on Truffle implementation into the binary.
 After the build you can observe the resulting binary file (`file` and `ldd` are Linux commands)

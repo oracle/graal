@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -171,7 +171,7 @@ public class G1BarrierSet implements BarrierSet {
         return !StampTool.isPointerAlwaysNull(writtenValue);
     }
 
-    private static void addArrayRangeBarriers(ArrayRangeWrite write) {
+    private void addArrayRangeBarriers(ArrayRangeWrite write) {
         if (write.writesObjectArray()) {
             StructuredGraph graph = write.asNode().graph();
             if (!write.isInitialization()) {
@@ -180,9 +180,16 @@ public class G1BarrierSet implements BarrierSet {
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
                 graph.addBeforeFixed(write.preBarrierInsertionPosition(), g1ArrayRangePreWriteBarrier);
             }
-            G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-            graph.addAfterFixed(write.postBarrierInsertionPosition(), g1ArrayRangePostWriteBarrier);
+            if (arrayRangeWriteRequiresPostBarrier(write)) {
+                G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+                graph.addAfterFixed(write.postBarrierInsertionPosition(), g1ArrayRangePostWriteBarrier);
+            }
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
+        return true;
     }
 
     private static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {

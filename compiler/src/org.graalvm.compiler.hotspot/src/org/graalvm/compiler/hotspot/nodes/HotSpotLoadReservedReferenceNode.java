@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.nodes;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
@@ -34,6 +35,8 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.memory.FloatableThreadLocalAccess;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -49,7 +52,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Loads {@code JavaThread::_jvmci_reserved_oop0} for the current thread.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable {
+public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable, MemoryAccess, FloatableThreadLocalAccess {
 
     static final LocationIdentity JVMCI_RESERVED_REFERENCE = NamedLocationIdentity.mutable("JavaThread::<JVMCIReservedOop0>");
 
@@ -69,7 +72,7 @@ public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode im
     public void lower(LoweringTool tool) {
         CurrentJavaThreadNode thread = graph().unique(new CurrentJavaThreadNode(wordTypes));
         AddressNode address = graph().unique(new OffsetAddressNode(thread, graph().unique(ConstantNode.forLong(jvmciReservedReference0Offset))));
-        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, false));
+        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
         /*
          * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they will
          * conservatively be forced at a fixed location.
@@ -77,6 +80,17 @@ public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode im
         read.setGuard(graph().start());
         graph().replaceFixedWithFixed(this, read);
         tool.getLowerer().lower(read, tool);
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return JVMCI_RESERVED_REFERENCE;
+    }
+
+    @Override
+    public boolean canFloat() {
+        // We always lower this to a floatable read.
+        return true;
     }
 
 }

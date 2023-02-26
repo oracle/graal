@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
@@ -83,6 +84,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
@@ -98,6 +100,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 @SuppressWarnings("try")
 public final class ClassfileParser {
@@ -158,7 +161,7 @@ public final class ClassfileParser {
 
     private final Symbol<Type> requestedClassType;
 
-    private final EspressoContext context;
+    private final ClassLoadingEnv env;
 
     private final ClassfileStream stream;
 
@@ -173,22 +176,22 @@ public final class ClassfileParser {
     private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
 
-    StaticObject loader;
+    boolean verifiable;
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
-        this.context = context;
+        this.env = env;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
-        this.loader = loader;
+        this.verifiable = verifiable;
         this.classDefinitionInfo = info;
     }
 
     // Note: only used for reading the class name from class bytes
-    private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, null, null, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream) {
+        this(env, stream, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -220,21 +223,26 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName, EspressoContext context) {
-        return parse(stream, loader, requestedClassName, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
+        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(stream, loader, requestedClassType, context, info).parseClass();
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassName) {
+        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    }
+
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(env, stream, verifiable, requestedClassType, info).parseClass();
     }
 
     private ParserKlass parseClass() {
-        try (DebugCloseable parse = KLASS_PARSE.scope(context.getTimers())) {
+        try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
             return parseClassImpl();
         } catch (EspressoException e) {
             throw e;
         } catch (Throwable e) {
-            context.getLogger().severe("Unexpected host exception " + e + " thrown during class parsing.");
+            env.getLogger().severe("Unexpected host exception " + e + " thrown during class parsing.");
             throw e;
         }
     }
@@ -253,12 +261,12 @@ public final class ClassfileParser {
      * @param minor the minor version number
      */
     private void verifyVersion(int major, int minor) {
-        if (context.getJavaVersion().java8OrEarlier()) {
-            versionCheck8OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
-        } else if (context.getJavaVersion().java11OrEarlier()) {
-            versionCheck11OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
+        if (env.getJavaVersion().java8OrEarlier()) {
+            versionCheck8OrEarlier(env.getJavaVersion().classFileVersion(), major, minor);
+        } else if (env.getJavaVersion().java11OrEarlier()) {
+            versionCheck11OrEarlier(env.getJavaVersion().classFileVersion(), major, minor);
         } else {
-            versionCheck12OrLater(context.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck12OrLater(env.getJavaVersion().classFileVersion(), major, minor);
         }
     }
 
@@ -357,8 +365,8 @@ public final class ClassfileParser {
         majorVersion = stream.readU2();
         verifyVersion(majorVersion, minorVersion);
 
-        try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
-            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, classDefinitionInfo.patches, context, majorVersion, minorVersion);
+        try (DebugCloseable closeable = CONSTANT_POOL.scope(env.getTimers())) {
+            this.pool = ConstantPool.parse(env, stream, this, classDefinitionInfo.patches, majorVersion, minorVersion);
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
@@ -396,7 +404,7 @@ public final class ClassfileParser {
 
         // TODO(peterssen): Verify class names.
 
-        Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
+        Symbol<Type> thisKlassType = env.getTypes().fromName(thisKlassName);
         if (Types.isPrimitive(thisKlassType) || Types.isArray(thisKlassType)) {
             throw ConstantPool.classFormatError(".this_class cannot be array nor primitive " + classType);
         }
@@ -420,19 +428,19 @@ public final class ClassfileParser {
         }
 
         Symbol<Type>[] superInterfaces;
-        try (DebugCloseable closeable = PARSE_INTERFACES.scope(context.getTimers())) {
+        try (DebugCloseable closeable = PARSE_INTERFACES.scope(env.getTimers())) {
             superInterfaces = parseInterfaces();
         }
         final ParserField[] fields;
-        try (DebugCloseable closeable = PARSE_FIELD.scope(context.getTimers())) {
+        try (DebugCloseable closeable = PARSE_FIELD.scope(env.getTimers())) {
             fields = parseFields(isInterface);
         }
         final ParserMethod[] methods;
-        try (DebugCloseable closeable = PARSE_METHODS.scope(context.getTimers())) {
+        try (DebugCloseable closeable = PARSE_METHODS.scope(env.getTimers())) {
             methods = parseMethods(isInterface);
         }
         final Attribute[] attributes;
-        try (DebugCloseable closeable = PARSE_CLASSATTR.scope(context.getTimers())) {
+        try (DebugCloseable closeable = PARSE_CLASSATTR.scope(env.getTimers())) {
             attributes = parseClassAttributes();
         }
 
@@ -441,18 +449,18 @@ public final class ClassfileParser {
 
         if (classDefinitionInfo.isHidden()) {
             assert requestedClassType != null;
-            int futureKlassID = context.getNewKlassId();
+            long futureKlassID = env.getNewKlassId();
             classDefinitionInfo.initKlassID(futureKlassID);
-            thisKlassName = context.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
-            thisKlassType = context.getTypes().fromName(thisKlassName);
+            thisKlassName = env.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
+            thisKlassType = env.getTypes().fromName(thisKlassName);
             pool = pool.patchForHiddenClass(thisKlassIndex, thisKlassName);
         }
 
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
 
-    public static Symbol<Symbol.Name> getClassName(byte[] bytes, EspressoContext context) {
-        return new ClassfileParser(new ClassfileStream(bytes, null), context).getClassName();
+    public static Symbol<Symbol.Name> getClassName(ClassLoadingEnv env, byte[] bytes) {
+        return new ClassfileParser(env, new ClassfileStream(bytes, null)).getClassName();
     }
 
     private Symbol<Symbol.Name> getClassName() {
@@ -463,8 +471,8 @@ public final class ClassfileParser {
         majorVersion = stream.readU2();
         verifyVersion(majorVersion, minorVersion);
 
-        try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
-            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, classDefinitionInfo.patches, context, majorVersion, minorVersion);
+        try (DebugCloseable closeable = CONSTANT_POOL.scope(env.getTimers())) {
+            this.pool = ConstantPool.parse(env, stream, this, classDefinitionInfo.patches, majorVersion, minorVersion);
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
@@ -492,11 +500,11 @@ public final class ClassfileParser {
         final HashSet<MethodKey> dup = new HashSet<>(methodCount);
         for (int i = 0; i < methodCount; ++i) {
             ParserMethod method;
-            try (DebugCloseable closeable = PARSE_SINGLE_METHOD.scope(context.getTimers())) {
+            try (DebugCloseable closeable = PARSE_SINGLE_METHOD.scope(env.getTimers())) {
                 method = parseMethod(isInterface);
             }
             methods[i] = method;
-            try (DebugCloseable closeable = NO_DUP_CHECK.scope(context.getTimers())) {
+            try (DebugCloseable closeable = NO_DUP_CHECK.scope(env.getTimers())) {
                 if (!dup.add(new MethodKey(method))) {
                     throw ConstantPool.classFormatError("Duplicate method name and signature: " + method.getName() + " " + method.getSignature());
                 }
@@ -676,7 +684,7 @@ public final class ClassfileParser {
                 }
                 return annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
             } else if (infoType.supports(SIGNATURE) && attributeName.equals(Name.Signature)) {
-                if (context.getJavaVersion().java9OrLater() && signature != null) {
+                if (env.getJavaVersion().java9OrLater() && signature != null) {
                     throw ConstantPool.classFormatError("Duplicate AnnotationDefault attribute");
                 }
                 if (attributeSize != 2) {
@@ -701,9 +709,9 @@ public final class ClassfileParser {
         boolean isClinit = false;
         boolean isInit = false;
 
-        try (DebugCloseable closeable = METHOD_INIT.scope(context.getTimers())) {
+        try (DebugCloseable closeable = METHOD_INIT.scope(env.getTimers())) {
 
-            try (DebugCloseable nameCheck = NAME_CHECK.scope(context.getTimers())) {
+            try (DebugCloseable nameCheck = NAME_CHECK.scope(env.getTimers())) {
                 pool.utf8At(nameIndex).validateMethodName(true);
                 name = pool.symbolAt(nameIndex, "method name");
 
@@ -717,7 +725,7 @@ public final class ClassfileParser {
                         methodFlags = ACC_STATIC;
                     } else if ((methodFlags & ACC_STATIC) == ACC_STATIC) {
                         methodFlags &= (ACC_STRICT | ACC_STATIC);
-                    } else if (context.getJavaVersion().java9OrLater()) {
+                    } else if (env.getJavaVersion().java9OrLater()) {
                         throw ConstantPool.classFormatError("Method <clinit> is not static.");
                     }
                     // extraFlags = INITIALIZER | methodFlags;
@@ -745,7 +753,7 @@ public final class ClassfileParser {
              * In a class file whose version number is 51.0 or above, the method has its ACC_STATIC
              * flag set and takes no arguments (4.6).
              */
-            try (DebugCloseable signatureCheck = SIGNATURE_CHECK.scope(context.getTimers())) {
+            try (DebugCloseable signatureCheck = SIGNATURE_CHECK.scope(env.getTimers())) {
                 // Checks for void method if init or clinit.
                 /*
                  * Obtain slot number for the signature. Forces a validation, but better in startup
@@ -792,7 +800,7 @@ public final class ClassfileParser {
                 if (codeAttribute != null) {
                     throw ConstantPool.classFormatError("Duplicate Code attribute");
                 }
-                try (DebugCloseable code = CODE_PARSE.scope(context.getTimers())) {
+                try (DebugCloseable code = CODE_PARSE.scope(env.getTimers())) {
                     methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
                 }
             } else if (attributeName.equals(Name.Exceptions)) {
@@ -825,6 +833,9 @@ public final class ClassfileParser {
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
                                         Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
+                        } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
+                            methodFlags |= ACC_FORCE_INLINE;
                         }
                     }
                     methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
@@ -1209,7 +1220,7 @@ public final class ClassfileParser {
              * HotSpot does not perform this check. Enforcing the spec here break some applications
              * in the wild e.g. Intellij IDEA.
              */
-            if (context.SpecCompliancyMode == STRICT) {
+            if (env.getLanguage().getSpecComplianceMode() == STRICT) {
                 if (majorVersion >= JAVA_7_VERSION && innerClassInfo.innerNameIndex == 0 && outerClassIndex != 0) {
                     throw ConstantPool.classFormatError("InnerClassesAttribute: the value of the outer_class_info_index item must be zero if the value of the inner_name_index item is zero.");
                 }
@@ -1248,7 +1259,7 @@ public final class ClassfileParser {
             final String cause = duplicateInnerClass
                             ? "Duplicate inner_class_info_index (class names)"
                             : "Cycle detected";
-            context.getLogger().warning(cause + " in InnerClassesAttribute, in class " + classType);
+            env.getLogger().warning(cause + " in InnerClassesAttribute, in class " + classType);
             return new InnerClassesAttribute(name, new InnerClassesAttribute.Entry[0]);
         }
 
@@ -1301,7 +1312,7 @@ public final class ClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
-        if (context.needsVerify(loader)) {
+        if (verifiable) {
             return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
         }
         stream.skip(attributeSize);
@@ -1383,7 +1394,7 @@ public final class ClassfileParser {
             innerClassAccessFlags |= ACC_ABSTRACT;
         }
 
-        if (innerClassIndex != 0 || context.getJavaVersion().java9OrLater()) {
+        if (innerClassIndex != 0 || env.getJavaVersion().java9OrLater()) {
             pool.classAt(innerClassIndex).validate(pool);
         }
         if (outerClassIndex != 0) {
@@ -1415,11 +1426,11 @@ public final class ClassfileParser {
         }
 
         byte[] code;
-        try (DebugCloseable codeRead = CODE_READ.scope(context.getTimers())) {
+        try (DebugCloseable codeRead = CODE_READ.scope(env.getTimers())) {
             code = stream.readByteArray(codeLength);
         }
         ExceptionHandler[] entries;
-        try (DebugCloseable handlers = EXCEPTION_HANDLERS.scope(context.getTimers())) {
+        try (DebugCloseable handlers = EXCEPTION_HANDLERS.scope(env.getTimers())) {
             entries = parseExceptionHandlerEntries();
         }
 
@@ -1512,7 +1523,7 @@ public final class ClassfileParser {
             int catchTypeIndex = stream.readU2();
             Symbol<Type> catchType = null;
             if (catchTypeIndex != 0) {
-                catchType = context.getTypes().fromName(pool.classAt(catchTypeIndex).getName(pool));
+                catchType = env.getTypes().fromName(pool.classAt(catchTypeIndex).getName(pool));
             }
             entries[i] = new ExceptionHandler(startPc, endPc, handlerPc, catchTypeIndex, catchType);
         }
@@ -1679,7 +1690,7 @@ public final class ClassfileParser {
             }
             return null;
         }
-        return context.getTypes().fromName(pool.classAt(index).getName(pool));
+        return env.getTypes().fromName(pool.classAt(index).getName(pool));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -1692,7 +1703,7 @@ public final class ClassfileParser {
         for (int i = 0; i < interfaceCount; i++) {
             int interfaceIndex = stream.readU2();
             Symbol<Name> interfaceName = pool.classAt(interfaceIndex).getName(pool);
-            Symbol<Type> interfaceType = context.getTypes().fromName(interfaceName);
+            Symbol<Type> interfaceType = env.getTypes().fromName(interfaceName);
             if (interfaceType == null) {
                 throw ConstantPool.classFormatError(classType + " contains invalid superinterface name: " + interfaceName);
             }

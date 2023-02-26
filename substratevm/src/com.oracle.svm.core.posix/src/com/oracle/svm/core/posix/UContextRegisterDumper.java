@@ -27,7 +27,7 @@ package com.oracle.svm.core.posix;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 
@@ -60,11 +60,13 @@ public interface UContextRegisterDumper extends RegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getSP(Context context) {
         return getSP((ucontext_t) context);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getIP(Context context) {
         return getIP((ucontext_t) context);
     }

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,7 +36,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences. Implements
  * a slice "view" over a byte array.
  */
-// TODO(peterssen): Should not be public.
 public abstract class ByteSequence {
 
     protected final int hashCode;
@@ -67,7 +67,7 @@ public abstract class ByteSequence {
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
         if ((length > 0 && offset >= underlyingBytes.length) || offset + (long) length > underlyingBytes.length || length < 0 || offset < 0) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {
@@ -86,6 +86,19 @@ public abstract class ByteSequence {
     public static ByteSequence create(String str) {
         final byte[] bytes = ModifiedUtf8.fromJavaString(str);
         return ByteSequence.wrap(bytes, 0, bytes.length);
+    }
+
+    public static ByteSequence from(ByteBuffer buffer) {
+        int length = buffer.remaining();
+        if (buffer.hasArray()) {
+            int offset = buffer.position() + buffer.arrayOffset();
+            byte[] array = buffer.array();
+            return wrap(array, offset, length);
+        } else {
+            byte[] data = new byte[length];
+            buffer.get(data);
+            return wrap(data);
+        }
     }
 
     /**
@@ -112,6 +125,10 @@ public abstract class ByteSequence {
      */
     public byte byteAt(int index) {
         return value[index + offset()];
+    }
+
+    public int unsignedByteAt(int index) {
+        return byteAt(index) & 0xff;
     }
 
     final byte[] getUnderlyingBytes() {
@@ -159,6 +176,7 @@ public abstract class ByteSequence {
         try {
             return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -194,14 +212,14 @@ public abstract class ByteSequence {
         System.arraycopy(getUnderlyingBytes(), offset(), dest, index, length());
     }
 
-    static void writePositiveIntegerString(int v, byte[] dest, int offset, int length) {
-        assert length == positiveIntegerStringSize(v);
-        int i = v;
+    static void writePositiveLongString(long v, byte[] dest, int offset, int length) {
+        assert length == positiveLongStringSize(v);
+        long i = v;
         int digit = length;
         // in '456', '4' is digit 1, '5' is digit 2, etc.
         while (i >= 10) {
-            int q = i / 10;
-            int r = i - (10 * q);
+            long q = i / 10;
+            long r = i - (10 * q);
             dest[offset + --digit] = (byte) ('0' + r);
             i = q;
         }
@@ -209,9 +227,9 @@ public abstract class ByteSequence {
         dest[offset] = (byte) ('0' + i);
     }
 
-    static int positiveIntegerStringSize(int x) {
+    static int positiveLongStringSize(long x) {
         assert x >= 0;
-        int p = 10;
+        long p = 10;
         for (int i = 1; i < 10; i++) {
             if (x < p) {
                 return i;
@@ -219,5 +237,16 @@ public abstract class ByteSequence {
             p = 10 * p;
         }
         return 10;
+    }
+
+    public void writeTo(ByteBuffer bb) {
+        bb.put(getUnderlyingBytes(), offset(), length());
+    }
+
+    public ByteSequence concat(ByteSequence next) {
+        byte[] data = new byte[this.length() + next.length()];
+        writeTo(data, 0);
+        next.writeTo(data, this.length());
+        return wrap(data);
     }
 }

@@ -1,0 +1,11 @@
+Require all types in given class or module-path entries to be fully defined at image build-time.
+
+This option requires arguments that are of the same type as the
+arguments passed via -p (--module-path) or -cp (--class-path):
+
+  --link-at-build-time-paths <class search path of directories and zip/jar files>
+
+The given entries are searched and all classes inside are registered as --link-at-build-time classes.
+
+This option is only allowed to be used on command line. I.e. the option will be rejected if it is provided
+by Args of a native-image.properties file embedded in a zip/jar file.

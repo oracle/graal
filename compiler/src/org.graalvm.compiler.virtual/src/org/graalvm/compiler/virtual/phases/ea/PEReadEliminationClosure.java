@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -49,7 +50,6 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -61,6 +61,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -109,34 +110,39 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             return false;
         }
 
+        boolean deleted = false;
         if (node instanceof LoadFieldNode) {
-            return processLoadField((LoadFieldNode) node, state, effects);
+            deleted = processLoadField((LoadFieldNode) node, state, effects);
         } else if (node instanceof StoreFieldNode) {
-            return processStoreField((StoreFieldNode) node, state, effects);
+            deleted = processStoreField((StoreFieldNode) node, state, effects);
         } else if (node instanceof LoadIndexedNode) {
-            return processLoadIndexed((LoadIndexedNode) node, state, effects);
+            deleted = processLoadIndexed((LoadIndexedNode) node, state, effects);
         } else if (node instanceof StoreIndexedNode) {
-            return processStoreIndexed((StoreIndexedNode) node, state, effects);
+            deleted = processStoreIndexed((StoreIndexedNode) node, state, effects);
         } else if (node instanceof ArrayLengthNode) {
-            return processArrayLength((ArrayLengthNode) node, state, effects);
+            deleted = processArrayLength((ArrayLengthNode) node, state, effects);
         } else if (node instanceof UnboxNode) {
-            return processUnbox((UnboxNode) node, state, effects);
+            deleted = processUnbox((UnboxNode) node, state, effects);
         } else if (node instanceof RawLoadNode) {
-            return processUnsafeLoad((RawLoadNode) node, state, effects);
+            deleted = processUnsafeLoad((RawLoadNode) node, state, effects);
         } else if (node instanceof RawStoreNode) {
-            return processUnsafeStore((RawStoreNode) node, state, effects);
-        } else if (node instanceof SingleMemoryKill) {
+            deleted = processUnsafeStore((RawStoreNode) node, state, effects);
+        } else if (MemoryKill.isSingleMemoryKill(node)) {
             COUNTER_MEMORYCHECKPOINT.increment(node.getDebug());
             LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
             processIdentity(state, identity);
-        } else if (node instanceof MultiMemoryKill) {
+        } else if (MemoryKill.isMultiMemoryKill(node)) {
             COUNTER_MEMORYCHECKPOINT.increment(node.getDebug());
             for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                 processIdentity(state, identity);
             }
         }
 
-        return false;
+        if (deleted) {
+            effects.addLog(cfg.graph.getOptimizationLog(),
+                            optimizationLog -> optimizationLog.withProperty("deletedNodeClass", node.getNodeClass().shortName()).report(getClass(), "ReadElimination", node));
+        }
+        return deleted;
     }
 
     private boolean processStore(FixedNode store, ValueNode object, LocationIdentity identity, int index, JavaKind accessKind, boolean overflowAccess, ValueNode value,
@@ -188,7 +194,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeLoad(RawLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (load.isVolatile()) {
+        if (load.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -218,7 +224,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeStore(RawStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (store.isVolatile()) {
+        if (store.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -250,7 +256,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processStoreField(StoreFieldNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (store.isVolatile()) {
+        if (store.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -259,7 +265,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (load.isVolatile()) {
+        if (load.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }

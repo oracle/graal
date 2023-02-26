@@ -69,7 +69,6 @@ public class Installer extends AbstractInstaller {
     private final List<Path> dirsToDelete = new ArrayList<>();
 
     private boolean allowFilesInComponentDir;
-    private boolean rebuildPolyglot;
     /**
      * Paths tracked by the component system.
      */
@@ -139,7 +138,7 @@ public class Installer extends AbstractInstaller {
     /**
      * Validates requirements, decides whether to install. Returns false if the component should be
      * skipped.
-     * 
+     *
      * @return true, if the component should be installed
      * @throws IOException
      */
@@ -224,10 +223,6 @@ public class Installer extends AbstractInstaller {
         Collections.sort(ll);
         // replace paths with the really tracked ones
         componentInfo.setPaths(ll);
-        rebuildPolyglot = componentInfo.isPolyglotRebuild() ||
-                        ll.stream().filter(p -> p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
-                                        .findAny()
-                                        .isPresent();
     }
 
     void installFinish() throws IOException {
@@ -455,11 +450,6 @@ public class Installer extends AbstractInstaller {
             }
         }
         return true;
-    }
-
-    @Override
-    public boolean isRebuildPolyglot() {
-        return rebuildPolyglot;
     }
 
     @Override

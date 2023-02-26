@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,11 +74,13 @@ final class HostClassCache {
     private final boolean iterableAccess;
     private final boolean iteratorAccess;
     private final boolean mapAccess;
+    final boolean allowsPublicAccess;
+    final boolean allowsAccessInheritance;
     private final Map<Class<?>, Object> targetMappings;
     private final Object unnamedModule;
     private final WeakReference<HostClassCache> weakHostClassRef = new WeakReference<>(this);
 
-    private final ClassValue<HostClassDesc> descs = new ClassValue<HostClassDesc>() {
+    private final ClassValue<HostClassDesc> descs = new ClassValue<>() {
         @Override
         protected HostClassDesc computeValue(Class<?> type) {
             /*
@@ -100,8 +102,10 @@ final class HostClassCache {
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
+        this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
+        this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
         this.targetMappings = groupMappings(apiAccess, conf);
-        this.unnamedModule = HostAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+        this.unnamedModule = HostContext.getUnnamedModule(classLoader);
     }
 
     Object getUnnamedModule() {

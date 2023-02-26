@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,12 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Constant;
@@ -84,8 +84,10 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * {@linkplain LeftShiftNode#getX()} and {@linkplain LeftShiftNode#getY()} inputs represent
      * numeric integers and {@linkplain LeftShiftNode#getY()} is a constant value. The resulting
      * {@linkplain MulNode} replaces the current node in the {@linkplain LeftShiftNode#graph()}.
+     *
+     * @return true iff node was replaced
      */
-    public void tryReplaceWithMulNode() {
+    public boolean tryReplaceWithMulNode() {
         if (this.getY().isConstant()) {
             Constant c = getY().asConstant();
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
@@ -96,9 +98,11 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     long i = ((PrimitiveConstant) c).asLong();
                     long multiplier = (long) Math.pow(2, i);
                     replaceAtUsages(graph().addOrUnique(new MulNode(getX(), ConstantNode.forIntegerStamp(getY().stamp(NodeView.DEFAULT), multiplier, graph()))));
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     private static ValueNode canonical(LeftShiftNode leftShiftNode, ArithmeticOpTable.ShiftOp<Shl> op, Stamp stamp, ValueNode forX, ValueNode forY) {

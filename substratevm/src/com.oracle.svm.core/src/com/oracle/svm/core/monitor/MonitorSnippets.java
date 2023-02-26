@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
@@ -54,7 +55,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -86,7 +86,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorEnterSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
@@ -96,7 +96,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorExitSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
@@ -106,8 +106,14 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @NodeIntrinsic(value = ForeignCallNode.class)
     protected static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object obj);
 
+    private final SnippetInfo monitorEnter;
+    private final SnippetInfo monitorExit;
+
     protected MonitorSnippets(OptionValues options, Providers providers) {
         super(options, providers);
+
+        this.monitorEnter = snippet(providers, MonitorSnippets.class, "monitorEnterSnippet");
+        this.monitorExit = snippet(providers, MonitorSnippets.class, "monitorExitSnippet");
     }
 
     protected void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -117,9 +123,6 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     }
 
     protected class MonitorLowering implements NodeLoweringProvider<AccessMonitorNode> {
-
-        private final SnippetInfo monitorEnter = snippet(MonitorSnippets.class, "monitorEnterSnippet");
-        private final SnippetInfo monitorExit = snippet(MonitorSnippets.class, "monitorExitSnippet");
 
         @Override
         public final void lower(AccessMonitorNode node, LoweringTool tool) {
@@ -142,7 +145,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
                  * can be replaced with an assertion once the issue is fixed.
                  */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
+                node.setObject(node.graph().addOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 
@@ -157,7 +160,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("obj", node.object());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

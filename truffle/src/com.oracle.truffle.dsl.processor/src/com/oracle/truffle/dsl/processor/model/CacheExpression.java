@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -74,9 +73,6 @@ public final class CacheExpression extends MessageContainer {
     private boolean isWeakReference;
     private boolean adopt = true;
 
-    private TypeMirror languageType;
-    private TypeMirror referenceType;
-
     private LibraryData cachedlibrary;
     private boolean usedInGuard;
 
@@ -102,36 +98,12 @@ public final class CacheExpression extends MessageContainer {
         return usedInGuard;
     }
 
-    public void setLanguageType(TypeMirror languageType) {
-        this.languageType = languageType;
-    }
-
-    public boolean isReference() {
-        if (isCachedLanguage()) {
-            return !ElementUtils.typeEquals(getLanguageType(), getParameter().getType());
-        } else {
-            return ElementUtils.typeEquals(getReferenceType(), getParameter().getType());
-        }
-    }
-
     public boolean isEagerInitialize() {
         return eagerInitialize;
     }
 
     public void setEagerInitialize(boolean alreadyInitialized) {
         this.eagerInitialize = alreadyInitialized;
-    }
-
-    public TypeMirror getReferenceType() {
-        return referenceType;
-    }
-
-    public void setReferenceType(TypeMirror supplierType) {
-        this.referenceType = supplierType;
-    }
-
-    public TypeMirror getLanguageType() {
-        return languageType;
     }
 
     public AnnotationMirror getSharedGroupMirror() {
@@ -222,14 +194,6 @@ public final class CacheExpression extends MessageContainer {
             return null;
         }
         return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "limit", false);
-    }
-
-    public boolean isCachedContext() {
-        return isType(types.CachedContext);
-    }
-
-    public boolean isCachedLanguage() {
-        return isType(types.CachedLanguage);
     }
 
     private boolean isType(DeclaredType type) {

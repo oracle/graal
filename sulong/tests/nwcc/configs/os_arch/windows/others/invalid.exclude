@@ -1,0 +1,2 @@
+# this test reads out of the bounds of the varargs, but otherwise produces the correct output
+nwcc_0.8.3/tests/struct_pass_small.c

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements;
 import static java.util.FormattableFlags.ALTERNATE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
@@ -34,7 +35,6 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -46,7 +46,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -70,7 +69,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Description;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -96,6 +95,8 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -111,12 +112,11 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -147,7 +147,6 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -162,9 +161,11 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment.NodeStateAssignment;
@@ -453,6 +454,16 @@ import jdk.vm.ci.meta.Signature;
  */
 public class SnippetTemplate {
 
+    /**
+     * Times instantiations of all templates derived from this snippet.
+     */
+    private static final TimerKey totalInstantiationTimer = DebugContext.timer("SnippetInstantiationTime");
+
+    /**
+     * Counts instantiations of all templates derived from this snippet.
+     */
+    private static final CounterKey totalInstantiationCounter = DebugContext.counter("SnippetInstantiationCount");
+
     private boolean mayRemoveLocation = false;
 
     /**
@@ -490,6 +501,10 @@ public class SnippetTemplate {
          */
         private final CounterKey instantiationCounter;
 
+        private final CounterKey creationCounter;
+
+        private final TimerKey creationTimer;
+
         protected abstract SnippetParameterInfo info();
 
         protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
@@ -498,6 +513,8 @@ public class SnippetTemplate {
             this.privateLocations = privateLocations;
             instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
+            creationCounter = DebugContext.counter("SnippetCreationCount[%s]", method.getName());
+            creationTimer = DebugContext.timer("SnippetCreationTime[%s]", method.getName());
             this.receiver = receiver;
         }
 
@@ -558,6 +575,10 @@ public class SnippetTemplate {
         @Override
         protected SnippetParameterInfo info() {
             return snippetParameterInfo;
+        }
+
+        public EagerSnippetInfo copyWith(ResolvedJavaMethod newMethod) {
+            return new EagerSnippetInfo(newMethod, original, privateLocations, receiver, snippetParameterInfo);
         }
     }
 
@@ -832,35 +853,21 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
-        protected final Replacements replacements;
-        protected final Providers providers;
-        protected final MetaAccessProvider metaAccess;
+        private final SnippetReflectionProvider snippetReflection;
         private final Map<CacheKey, SnippetTemplate> templates;
+
+        private final boolean shouldTrackNodeSourcePosition;
 
         protected AbstractTemplates(OptionValues options, Providers providers) {
             this.options = options;
-            this.providers = providers;
-            this.metaAccess = providers.getMetaAccess();
-            this.replacements = providers.getReplacements();
+            this.snippetReflection = providers.getSnippetReflection();
+            this.shouldTrackNodeSourcePosition = providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints();
             if (Options.UseSnippetTemplateCache.getValue(options)) {
                 int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
             }
-        }
-
-        public MetaAccessProvider getMetaAccess() {
-            return metaAccess;
-        }
-
-        public static Method findMethod(Class<?> declaringClass, String methodName, Method except) {
-            for (Method m : declaringClass.getDeclaredMethods()) {
-                if (m.getName().equals(methodName) && !m.equals(except)) {
-                    return m;
-                }
-            }
-            return null;
         }
 
         public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
@@ -882,19 +889,37 @@ public class SnippetTemplate {
             return result;
         }
 
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
-            return snippet(declaringClass, methodName, null, null, initialPrivateLocations);
-        }
-
         /**
          * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
          * exactly one snippet method in {@code declaringClass} with a given name.
+         *
+         * The snippet found must have {@link ProfileSource#isTrusted(ProfileSource)} known profiles
+         * for all {@link IfNode} in the {@link StructuredGraph}.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver,
+        protected SnippetInfo snippet(Providers providers,
+                        Class<? extends Snippets> declaringClass,
+                        String methodName,
+                        LocationIdentity... initialPrivateLocations) {
+            return snippet(providers,
+                            declaringClass,
+                            methodName,
+                            null,
+                            null,
+                            initialPrivateLocations);
+        }
+
+        /**
+         * See {@link #snippet(Providers, Class, String, LocationIdentity...)} for details.
+         */
+        protected SnippetInfo snippet(Providers providers,
+                        Class<? extends Snippets> declaringClass,
+                        String methodName,
+                        ResolvedJavaMethod original,
+                        Object receiver,
                         LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            ResolvedJavaMethod javaMethod = findMethod(getMetaAccess(), declaringClass, methodName);
+            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
             assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
             providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
@@ -906,29 +931,36 @@ public class SnippetTemplate {
             }
         }
 
-        static final AtomicInteger nextSnippetTemplateId = new AtomicInteger();
-
-        private DebugContext openSnippetDebugContext(DebugContext outer, Arguments args) {
-            Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
-            return replacements.openSnippetDebugContext(description, outer, options);
-        }
-
         /**
          * Gets a template for a given key, creating it first if necessary.
          */
         @SuppressWarnings("try")
-        public SnippetTemplate template(ValueNode replacee, final Arguments args) {
+        public SnippetTemplate template(CoreProviders context, ValueNode replacee, final Arguments args) {
             StructuredGraph graph = replacee.graph();
             DebugContext outer = graph.getDebug();
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
-                try (DebugContext debug = openSnippetDebugContext(outer, args)) {
-                    try (DebugCloseable a = SnippetTemplateCreationTime.start(debug); DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
-                        SnippetTemplates.increment(debug);
-                        OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
-                        template = new SnippetTemplate(snippetOptions, debug, providers, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
+                try (DebugContext debug = context.getReplacements().openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options)) {
+                    try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
+                                    DebugCloseable a2 = args.info.creationTimer.start(outer);
+                                    DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
+                        SnippetTemplates.increment(outer);
+                        args.info.creationCounter.increment(outer);
+                        OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options),
+                                        DebugOptions.OptimizationLog, null);
+                        template = new SnippetTemplate(snippetOptions,
+                                        debug,
+                                        context,
+                                        snippetReflection,
+                                        args,
+                                        graph.trackNodeSourcePosition() || shouldTrackNodeSourcePosition,
+                                        replacee,
+                                        createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
+                        }
+                        if (outer.areMetricsEnabled()) {
+                            DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(outer, template.nodes.size());
                         }
                     } catch (Throwable e) {
                         throw debug.handle(e);
@@ -943,7 +975,7 @@ public class SnippetTemplate {
          * {@link #template} creation. These phases are only run for snippets lowered in the
          * low-tier lowering.
          */
-        protected PhaseSuite<Providers> createMidTierPhases() {
+        protected PhaseSuite<CoreProviders> createMidTierPhases() {
             return null;
         }
     }
@@ -973,16 +1005,26 @@ public class SnippetTemplate {
      * Creates a snippet template.
      */
     @SuppressWarnings("try")
-    protected SnippetTemplate(OptionValues options, DebugContext debug, final Providers providers, Arguments args, boolean trackNodeSourcePosition,
-                    Node replacee, PhaseSuite<Providers> midTierPhases) {
-        this.snippetReflection = providers.getSnippetReflection();
+    protected SnippetTemplate(OptionValues options,
+                    DebugContext debug,
+                    CoreProviders providers,
+                    SnippetReflectionProvider snippetReflection,
+                    Arguments args,
+                    boolean trackNodeSourcePosition,
+                    Node replacee,
+                    PhaseSuite<CoreProviders> midTierPhases) {
+        this.snippetReflection = snippetReflection;
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
         BitSet nonNullParameters = getNonNullParameters(args);
-        boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, nonNullParameters, shouldTrackNodeSourcePosition1,
-                        replacee.getNodeSourcePosition(), options);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method,
+                        args.info.original,
+                        constantArgs,
+                        nonNullParameters,
+                        trackNodeSourcePosition,
+                        replacee.getNodeSourcePosition(),
+                        options);
         assert snippetGraph.getAssumptions() == null : snippetGraph;
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -991,13 +1033,15 @@ public class SnippetTemplate {
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
-        snippetCopy.setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().setGuardsStage(snippetGraph.getGuardsStage());
+        snippetCopy.getGraphState().getStageFlags().addAll(snippetGraph.getGraphState().getStageFlags());
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
             }
             assert snippetCopy.isSubstitution();
+            assert !DumpOnError.getValue(options) || debug.contextLookupTopdown(StructuredGraph.class) == snippetCopy : "DumpOnError should cause the snippet graph to be available for dumping";
 
             EconomicMap<Node, Node> nodeReplacements = EconomicMap.create(Equivalence.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
@@ -1037,7 +1081,7 @@ public class SnippetTemplate {
                     }
                 }
             }
-            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().openDefaultUpdateScope()) {
+            try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(snippetCopy.getInliningLog())) {
                 UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
                 if (updateScope != null) {
                     snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
@@ -1165,7 +1209,7 @@ public class SnippetTemplate {
             }
             // (2)
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_HIGH_TIER", snippetCopy)) {
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(snippetCopy, providers);
+                new HighTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -1173,14 +1217,17 @@ public class SnippetTemplate {
                 // (3)
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase(true, true)).apply(snippetCopy, providers);
-                new GuardLoweringPhase().apply(snippetCopy, providers);
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
+                new FloatingReadPhase(true, canonicalizer).apply(snippetCopy, providers);
+                if (!snippetCopy.getGraphState().isExplicitExceptionsNoDeopt()) {
+                    new GuardLoweringPhase().apply(snippetCopy, providers);
+                }
+                assert snippetCopy.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING);
+                new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
-                    new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
-                    snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
-                    snippetCopy.disableFrameStateVerification();
+                    new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
+                    snippetCopy.getGraphState().setAfterFSA();
+                    snippetCopy.getGraphState().forceDisableFrameStateVerification();
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
@@ -1192,7 +1239,7 @@ public class SnippetTemplate {
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
                         // (6)
-                        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(snippetCopy, providers);
+                        new LowTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }
@@ -1293,6 +1340,7 @@ public class SnippetTemplate {
                     this.memoryAnchor = null;
                 }
             }
+
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {
@@ -1377,9 +1425,6 @@ public class SnippetTemplate {
                 }
             }
 
-            if (debug.areMetricsEnabled()) {
-                DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(debug, nodes.size());
-            }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate final state");
             assert snippet.verify();
             this.snippet.freeze();
@@ -1418,6 +1463,7 @@ public class SnippetTemplate {
     public static void explodeLoops(final StructuredGraph snippetCopy, CoreProviders providers) {
         // Do any required loop explosion
         boolean exploded = false;
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         do {
             exploded = false;
             ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
@@ -1427,14 +1473,13 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = providers.getLoopsDataProvider().getLoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                     try {
                         LoopTransformations.fullUnroll(loop, providers, canonicalizer);
                     } catch (RetryableBailoutException e) {
                         // This is a hard error in this context
                         throw new GraalError(e, snippetCopy.toString());
                     }
-                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
+                    canonicalizer.applyIncremental(snippetCopy, providers, mark);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
@@ -1634,6 +1679,10 @@ public class SnippetTemplate {
         return replacements;
     }
 
+    public boolean hasSideEffects() {
+        return !sideEffectNodes.isEmpty();
+    }
+
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
@@ -1697,7 +1746,7 @@ public class SnippetTemplate {
         EconomicSet<LocationIdentity> kills = EconomicSet.create(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
-        if (replacee instanceof SingleMemoryKill) {
+        if (MemoryKill.isSingleMemoryKill(replacee)) {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
             if (locationIdentity.isAny()) {
@@ -1707,7 +1756,7 @@ public class SnippetTemplate {
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             kills.remove(locationIdentity);
         }
-        assert !(replacee instanceof MultiMemoryKill) : replacee + " multi not supported (yet)";
+        assert !(MemoryKill.isMultiMemoryKill(replacee)) : replacee + " multi not supported (yet)";
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {
@@ -1849,30 +1898,30 @@ public class SnippetTemplate {
      * know from which edge a memory usage is coming from.
      */
     private static void verifyWithExceptionNode(ValueNode node) {
-        if (node instanceof WithExceptionNode && node instanceof MemoryKill) {
+        if (node instanceof WithExceptionNode && MemoryKill.isMemoryKill(node)) {
             WithExceptionNode withExceptionNode = (WithExceptionNode) node;
             AbstractBeginNode exceptionEdge = withExceptionNode.exceptionEdge();
             if (exceptionEdge instanceof UnreachableBeginNode) {
                 // exception edge is unreachable - we are good
                 return;
             }
-            GraalError.guarantee(exceptionEdge instanceof MemoryKill, "The exception edge of %s is not a memory kill %s", node, exceptionEdge);
-            if (exceptionEdge instanceof SingleMemoryKill) {
+            GraalError.guarantee(MemoryKill.isMemoryKill(exceptionEdge), "The exception edge of %s is not a memory kill %s", node, exceptionEdge);
+            if (MemoryKill.isSingleMemoryKill(exceptionEdge)) {
                 SingleMemoryKill exceptionEdgeKill = (SingleMemoryKill) exceptionEdge;
                 if (exceptionEdgeKill.getKilledLocationIdentity().isAny()) {
                     // exception edge kills any - we are good
                     return;
                 }
                 // if the exception edge does not kill any, it must kill the same location
-                GraalError.guarantee(withExceptionNode instanceof SingleMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                GraalError.guarantee(MemoryKill.isSingleMemoryKill(withExceptionNode), "Not a single memory kill: %s", withExceptionNode);
                 SingleMemoryKill withExceptionKill = (SingleMemoryKill) withExceptionNode;
                 GraalError.guarantee(withExceptionKill.getKilledLocationIdentity().equals(exceptionEdgeKill.getKilledLocationIdentity()),
                                 "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentity(), exceptionEdgeKill,
                                 exceptionEdgeKill.getKilledLocationIdentity());
-            } else if (exceptionEdge instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(exceptionEdge)) {
                 // for multi memory kills the locations must match
                 MultiMemoryKill exceptionEdgeKill = (MultiMemoryKill) exceptionEdge;
-                GraalError.guarantee(withExceptionNode instanceof MultiMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                GraalError.guarantee(MemoryKill.isMultiMemoryKill(exceptionEdge), "Not a single memory kill: %s", withExceptionNode);
                 MultiMemoryKill withExceptionKill = (MultiMemoryKill) withExceptionNode;
                 GraalError.guarantee(Arrays.equals(withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill.getKilledLocationIdentities()),
                                 "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill,
@@ -1908,8 +1957,8 @@ public class SnippetTemplate {
                         MemoryKill replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
                             assert mayRemoveLocation || LocationIdentity.any().equals(location) ||
-                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " +
-                                                            info.method.format("%h.%n") + " contains access to the non-private location " +
+                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
+                                                            " contains access to the non-private location " +
                                                             location + ", but replacee doesn't access this location." + map.getLocations();
                         } else {
                             pos.set(usage, replacement.asNode());
@@ -1918,6 +1967,13 @@ public class SnippetTemplate {
                 }
             }
         }
+    }
+
+    public Node getReturnValue(UnmodifiableEconomicMap<Node, Node> duplicates) {
+        if (returnNode.result() != null) {
+            return duplicates.get(returnNode.result());
+        }
+        return null;
     }
 
     /**
@@ -1959,8 +2015,10 @@ public class SnippetTemplate {
 
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
             // Inline the snippet nodes, replacing parameters with the given args in the process
             final FixedNode replaceeGraphPredecessor = (FixedNode) replacee.predecessor();
             StartNode entryPointNode = snippet.start();
@@ -2002,7 +2060,7 @@ public class SnippetTemplate {
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
-                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryKill) {
+                if (returnValue == null && replacee.usages().isNotEmpty() && MemoryKill.isMemoryKill(replacee)) {
                     replacer.replace(replacee, null);
                 } else {
                     assert returnValue != null || replacee.hasNoUsages();
@@ -2068,7 +2126,14 @@ public class SnippetTemplate {
                 if (replacee instanceof WithExceptionNode) {
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
 
-                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode());
+                    LocationIdentity loc = null;
+                    if (MemoryKill.isSingleMemoryKill(replacee)) {
+                        loc = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
+                    } else if (MemoryKill.isMultiMemoryKill(replacee)) {
+                        GraalError.unimplemented("Cannot use placeholder with exception with a multi memory node " + replacee);
+                    }
+
+                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode(loc));
 
                     /*
                      * First attaching placeholder as predecessor of original WithExceptionNode next
@@ -2160,15 +2225,15 @@ public class SnippetTemplate {
 
     private EconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
         Mark mark = replaceeGraph.getMark();
-        try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
-            InliningLog log = replaceeGraph.getInliningLog();
+        InliningLog log = replaceeGraph.getInliningLog();
+        try (InliningLog.UpdateScope scope = log == null ? null : log.openUpdateScope((oldNode, newNode) -> {
             if (oldNode == null) {
                 log.trackNewCallsite(newNode);
             }
         })) {
             EconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             if (scope != null) {
-                replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+                log.addLog(duplicates, snippet.getInliningLog());
             }
             NodeSourcePosition position = replacee.getNodeSourcePosition();
             InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
@@ -2227,8 +2292,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();
@@ -2284,8 +2351,10 @@ public class SnippetTemplate {
     public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
-        try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
+        try (DebugCloseable a = args.info.instantiationTimer.start(debug);
+                        DebugCloseable b = totalInstantiationTimer.start(debug)) {
             args.info.instantiationCounter.increment(debug);
+            totalInstantiationCounter.increment(debug);
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
             StartNode entryPointNode = snippet.start();
@@ -2359,7 +2428,7 @@ public class SnippetTemplate {
              * We dont have a state split as a replacee, thus we take the prev state as the state
              * after for the node in the snippet.
              */
-            stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
+            stateAfter = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
         }
         final ExceptionObjectNode exceptionObject;
         if (replacee instanceof WithExceptionNode) {
@@ -2401,7 +2470,7 @@ public class SnippetTemplate {
                     }
                     break;
                 case BEFORE_BCI:
-                    FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
+                    FrameState stateBeforeSnippet = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
                     ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(stateBeforeSnippet.duplicate());
                     break;
                 case INVALID:
@@ -2432,8 +2501,18 @@ public class SnippetTemplate {
             if (!(nodeRequiringState instanceof AbstractMergeNode || nodeRequiringState instanceof LoopExitNode)) {
                 // merges and loop exit cannot have "this node" on stack
                 if (valueInReplacement instanceof ValuePhiNode) {
-                    Node sideEffectDup = duplicates.get(nodeRequiringState);
-                    valueInReplacement = (ValueNode) sideEffectDup;
+                    ValuePhiNode valuePhi = (ValuePhiNode) valueInReplacement;
+                    FixedNode next = (FixedNode) nodeRequiringState;
+                    while (next instanceof FixedWithNextNode) {
+                        next = ((FixedWithNextNode) next).next();
+                    }
+                    if (next instanceof EndNode) {
+                        EndNode duplicateEnd = (EndNode) duplicates.get(next);
+                        int endIndex = valuePhi.merge().forwardEndIndex(duplicateEnd);
+                        if (endIndex != -1) {
+                            valueInReplacement = valuePhi.valueAt(endIndex);
+                        }
+                    }
                 }
             }
             propagateValInState(newState, replacee, valueInReplacement);
@@ -2442,7 +2521,7 @@ public class SnippetTemplate {
     }
 
     private static void propagateValInState(FrameState newState, Node replacee, Node replacement) {
-        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == replacee) {
@@ -2465,7 +2544,7 @@ public class SnippetTemplate {
         assert exceptionState.rethrowException();
         assert exceptionState.stackSize() == 1;
         FrameState newExceptionState = exceptionState.duplicate();
-        newExceptionState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newExceptionState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == exceptionObject) {
@@ -2498,7 +2577,7 @@ public class SnippetTemplate {
              * replacee's graph itself is a substitution.
              */
             StructuredGraph graph = replacee.graph();
-            boolean condition = graph.isStateAfterClearedForTesting() || graph.isSubstitution();
+            boolean condition = graph.getGraphState().isFrameStateVerificationDisabled() || graph.isSubstitution();
             GraalError.guarantee(condition, "No state available to transfer");
             return;
         }
@@ -2562,55 +2641,6 @@ public class SnippetTemplate {
         }
     }
 
-    public static FrameState findLastFrameState(FixedNode start) {
-        FrameState state = findLastFrameState(start, false);
-        if (state == null) {
-            // keep in branch to avoid eager evaluation of findLastFrameState(start, true)
-            throw GraalError.shouldNotReachHere("Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true));
-        }
-        return state;
-    }
-
-    public static FrameState findLastFrameState(FixedNode start, boolean log) {
-        assert start != null;
-        FixedNode lastFixedNode = null;
-        FixedNode currentStart = start;
-        while (true) {
-            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
-                if (fixed instanceof StateSplit) {
-                    StateSplit stateSplit = (StateSplit) fixed;
-                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
-                    if (stateSplit.stateAfter() != null) {
-                        return stateSplit.stateAfter();
-                    }
-                }
-                lastFixedNode = fixed;
-            }
-            if (lastFixedNode instanceof LoopBeginNode) {
-                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
-                continue;
-            }
-            if (log) {
-                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-                DebugContext debug = start.getDebug();
-                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
-                                p == null ? "null" : p.toString());
-                if (lastFixedNode instanceof MergeNode) {
-                    MergeNode merge = (MergeNode) lastFixedNode;
-                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
-                    for (EndNode end : merge.forwardEnds()) {
-                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
-                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
-                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        return null;
-    }
-
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder(snippet.toString()).append('(');
@@ -2668,11 +2698,14 @@ public class SnippetTemplate {
  * CFG edges for select snippet lowerings.
  */
 @NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
-final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, SingleMemoryKill {
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, MultiMemoryKill {
     static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
 
-    protected PlaceholderWithExceptionNode() {
+    private final LocationIdentity killedLocation;
+
+    protected PlaceholderWithExceptionNode(LocationIdentity killedLocation) {
         super(TYPE, StampFactory.forVoid());
+        this.killedLocation = killedLocation;
     }
 
     @Override
@@ -2684,8 +2717,12 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (killedLocation != null) {
+            return new LocationIdentity[]{killedLocation};
+        } else {
+            return MemoryKill.MULTI_KILL_NO_LOCATION;
+        }
     }
 }
 

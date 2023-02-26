@@ -54,7 +54,7 @@ public abstract class StaticInitsNode extends LLVMStatementNode {
     public void doInit(VirtualFrame frame) {
         LLVMContext ctx = LLVMContext.get(this);
         synchronized (ctx) {
-            if (ctx.loaderTraceStream() != null) {
+            if (LibraryLocator.loggingEnabled()) {
                 traceExecution(ctx);
             }
             for (LLVMStatementNode stmt : statements) {

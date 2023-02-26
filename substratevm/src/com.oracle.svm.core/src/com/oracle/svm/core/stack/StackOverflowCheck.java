@@ -28,10 +28,11 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -110,6 +111,18 @@ public interface StackOverflowCheck {
             return lookupStackEnd();
         }
 
+        /**
+         * Find the highest address of the stack or zero if is not supported, and the lowest address
+         * of the stack. If the OS reserved stack memory is larger than requestedStackSize, then the
+         * value for end of the stack memory returned may be before the real stack end.
+         * 
+         * @param requestedStackSize requested stack size. If zero, then the value is ignored.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        default void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
+            stackBasePtr.write(lookupStackBase());
+            stackEndPtr.write(lookupStackEnd(requestedStackSize));
+        }
     }
 
     @Fold
@@ -124,6 +137,13 @@ public interface StackOverflowCheck {
      */
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     void initialize(IsolateThread thread);
+
+    /**
+     * Determines whether the given address, e.g. a potential stack pointer, is within the safe
+     * boundaries of the current thread's stack (which includes the yellow zone if
+     * {@linkplain #makeYellowZoneAvailable() made available}.
+     */
+    boolean isWithinBounds(UnsignedWord address);
 
     /**
      * Make the yellow zone of the stack available for usage. It must be eventually followed by a
@@ -145,6 +165,15 @@ public interface StackOverflowCheck {
      */
     int yellowAndRedZoneSize();
 
+    /** @see #setState */
+    int getState();
+
+    /**
+     * Restore the specified state of the stack overflow checks obtained from {@link #getState}.
+     * This is intended for yielding and resuming continuations on a thread.
+     */
+    void setState(int state);
+
     /**
      * Disables all stack overflow checks for this thread. This operation is not reversible, i.e.,
      * it must only be called in the case of a fatal error where the VM is going to exit soon and
@@ -157,4 +186,9 @@ public interface StackOverflowCheck {
      * Updates the stack overflow boundary of the current thread.
      */
     void updateStackOverflowBoundary();
+
+    /**
+     * Returns the stack overflow boundary of the current thread.
+     */
+    UnsignedWord getStackOverflowBoundary();
 }

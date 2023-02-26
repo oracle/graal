@@ -26,7 +26,12 @@ package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.SnippetObjectConstant;
@@ -36,7 +41,10 @@ import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.services.Services;
 
 public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvider {
 
@@ -44,10 +52,39 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     private final HotSpotConstantReflectionProvider constantReflection;
     private final WordTypes wordTypes;
 
+    /*
+     * GR-41976: JVMCI currently does not have public API to convert methods and fields back to
+     * reflection objects. So we do it via reflective invocation of JVMCI internals.
+     *
+     * These fields are intentionally not static, because we do not want libgraal to run with the
+     * state initialized at image build time.
+     */
+    private final Method hotSpotJDKReflectionGetMethod;
+    private final Method hotSpotJDKReflectionGetField;
+
     public HotSpotSnippetReflectionProvider(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {
         this.runtime = runtime;
         this.constantReflection = constantReflection;
         this.wordTypes = wordTypes;
+
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            /* No access to method/field mirrors when running in libgraal. */
+            hotSpotJDKReflectionGetMethod = null;
+            hotSpotJDKReflectionGetField = null;
+        } else {
+            try {
+                Class<?> hsJDKReflection = Class.forName("jdk.vm.ci.hotspot.HotSpotJDKReflection");
+                hotSpotJDKReflectionGetMethod = lookupMethod(hsJDKReflection, "getMethod", Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaMethodImpl"));
+                hotSpotJDKReflectionGetField = lookupMethod(hsJDKReflection, "getField", Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl"));
+            } catch (ReflectiveOperationException ex) {
+                /*
+                 * Note that older JVMCI versions do not have those methods even when running in JDK
+                 * mode and not in libgraal mode. But that affects only OpenJDK 11, and we no longer
+                 * support JDK 11 at all. OpenJDK 17 already has the necessary methods.
+                 */
+                throw GraalError.shouldNotReachHere(ex);
+            }
+        }
     }
 
     @Override
@@ -111,5 +148,54 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
         return runtime().getMirror(type);
+    }
+
+    private static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) throws ReflectiveOperationException {
+        Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
+        result.setAccessible(true);
+        return result;
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        if (method.isClassInitializer()) {
+            /* <clinit> methods never have a corresponding java.lang.reflect.Method. */
+            return null;
+        }
+
+        if (hotSpotJDKReflectionGetMethod == null) {
+            return null;
+        }
+        try {
+            return (Executable) hotSpotJDKReflectionGetMethod.invoke(null, method);
+        } catch (ReflectiveOperationException ex) {
+            throw rethrow(ex.getCause());
+        }
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
+        if (hotSpotJDKReflectionGetField == null) {
+            return null;
+        }
+        try {
+            return (Field) hotSpotJDKReflectionGetField.invoke(null, field);
+        } catch (ReflectiveOperationException ex) {
+            if (ex.getCause() instanceof IllegalArgumentException) {
+                /**
+                 * GR-41974: A bug in JVMCI prevents the lookup of the java.lang.reflect.Field.
+                 * Since even calling getName() on the ResolvedJavaField crashes for such fields, we
+                 * also cannot use Class.getDeclaredField as a workaround for lookup. Our only
+                 * option is to return null for now.
+                 */
+                return null;
+            }
+            throw rethrow(ex.getCause());
+        }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 }

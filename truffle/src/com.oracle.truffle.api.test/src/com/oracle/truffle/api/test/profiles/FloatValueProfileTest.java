@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static com.oracle.truffle.api.test.profiles.PrimitiveValueProfileTest.exactCompare;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
@@ -58,6 +55,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.FloatValueProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
@@ -80,7 +78,7 @@ public class FloatValueProfileTest {
 
     @Before
     public void create() {
-        profile = (FloatValueProfile) invokeStatic(loadRelative(FloatValueProfileTest.class, "FloatValueProfile$Enabled"), "create");
+        profile = ReflectionUtils.newInstance(FloatValueProfile.class);
     }
 
     private static boolean isGeneric(FloatValueProfile profile) {
@@ -154,7 +152,7 @@ public class FloatValueProfileTest {
 
     @Test
     public void testDisabled() {
-        FloatValueProfile p = (FloatValueProfile) getStaticField(loadRelative(FloatValueProfileTest.class, "FloatValueProfile$Disabled"), "INSTANCE");
+        FloatValueProfile p = FloatValueProfile.getUncached();
         assertThat(p.profile(VALUE0), is(VALUE0));
         assertThat(p.profile(VALUE1), is(VALUE1));
         assertThat(p.profile(VALUE2), is(VALUE2));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,11 +39,11 @@ public abstract class LLVMConfig {
     private LLVMConfig() {}
 
     /** LLVM version string. */
-    public static final String VERSION = "12.0.1";
+    public static final String VERSION = "14.0.6";
     /** Major version of the LLVM API. */
-    public static final int VERSION_MAJOR = 12;
+    public static final int VERSION_MAJOR = 14;
     /** Minor version of the LLVM API. */
     public static final int VERSION_MINOR = 0;
     /** Patch version of the LLVM API. */
-    public static final int VERSION_PATCH = 1;
+    public static final int VERSION_PATCH = 6;
 }

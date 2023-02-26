@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 
@@ -77,8 +78,8 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     public abstract boolean isDeclaration();
 
-    public final String getSlotName() {
-        return getRootNode().getFrameDescriptor().getSlotName(getSlot()).toString();
+    public final TruffleString getSlotName() {
+        return (TruffleString) getRootNode().getFrameDescriptor().getSlotName(getSlot());
     }
 
     /**
@@ -169,6 +170,6 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
                 nameSourceSection = source.createSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
             }
         }
-        return NodeObjectDescriptor.writeVariable(getRootNode().getFrameDescriptor().getSlotName(getSlot()).toString(), nameSourceSection);
+        return NodeObjectDescriptor.writeVariable((TruffleString) getRootNode().getFrameDescriptor().getSlotName(getSlot()), nameSourceSection);
     }
 }

@@ -24,12 +24,24 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import java.util.EnumSet;
+
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+
 import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.aarch64.AArch64.CPUFeature;
+import jdk.vm.ci.aarch64.AArch64.Flag;
 
 public class AArch64LIRFlags {
-    public static boolean useLSE(Architecture arch) {
-        AArch64 aarch64 = (AArch64) arch;
-        return aarch64.getFeatures().contains(AArch64.CPUFeature.LSE) && aarch64.getFlags().contains(AArch64.Flag.UseLSE);
+    public static boolean useLSE(EnumSet<CPUFeature> features, EnumSet<Flag> flags) {
+        return features.contains(CPUFeature.LSE) && flags.contains(Flag.UseLSE);
+    }
+
+    public static boolean useLSE(AArch64Assembler asm) {
+        return useLSE(asm.getFeatures(), asm.getFlags());
+    }
+
+    public static boolean useLSE(AArch64 arch) {
+        return useLSE(arch.getFeatures(), arch.getFlags());
     }
 }

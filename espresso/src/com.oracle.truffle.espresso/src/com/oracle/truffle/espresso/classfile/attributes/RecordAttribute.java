@@ -62,7 +62,7 @@ public class RecordAttribute extends Attribute {
         public StaticObject toGuestComponent(Meta meta, ObjectKlass klass) {
             assert meta.getJavaVersion().java16OrLater();
             RuntimeConstantPool pool = klass.getConstantPool();
-            StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance();
+            StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance(meta.getContext());
             Symbol<Name> nameSymbol = pool.symbolAt(name);
             Symbol<Type> typeSymbol = pool.symbolAt(descriptor);
             Symbol<Signature> signature = meta.getSignatures().makeRaw(typeSymbol);
@@ -73,7 +73,7 @@ public class RecordAttribute extends Attribute {
             // Find and set accessor
             Method m = klass.lookupMethod(nameSymbol, signature);
             boolean validMethod = m != null && !m.isStatic() && !m.isConstructor();
-            meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror() : StaticObject.NULL);
+            meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror(meta) : StaticObject.NULL);
 
             // Find and set generic signature
             SignatureAttribute genericSignatureAttribute = (SignatureAttribute) getAttribute(SignatureAttribute.NAME);

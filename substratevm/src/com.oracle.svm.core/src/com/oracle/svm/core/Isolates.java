@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.VMError;
 
 public class Isolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
@@ -58,8 +58,26 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
 
+    private static Boolean isCurrentFirst;
+
+    /**
+     * Indicates if the current isolate is the first isolate in this process. If so, it can be
+     * responsible for taking certain initialization steps (and, symmetrically, shutdown steps).
+     * Such steps can be installing signals handlers or initializing built-in libraries that are
+     * explicitly or implicitly shared between the isolates of the process (for example, because
+     * they have a single native state that does not distinguish between isolates).
+     */
+    public static boolean isCurrentFirst() {
+        return isCurrentFirst;
+    }
+
+    public static void setCurrentIsFirstIsolate(boolean value) {
+        VMError.guarantee(isCurrentFirst == null);
+        isCurrentFirst = value;
+    }
+
     @Uninterruptible(reason = "Thread state not yet set up.")
-    public static int checkSanity(Isolate isolate) {
+    public static int checkIsolate(Isolate isolate) {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             return isolate.isNull() ? CEntryPointErrors.NULL_ARGUMENT : CEntryPointErrors.NO_ERROR;
         } else {
@@ -74,7 +92,7 @@ public class Isolates {
             return result;
         }
 
-        result = checkSanity(isolatePointer.read());
+        result = checkIsolate(isolatePointer.read());
         if (result != CEntryPointErrors.NO_ERROR) {
             isolatePointer.write(WordFactory.nullPointer());
             return result;

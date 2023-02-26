@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,14 +45,16 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public class SulongSuite extends BaseSuiteHarness {
 
+    private static String refExeName = Platform.getOS().exeName("ref.out");
+
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.getTestDistribution("SULONG_STANDALONE_TEST_SUITES")).toPath();
         return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
     }
 
-    private static boolean isReference(Path path) {
-        return path.endsWith("ref.out") && (!Platform.isDarwin() || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
+    protected static boolean isReference(Path path) {
+        return path.endsWith(refExeName) && (!Platform.isDarwin() || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
     }
 
     private static Stream<Path> pathStream(Path path) {

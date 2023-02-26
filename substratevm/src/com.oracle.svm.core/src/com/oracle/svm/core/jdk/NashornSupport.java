@@ -38,9 +38,7 @@ public final class NashornSupport {
         @Override
         public boolean getAsBoolean() {
             try {
-                // Checkstyle: stop
                 Class.forName(CLASSFILTER_NAME);
-                // Checkstyle: resume
                 return true;
             } catch (ClassNotFoundException e) {
                 return false;

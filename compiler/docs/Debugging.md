@@ -215,12 +215,11 @@ visualizations of certain compiler data structures. Currently, there is support 
 
 * HIR graphs (i.e., instances of
   [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
-  [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer) (IGV), and
-* LIR register allocation and generated code to the
-  [C1Visualizer](https://java.net/projects/c1visualizer/)
+  [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
+* LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 
 Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
-output will also generate output for LIR graphs if the `-Dgraal.PrintCFG=true` option is specified
+output will also generate output for LIR graphs if the `-Dgraal.PrintBackendCFG=true` option is specified
 (in addition to the `-Dgraal.Dump` option).
 
 By default, `-Dgraal.Dump` output is written to the local file system in a directory determined
@@ -228,6 +227,13 @@ by the `-Dgraal.DumpPath` option (default is `$CWD/graal_dumps`). You can send d
 the IGV over a network socket with the `-Dgraal.PrintGraph=Network` option. The `-Dgraal.PrintGraphHost`
 and `-Dgraal.PrintGraphPort` options determine where the dumps are sent. By default, they are
 sent to 127.0.0.1:4445 and IGV listens on port 4445 by default.
+
+By default, the graph dumping code dumps every graph at a particular level even if the graph hasn't
+changed since the previous dump.  Internally the compiler tracks when changes are made to the edges
+of the graph and setting the flag `-Dgraal.PrintUnmodifiedGraphs=false` will cause it to elide graph
+dumps when no edges have changed since the previous dump.  This can greatly reduce the number of
+graphs dumped at high dump levels, though the resulting output can be a little harder to understand
+without the context of the other graph names.
 
 C1Visualizer output is written to `*.cfg` files. These can be opened via **File -> Open Compiled Methods...** in C1Visualizer.
 
@@ -270,4 +276,4 @@ Alternatively, you can see the machine code using [HotSpot's PrintAssembly suppo
 mx hsdis
 mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -XX:CompileCommand='print,*Node.updateUsages' -version
 ```
-The first step above installs the [hsdis](https://kenai.com/projects/base-hsdis) disassembler and only needs to be performed once.
+The first step above installs the `hsdis` disassembler and only needs to be performed once.

@@ -4,7 +4,6 @@ toc_group: truffle
 link_title: Context Exit
 permalink: /graalvm-as-a-platform/language-implementation-framework/Exit/
 ---
-
 # Context Exit
 
 Different Truffle (guest) languages may use different mechanisms for exiting. This is not optimal as a Truffle language has no way to detect and handle an exit triggered by a different language.

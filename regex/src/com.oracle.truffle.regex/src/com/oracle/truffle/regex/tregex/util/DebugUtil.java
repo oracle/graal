@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,13 +94,26 @@ public class DebugUtil {
         while (m.find()) {
             String replacement;
             char c = str.charAt(m.start());
-            if (c == '"') {
-                replacement = "\\\\\"";
-            } else if (c == '\\') {
-                replacement = "\\\\\\\\";
-            } else {
-                assert Character.isISOControl(c);
-                replacement = String.format("\\\\u%04x", (int) c);
+            switch (c) {
+                case '"':
+                    replacement = "\\\\\"";
+                    break;
+                case '\\':
+                    replacement = "\\\\\\\\";
+                    break;
+                case '\r':
+                    replacement = "\\\\r";
+                    break;
+                case '\n':
+                    replacement = "\\\\n";
+                    break;
+                case '\t':
+                    replacement = "\\\\t";
+                    break;
+                default:
+                    assert Character.isISOControl(c);
+                    replacement = String.format("\\\\u%04x", (int) c);
+                    break;
             }
             m.appendReplacement(escapedString, replacement);
         }

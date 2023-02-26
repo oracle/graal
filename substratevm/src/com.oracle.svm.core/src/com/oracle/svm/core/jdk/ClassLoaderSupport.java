@@ -24,16 +24,18 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.util.GuardedAnnotationAccess;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * This class stores information about which packages need to be stored within each ClassLoader.
@@ -52,6 +54,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
  * updated to contain references to all appropriate packages.</li>
  * </ol>
  */
+@AutomaticallyRegisteredImageSingleton
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ClassLoaderSupport {
 
@@ -63,6 +66,8 @@ public final class ClassLoaderSupport {
     }
 
     private final ConcurrentMap<ClassLoader, ConcurrentHashMap<String, Package>> registeredPackages = new ConcurrentHashMap<>();
+
+    private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
 
     public static void registerPackage(ClassLoader classLoader, String packageName, Package packageValue) {
         assert classLoader != null;
@@ -78,7 +83,11 @@ public final class ClassLoaderSupport {
          * force-reset it to null for all packages, otherwise there can be transient problems when
          * the lazy initialization happens in the image builder after the static analysis.
          */
-        GuardedAnnotationAccess.getAnnotations(packageValue);
+        try {
+            packageGetPackageInfo.invoke(packageValue);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
 
         ConcurrentMap<String, Package> classPackages = singleton().registeredPackages.computeIfAbsent(classLoader, k -> new ConcurrentHashMap<>());
         classPackages.putIfAbsent(packageName, packageValue);
@@ -86,13 +95,5 @@ public final class ClassLoaderSupport {
 
     public static ConcurrentHashMap<String, Package> getRegisteredPackages(ClassLoader classLoader) {
         return singleton().registeredPackages.get(classLoader);
-    }
-}
-
-@AutomaticFeature
-final class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupport());
     }
 }

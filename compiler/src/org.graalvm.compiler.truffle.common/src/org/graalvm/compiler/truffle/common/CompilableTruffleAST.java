@@ -68,6 +68,14 @@ public interface CompilableTruffleAST {
     void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig);
 
     /**
+     * Invoked when installed code associated with this AST was invalidated due to assumption
+     * invalidation. This method is not invoked across isolation boundaries, so can throw an error
+     * in such a case. Note that this method may be invoked multiple times, if multiple installed
+     * codes were active for this AST.
+     */
+    boolean onInvalidate(Object source, CharSequence reason, boolean wasActive);
+
+    /**
      * Gets a descriptive name for this call target.
      */
     String getName();
@@ -155,4 +163,5 @@ public interface CompilableTruffleAST {
      *         otherwise.
      */
     boolean isTrivial();
+
 }

@@ -29,8 +29,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -39,22 +40,32 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationComputer;
+import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
+import com.oracle.svm.configure.config.conditional.MethodCallNode;
+import com.oracle.svm.configure.config.conditional.MethodInfoRepository;
+import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigins;
 import org.graalvm.nativeimage.ImageInfo;
 
+import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.filters.ComplexFilter;
+import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
-import com.oracle.svm.configure.filters.RuleNode;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.configure.filters.ModuleFilterTools;
+import com.oracle.svm.configure.filters.HierarchyFilterNode;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 public class ConfigurationTool {
 
@@ -90,6 +101,9 @@ public class ConfigurationTool {
                     break;
                 case "process-trace": // legacy
                     generate(argsIter, true);
+                    break;
+                case "generate-conditional":
+                    createConditionalConfig(argsIter);
                     break;
                 case "generate-filters":
                     generateFilterRules(argsIter);
@@ -145,68 +159,63 @@ public class ConfigurationTool {
         List<URI> traceInputs = new ArrayList<>();
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
-        List<Path> callerFilterFiles = new ArrayList<>();
+        List<URI> callerFilters = new ArrayList<>();
 
-        ConfigurationSet omittedInputSet = new ConfigurationSet();
-        ConfigurationSet inputSet = new ConfigurationSet();
-        ConfigurationSet outputSet = new ConfigurationSet();
+        ConfigurationFileCollection omittedCollection = new ConfigurationFileCollection();
+        ConfigurationFileCollection inputCollection = new ConfigurationFileCollection();
+        ConfigurationFileCollection outputCollection = new ConfigurationFileCollection();
         while (argsIter.hasNext()) {
             String[] parts = argsIter.next().split("=", 2);
             String current = parts[0];
             String value = (parts.length > 1) ? parts[1] : null;
-            ConfigurationSet set = outputSet;
+            ConfigurationFileCollection collection = outputCollection;
             switch (current) {
                 case "--input-dir":
-                    inputSet.addDirectory(requirePath(current, value));
+                    inputCollection.addDirectory(requirePath(current, value));
                     break;
                 case "--output-dir":
-                    Path directory = requirePath(current, value);
-                    if (!Files.exists(directory)) {
-                        Files.createDirectory(directory);
-                    } else if (!Files.isDirectory(directory)) {
-                        throw new NoSuchFileException(value);
-                    }
-                    outputSet.addDirectory(directory);
+                    Path directory = getOrCreateDirectory(current, value);
+                    outputCollection.addDirectory(directory);
                     break;
 
                 case "--omit-from-input-dir":
-                    omittedInputSet.addDirectory(requirePath(current, value));
+                    omittedCollection.addDirectory(requirePath(current, value));
                     break;
 
                 case "--reflect-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--reflect-output":
-                    set.getReflectConfigPaths().add(requirePathUri(current, value));
+                    collection.getReflectConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--jni-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--jni-output":
-                    set.getJniConfigPaths().add(requirePathUri(current, value));
+                    collection.getJniConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--proxy-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--proxy-output":
-                    set.getProxyConfigPaths().add(requirePathUri(current, value));
+                    collection.getProxyConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--resource-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--resource-output":
-                    set.getResourceConfigPaths().add(requirePathUri(current, value));
+                    collection.getResourceConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--serialization-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--serialization-output":
-                    set.getSerializationConfigPaths().add(requirePathUri(current, value));
+                    collection.getSerializationConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--predefined-classes-input":
-                    set = inputSet; // fall through
+                    collection = inputCollection; // fall through
                 case "--predefined-classes-output":
-                    set.getPredefinedClassesConfigPaths().add(requirePathUri(current, value));
+                    collection.getPredefinedClassesConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--trace-input":
@@ -223,7 +232,7 @@ public class ConfigurationTool {
                     builtinHeuristicFilter = false;
                     break;
                 case "--caller-filter-file":
-                    callerFilterFiles.add(requirePath(current, value));
+                    callerFilters.add(requirePathUri(current, value));
                     break;
                 case "--":
                     if (acceptTraceFileArgs) {
@@ -240,96 +249,200 @@ public class ConfigurationTool {
                     break;
             }
         }
+        failIfAgentLockFilesPresent(inputCollection, omittedCollection, outputCollection);
 
-        RuleNode callersFilter = null;
+        HierarchyFilterNode callersFilterHierarchyFilterNode = null;
+        ComplexFilter callersFilter = null;
         if (!builtinCallerFilter) {
-            callersFilter = RuleNode.createRoot();
-            callersFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+            callersFilterHierarchyFilterNode = HierarchyFilterNode.createInclusiveRoot();
+            callersFilter = new ComplexFilter(callersFilterHierarchyFilterNode);
         }
-        if (!callerFilterFiles.isEmpty()) {
-            if (callersFilter == null) {
-                callersFilter = AccessAdvisor.copyBuiltinCallerFilterTree();
+        if (!callerFilters.isEmpty()) {
+            if (callersFilterHierarchyFilterNode == null) {
+                callersFilterHierarchyFilterNode = AccessAdvisor.copyBuiltinCallerFilterTree();
+                callersFilter = new ComplexFilter(callersFilterHierarchyFilterNode);
             }
-            for (Path path : callerFilterFiles) {
+            for (URI uri : callerFilters) {
                 try {
                     FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
-                    parser.parseAndRegister(path);
+                    parser.parseAndRegister(uri);
                 } catch (Exception e) {
-                    throw new UsageException("Cannot parse filter file " + path + ": " + e);
+                    throw new UsageException("Cannot parse filter file " + uri + ": " + e);
                 }
             }
-            callersFilter.removeRedundantNodes();
+            callersFilter.getHierarchyFilterNode().removeRedundantNodes();
         }
 
-        AccessAdvisor advisor = new AccessAdvisor();
-        advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-        if (callersFilter != null) {
-            advisor.setCallerFilterTree(callersFilter);
-        }
-        TraceProcessor p;
-        TraceProcessor omittedInputTraceProcessor;
+        ConfigurationSet configurationSet;
+        ConfigurationSet omittedConfigurationSet;
+
         try {
-            omittedInputTraceProcessor = new TraceProcessor(advisor, omittedInputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadPredefinedClassesConfig(null, null, ConfigurationSet.FAIL_ON_EXCEPTION),
-                            null);
+            omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
             List<Path> predefinedClassDestDirs = new ArrayList<>();
-            for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
-                predefinedClassDestDirs.add(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+            for (URI pathUri : outputCollection.getPredefinedClassesConfigPaths()) {
+                Path subdir = Files.createDirectories(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+                subdir = Files.createDirectories(subdir);
+                predefinedClassDestDirs.add(subdir);
             }
-            Predicate<String> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
-            p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash, ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputTraceProcessor);
+            Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
+            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }
-        if (traceInputs.isEmpty() && inputSet.isEmpty()) {
+        if (traceInputs.isEmpty() && inputCollection.isEmpty()) {
             throw new UsageException("No inputs specified.");
         }
-        for (URI uri : traceInputs) {
-            try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {
-                p.process(reader);
+
+        if (!traceInputs.isEmpty()) {
+            AccessAdvisor advisor = new AccessAdvisor();
+            advisor.setHeuristicsEnabled(builtinHeuristicFilter);
+            if (callersFilter != null) {
+                advisor.setCallerFilterTree(callersFilter);
+            }
+
+            TraceProcessor processor = new TraceProcessor(advisor);
+            for (URI uri : traceInputs) {
+                try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {
+                    processor.process(reader, configurationSet);
+                }
             }
         }
 
-        if (outputSet.isEmpty()) {
+        if (outputCollection.isEmpty()) {
             System.err.println("Warning: no outputs specified, validating inputs only.");
         }
-        for (URI uri : outputSet.getReflectConfigPaths()) {
+        for (URI uri : outputCollection.getReflectConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getReflectionConfiguration().printJson(writer);
+                configurationSet.getReflectionConfiguration().printJson(writer);
             }
         }
-        for (URI uri : outputSet.getJniConfigPaths()) {
+        for (URI uri : outputCollection.getJniConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getJniConfiguration().printJson(writer);
+                configurationSet.getJniConfiguration().printJson(writer);
             }
         }
-        for (URI uri : outputSet.getProxyConfigPaths()) {
+        for (URI uri : outputCollection.getProxyConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getProxyConfiguration().printJson(writer);
+                configurationSet.getProxyConfiguration().printJson(writer);
             }
         }
-        for (URI uri : outputSet.getResourceConfigPaths()) {
+        for (URI uri : outputCollection.getResourceConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getResourceConfiguration().printJson(writer);
+                configurationSet.getResourceConfiguration().printJson(writer);
             }
         }
-        for (URI uri : outputSet.getSerializationConfigPaths()) {
+        for (URI uri : outputCollection.getSerializationConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getSerializationConfiguration().printJson(writer);
+                configurationSet.getSerializationConfiguration().printJson(writer);
             }
         }
-        for (URI uri : outputSet.getPredefinedClassesConfigPaths()) {
+        for (URI uri : outputCollection.getPredefinedClassesConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                p.getPredefinedClassesConfiguration().printJson(writer);
+                configurationSet.getPredefinedClassesConfiguration().printJson(writer);
             }
+        }
+    }
+
+    private static Path getOrCreateDirectory(String current, String value) throws IOException {
+        Path directory = requirePath(current, value);
+        if (!Files.exists(directory)) {
+            Files.createDirectory(directory);
+        } else if (!Files.isDirectory(directory)) {
+            throw new NoSuchFileException(value);
+        }
+        return directory;
+    }
+
+    private static void createConditionalConfig(Iterator<String> argsIter) throws IOException {
+        Set<URI> configInputPaths = new HashSet<>();
+        Set<URI> configOutputPaths = new HashSet<>();
+        URI userCodeFilterUri = null;
+        Set<URI> classNameFiltersUri = new HashSet<>();
+        while (argsIter.hasNext()) {
+            String opt = argsIter.next();
+            String[] parts = opt.split("=");
+            if (parts.length != 2) {
+                throw new UsageException("Invalid option " + opt);
+            }
+            String option = parts[0];
+            String value = parts[1];
+            switch (option) {
+                case "--input-dir":
+                    Path dir = requirePath(option, value);
+                    if (!Files.isDirectory(dir)) {
+                        throw new UsageException("Path is not a directory: " + dir);
+                    }
+                    Path configPath = dir.resolve(ConfigurationFile.PARTIAL_CONFIGURATION_WITH_ORIGINS);
+                    if (!Files.isRegularFile(configPath)) {
+                        throw new UsageException("Cannot find partial configuration file at " + configPath);
+                    }
+                    configInputPaths.add(configPath.toUri());
+                    break;
+                case "--output-dir":
+                    Path outputDir = getOrCreateDirectory(option, value);
+                    configOutputPaths.add(outputDir.toUri());
+                    break;
+                case "--user-code-filter":
+                    Path userCodeFilter = requirePath(option, value);
+                    if (!Files.isRegularFile(userCodeFilter)) {
+                        throw new UsageException("Cannot find user code filter file at " + userCodeFilter);
+                    }
+                    userCodeFilterUri = userCodeFilter.toUri();
+                    break;
+                case "--class-name-filter":
+                    Path classNameFilter = requirePath(option, value);
+                    if (!Files.isRegularFile(classNameFilter)) {
+                        throw new UsageException("Cannot find user code filter file at " + classNameFilter);
+                    }
+                    classNameFiltersUri.add(classNameFilter.toUri());
+                    break;
+                default:
+                    throw new UsageException("Unknown option: " + option);
+            }
+        }
+
+        ComplexFilter userCodeFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+        new FilterConfigurationParser(userCodeFilter).parseAndRegister(userCodeFilterUri);
+
+        ComplexFilter classNameFilter;
+        if (classNameFiltersUri.isEmpty()) {
+            classNameFilter = new ComplexFilter(HierarchyFilterNode.createInclusiveRoot());
+        } else {
+            classNameFilter = new ComplexFilter(HierarchyFilterNode.createRoot());
+            for (URI classNameFilterUri : classNameFiltersUri) {
+                new FilterConfigurationParser(classNameFilter).parseAndRegister(classNameFilterUri);
+            }
+        }
+
+        MethodCallNode rootNode = MethodCallNode.createRoot();
+        MethodInfoRepository registry = new MethodInfoRepository();
+        for (URI inputUri : configInputPaths) {
+            new PartialConfigurationWithOrigins(rootNode, registry).parseAndRegister(inputUri);
+        }
+
+        ConfigurationSet configSet = new ConditionalConfigurationComputer(rootNode, userCodeFilter, new ConditionalConfigurationPredicate(classNameFilter)).computeConditionalConfiguration();
+        for (URI outputUri : configOutputPaths) {
+            configSet.writeConfiguration(file -> Path.of(outputUri).resolve(file.getFileName()));
+        }
+    }
+
+    private static void failIfAgentLockFilesPresent(ConfigurationFileCollection... collections) {
+        Set<String> paths = null;
+        for (ConfigurationFileCollection coll : collections) {
+            for (URI path : coll.getDetectedAgentLockPaths()) {
+                if (paths == null) {
+                    paths = new HashSet<>();
+                }
+                paths.add(path.toString());
+            }
+        }
+        if (paths != null && !paths.isEmpty()) {
+            throw new UsageException("The following agent lock files were found in specified configuration directories, which means an agent is currently writing to them. " +
+                            "The agent must finish execution before its configuration can be safely accessed. " +
+                            "Unless a lock file is a leftover from an earlier process that terminated abruptly, it is unsafe to delete it." + System.lineSeparator() +
+                            String.join(System.lineSeparator(), paths));
         }
     }
 
@@ -346,7 +459,9 @@ public class ConfigurationTool {
                 args.add(arg);
             }
         }
-        RuleNode rootNode = null;
+        HierarchyFilterNode rootNode = HierarchyFilterNode.createRoot();
+        ComplexFilter filter = new ComplexFilter(rootNode);
+        boolean filterModified = false;
         for (String arg : args) {
             String[] parts = arg.split("=", 2);
             String current = parts[0];
@@ -356,37 +471,28 @@ public class ConfigurationTool {
                 case "--exclude-packages-from-modules":
                 case "--exclude-unexported-packages-from-modules":
                     if (!ImageInfo.inImageCode()) {
-                        if (rootNode != null) {
+                        if (filterModified) {
                             throw new UsageException(current + " must be specified before other rule-creating arguments");
                         }
+                        filterModified = true;
                         String[] moduleNames = (value != null) ? value.split(",") : new String[0];
-                        RuleNode.Inclusion exportedInclusion = current.startsWith("--include") ? RuleNode.Inclusion.Include : RuleNode.Inclusion.Exclude;
-                        RuleNode.Inclusion unexportedInclusion = exportedInclusion;
-                        RuleNode.Inclusion rootInclusion = exportedInclusion.invert();
+                        HierarchyFilterNode.Inclusion exportedInclusion = current.startsWith("--include") ? ConfigurationFilter.Inclusion.Include : ConfigurationFilter.Inclusion.Exclude;
+                        HierarchyFilterNode.Inclusion unexportedInclusion = exportedInclusion;
+                        HierarchyFilterNode.Inclusion rootInclusion = exportedInclusion.invert();
                         if (current.equals("--exclude-unexported-packages-from-modules")) {
-                            rootInclusion = RuleNode.Inclusion.Include;
-                            exportedInclusion = RuleNode.Inclusion.Include;
-                            unexportedInclusion = RuleNode.Inclusion.Exclude;
+                            rootInclusion = ConfigurationFilter.Inclusion.Include;
+                            exportedInclusion = ConfigurationFilter.Inclusion.Include;
+                            unexportedInclusion = ConfigurationFilter.Inclusion.Exclude;
                         }
-
-                        try {
-                            Class<?> moduleFilterToolsClass = Class.forName("com.oracle.svm.configure.jdk11.filters.ModuleFilterTools");
-                            Method generateFromModulesMethod = ReflectionUtil.lookupMethod(moduleFilterToolsClass, "generateFromModules",
-                                            String[].class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, boolean.class);
-                            rootNode = (RuleNode) generateFromModulesMethod.invoke(null, moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
-                        } catch (ClassNotFoundException e) {
-                            throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
-                        } catch (ReflectiveOperationException e) {
-                            throw new RuntimeException(e);
-                        }
+                        filter.setHierarchyFilterNode(ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce));
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
                     }
                     break;
 
                 case "--input-file":
-                    rootNode = maybeCreateRootNode(rootNode);
-                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePath(current, value));
+                    filterModified = true;
+                    new FilterConfigurationParser(filter).parseAndRegister(requirePathUri(current, value));
                     break;
 
                 case "--output-file":
@@ -394,35 +500,37 @@ public class ConfigurationTool {
                     break;
 
                 case "--include-classes":
-                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Include);
+                    filterModified = true;
+                    addSingleRule(filter.getHierarchyFilterNode(), current, value, ConfigurationFilter.Inclusion.Include);
                     break;
 
                 case "--exclude-classes":
-                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Exclude);
+                    filterModified = true;
+                    addSingleRule(filter.getHierarchyFilterNode(), current, value, ConfigurationFilter.Inclusion.Exclude);
                     break;
 
                 default:
                     throw new UsageException("Unknown argument: " + current);
             }
         }
-        rootNode = maybeCreateRootNode(rootNode); // in case of no inputs
 
-        rootNode.removeRedundantNodes();
+        filter.getHierarchyFilterNode().removeRedundantNodes();
         if (outputPath != null) {
             try (FileOutputStream os = new FileOutputStream(outputPath.toFile())) {
-                rootNode.printJsonTree(os);
+                printFilterToStream(filter, os);
             }
         } else {
-            rootNode.printJsonTree(System.out);
+            printFilterToStream(filter, System.out);
         }
     }
 
-    private static RuleNode maybeCreateRootNode(RuleNode rootNode) {
-        return (rootNode != null) ? rootNode : RuleNode.createRoot();
+    private static void printFilterToStream(ConfigurationFilter filter, OutputStream targetStream) throws IOException {
+        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(targetStream))) {
+            filter.printJson(writer);
+        }
     }
 
-    private static RuleNode addSingleRule(RuleNode rootNode, String argName, String qualifiedPkg, RuleNode.Inclusion inclusion) {
-        RuleNode root = maybeCreateRootNode(rootNode);
+    private static void addSingleRule(HierarchyFilterNode root, String argName, String qualifiedPkg, HierarchyFilterNode.Inclusion inclusion) {
         if (qualifiedPkg == null || qualifiedPkg.isEmpty()) {
             throw new UsageException("Argument must be provided for: " + argName);
         }
@@ -431,7 +539,6 @@ public class ConfigurationTool {
                             "or as .** to include all classes in the package and all of its subpackages");
         }
         root.addOrGetChildren(qualifiedPkg, inclusion);
-        return root;
     }
 
     private static String getResource(String resourceName) {

@@ -134,9 +134,13 @@
       <property name="format" value="[^\x00-\x7F]"/>
       <property name="message" value="Only use ASCII characters."/>
     </module>
-     <module name="RegexpSinglelineJava">
+    <module name="RegexpSinglelineJava">
       <property name="format" value="new (Hashtable|Vector|Stack|StringBuffer)[^\w]"/>
       <property name="message" value="Don't use old synchronized collection classes"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="@Deprecated\(.*forRemoval = true.*\)"/>
+      <property name="message" value="Don't use @Deprecated with forRemoval=true (GR-37433)"/>
     </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>
@@ -217,6 +221,11 @@
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
+  </module>
+  <module name="RegexpSingleline">
+    <property name="format" value="TODO (?!GR-)"/>
+    <property name="fileExtensions" value="java"/>
+    <property name="message" value="TODO should be followed by an issue - e.g. TODO GR-12345."/>
   </module>
   <module name="SuppressWithPlainTextCommentFilter">
     <property name="offCommentFormat" value="Checkstyle: stop"/>

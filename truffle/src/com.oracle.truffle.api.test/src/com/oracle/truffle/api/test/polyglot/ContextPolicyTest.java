@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -47,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.options.OptionCategory;
@@ -58,10 +60,10 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -74,6 +76,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -83,8 +86,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPolicyTest {
@@ -104,11 +110,6 @@ public class ContextPolicyTest {
     static List<TruffleLanguage<?>> contextDispose = new ArrayList<>();
     static List<TruffleLanguage<?>> parseRequest = new ArrayList<>();
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     @After
     @Before
     public void cleanup() {
@@ -116,6 +117,85 @@ public class ContextPolicyTest {
         contextCreate.clear();
         contextDispose.clear();
         parseRequest.clear();
+    }
+
+    enum AssertType {
+        PARSE_REQUEST_COUNT,
+        LANGUAGE_INSTANCES_COUNT,
+        CONTEXT_CREATE_COUNT,
+        CONTEXT_DISPOSE_COUNT,
+        LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE,
+        LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE,
+        LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE,
+    }
+
+    @Registration(contextPolicy = ContextPolicy.SHARED)
+    static class AssertTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(AssertTestLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String assertTypeString = (String) contextArguments[0];
+            AssertType assertType = AssertType.valueOf(assertTypeString);
+            switch (assertType) {
+                case PARSE_REQUEST_COUNT:
+                    int expectedParseRequestCount = (Integer) contextArguments[1];
+                    assertEquals(expectedParseRequestCount, parseRequest.size());
+                    break;
+                case LANGUAGE_INSTANCES_COUNT:
+                    int expectedLanguageInstanceCount = (Integer) contextArguments[1];
+                    assertEquals(expectedLanguageInstanceCount, languageInstances.size());
+                    break;
+                case CONTEXT_CREATE_COUNT:
+                    int expectedContextCreateCount = (Integer) contextArguments[1];
+                    assertEquals(expectedContextCreateCount, contextCreate.size());
+                    break;
+                case CONTEXT_DISPOSE_COUNT:
+                    int expectedContextDisposeCount = (Integer) contextArguments[1];
+                    assertEquals(expectedContextDisposeCount, contextDispose.size());
+                    break;
+                case LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE:
+                    int liccIdx1 = (Integer) contextArguments[1];
+                    int liccIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(liccIdx1), contextCreate.get(liccIdx2));
+                    break;
+                case LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE:
+                    int liprIdx1 = (Integer) contextArguments[1];
+                    int liprIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(liprIdx1), parseRequest.get(liprIdx2));
+                    break;
+                case LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE:
+                    int licdIdx1 = (Integer) contextArguments[1];
+                    int licdIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(licdIdx1), contextDispose.get(licdIdx2));
+                    break;
+            }
+            return null;
+        }
+    }
+
+    Context assertContext;
+    int assertNo;
+
+    private void remoteAssert(Engine engine, AssertType assertType, Object... args) {
+        if (assertContext == null || assertContext.getEngine() != engine) {
+            if (assertContext != null) {
+                assertContext.close();
+            }
+            assertContext = Context.newBuilder().engine(engine).build();
+        }
+        Object[] finalArgs = new Object[args.length + 1];
+        finalArgs[0] = assertType.name();
+        System.arraycopy(args, 0, finalArgs, 1, args.length);
+        evalTestLanguage(assertContext, AssertTestLanguage.class, "assert no. " + (++assertNo), finalArgs);
+    }
+
+    @After
+    public void closeAssertContext() {
+        if (assertContext != null) {
+            assertContext.close();
+        }
     }
 
     @Test
@@ -127,13 +207,13 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
 
         engine.close();
     }
@@ -148,28 +228,29 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         engine.close();
 
-        // different options parse caching disabled
         cleanup();
+
+        // different options parse caching disabled
         engine = Engine.create();
         context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "2").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
         engine.close();
     }
 
@@ -182,19 +263,19 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context1.close();
 
         Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "2").build();
         context2.eval(source0);
         context2.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
         context1.close();
 
         engine.close();
@@ -205,52 +286,52 @@ public class ContextPolicyTest {
         Engine engine = Engine.create();
 
         // test ONE
-
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(EXCLUSIVE0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(EXCLUSIVE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(EXCLUSIVE0);
-        assertEquals(2, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
 
         engine.close();
 
-        // test ONE_REUSE
-
         cleanup();
+
+        // test ONE_REUSE
         engine = Engine.create();
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(REUSE0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context context0 = Context.newBuilder().engine(engine).build();
         context0.initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
         context0.close();
 
         Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
 
         engine.close();
 
-        // test MANY
         cleanup();
+
+        // test MANY
         engine = Engine.create();
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(SHARED0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         engine.close();
     }
@@ -263,66 +344,66 @@ public class ContextPolicyTest {
         Source source1 = Source.create(EXCLUSIVE0, "s1");
 
         Context context0 = Context.newBuilder().engine(engine).build();
-        assertEmpty();
+        assertEmpty(engine);
         context0.initialize(EXCLUSIVE0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.initialize(EXCLUSIVE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(1), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 1, 1);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context1.eval(source0);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context1.eval(source0);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context0.eval(source1);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 2);
 
         context0.eval(source1);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 2);
 
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(3));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 3);
 
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(3));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 3);
 
-        assertEquals(0, contextDispose.size());
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
 
         context0.close();
-        assertEquals(1, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         context1.close();
-        assertEquals(2, contextDispose.size());
-        assertSame(languageInstances.get(1), contextDispose.get(1));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 1, 1);
 
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
 
         engine.close();
     }
@@ -335,53 +416,53 @@ public class ContextPolicyTest {
         Source source1 = Source.create(REUSE0, "s1");
 
         Context context0 = Context.newBuilder().engine(engine).build();
-        assertEmpty();
+        assertEmpty(engine);
         context0.initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(1), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 1, 1);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         // reuse context1 in context2
         context1.close();
         Context context2 = Context.newBuilder().engine(engine).build();
         context2.initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(3, contextCreate.size());
-        assertEquals(1, contextDispose.size());
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 3);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context2.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context2.eval(source0);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 2);
 
         // reuse context0 in context3
         Context context3 = Context.newBuilder().engine(engine).build();
@@ -390,13 +471,13 @@ public class ContextPolicyTest {
         context3.initialize(REUSE0);
 
         context3.eval(source0);
-        assertEquals(3, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
 
         context3.close();
         context2.close();
-        assertEquals(2, languageInstances.size());
-        assertEquals(4, contextCreate.size());
-        assertEquals(4, contextDispose.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 4);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 4);
 
         engine.close();
     }
@@ -413,56 +494,56 @@ public class ContextPolicyTest {
 
         assertEmpty();
         context0.initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context1.initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context1.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context1.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 1);
 
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
-        assertEquals(0, contextDispose.size());
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
 
         context0.close();
-        assertEquals(1, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         context1.close();
-        assertEquals(1, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(2, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         engine.close();
     }
@@ -552,11 +633,42 @@ public class ContextPolicyTest {
         return count;
     }
 
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class CallTargetExecutable implements TruffleObject {
+        private final CallTarget callTarget;
+
+        CallTargetExecutable(CallTarget callTarget) {
+            this.callTarget = callTarget;
+        }
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        abstract static class Execute {
+
+            @Specialization
+            protected static Object doIndirect(CallTargetExecutable function, Object[] arguments,
+                            @Cached IndirectCallNode callNode) {
+                return callNode.call(function.getCallTarget(), arguments);
+            }
+        }
+
+        public CallTarget getCallTarget() {
+            return callTarget;
+        }
+    }
+
     /*
      * Tests invalid sharing detection for single engine multi layer case.
      */
     @Test
     public void testInvalidSharingLayer() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         Engine engine = Engine.create();
         Context c1 = Context.newBuilder().engine(engine).build();
         c1.initialize(EXCLUSIVE0);
@@ -628,6 +740,31 @@ public class ContextPolicyTest {
 
         c1.close();
         c2.close();
+    }
+
+    @Test
+    public void testGuestToHostCodeCache() {
+        Engine engine = Engine.create();
+        try (Context c1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "1").build()) {
+            c1.initialize(SHARED0);
+            try (Context c2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "2").build()) {
+                c2.initialize(SHARED0);
+                ProxyObject proxy = ProxyObject.fromMap(Collections.singletonMap("key", "value"));
+                c1.enter();
+                assertEquals("value", c1.asValue(proxy).getMember("key").asString());
+                c1.leave();
+                c2.enter();
+                assertEquals("key", c2.asValue(proxy).getMemberKeys().iterator().next());
+                c2.leave();
+            }
+        }
+    }
+
+    private void assertEmpty(Engine engine) {
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 0);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
     }
 
     private static void assertEmpty() {
@@ -914,7 +1051,7 @@ public class ContextPolicyTest {
             TruffleContext context = null;
             if (innerContext) {
                 if (langContext.innerContext == null) {
-                    context = langContext.env.newContextBuilder().build();
+                    context = langContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
                     langContext.innerContext = context;
                 } else {
                     context = langContext.innerContext;

@@ -19,10 +19,13 @@ Follow these steps to install GraalVM Community on the macOS operating system:
 1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for macOS, and download.
 2. Unzip the archive.
   ```shell
-   tar -xzf graalvm-ce-java<version>-darvin-amd64-<version>.tar.gz
+   tar -xzf graalvm-ce-java<version>-darwin-amd64-<version>.tar.gz
   ```
   Alternatively, open the file in Finder.
-  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
+  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine /path/to/graalvm
+    ```
 
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
   ```shell
@@ -42,18 +45,11 @@ To verify if the move is successful and to get a list of all installed JDKs, run
 
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
-For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-macos/).
+For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/22/docs/getting-started/installation-macos/).
 
 ## Installation Notes
 
-#### On Software Notarization
-If you are using macOS Catalina and later you may need to remove the quarantine attribute from the bits before you can use them.
-To do this, run the following:
-```shell
-sudo xattr -r -d com.apple.quarantine /path/to/GRAALVM_HOME
-```
-
-#### On JAVA_HOME Command
+### On JAVA_HOME Command
 The information property file, _Info.plist_, is in the top level _Contents_ folder.
 This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
 You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8 JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
@@ -61,22 +57,23 @@ Within a specific version, the sort order appears to be stable but is unspecifie
 
 ## Supported Functionalities
 
-The base distribution of GraalVM Community Edition for macOS includes OpenJDK with the GraalVM compiler enabled, LLVM and JavaScript runtimes.
-The base installation can be extended with:
+The base distribution of GraalVM Community Edition for macOS includes OpenJDK with the GraalVM compiler enabled.
+The base installation can be additionally extended with:
 
 Tools/Utilities:
 * [Native Image](../../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
 * [LLVM toolchain](../../reference-manual/llvm/Compiling.md#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
 
-Runtimes:
-* [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [Node.js](../../reference-manual/js/README.md) -- Node.js v14.17.6 compatible
-* [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../../reference-manual/ruby/README.md) -- Ruby 2.7.2 compatible
-* [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-* [Wasm](../../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
-​
-These runtimes are not part of the GraalVM Community base distribution and must be installed separately.
+Language runtimes:
+
+* [Java on Truffle](../../reference-manual/java-on-truffle/README.md)
+* [JavaScript](../../reference-manual/js/README.md)
+* [Node.js](../../reference-manual/js/NodeJS.md)
+* [LLVM](../../reference-manual/llvm/README.md)
+* [Python](../../reference-manual/python/README.md)
+* [Ruby](../../reference-manual/ruby/README.md)
+* [R](/../../reference-manual/r/README.md)
+* [Wasm](../../reference-manual/wasm/README.md)
 
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.

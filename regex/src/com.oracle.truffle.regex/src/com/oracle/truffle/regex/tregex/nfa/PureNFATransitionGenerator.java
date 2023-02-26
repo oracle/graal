@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     public void generateTransitions(PureNFAState state) {
         this.curState = state;
-        Term root = (Term) ast.getState(state.getAstNodeId());
+        Term root = state.getAstNode(ast);
         setCanTraverseCaret(state.isAnchoredInitialState() || state.canMatchZeroWidth());
         transitionBuffer.clear();
         run(root);
@@ -102,7 +102,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     private boolean pruneLookarounds(RegexASTNode target) {
         if (curState.isLookAhead(ast) && target.isCharacterClass()) {
-            LookAheadAssertion la = ast.getState(curState.getAstNodeId()).asLookAheadAssertion();
+            LookAheadAssertion la = curState.getAstNode(ast).asLookAheadAssertion();
             if (!la.isNegated() && la.startsWithCharClass()) {
                 return !la.getGroup().getFirstAlternative().getFirstTerm().asCharacterClass().getCharSet().intersects(target.asCharacterClass().getCharSet());
             }

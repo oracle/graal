@@ -25,19 +25,20 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.ObjectKlass.KlassVersion;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
@@ -52,22 +53,16 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
+        assert getMeta().java_lang_Class != null;
+        initializeEspressoClass();
     }
 
     public JavaKind getPrimitiveJavaKind() {
         return primitiveKind;
-    }
-
-    @Override
-    protected ArrayKlass createArrayKlass() {
-        if (getJavaKind() == JavaKind.Void) {
-            return null;
-        }
-        return super.createArrayKlass();
     }
 
     @Override
@@ -155,8 +150,27 @@ public final class PrimitiveKlass extends Klass {
         return getModifiers();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public StaticObject allocatePrimitiveArray(int length) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) getPrimitiveJavaKind().getBasicType(), length, getMeta());
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length);
+        return getAllocator().createNewPrimitiveArray(this, length);
+    }
+
+    @Override
+    protected Klass[] getSuperTypes() {
+        // default implementation for primitive classes
+        return new Klass[]{this};
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        // default implementation for primitive classes
+        return 0;
+    }
+
+    @Override
+    protected KlassVersion[] getTransitiveInterfacesList() {
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 }

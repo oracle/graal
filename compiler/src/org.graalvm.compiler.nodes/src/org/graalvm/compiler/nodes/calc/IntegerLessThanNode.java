@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.core.common.calc.CanonicalCondition.LT;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -159,9 +160,13 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             if (result != null) {
                 return result;
             }
-            if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
-                if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
-                    return new IntegerBelowNode(forX, forY);
+            // always prefer unsigned comparisons, however, if part of a graph we sometimes want to
+            // disable it for testing purposes
+            if (forX.getOptions() == null || GraalOptions.PreferUnsignedComparison.getValue(forX.getOptions())) {
+                if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
+                    if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
+                        return new IntegerBelowNode(forX, forY);
+                    }
                 }
             }
 
@@ -228,6 +233,24 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
                 }
             }
             return null;
+        }
+
+        @Override
+        protected boolean isMatchingBitExtendNode(ValueNode node) {
+            return node instanceof SignExtendNode;
+        }
+
+        @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            return IntegerStamp.addCanOverflow(a, b);
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            // one extra bit to avoid flipping the sign
+            return leadingZeroForBits - 1 < shift;
         }
 
         @Override

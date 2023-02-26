@@ -68,7 +68,11 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
      * @param descriptor the signature of the call to this stub
      * @param staticMethod the Java method to be invoked by HotSpot
      */
-    public InvokeJavaMethodStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor,
+    public InvokeJavaMethodStub(OptionValues options,
+                    HotSpotJVMCIRuntime runtime,
+                    HotSpotProviders providers,
+                    long address,
+                    HotSpotForeignCallDescriptor descriptor,
                     ResolvedJavaMethod staticMethod) {
         super(options, runtime, providers, address, descriptor, true);
         this.javaMethod = staticMethod;

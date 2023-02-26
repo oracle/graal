@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -100,7 +100,7 @@ public class AArch64Convert {
                     break;
                 case D2F:
                 case F2D:
-                    masm.fcvt(fromSize, result, input);
+                    masm.fcvt(toSize, fromSize, result, input);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();

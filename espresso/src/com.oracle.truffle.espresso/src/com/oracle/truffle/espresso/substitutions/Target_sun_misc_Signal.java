@@ -81,7 +81,7 @@ public final class Target_sun_misc_Signal {
     }
 
     private static StaticObject asGuestSignal(Signal signal, Meta meta) {
-        StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance();
+        StaticObject guestSignal = meta.sun_misc_Signal.allocateInstance(meta.getContext());
         meta.sun_misc_Signal_init_String.invokeDirect(guestSignal, meta.toGuestString(signal.getName()));
         return guestSignal;
     }
@@ -94,7 +94,7 @@ public final class Target_sun_misc_Signal {
         if (StaticObject.isNull(signal)) {
             throw meta.throwNullPointerException();
         }
-        if (!meta.getContext().EnableSignals) {
+        if (!meta.getContext().getEspressoEnv().EnableSignals) {
             logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
         }

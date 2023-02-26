@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,13 +48,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
  */
 public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractTransition<S, T>> implements AbstractState<S, T> {
 
-    protected static final byte FLAG_ANCHORED_INITIAL_STATE = 1 << 0;
-    protected static final byte FLAG_UN_ANCHORED_INITIAL_STATE = 1 << 1;
-    protected static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 2;
-    protected static final byte FLAG_UN_ANCHORED_FINAL_STATE = 1 << 3;
-    protected static final byte FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
-    protected static final byte FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
-    protected static final byte FLAG_ANY_INITIAL_OR_FINAL_STATE = FLAG_ANY_INITIAL_STATE | FLAG_ANY_FINAL_STATE;
+    protected static final short FLAG_ANCHORED_INITIAL_STATE = 1 << 0;
+    protected static final short FLAG_UN_ANCHORED_INITIAL_STATE = 1 << 1;
+    protected static final short FLAG_ANCHORED_FINAL_STATE = 1 << 2;
+    protected static final short FLAG_UN_ANCHORED_FINAL_STATE = 1 << 3;
+    protected static final short FLAG_ANY_INITIAL_STATE = FLAG_ANCHORED_INITIAL_STATE | FLAG_UN_ANCHORED_INITIAL_STATE;
+    protected static final short FLAG_ANY_FINAL_STATE = FLAG_ANCHORED_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE;
+    protected static final short FLAG_ANY_INITIAL_OR_FINAL_STATE = FLAG_ANY_INITIAL_STATE | FLAG_ANY_FINAL_STATE;
     /**
      * Number of flag bits occupied by this class. Child classes may add their own flags with
      * {@code byte NEW_FLAG = 1 << N_FLAGS; byte NEW_FLAG2 = 1 << (N_FLAGS + 1)} etc.
@@ -62,7 +62,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     protected static final int N_FLAGS = 4;
 
     private final int id;
-    @CompilationFinal private byte flags;
+    @CompilationFinal private short flags;
     @CompilationFinal(dimensions = 1) private T[] successors;
     @CompilationFinal(dimensions = 1) private T[] predecessors;
     private int nPredecessors = 0;
@@ -76,7 +76,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         this(id, (byte) 0, emptyTransitions);
     }
 
-    protected BasicState(int id, byte flags, T[] emptyTransitions) {
+    protected BasicState(int id, short flags, T[] emptyTransitions) {
         this.id = id;
         this.flags = flags;
         this.successors = emptyTransitions;
@@ -88,19 +88,19 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         return id;
     }
 
-    protected byte getFlags() {
+    protected short getFlags() {
         return flags;
     }
 
-    protected boolean getFlag(byte flag) {
+    protected boolean getFlag(short flag) {
         return (flags & flag) != 0;
     }
 
-    protected void setFlag(byte flag) {
+    protected void setFlag(short flag) {
         flags |= flag;
     }
 
-    protected void setFlag(byte flag, boolean value) {
+    protected void setFlag(short flag, boolean value) {
         if (value) {
             flags |= flag;
         } else {

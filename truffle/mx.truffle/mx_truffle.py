@@ -91,13 +91,9 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
-        jdk = mx.get_jdk()
-        if jdk.javaCompliance <= '1.8':
-            extraVmArgs = ['-XX:-UseJVMCIClassLoader'] + extraVmArgs
-        else:
-            extraVmArgs.extend(_open_module_exports_args())
-            # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
-            extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
+        extraVmArgs.extend(_open_module_exports_args())
+        # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
+        extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         return extraVmArgs
 
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
@@ -208,29 +204,28 @@ def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Disable DefaultRuntime warning
     vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-    jdk = mx.get_jdk(tag='default')
-    if jdk.javaCompliance > '1.8':
-        # This is required to access jdk.internal.module.Modules which
-        # in turn allows us to dynamically open fields/methods to reflection.
-        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # The arguments below are only actually needed if Truffle is deployed as a
-        # module. However, that's determined by the compiler suite which may not
-        # be present. In that case, adding these options results in annoying
-        # but harmless messages from the VM:
-        #
-        #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
-        #
+    # This is required to access jdk.internal.module.Modules which
+    # in turn allows us to dynamically open fields/methods to reflection.
+    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
+    # The arguments below are only actually needed if Truffle is deployed as a
+    # module. However, that's determined by the compiler suite which may not
+    # be present. In that case, adding these options results in annoying
+    # but harmless messages from the VM:
+    #
+    #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
+    #
 
-        # This is required for the call to setAccessible in
-        # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
-        # Needed for object model tests.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
+    # This is required for the call to setAccessible in
+    # TruffleTCK.testValueWithSource to work.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+
+    # Needed for object model tests.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
@@ -261,6 +256,8 @@ def _truffle_gate_runner(args, tasks):
         with Task('Truffle DSL max state bit tests', tasks) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
+    with Task('Validate parsers', tasks) as t:
+        if t: validate_parsers()
 
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
@@ -685,6 +682,30 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         with open(filename, 'w') as content_file:
             content_file.write(content)
 
+def validate_parsers(args=None, out=None):
+    validate_parser("com.oracle.truffle.sl", "com/oracle/truffle/sl/parser/SimpleLanguage.g4", create_sl_parser)
+    validate_parser("com.oracle.truffle.dsl.processor", "com/oracle/truffle/dsl/processor/expression/Expression.g4", create_dsl_parser)
+
+def validate_parser(grammar_project, grammar_path, create_command, args=None, out=None):
+    def read_file(path):
+        with open(path, "r") as f:
+            return f.readlines()
+    parser_path = grammar_path.replace(".g4", "Parser.java")
+    lexer_path = grammar_path.replace(".g4", "Lexer.java")
+    parser = mx.project(grammar_project).source_dirs()[0] + "/" + parser_path
+    lexer = mx.project(grammar_project).source_dirs()[0] + "/" + lexer_path
+    parser_before = read_file(parser)
+    lexer_before = read_file(lexer)
+    create_command([], out)
+    parser_after = read_file(parser)
+    lexer_after = read_file(lexer)
+    if (parser_before != parser_after or lexer_before != lexer_after):
+        with open(parser, "w") as f:
+            f.writelines(parser_before)
+        with open(lexer, "w") as f:
+            f.writelines(lexer_before)
+        mx.abort("Parser generated from " + grammar_path + " does not match content of " + parser_path + " or " + lexer_path + "." +
+            " Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
@@ -704,7 +725,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.3'),
+                                                           mx.join(self.out_dir, 'libffi-3.4.2'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
@@ -719,6 +740,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                        mx.join('src', 'prep_cif.c'),
                                                        mx.join('src', 'raw_api.c'),
                                                        mx.join('src', 'types.c'),
+                                                       mx.join('src', 'tramp.c'),
                                                        mx.join('src', 'x86', 'ffiw64.c')],
                                                 '.S': [mx.join('src', 'x86', 'win64_intel.S')]})
         else:
@@ -740,17 +762,13 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.3'))
+                                                 mx.join(self.out_dir, 'libffi-3.4.2'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
                               ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
-            if mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64':
-                # configure wrongly autodetects as 'arm-apple-darwin20.0.0', see https://github.com/libffi/libffi/issues/571
-                # force it until it is fixed upstream, tracked in GR-35554
-                configure_args.append('--build=aarch64-apple-darwin20.0.0')
 
             self.delegate.buildEnv = dict(
                 SOURCES=mx.basename(self.delegate.dir),
@@ -774,12 +792,22 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
     @property
     def patches(self):
         """A list of patches that will be applied during a build."""
-        os_arch_dir = mx.join(self.source_dirs()[0], '{}-{}'.format(mx.get_os(), mx.get_arch()))
-        if mx.exists(os_arch_dir):
-            return [mx.join(os_arch_dir, patch) for patch in os.listdir(os_arch_dir)]
+        def patch_dir(d):
+            return mx.join(self.source_dirs()[0], d)
 
-        others_dir = mx.join(self.source_dirs()[0], 'others')
-        return [mx.join(others_dir, patch) for patch in os.listdir(others_dir)]
+        def get_patches(patchdir):
+            for patch in os.listdir(patchdir):
+                yield mx.join(patchdir, patch)
+
+        for p in get_patches(patch_dir('common')):
+            yield p
+        os_arch_dir = patch_dir('{}-{}'.format(mx.get_os(), mx.get_arch()))
+        if mx.exists(os_arch_dir):
+            for p in get_patches(os_arch_dir):
+                yield p
+        else:
+            for p in get_patches(patch_dir('others')):
+                yield p
 
     def getBuildTask(self, args):
         return LibffiBuildTask(args, self)
@@ -820,7 +848,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
         mx.log('Applying patches...')
         git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
-                     os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir)]
+                     os.path.realpath(self.subject.delegate.dir)]
         for patch in self.subject.patches:
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
 
@@ -872,23 +900,36 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:TRUFFLE_NFI', 'truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle NFI LIBFFI',
+    short_name='nfi-libffi',
+    dir_name='nfi-libffi',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle NFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    installable=False,
+    stability="supported",
+))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='ICU4J',
     short_name='icu4j',
-    dir_name='truffle',
+    dir_name='icu4j',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    jar_distributions=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))

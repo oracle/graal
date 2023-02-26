@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
@@ -46,11 +46,10 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
@@ -58,12 +57,13 @@ import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
-public class CEntryPointSupport implements GraalFeature {
+@AutomaticallyRegisteredFeature
+public class CEntryPointSupport implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         registerEntryPointActionsPlugins(plugins.getInvocationPlugins());
@@ -72,45 +72,56 @@ public class CEntryPointSupport implements GraalFeature {
 
     private static void registerEntryPointActionsPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, CEntryPointActions.class);
-        r.register1("enterCreateIsolate", CEntryPointCreateIsolateParameters.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("enterCreateIsolate", CEntryPointCreateIsolateParameters.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode parameters) {
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.createIsolate(parameters));
                 return true;
             }
         });
-        r.register2("enterAttachThread", Isolate.class, boolean.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("enterAttachThread", Isolate.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate, ValueNode ensureJavaThreadNode) {
                 if (!ensureJavaThreadNode.isConstant()) {
                     b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
                 }
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, ensureJavaThreadNode.asJavaConstant().asInt() != 0, false));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, ensureJavaThreadNode.asJavaConstant().asInt() != 0, false));
                 return true;
             }
         });
-        r.register1("enter", IsolateThread.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("enterAttachThread", Isolate.class, boolean.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate, ValueNode startedByIsolate, ValueNode ensureJavaThread) {
+                if (!startedByIsolate.isConstant() || !ensureJavaThread.isConstant()) {
+                    b.bailout("Parameters ensureJavaThread and startedByIsolate of enterAttachThread must be a compile time constant");
+                }
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, startedByIsolate.asJavaConstant().asInt() != 0,
+                                ensureJavaThread.asJavaConstant().asInt() != 0, false));
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("enter", IsolateThread.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.enter(thread));
                 return true;
             }
         });
-        r.register1("enterIsolate", Isolate.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("enterByIsolate", Isolate.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterByIsolate(isolate));
                 return true;
             }
         });
-        r.register1("enterAttachThreadFromCrashHandler", Isolate.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("enterAttachThreadFromCrashHandler", Isolate.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, true));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, false, true));
                 return true;
             }
         });
-        r.register0("leave", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("leave") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 StateSplitProxyNode proxy = new StateSplitProxyNode(null);
@@ -120,7 +131,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register0("leaveDetachThread", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("leaveDetachThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 StateSplitProxyNode proxy = new StateSplitProxyNode(null);
@@ -130,7 +141,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register0("leaveTearDownIsolate", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("leaveTearDownIsolate") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 StateSplitProxyNode proxy = new StateSplitProxyNode(null);
@@ -140,7 +151,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register2("failFatally", int.class, CCharPointer.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("failFatally", int.class, CCharPointer.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.add(new CEntryPointUtilityNode(UtilityAction.FailFatally, arg1, arg2));
@@ -157,7 +168,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register1("isCurrentThreadAttachedTo", Isolate.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isCurrentThreadAttachedTo", Isolate.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
                 b.addPush(JavaKind.Boolean, new CEntryPointUtilityNode(UtilityAction.IsAttached, isolate));
@@ -168,7 +179,7 @@ public class CEntryPointSupport implements GraalFeature {
 
     private static void registerCurrentIsolatePlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, CurrentIsolate.class);
-        r.register0("getCurrentThread", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getCurrentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -183,7 +194,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register0("getIsolate", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getIsolate") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {

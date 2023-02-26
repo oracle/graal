@@ -63,6 +63,10 @@ if not "%~1"=="" (
     set "_tb=!u_arg!"
   ) else if "!u_arg!"=="ruby" (
     set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="wasm" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="espresso" (
+    set "_tb=!u_arg!"
   ) else if "!u_arg!"=="--help" (
     set "_h=true"
   ) else if "!u_arg!"=="-h" (
@@ -109,11 +113,15 @@ for %%f in (%to_build%) do (
   ) else if "%%f"=="js" (
     call :library jsvm cmd_line
   ) else if "%%f"=="llvm" (
-    call :launcher lli cmd_line
+    call :library llvmvm cmd_line
   ) else if "%%f"=="python" (
-    call :launcher graalpython cmd_line
+    call :library pythonvm cmd_line
   ) else if "%%f"=="ruby" (
-    call :launcher truffleruby cmd_line
+    call :library rubyvm cmd_line
+  ) else if "%%f"=="wasm" (
+    call :launcher wasm cmd_line
+  ) else if "%%f"=="espresso" (
+    call :library javavm cmd_line
   ) else (
     echo Should not reach here
     exit /b 1
@@ -136,7 +144,7 @@ goto :eof
   exit /b 0
 
 :usage
-  echo Usage: "%~nx0 [-v|--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
+  echo Usage: "%~nx0 [-v|--verbose] polyglot|libpolyglot|espresso|js|llvm|python|ruby|wasm... [custom native-image args]..."
   exit /b 0
 
 :common cmd_line

@@ -46,27 +46,29 @@ public final class JNIClassCache {
     }
 
     /**
-     * Looks up JClass using {@link Class}.
+     * Looks up JClass using a {@link Class}.
      *
      * @return JNI global reference for {@link JClass}
-     * @throws JNIExceptionWrapper is thrown when class is not found.
+     * @throws JNIExceptionWrapper wrapping the HotSpot {@link LinkageError} is thrown when class is
+     *             not found.
      */
     public static JClass lookupClass(JNIEnv env, Class<?> clazz) throws JNIExceptionWrapper {
         return lookupClass(env, clazz.getName());
     }
 
     /**
-     * Looks up JClass using fully qualified name.
+     * Looks up JClass using a fully qualified name.
      *
      * @return JNI global reference for {@link JClass}
-     * @throws JNIExceptionWrapper is thrown when class is not found.
+     * @throws JNIExceptionWrapper wrapping the HotSpot {@link LinkageError} is thrown when class is
+     *             not found.
      */
     public static JClass lookupClass(JNIEnv env, String className) throws JNIExceptionWrapper {
         return lookupClassImpl(env, className, true);
     }
 
     /**
-     * Looks up JClass using {@link Class}.
+     * Looks up JClass using a {@link Class}.
      *
      * @return JNI global reference for {@link JClass} or {@link WordFactory#nullPointer() NULL}
      *         when class is not found.
@@ -76,7 +78,7 @@ public final class JNIClassCache {
     }
 
     /**
-     * Looks up JClass using fully qualified name.
+     * Looks up JClass using a fully qualified name.
      *
      * @return JNI global reference for {@link JClass} or {@link WordFactory#nullPointer() NULL}
      *         when class is not found.
@@ -92,7 +94,7 @@ public final class JNIClassCache {
             if (jClass.isNull()) {
                 res = JNIClassData.INVALID;
             } else {
-                res = new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, className));
+                res = new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, "Class<" + className + ">"));
             }
             return res;
         }).jClassGlobal;
@@ -100,7 +102,7 @@ public final class JNIClassCache {
 
     /**
      * Disposes cached JNI objects and frees JNI globals. The isolate should call this method before
-     * dispose to free host classes held by JNI global references.
+     * disposing to free host classes held by JNI global references.
      */
     public static void dispose(JNIEnv jniEnv) {
         for (Iterator<JNIClassData> iterator = classesByName.values().iterator(); iterator.hasNext();) {

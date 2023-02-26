@@ -99,6 +99,14 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
+    public boolean setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
+        return ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
+    }
+
+    public boolean isAllowActions(TruffleSafepoint safepoint) {
+        return ((TruffleSafepointImpl) safepoint).isAllowActions();
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
@@ -309,6 +317,8 @@ public abstract class ThreadLocalHandshake {
         private final ThreadLocalHandshake impl;
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
+        private boolean enabled = true;
+        private volatile boolean changeAllowActionsAllowed;
         private Interrupter blockedAction;
         private boolean interrupted;
 
@@ -337,6 +347,10 @@ public abstract class ThreadLocalHandshake {
                 // correct usage always needs to reset the side-effects enabled state
                 if (!this.sideEffectsEnabled) {
                     throw new AssertionError("Invalid side-effects disabled state");
+                }
+
+                if (!this.enabled) {
+                    throw new AssertionError("Invalid allow actions disabled state");
                 }
             } finally {
                 this.lock.unlock();
@@ -514,6 +528,9 @@ public abstract class ThreadLocalHandshake {
         }
 
         private List<HandshakeEntry> takeHandshakeImpl() {
+            if (!enabled) {
+                return Collections.emptyList();
+            }
             List<HandshakeEntry> toProcess = new ArrayList<>(this.handshakes.size());
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
@@ -531,7 +548,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        public <T> void setBlockedWithException(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
 
             /*
@@ -551,7 +568,7 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -570,7 +587,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -589,15 +606,19 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             if (beforeInterrupt != null) {
                 beforeInterrupt.run();
             }
+            Throwable t = null;
             try {
                 setBlockedImpl(location, interrupter, true);
+            } catch (Throwable e) {
+                t = e;
+                throw e;
             } finally {
                 if (afterInterrupt != null) {
-                    afterInterrupt.run();
+                    afterInterrupt.accept(t);
                 }
             }
         }
@@ -649,13 +670,43 @@ public abstract class ThreadLocalHandshake {
          */
         private boolean isPending() {
             assert lock.isHeldByCurrentThread();
-
+            if (!enabled) {
+                return false;
+            }
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        boolean setChangeAllowActions(boolean changeAllowActionsAllowed) {
+            boolean prevChangeAllowActionsAllowed = this.changeAllowActionsAllowed;
+            this.changeAllowActionsAllowed = changeAllowActionsAllowed;
+            return prevChangeAllowActionsAllowed;
+        }
+
+        boolean isAllowActions() {
+            return enabled;
+        }
+
+        @Override
+        @TruffleBoundary
+        public boolean setAllowActions(boolean enabled) {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+            lock.lock();
+            try {
+                if (!changeAllowActionsAllowed) {
+                    throw new IllegalStateException("Using setAllowActions is only permitted during finalization of a language. See TruffleLanguage.finalizeContext(Object) for further details.");
+                }
+                boolean prev = this.enabled;
+                this.enabled = enabled;
+                updateFastPending();
+                return prev;
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override

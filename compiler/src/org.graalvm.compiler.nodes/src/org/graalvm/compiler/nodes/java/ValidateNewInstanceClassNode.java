@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,17 @@ package org.graalvm.compiler.nodes.java;
 
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.word.LocationIdentity;
 
 /**
  * This node represents the class type checks for a {@link DynamicNewInstanceNode} and throws any
@@ -43,7 +45,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
  * or {@link Class} type.
  */
 @NodeInfo(size = NodeSize.SIZE_8, cycles = NodeCycles.CYCLES_8, cyclesRationale = "Performs multiple checks.")
-public final class ValidateNewInstanceClassNode extends WithExceptionNode implements Lowerable, Simplifiable {
+public final class ValidateNewInstanceClassNode extends WithExceptionNode implements Lowerable, Simplifiable, SingleMemoryKill {
 
     @Input ValueNode clazz;
 
@@ -72,6 +74,11 @@ public final class ValidateNewInstanceClassNode extends WithExceptionNode implem
     public void setClassClass(ValueNode newClassClass) {
         updateUsages(classClass, newClassClass);
         classClass = newClassClass;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 
     @Override

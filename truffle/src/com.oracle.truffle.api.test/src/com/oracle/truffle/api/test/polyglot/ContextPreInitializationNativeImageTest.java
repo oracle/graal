@@ -42,7 +42,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.polyglot.Context;
 import org.junit.BeforeClass;
@@ -54,7 +53,6 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -67,14 +65,19 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  *
  * This could potentially be improved using some white-box API that allows to explicitly store and
  * restore the preinitialized context.
+ *
+ * This test needs
+ * -Dpolyglot.image-build-time.PreinitializeContexts=ContextPreintializationNativeImageLanguage
+ * provided via com.oracle.truffle.api.test/src/META-INF/native-image/native-image.properties.
+ * Setting the property programmatically in a static initializer via
+ * System.setProperty("polyglot.image-build-time.PreinitializeContexts", LANGUAGE) is not reliable
+ * as its publishing depends on when the class is initialized. The property needs to be available
+ * before com.oracle.truffle.polyglot.PolyglotContextImpl#preInitialize() is invoked, i.e., before
+ * com.oracle.svm.truffle.TruffleBaseFeature#beforeAnalysis().
  */
 public class ContextPreInitializationNativeImageTest {
 
     static final String LANGUAGE = "ContextPreintializationNativeImageLanguage";
-
-    static {
-        System.setProperty("polyglot.image-build-time.PreinitializeContexts", LANGUAGE);
-    }
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -84,7 +87,7 @@ public class ContextPreInitializationNativeImageTest {
     @Test
     public void test() {
         // only supported in AOT
-        assumeTrue(TruffleOptions.AOT);
+        TruffleTestAssumptions.assumeAOT();
 
         try (Context context = Context.create(LANGUAGE)) {
             context.initialize(LANGUAGE);
@@ -185,6 +188,10 @@ public class ContextPreInitializationNativeImageTest {
             return true;
         }
 
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
     }
 
 }

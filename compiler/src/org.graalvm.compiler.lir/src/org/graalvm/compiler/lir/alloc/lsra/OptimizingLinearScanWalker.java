@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
-import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBindingLists;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.State;
 import org.graalvm.compiler.options.Option;
@@ -70,13 +69,6 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         try (DebugContext.Scope s1 = debug.scope("LSRAOptimization")) {
             debug.log("adding stack to unhandled list %s", interval);
             unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Stack, interval);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private static void printRegisterBindingList(DebugContext debug, RegisterBindingLists list, RegisterBinding binding) {
-        for (Interval interval = list.get(binding); !interval.isEndMarker(); interval = interval.next) {
-            debug.log("%s", interval);
         }
     }
 

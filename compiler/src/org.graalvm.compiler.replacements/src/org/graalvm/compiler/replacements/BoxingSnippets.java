@@ -196,18 +196,34 @@ public class BoxingSnippets implements Snippets {
                         }
                     }
                     // does no allocation
-                    boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", trueField, falseField));
+                    boxSnippets.put(kind, snippet(providers,
+                                    BoxingSnippets.class,
+                                    kind.getJavaName() + "ValueOf",
+                                    trueField,
+                                    falseField));
                 } else {
                     GraalError.guarantee(!mustHaveCacheField || cacheLocation != null, "Must have a cache location for kind %s", kind);
                     if (cacheLocation != null) {
-                        boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation, cacheLocation,
+                        boxSnippets.put(kind, snippet(providers,
+                                        BoxingSnippets.class,
+                                        kind.getJavaName() + "ValueOf",
+                                        LocationIdentity.INIT_LOCATION,
+                                        accessedLocation,
+                                        cacheLocation,
                                         NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
                     } else {
-                        boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf", LocationIdentity.INIT_LOCATION, accessedLocation,
+                        boxSnippets.put(kind, snippet(providers,
+                                        BoxingSnippets.class,
+                                        kind.getJavaName() + "ValueOf",
+                                        LocationIdentity.INIT_LOCATION,
+                                        accessedLocation,
                                         NamedLocationIdentity.getArrayLocation(JavaKind.Object)));
                     }
                 }
-                unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value", accessedLocation));
+                unboxSnippets.put(kind, snippet(providers,
+                                BoxingSnippets.class,
+                                kind.getJavaName() + "Value",
+                                accessedLocation));
             }
             Group group = factory.createSnippetCounterGroup("Boxing");
             valueOfCounter = new SnippetCounter(group, "valueOf", "box intrinsification");
@@ -221,7 +237,12 @@ public class BoxingSnippets implements Snippets {
                 if (innerClasses == null || innerClasses.length == 0) {
                     throw GraalError.shouldNotReachHere("Inner classes must exist");
                 }
-                return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClasses[0].getDeclaredField("cache")));
+                for (Class<?> innerClass : innerClasses) {
+                    if (innerClass.getName().endsWith("Cache")) {
+                        return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClass.getDeclaredField("cache")));
+                    }
+                }
+                throw GraalError.shouldNotReachHere("No cache inner class found");
             } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e);
             }
@@ -232,9 +253,9 @@ public class BoxingSnippets implements Snippets {
             args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", box.getValue());
             args.addConst("valueOfCounter", valueOfCounter);
-            SnippetTemplate template = template(box, args);
+            SnippetTemplate template = template(tool, box, args);
             box.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-            template.instantiate(providers.getMetaAccess(), box, DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), box, DEFAULT_REPLACER, args);
         }
 
         public void lower(UnboxNode unbox, LoweringTool tool) {
@@ -242,9 +263,9 @@ public class BoxingSnippets implements Snippets {
             args.add("value", unbox.getValue());
             args.addConst("valueCounter", valueCounter);
 
-            SnippetTemplate template = template(unbox, args);
+            SnippetTemplate template = template(tool, unbox, args);
             unbox.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
-            template.instantiate(providers.getMetaAccess(), unbox, DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), unbox, DEFAULT_REPLACER, args);
         }
     }
 }

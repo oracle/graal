@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,7 +87,7 @@ final class SignatureRootNode extends RootNode {
             this.argBuilders = argBuilders;
         }
 
-        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<NFIType>() {
+        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<>() {
 
             @Override
             public NFIType[] create(int size) {
@@ -175,6 +175,9 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getSimpleType(api.backend, type);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException(type.name());
+            }
             return new NFIType(SimpleTypeCachedState.get(type), backendType);
         }
     }
@@ -191,6 +194,9 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getArrayType(api.backend, type);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("[%s]", type.name());
+            }
             return new NFIType(SimpleTypeCachedState.nop(), backendType);
         }
     }
@@ -201,6 +207,9 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object backendType = backend.getEnvType(api.backend);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("ENV");
+            }
             return new NFIType(SimpleTypeCachedState.injected(), backendType, null);
         }
     }

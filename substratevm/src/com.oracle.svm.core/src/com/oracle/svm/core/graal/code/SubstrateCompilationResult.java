@@ -47,4 +47,10 @@ public final class SubstrateCompilationResult extends CompilationResult {
         assert deoptimizationSourcePositions.get(0) == null : "First index is reserved for unknown source positions";
         this.deoptimizationSourcePositions = deoptimizationSourcePositions;
     }
+
+    @Override
+    public void resetForEmittingCode() {
+        super.resetForEmittingCode();
+        deoptimizationSourcePositions = null;
+    }
 }

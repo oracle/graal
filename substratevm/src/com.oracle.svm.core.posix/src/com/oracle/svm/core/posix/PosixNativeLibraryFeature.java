@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
@@ -50,8 +50,8 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 
-@AutomaticFeature
-class PosixNativeLibraryFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();
@@ -59,9 +59,7 @@ class PosixNativeLibraryFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
@@ -77,8 +75,8 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
-        if (isFirstIsolate()) { // raise process file descriptor limit to hard max if possible
-            Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
+        if (Isolates.isCurrentFirst()) { // raise process fd limit to hard max if possible
+            Resource.rlimit rlp = UnsafeStackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
                 UnsignedWord newValue = rlp.rlim_max();
                 if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -98,7 +96,6 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             try {
                 loadJavaLibrary();
-                loadZipLibrary();
                 loadNetLibrary();
                 /*
                  * The JDK uses posix_spawn on the Mac to launch executables. This requires a
@@ -121,8 +118,8 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 
-    protected void loadNetLibrary() {
-        if (isFirstIsolate()) {
+    private static void loadNetLibrary() {
+        if (Isolates.isCurrentFirst()) {
             /*
              * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
              * value in process-wide shared native state, the property's value in the first launched

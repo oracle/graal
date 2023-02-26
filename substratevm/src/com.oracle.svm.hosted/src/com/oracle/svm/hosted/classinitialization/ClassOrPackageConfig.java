@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.classinitialization;
 
 import org.graalvm.collections.EconomicSet;
 
-public class ClassOrPackageConfig {
+final class ClassOrPackageConfig {
     private final String name;
     private final EconomicSet<String> reasons;
     private final InitKind kind;

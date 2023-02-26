@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,19 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.k0;
+import static jdk.vm.ci.amd64.AMD64.k1;
+import static jdk.vm.ci.amd64.AMD64.k2;
+import static jdk.vm.ci.amd64.AMD64.k3;
+import static jdk.vm.ci.amd64.AMD64.k4;
+import static jdk.vm.ci.amd64.AMD64.k5;
+import static jdk.vm.ci.amd64.AMD64.k6;
+import static jdk.vm.ci.amd64.AMD64.k7;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rip;
 import static org.graalvm.compiler.core.common.NumUtil.isInt;
+
+import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -39,7 +49,10 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -55,9 +68,12 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
+    @Temp({OperandFlag.REG}) private AllocatableValue[] killedMaskRegisters;
 
     private final GraalHotSpotVMConfig config;
     private final Register thread;
+
+    private static final AllocatableValue[] MASK_REGISTERS = new AllocatableValue[]{k0.asValue(), k1.asValue(), k2.asValue(), k3.asValue(), k4.asValue(), k5.asValue(), k6.asValue(), k7.asValue()};
 
     public AMD64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, NodeLIRBuilderTool tool, Register thread) {
         super(TYPE);
@@ -70,6 +86,17 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             // Don't waste a register if it's unneeded
             temp = Value.ILLEGAL;
         }
+        EnumSet<CPUFeature> features = ((AMD64) tool.getLIRGeneratorTool().target().arch).getFeatures();
+        if (JavaVersionUtil.JAVA_SPEC < 17 && features.contains(AMD64.CPUFeature.AVX512F)) {
+            /*
+             * Hotspot doesn't save AVX512 opmask registers on JDK11. Mark them as killed to force
+             * spilling around safepoints.
+             */
+            killedMaskRegisters = MASK_REGISTERS;
+        } else {
+            killedMaskRegisters = AllocatableValue.NONE;
+        }
+
     }
 
     @Override

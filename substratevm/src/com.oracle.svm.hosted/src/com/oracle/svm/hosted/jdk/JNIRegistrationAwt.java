@@ -24,41 +24,33 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
+import java.awt.GraphicsEnvironment;
 
-import jdk.vm.ci.services.Services;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-import java.awt.GraphicsEnvironment;
-import java.util.Optional;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.c.NativeLibraries;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @SuppressWarnings({"unused"})
-public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
-
-    private static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
-    private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
+public class JNIRegistrationAwt extends JNIRegistrationUtil implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             access.registerReachabilityHandler(JNIRegistrationAwt::handlePreferencesClassReachable,
                             clazz(access, "java.awt.Toolkit"),
                             clazz(access, "sun.java2d.cmm.lcms.LCMS"),
@@ -68,10 +60,12 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
                             clazz(access, "java.awt.image.ColorModel"),
                             clazz(access, "sun.awt.X11GraphicsEnvironment"),
                             clazz(access, "sun.font.FontManagerNativeLibrary"),
+                            clazz(access, "sun.print.CUPSPrinter"),
                             clazz(access, "sun.java2d.Disposer"));
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt");
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt");
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_print");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerFreeType,
                             clazz(access, "sun.font.FontManagerNativeLibrary"));
@@ -105,11 +99,11 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
 
-        JNIRuntimeAccess.register(method(access, "java.lang.System", "setProperty", String.class, String.class));
-        JNIRuntimeAccess.register(method(access, "java.lang.System", "loadLibrary", String.class));
+        RuntimeJNIAccess.register(method(access, "java.lang.System", "setProperty", String.class, String.class));
+        RuntimeJNIAccess.register(method(access, "java.lang.System", "loadLibrary", String.class));
 
-        JNIRuntimeAccess.register(java.awt.GraphicsEnvironment.class);
-        JNIRuntimeAccess.register(method(access, "java.awt.GraphicsEnvironment", "isHeadless"));
+        RuntimeJNIAccess.register(GraphicsEnvironment.class);
+        RuntimeJNIAccess.register(method(access, "java.awt.GraphicsEnvironment", "isHeadless"));
 
         NativeLibraries nativeLibraries = getNativeLibraries(access);
 
@@ -169,54 +163,40 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
-        // harfbuzz became a separate library in OpenJDK 16/11.0.10 (JDK-8249821) and then went back
-        // to be included in fontmanager library in OpenJDK 17/11.0.13 (or 11.0.12 for OracleJDK).
-        // See JDK-8255790.
-        int jdk11HbUpdateBound = IS_OPENJDK ? 12 : 11;
-        if (JavaVersionUtil.JAVA_SPEC == 16 || (JavaVersionUtil.JAVA_SPEC == 11 && JDK_UPDATE >= 10 && JDK_UPDATE <= jdk11HbUpdateBound)) {
-            nativeLibraries.addStaticJniLibrary("harfbuzz");
-        }
-
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigInfo"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigInfo", "fcVersion", "cacheDirs"));
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FcCompFont"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FcCompFont", "fcName", "firstFont", "allFonts"));
-        JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigFont"));
-        JNIRuntimeAccess.register(constructor(access, "sun.font.FontConfigManager$FontConfigFont"));
-        JNIRuntimeAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigFont", "familyName", "styleStr", "fullName", "fontFile"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigInfo"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigInfo", "fcVersion", "cacheDirs"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FcCompFont"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FcCompFont", "fcName", "firstFont", "allFonts"));
+        RuntimeJNIAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigFont"));
+        RuntimeJNIAccess.register(constructor(access, "sun.font.FontConfigManager$FontConfigFont"));
+        RuntimeJNIAccess.register(fields(access, "sun.font.FontConfigManager$FontConfigFont", "familyName", "styleStr", "fullName", "fontFile"));
     }
 
     private static void registerColorProfiles(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.java2d.cmm.profiles.*");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "sun.java2d.cmm.profiles.*");
     }
 
     private static void registerFlavorMapProps(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.datatransfer.resources.flavormap.properties");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "sun.datatransfer.resources.flavormap.properties");
     }
 
     private static void registerRTFReaderCharsets(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.rtf.charsets.*");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.rtf.charsets.*");
     }
 
     private static void registerOceanThemeIcons(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.metal.icons.*");
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.basic.icons.*");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.metal.icons.*");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.basic.icons.*");
     }
 
     private static void registerHtml32bdtd(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.parser.html32.bdtd");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.parser.html32.bdtd");
     }
 
     private static void registerDefaultCSS(DuringAnalysisAccess duringAnalysisAccess) {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.default.css");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.default.css");
     }
 
     private static NativeLibraries getNativeLibraries(DuringAnalysisAccess access) {

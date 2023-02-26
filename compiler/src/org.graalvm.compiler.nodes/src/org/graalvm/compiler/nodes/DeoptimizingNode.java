@@ -43,6 +43,14 @@ public interface DeoptimizingNode extends NodeWithState {
     boolean canDeoptimize();
 
     /**
+     * Determines if this node must have a deoptimization FrameState where
+     * {@link FrameState#isValidForDeoptimization()} is true.
+     */
+    default boolean validateDeoptFrameStates() {
+        return true;
+    }
+
+    /**
      * Interface for nodes that need a {@link FrameState} for deoptimizing to a point before their
      * execution.
      */

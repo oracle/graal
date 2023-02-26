@@ -105,7 +105,7 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
-    private ValueNode op(ValueNode v, boolean allowZeroExtend) {
+    public ValueNode op(ValueNode v, boolean allowZeroExtend) {
         return op(v, allowZeroExtend, true);
     }
 
@@ -132,5 +132,10 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     @Override
     public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
         return op(newBase.valueNode(), true, gvn);
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return op(getBase().entryTripValue(), true);
     }
 }

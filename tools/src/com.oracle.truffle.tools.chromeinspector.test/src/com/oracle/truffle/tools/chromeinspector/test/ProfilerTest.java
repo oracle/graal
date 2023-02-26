@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import org.graalvm.polyglot.Source;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,7 +51,6 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 public class ProfilerTest {
 
     @Test
-    @Ignore("Deactivated due to transient failure: GR-35312")
     public void testNoSourceProfile() throws InterruptedException, IOException, ExecutionException {
         ProxyLanguage.setDelegate(new TestNoSourceLanguage());
         InspectorTester tester = InspectorTester.start(false);

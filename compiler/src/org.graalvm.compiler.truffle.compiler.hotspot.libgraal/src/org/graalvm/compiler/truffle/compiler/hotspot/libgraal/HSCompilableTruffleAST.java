@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,12 +62,11 @@ import static org.graalvm.jniutils.JNIUtil.createString;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.libgraal.LibGraal;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
@@ -75,6 +74,7 @@ import org.graalvm.jniutils.JNI.JObjectArray;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -82,7 +82,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
  */
-final class HSCompilableTruffleAST extends HSObject implements CompilableTruffleAST, OptimizedAssumptionDependency {
+final class HSCompilableTruffleAST extends HSObject implements CompilableTruffleAST {
 
     private volatile String cachedName;
 
@@ -223,25 +223,6 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
         return res;
     }
 
-    private IllegalArgumentException error() {
-        throw new IllegalArgumentException("Cannot call method on libgraal proxy to HotSpotOptimizedCallTarget " + this);
-    }
-
-    @Override
-    public CompilableTruffleAST getCompilable() {
-        return this;
-    }
-
-    @Override
-    public void onAssumptionInvalidated(Object source, CharSequence reason) {
-        throw error();
-    }
-
-    @Override
-    public boolean isValid() {
-        throw error();
-    }
-
     @TruffleFromLibGraal(CancelCompilation)
     @Override
     public boolean cancelCompilation(CharSequence reason) {
@@ -267,5 +248,10 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     @Override
     public int getKnownCallSiteCount() {
         return callGetKnownCallSiteCount(env(), getHandle());
+    }
+
+    @Override
+    public boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
+        throw GraalError.shouldNotReachHere("Should not be reachable.");
     }
 }

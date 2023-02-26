@@ -37,9 +37,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -63,6 +64,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final int modifiers;
     private final String name;
     private final int hashCode;
+    private final boolean hasStubCallingConvention;
     private SubstrateType declaringClass;
     private int encodedGraphStartOffset;
     @UnknownPrimitiveField private int vTableIndex;
@@ -110,6 +112,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         implementations = new SubstrateMethod[0];
         encodedGraphStartOffset = -1;
         bridge = original.isBridge();
+        hasStubCallingConvention = StubCallingConvention.Utils.hasStubCallingConvention(original);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -201,7 +204,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
 
     @Override
     public boolean hasCalleeSavedRegisters() {
-        return false;
+        return hasStubCallingConvention;
     }
 
     @Override

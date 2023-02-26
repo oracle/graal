@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,11 @@ import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -41,6 +43,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -48,6 +51,7 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
@@ -75,12 +79,36 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
          * If this call can't be intrinsified don't report a non-null stamp, otherwise the stamp
          * would change when this is lowered back to an invoke and we might lose a null check.
          */
-        return AbstractPointerStamp.pointerMaybeNull(object.stamp(NodeView.DEFAULT));
+        return AbstractPointerStamp.pointerMaybeNull(returnStamp.getTrustedStamp());
     }
 
     @Override
+    public void lower(LoweringTool tool) {
+        StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
+
+        if (replacementGraph != null) {
+            // Replace this node with an invoke but disable verification of the stamp since the
+            // invoke only exists for the purpose of performing the inling.
+            InvokeNode invoke = createInvoke(false);
+            graph().replaceFixedWithFixed(this, invoke);
+
+            // Pull out the receiver null check so that a replaced
+            // receiver can be lowered if necessary
+            if (!getTargetMethod().isStatic()) {
+                ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
+                if (nonNullReceiver instanceof Lowerable) {
+                    ((Lowerable) nonNullReceiver).lower(tool);
+                }
+            }
+            InliningUtil.inline(invoke, replacementGraph, false, getTargetMethod(), "Replace with graph.", "LoweringPhase");
+            replacementGraph.getDebug().dump(DebugContext.DETAILED_LEVEL, asNode().graph(), "After inlining replacement %s", replacementGraph);
+        } else {
+            super.lower(tool);
+        }
+    }
+
     @SuppressWarnings("try")
-    public StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
+    private StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
         ResolvedJavaType type = StampTool.typeOrNull(getObject());
 
         if (type != null) {
@@ -103,7 +131,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), (StructuredGraph) snippetGraph.copy(getDebug()), tool);
                 }
-                assert false : "unhandled array type " + type.getComponentType().getJavaKind();
+                GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind());
             } else {
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp(NodeView.DEFAULT));

@@ -567,7 +567,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     return originalMap.new HashEntries();
                 }
 
-                List<?> keys = null;
+                PolyglotList<?> keys = null;
                 int keysSize = 0;
                 long elemSize = 0;
 

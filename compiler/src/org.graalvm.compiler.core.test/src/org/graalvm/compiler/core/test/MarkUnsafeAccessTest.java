@@ -140,7 +140,7 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
                 return (byte) compiledCode.executeVarargs(mbb);
             } catch (InvalidInstalledCodeException e) {
                 Assert.fail();
-                return 0;
+                return (byte) 0;
             }
         });
     }

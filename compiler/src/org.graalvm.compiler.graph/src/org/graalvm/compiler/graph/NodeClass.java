@@ -27,7 +27,7 @@ package org.graalvm.compiler.graph;
 import static org.graalvm.compiler.core.common.Fields.translateInto;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.graph.Edges.translateInto;
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
 
@@ -165,6 +165,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
     private final boolean isNodeWithIdentity;
+    private final boolean isMemoryKill;
 
     private final int leafId;
 
@@ -183,6 +184,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
         this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
         this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
+        this.isMemoryKill = MemoryKillMarker.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -583,7 +585,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                         number += intValue;
                     } else if (type == Long.TYPE) {
                         long longValue = data.getLong(n, i);
-                        number += longValue ^ (longValue >>> 32);
+                        number += (int) (longValue ^ (longValue >>> 32));
                     } else if (type == Boolean.TYPE) {
                         boolean booleanValue = data.getBoolean(n, i);
                         if (booleanValue) {
@@ -595,7 +597,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else if (type == Double.TYPE) {
                         double doubleValue = data.getDouble(n, i);
                         long longValue = Double.doubleToRawLongBits(doubleValue);
-                        number += longValue ^ (longValue >>> 32);
+                        number += (int) (longValue ^ (longValue >>> 32));
                     } else if (type == Short.TYPE) {
                         short shortValue = data.getShort(n, i);
                         number += shortValue;
@@ -974,6 +976,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return this.leafId;
     }
 
+    /**
+     * @return {@code true} if the node implements {@link MemoryKillMarker}
+     */
+    public boolean isMemoryKill() {
+        return isMemoryKill;
+    }
+
     public NodeClass<? super T> getSuperNodeClass() {
         return superNodeClass;
     }
@@ -1094,7 +1103,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         private RawEdgesWithModCountIterator(Node node, long mask) {
             super(node, mask);
-            assert isModificationCountsEnabled();
+            assert isNodeModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -1128,11 +1137,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getSuccessorIterable(final Node node) {
         long mask = this.successorIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);
@@ -1162,11 +1171,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getInputIterable(final Node node) {
         long mask = this.inputsIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);

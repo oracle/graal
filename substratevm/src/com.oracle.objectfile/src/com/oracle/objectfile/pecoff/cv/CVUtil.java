@@ -28,55 +28,93 @@ package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.io.Utf8;
 
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CHAR;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_LONG;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_QUADWORD;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_SHORT;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ULONG;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_USHORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 abstract class CVUtil {
 
-    static int putByte(byte b, byte[] buffer, int initialPos) {
+    /**
+     * Store a byte value in the buffer.
+     *
+     * @param value value to store
+     * @param buffer buffer to store value in
+     * @param initialPos initial position in buffer
+     * @return position in buffer following stored value
+     */
+    static int putByte(byte value, byte[] buffer, int initialPos) {
         if (buffer == null) {
             return initialPos + Byte.BYTES;
         }
         int pos = initialPos;
-        buffer[pos++] = b;
+        buffer[pos++] = value;
         return pos;
     }
 
-    static int putShort(short s, byte[] buffer, int initialPos) {
+    /**
+     * Store a short value in the buffer.
+     *
+     * @param value value to store
+     * @param buffer buffer to store value in
+     * @param initialPos initial position in buffer
+     * @return position in buffer following stored value
+     */
+    static int putShort(short value, byte[] buffer, int initialPos) {
         if (buffer == null) {
             return initialPos + Short.BYTES;
         }
         int pos = initialPos;
-        buffer[pos++] = (byte) (s & 0xff);
-        buffer[pos++] = (byte) ((s >> 8) & 0xff);
+        buffer[pos++] = (byte) (value & 0xff);
+        buffer[pos++] = (byte) ((value >> 8) & 0xff);
         return pos;
     }
 
-    static int putInt(int i, byte[] buffer, int initialPos) {
+    /**
+     * Store an integer value in the buffer.
+     *
+     * @param value value to store
+     * @param buffer buffer to store value in
+     * @param initialPos initial position in buffer
+     * @return position in buffer following stored value
+     */
+    static int putInt(int value, byte[] buffer, int initialPos) {
         if (buffer == null) {
             return initialPos + Integer.BYTES;
         }
         int pos = initialPos;
-        buffer[pos++] = (byte) (i & 0xff);
-        buffer[pos++] = (byte) ((i >> 8) & 0xff);
-        buffer[pos++] = (byte) ((i >> 16) & 0xff);
-        buffer[pos++] = (byte) ((i >> 24) & 0xff);
+        buffer[pos++] = (byte) (value & 0xff);
+        buffer[pos++] = (byte) ((value >> 8) & 0xff);
+        buffer[pos++] = (byte) ((value >> 16) & 0xff);
+        buffer[pos++] = (byte) ((value >> 24) & 0xff);
         return pos;
     }
 
+    /**
+     * Store a long value in the buffer.
+     *
+     * @param value value to store
+     * @param buffer buffer to store value in
+     * @param initialPos initial position in buffer
+     * @return position in buffer following stored value
+     */
     @SuppressWarnings("unused")
-    static int putLong(long l, byte[] buffer, int initialPos) {
+    static int putLong(long value, byte[] buffer, int initialPos) {
         if (buffer == null) {
             return initialPos + Long.BYTES;
         }
         int pos = initialPos;
-        buffer[pos++] = (byte) (l & 0xff);
-        buffer[pos++] = (byte) ((l >> 8) & 0xff);
-        buffer[pos++] = (byte) ((l >> 16) & 0xff);
-        buffer[pos++] = (byte) ((l >> 24) & 0xff);
-        buffer[pos++] = (byte) ((l >> 32) & 0xff);
-        buffer[pos++] = (byte) ((l >> 40) & 0xff);
-        buffer[pos++] = (byte) ((l >> 48) & 0xff);
-        buffer[pos++] = (byte) ((l >> 56) & 0xff);
+        buffer[pos++] = (byte) (value & 0xff);
+        buffer[pos++] = (byte) ((value >> 8) & 0xff);
+        buffer[pos++] = (byte) ((value >> 16) & 0xff);
+        buffer[pos++] = (byte) ((value >> 24) & 0xff);
+        buffer[pos++] = (byte) ((value >> 32) & 0xff);
+        buffer[pos++] = (byte) ((value >> 40) & 0xff);
+        buffer[pos++] = (byte) ((value >> 48) & 0xff);
+        buffer[pos++] = (byte) ((value >> 56) & 0xff);
         return pos;
     }
 
@@ -100,6 +138,38 @@ abstract class CVUtil {
         int pos = putBytes(buff, buffer, initialPos);
         buffer[pos++] = '\0';
         return pos;
+    }
+
+    /**
+     * Some CodeView numeric fields can be variable length, depending on the value.
+     *
+     * @param value value to store
+     * @param buffer buffer to store value in
+     * @param initialPos initial position in buffer
+     * @return position in buffer following stored value
+     */
+    static int putLfNumeric(long value, byte[] buffer, int initialPos) {
+        if (0 <= value && value < 0x8000) {
+            return putShort((short) value, buffer, initialPos);
+        } else if (Byte.MIN_VALUE <= value && value <= Byte.MAX_VALUE) {
+            int pos = putShort(LF_CHAR, buffer, initialPos);
+            return putByte((byte) value, buffer, pos);
+        } else if (Short.MIN_VALUE <= value && value <= Short.MAX_VALUE) {
+            int pos = putShort(LF_SHORT, buffer, initialPos);
+            return putShort((short) value, buffer, pos);
+        } else if (0 <= value && value <= 0xffff) {
+            int pos = putShort(LF_USHORT, buffer, initialPos);
+            return putShort((short) value, buffer, pos);
+        } else if (Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE) {
+            int pos = putShort(LF_LONG, buffer, initialPos);
+            return putInt((int) value, buffer, pos);
+        } else if (0 <= value && value <= 0xffffffffL) {
+            int pos = putShort(LF_ULONG, buffer, initialPos);
+            return putInt((int) value, buffer, pos);
+        } else {
+            int pos = putShort(LF_QUADWORD, buffer, initialPos);
+            return putLong(value, buffer, pos);
+        }
     }
 
     /**

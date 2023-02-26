@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,11 @@ public final class LoadNativeNode extends RootNode {
 
     public static LoadNativeNode create(LLVMLanguage language, TruffleFile file) {
         return new LoadNativeNode(language, file);
+    }
+
+    @Override
+    public String getName() {
+        return String.format("<%s/%s>", getClass().getSimpleName(), path);
     }
 
     @Override

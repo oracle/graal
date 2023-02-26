@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
@@ -64,7 +65,6 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -136,7 +136,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     @SuppressWarnings("unused")
     public void appendInside(LoopEx loop) {
-        // TODO (gd)
+        GraalError.unimplemented();
     }
 
     @Override
@@ -207,8 +207,10 @@ public class LoopFragmentInside extends LoopFragment {
 
         CompareNode condition = placeNewSegmentAndCleanup(loop, new2OldPhis, originalPhi2Backedges);
 
-        // Remove any safepoints from the original copy leaving only the duplicated one
-        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count();
+        // Remove any safepoints from the original copy leaving only the duplicated one, inverted
+        // ones have their safepoint between the limit check and the backedge that have been removed
+        // already.
+        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count() || loop.counted.isInverted();
         for (SafepointNode safepoint : loop.whole().nodes().filter(SafepointNode.class)) {
             graph().removeFixed(safepoint);
         }
@@ -280,7 +282,8 @@ public class LoopFragmentInside extends LoopFragment {
                 usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
             }
 
-            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " +
+                            mainLoopBegin;
 
             mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
@@ -403,7 +406,7 @@ public class LoopFragmentInside extends LoopFragment {
         FrameState exitState = exit.stateAfter();
         FrameState duplicate = exitState.duplicateWithVirtualState();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state %s for new exit %s", exitState, lex);
-        duplicate.applyToNonVirtual(new NodePositionClosure<Node>() {
+        duplicate.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 ValueNode to = (ValueNode) p.get(from);
@@ -610,13 +613,19 @@ public class LoopFragmentInside extends LoopFragment {
             ValueNode first;
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
-                first = peel.prim(b); // corresponding value in the peel
+                if (b == null) {
+                    assert phi instanceof GuardPhiNode;
+                    first = null;
+                } else {
+                    first = peel.prim(b); // corresponding value in the peel
+                }
             } else {
                 first = peel.mergedInitializers.get(phi);
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
             PhiNode newPhi = phi.duplicateOn(loopBegin);
+            newPhi.setNodeSourcePosition(phi.getNodeSourcePosition());
             peel.old2NewPhi.put(phi, newPhi);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
@@ -769,6 +778,7 @@ public class LoopFragmentInside extends LoopFragment {
                     continue;
                 }
                 final PhiNode firstPhi = phi.duplicateOn(newExitMerge);
+                firstPhi.setNodeSourcePosition(newExitMerge.getNodeSourcePosition());
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));
@@ -778,7 +788,7 @@ public class LoopFragmentInside extends LoopFragment {
                 ValueNode initializer = firstPhi;
                 if (duplicateState != null) {
                     // fix the merge's state after
-                    duplicateState.applyToNonVirtual(new NodePositionClosure<Node>() {
+                    duplicateState.applyToNonVirtual(new NodePositionClosure<>() {
                         @Override
                         public void apply(Node from, Position p) {
                             if (p.get(from) == phi) {

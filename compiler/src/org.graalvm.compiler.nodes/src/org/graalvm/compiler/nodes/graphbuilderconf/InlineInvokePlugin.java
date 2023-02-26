@@ -62,28 +62,22 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         public static final InlineInfo DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION = new InlineInfo();
 
         private final ResolvedJavaMethod methodToInline;
-        private final MethodSubstitutionPlugin plugin;
         private final BytecodeProvider intrinsicBytecodeProvider;
 
         public static InlineInfo createStandardInlineInfo(ResolvedJavaMethod methodToInline) {
-            return new InlineInfo(methodToInline, null, null);
+            return new InlineInfo(methodToInline, null);
         }
 
         public static InlineInfo createIntrinsicInlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
-            return new InlineInfo(methodToInline, null, intrinsicBytecodeProvider);
-        }
-
-        public static InlineInfo createMethodSubstitutionInlineInfo(ResolvedJavaMethod methodToInline, MethodSubstitutionPlugin plugin) {
-            return new InlineInfo(methodToInline, plugin, plugin.getBytecodeProvider());
+            return new InlineInfo(methodToInline, intrinsicBytecodeProvider);
         }
 
         private InlineInfo() {
-            this(null, null, null);
+            this(null, null);
         }
 
-        private InlineInfo(ResolvedJavaMethod methodToInline, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider) {
+        private InlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
             this.methodToInline = methodToInline;
-            this.plugin = plugin;
             this.intrinsicBytecodeProvider = intrinsicBytecodeProvider;
         }
 
@@ -108,14 +102,6 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
          */
         public BytecodeProvider getIntrinsicBytecodeProvider() {
             return intrinsicBytecodeProvider;
-        }
-
-        public boolean isSubstitution() {
-            return plugin != null;
-        }
-
-        public MethodSubstitutionPlugin getPlugin() {
-            return plugin;
         }
     }
 

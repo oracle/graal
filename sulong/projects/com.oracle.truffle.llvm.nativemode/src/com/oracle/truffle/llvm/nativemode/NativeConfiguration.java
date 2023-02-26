@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,11 +54,13 @@ public class NativeConfiguration implements Configuration {
     private final Loader loader;
     private final LLVMIntrinsicProvider intrinsicProvider;
     private final PlatformCapability<?> platformCapability;
+    protected final Key languageOptions;
 
     protected NativeConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
+        this.languageOptions = key;
         if (key.enableNFI) {
             ctxExtRegistry.register(NativeContextExtension.class, new NFIContextExtension.Factory());
         }
@@ -66,7 +68,7 @@ public class NativeConfiguration implements Configuration {
 
     @Override
     public NodeFactory createNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
-        return new BasicNodeFactory(language, dataLayout);
+        return new BasicNodeFactory(language, dataLayout, languageOptions);
     }
 
     @Override

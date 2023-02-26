@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -325,6 +325,23 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, readOp(b, readKind, address, location, operation.opcode()));
                 break;
             }
+
+            case READ_POINTER_VOLATILE:
+            case READ_BARRIERED_VOLATILE: {
+                assert args.length == 2 || args.length == 3;
+                JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
+                AddressNode address = makeAddress(b, args[0], args[1]);
+                LocationIdentity location;
+                if (args.length == 2) {
+                    location = any();
+                } else {
+                    assert args[2].isConstant() : args[2];
+                    location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
+                    assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
+                }
+                b.push(returnKind, readVolatileOp(b, readKind, address, location, operation.opcode()));
+                break;
+            }
             case READ_HEAP: {
                 assert args.length == 3 || args.length == 4;
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
@@ -340,11 +357,13 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, readOp(b, readKind, address, location, barrierType, true));
                 break;
             }
+
             case WRITE_POINTER:
             case WRITE_OBJECT:
             case WRITE_BARRIERED:
             case INITIALIZE:
-            case WRITE_POINTER_SIDE_EFFECT_FREE: {
+            case WRITE_POINTER_SIDE_EFFECT_FREE:
+            case WRITE_POINTER_VOLATILE: {
                 assert args.length == 3 || args.length == 4;
                 JavaKind writeKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(wordMethod.isStatic() ? 2 : 1, wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
@@ -465,21 +484,38 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     public static ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
         /*
-         * A JavaReadNode lowered to a ReadNode that will not float. This means it cannot float
+         * A JavaReadNode is lowered to a ReadNode that will not float. This means it cannot float
          * above an explicit zero check on its base address or any other test that ensures the read
          * is safe.
          */
-        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, compressible));
+        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, MemoryOrderMode.PLAIN, compressible));
+        return read;
+    }
+
+    protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
+        assert op == Opcode.READ_POINTER_VOLATILE || op == Opcode.READ_BARRIERED_VOLATILE;
+        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE ? BarrierType.UNKNOWN : BarrierType.NONE;
+        final boolean compressible = op == Opcode.READ_BARRIERED_VOLATILE;
+        /*
+         * A JavaOrderedReadNode is lowered to an OrderedReadNode that will not float. This means it
+         * cannot float above an explicit zero check on its base address or any other test that
+         * ensures the read is safe.
+         */
+        JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrier, MemoryOrderMode.VOLATILE, compressible));
         return read;
     }
 
     protected void writeOp(GraphBuilderContext b, JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, Opcode op) {
-        assert op == Opcode.WRITE_POINTER || op == Opcode.WRITE_POINTER_SIDE_EFFECT_FREE || op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED || op == Opcode.INITIALIZE;
+        assert op == Opcode.WRITE_POINTER || op == Opcode.WRITE_POINTER_SIDE_EFFECT_FREE || op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED || op == Opcode.INITIALIZE ||
+                        op == Opcode.WRITE_POINTER_VOLATILE;
+        assert op != Opcode.INITIALIZE || location.isInit() : "must use init location for initializing";
+
         final BarrierType barrier = (op == Opcode.WRITE_BARRIERED ? BarrierType.UNKNOWN : BarrierType.NONE);
         final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
-        assert op != Opcode.INITIALIZE || location.isInit() : "must use init location for initializing";
         final boolean hasSideEffect = (op != Opcode.WRITE_POINTER_SIDE_EFFECT_FREE);
-        b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible, hasSideEffect));
+        final MemoryOrderMode memoryOrder = op == Opcode.WRITE_POINTER_VOLATILE ? MemoryOrderMode.VOLATILE : MemoryOrderMode.PLAIN;
+
+        b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible, hasSideEffect, memoryOrder));
     }
 
     protected AbstractCompareAndSwapNode casOp(JavaKind writeKind, JavaKind returnKind, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue) {

@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.management;
 
-import static java.lang.Thread.currentThread;
+import static org.graalvm.compiler.serviceprovider.GraalServices.getCurrentThreadId;
 
 import java.lang.management.ManagementFactory;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.serviceprovider.JMXService;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import com.sun.management.ThreadMXBean;
 
@@ -48,7 +48,7 @@ public class JMXServiceProvider extends JMXService {
 
     @Override
     protected long getCurrentThreadCpuTime() {
-        long[] times = threadMXBean.getThreadCpuTime(new long[]{currentThread().getId()});
+        long[] times = threadMXBean.getThreadCpuTime(new long[]{getCurrentThreadId()});
         return times[0];
     }
 

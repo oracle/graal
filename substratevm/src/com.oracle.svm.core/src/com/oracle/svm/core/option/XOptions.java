@@ -31,8 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
@@ -49,10 +47,10 @@ public final class XOptions {
     /**
      * Parses an XOption from a name and a value (e.g., from "mx2g") and adds it to the given map.
      */
-    public static boolean parse(String keyAndValue, EconomicMap<OptionKey<?>, Object> values, boolean exitOnError) {
+    public static boolean parse(String keyAndValue, EconomicMap<OptionKey<?>, Object> values) {
         XFlag xFlag = findXFlag(keyAndValue);
         if (xFlag != null) {
-            long value = parse(xFlag, keyAndValue, exitOnError);
+            long value = parse(xFlag, keyAndValue);
             xFlag.optionKey.update(values, value);
             return true;
         }
@@ -67,7 +65,7 @@ public final class XOptions {
     public static boolean setOption(String keyAndValue) {
         XFlag xFlag = findXFlag(keyAndValue);
         if (xFlag != null) {
-            long value = parse(xFlag, keyAndValue, false);
+            long value = parse(xFlag, keyAndValue);
             xFlag.optionKey.update(value);
             return true;
         }
@@ -83,18 +81,12 @@ public final class XOptions {
         return null;
     }
 
-    private static long parse(XFlag xFlag, String keyAndValue, boolean exitOnError) {
+    private static long parse(XFlag xFlag, String keyAndValue) {
         final String valueString = keyAndValue.substring(xFlag.name.length());
         try {
             return SubstrateOptionsParser.parseLong(valueString);
         } catch (NumberFormatException nfe) {
-            if (exitOnError) {
-                Log.logStream().println("error: Wrong value for option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' is not a valid number.");
-                System.exit(1);
-                throw VMError.shouldNotReachHere();
-            } else {
-                throw new IllegalArgumentException("Invalid option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' does not specify a valid number.");
-            }
+            throw new IllegalArgumentException("Invalid option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' does not specify a valid number.");
         }
     }
 

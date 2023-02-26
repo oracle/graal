@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,9 @@ import java.security.PrivilegedAction;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.Set;
 
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
 /**
@@ -107,7 +108,10 @@ public final class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null && runtimeClassName.length() > 0) {
+                if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
+                    if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
+                        return new DefaultTruffleRuntime();
+                    }
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
@@ -118,30 +122,41 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleAccessor.jdkServicesAccessor().getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
-                TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
+                Class<?> lookupClass = Truffle.class;
+                ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
+                TruffleRuntimeAccess access;
+                if (moduleLayer != null) {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
+                } else {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, lookupClass.getClassLoader())));
+                }
+                if (access == null) {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class)));
+                }
 
                 if (access != null) {
-                    TruffleAccessor.jdkServicesAccessor().exportTo(access.getClass());
+                    exportTo(access.getClass());
                     return access.getRuntime();
                 }
                 return new DefaultTruffleRuntime();
             }
         });
     }
-}
 
-/*
- * Truffle accessor for use during truffle initialization to avoid cyclic dependencies.
- */
-final class TruffleAccessor extends Accessor {
-
-    static final TruffleAccessor ACCESSOR = new TruffleAccessor();
-
-    private TruffleAccessor() {
+    private static void exportTo(Class<?> client) {
+        Module truffleModule = Truffle.class.getModule();
+        exportFromTo(truffleModule, client.getModule());
     }
 
-    static JDKSupport jdkServicesAccessor() {
-        return ACCESSOR.jdkSupport();
+    private static void exportFromTo(Module truffleModule, Module clientModule) {
+        if (truffleModule != clientModule) {
+            Set<String> packages = truffleModule.getPackages();
+            for (String pkg : packages) {
+                boolean exported = truffleModule.isExported(pkg, clientModule);
+                if (!exported) {
+                    truffleModule.addExports(pkg, clientModule);
+                }
+            }
+        }
     }
 }

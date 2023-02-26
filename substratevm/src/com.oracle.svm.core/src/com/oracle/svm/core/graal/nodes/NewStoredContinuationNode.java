@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +24,46 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.heap.StoredContinuation;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public class NewStoredContinuationNode extends AbstractNewObjectNode implements Lowerable {
-
+public final class NewStoredContinuationNode extends AbstractNewArrayNode {
     public static final NodeClass<NewStoredContinuationNode> TYPE = NodeClass.create(NewStoredContinuationNode.class);
-    @Input private ValueNode size;
 
-    public NewStoredContinuationNode(ValueNode size) {
-        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(StoredContinuation.class)), false, null);
-        this.size = size;
+    private final ResolvedJavaType instanceClass;
+    private final ResolvedJavaType elementType;
+
+    public NewStoredContinuationNode(ResolvedJavaType instanceType, ResolvedJavaType elementType, ValueNode arrayLength) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(instanceType)), arrayLength, true, null);
+        this.instanceClass = instanceType;
+        this.elementType = elementType;
     }
 
-    public ValueNode getSize() {
-        return size;
+    /**
+     * Gets the instance class being allocated by this node.
+     *
+     * @return the instance class allocated
+     */
+    public ResolvedJavaType instanceClass() {
+        return instanceClass;
+    }
+
+    /**
+     * Gets the element type of the inlined array.
+     *
+     * @return the element type of the inlined array
+     */
+    public ResolvedJavaType elementType() {
+        return elementType;
     }
 
     @NodeIntrinsic
-    public static native StoredContinuation allocate(long size);
+    public static native Object allocate(@ConstantNodeParameter Class<?> instanceType, @ConstantNodeParameter Class<?> elementType, int arrayLength);
 }

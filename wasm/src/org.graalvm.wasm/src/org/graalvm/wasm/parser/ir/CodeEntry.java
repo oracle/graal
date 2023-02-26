@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,43 +41,30 @@
 
 package org.graalvm.wasm.parser.ir;
 
-import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.nodes.WasmRootNode;
-
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents information about the code section of a wasm function.
  */
 public class CodeEntry {
     private final int functionIndex;
-    private final BlockNode functionBlock;
-
-    private final int profileCount;
     private final int maxStackSize;
-    private final IntArrayList intConstants;
-    private final ArrayList<int[]> branchTables;
     private final byte[] localTypes;
+    private final int[] extraData;
+    private final List<CallNode> callNodes;
+    private final int startOffset;
+    private final int endOffset;
+    private final byte[] resultTypes;
 
-    public CodeEntry(int functionIndex, BlockNode codeEntryBlock, int currentProfileCount, int currentMaxStackSize, IntArrayList currentIntConstants, ArrayList<int[]> currentBranchTables,
-                    byte[] localTypes) {
+    public CodeEntry(int functionIndex, int currentMaxStackSize, byte[] localTypes, int[] extraData, List<CallNode> callNodes, int startOffset, int endOffset, byte[] resultTypes) {
         this.functionIndex = functionIndex;
-        this.functionBlock = codeEntryBlock;
-        this.profileCount = currentProfileCount;
         this.maxStackSize = currentMaxStackSize;
-        this.intConstants = currentIntConstants;
-        this.branchTables = currentBranchTables;
         this.localTypes = localTypes;
-    }
-
-    public void initializeTruffleComponents(WasmRootNode rootNode) {
-        int[] constants = intConstants.toArray();
-        int[][] tables = branchTables.toArray(new int[0][]);
-        rootNode.codeEntry().setIntConstants(constants);
-        if (tables.length > 0) {
-            rootNode.codeEntry().setBranchTables(tables);
-        }
-        rootNode.codeEntry().setProfileCount(profileCount);
+        this.extraData = extraData;
+        this.callNodes = callNodes;
+        this.startOffset = startOffset;
+        this.endOffset = endOffset;
+        this.resultTypes = resultTypes;
     }
 
     public int getMaxStackSize() {
@@ -88,11 +75,27 @@ public class CodeEntry {
         return functionIndex;
     }
 
-    public BlockNode getFunctionBlock() {
-        return functionBlock;
-    }
-
     public byte[] getLocalTypes() {
         return localTypes;
+    }
+
+    public int[] getExtraData() {
+        return extraData;
+    }
+
+    public List<CallNode> getCallNodes() {
+        return callNodes;
+    }
+
+    public int getStartOffset() {
+        return startOffset;
+    }
+
+    public int getEndOffset() {
+        return endOffset;
+    }
+
+    public byte[] getResultTypes() {
+        return resultTypes;
     }
 }

@@ -24,25 +24,35 @@
  */
 package org.graalvm.nativebridge.processor;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
-import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
-import org.graalvm.nativebridge.processor.AbstractBridgeParser.ParseException;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
+
+import org.graalvm.compiler.processor.AbstractProcessor;
+import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
+import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
 
 @SupportedAnnotationTypes({
                 HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION,
                 NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION,
+                NativeToNativeBridgeParser.GENERATE_NATIVE_TO_NATIVE_ANNOTATION
 })
 public final class NativeBridgeProcessor extends AbstractProcessor {
 
@@ -50,49 +60,75 @@ public final class NativeBridgeProcessor extends AbstractProcessor {
     }
 
     @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
-
-    @Override
     protected boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        Map<AbstractBridgeParser, List<DefinitionData>> toGenerate = new HashMap<>();
+        Map<TypeElement, List<AbstractBridgeGenerator>> toGenerate = new HashMap<>();
         Set<? extends Element> annotatedElements = roundEnv.getElementsAnnotatedWith(getTypeElement(HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION));
         if (!annotatedElements.isEmpty()) {
             HotSpotToNativeBridgeParser parser = HotSpotToNativeBridgeParser.create(this);
-            List<DefinitionData> parsedData = new ArrayList<>();
-            toGenerate.put(parser, parsedData);
-            parse(parser, annotatedElements, parsedData);
+            parse(parser, annotatedElements, toGenerate);
         }
         annotatedElements = roundEnv.getElementsAnnotatedWith(getTypeElement(NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION));
         if (!annotatedElements.isEmpty()) {
             NativeToHotSpotBridgeParser parser = NativeToHotSpotBridgeParser.create(this);
-            List<DefinitionData> parsedData = new ArrayList<>();
-            toGenerate.put(parser, parsedData);
-            parse(parser, annotatedElements, parsedData);
+            parse(parser, annotatedElements, toGenerate);
         }
-        for (Map.Entry<AbstractBridgeParser, List<DefinitionData>> e : toGenerate.entrySet()) {
-            AbstractBridgeGenerator generator = e.getKey().getGenerator();
-            for (DefinitionData data : e.getValue()) {
-                try {
-                    generator.generate(data);
-                } catch (IOException ioe) {
-                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, ioe.getMessage(), data.annotatedType.asElement());
+        annotatedElements = roundEnv.getElementsAnnotatedWith(getTypeElement(NativeToNativeBridgeParser.GENERATE_NATIVE_TO_NATIVE_ANNOTATION));
+        if (!annotatedElements.isEmpty()) {
+            NativeToNativeBridgeParser parser = NativeToNativeBridgeParser.create(this);
+            parse(parser, annotatedElements, toGenerate);
+        }
+        for (List<AbstractBridgeGenerator> generatorsForElement : toGenerate.values()) {
+            for (AbstractBridgeGenerator generator : generatorsForElement) {
+                List<DefinitionData> otherDefinitions = generatorsForElement.stream().filter((g) -> g != generator).map((g) -> g.definitionData).collect(Collectors.toList());
+                if (!otherDefinitions.isEmpty()) {
+                    generator.configureMultipleDefinitions(otherDefinitions);
                 }
+            }
+        }
+        for (Entry<TypeElement, List<AbstractBridgeGenerator>> e : toGenerate.entrySet()) {
+            TypeElement annotatedElement = e.getKey();
+            List<AbstractBridgeGenerator> generators = e.getValue();
+            PackageElement owner = Utilities.getEnclosingPackageElement(annotatedElement);
+            AbstractTypeCache typeCache = generators.get(0).parser.typeCache;
+            CodeBuilder builder = new CodeBuilder(owner, env().getTypeUtils(), typeCache);
+            CharSequence targetClassSimpleName = annotatedElement.getSimpleName() + "Gen";
+            builder.classStart(EnumSet.of(Modifier.FINAL), targetClassSimpleName, null, Collections.emptyList());
+            builder.indent();
+            for (AbstractBridgeGenerator generator : generators) {
+                generator.generateAPI(builder, targetClassSimpleName);
+            }
+            for (AbstractBridgeGenerator generator : generators) {
+                generator.generateImpl(builder, targetClassSimpleName);
+            }
+            builder.dedent();
+            builder.line("}");  // Enclosing class end
+            try {
+                writeSourceFile(annotatedElement, targetClassSimpleName, builder.build());
+            } catch (IOException ioe) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, ioe.getMessage(), annotatedElement);
             }
         }
         return true;
     }
 
-    private void parse(AbstractBridgeParser parser, Set<? extends Element> annotatedElements, List<DefinitionData> into) {
+    private static void parse(AbstractBridgeParser parser, Set<? extends Element> annotatedElements, Map<TypeElement, List<AbstractBridgeGenerator>> into) {
         for (Element element : annotatedElements) {
-            try {
-                DefinitionData data = parser.parse(element);
-                into.add(data);
-            } catch (ParseException parseException) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, parseException.getMessage(),
-                                parseException.getElement(), parseException.getAnnotation());
+            DefinitionData data = parser.parse(element);
+            if (data == null) {
+                // Parsing error
+                continue;
             }
+            into.computeIfAbsent((TypeElement) element, (k) -> new ArrayList<>()).add(parser.createGenerator(data));
+        }
+    }
+
+    private void writeSourceFile(TypeElement annotatedElement, CharSequence targetClassSimpleName, String content) throws IOException {
+        String sourceFileFQN = String.format("%s.%s",
+                        Utilities.getEnclosingPackageElement(annotatedElement).getQualifiedName().toString(),
+                        targetClassSimpleName);
+        JavaFileObject sourceFile = env().getFiler().createSourceFile(sourceFileFQN, annotatedElement);
+        try (PrintWriter out = new PrintWriter(sourceFile.openWriter())) {
+            out.print(content);
         }
     }
 }

@@ -4,7 +4,7 @@ The GraalVM documentation is open source and anyone can contribute to make it pe
 
 The GraalVM documentation is presented in the form of:
 * reference documentation which includes getting started and user guides, reference manuals, examples, security guidelines
-* Javadoc APIS documentation for application developers, or those who write Java compatibility tests or seek to re-implement the GraalVM platform
+* Javadoc APIs documentation for application developers, or those who write Java compatibility tests or seek to re-implement the GraalVM platform
 
 Here you will find most of the GraalVM documentation sources, in the same hierarchy as displayed on the [GraalVM website](https://www.graalvm.org/docs/introduction/).
 The Truffle framework documentation can be found in the [graal/truffle/docs](https://github.com/oracle/graal/tree/master/truffle/docs) folder.
@@ -12,7 +12,7 @@ GraalVM languages implementations are being developed and tested in separate fro
 
 * [GraalJS](https://github.com/oracle/graaljs/tree/master/docs/user) - JavaScript and Node.js
 * [FastR](https://github.com/oracle/fastr/tree/master/documentation/user) - R
-* [GraalPython](https://github.com/oracle/graalpython/tree/master/docs/user) - Python
+* [GraalPy](https://github.com/oracle/graalpython/tree/master/docs/user) - Python
 * [TruffleRuby](https://github.com/oracle/truffleruby/tree/master/doc/user) - Ruby
 
 To update the documentation:
@@ -26,8 +26,6 @@ To update the documentation:
 4. Create a Pull Request (PR)
 5. Sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/)
 6. Watch your PR for pipeline results
-
-
 
 A member from the GraalVM project team will review your PR and merge as appropriate.
 There is a CI pipeline which will pick up your change once merged to the master branch, and publish on the website.

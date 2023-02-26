@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import java.io.IOException;
+import java.util.Locale;
 
 @ExportLibrary(InteropLibrary.class)
 final class InspectorIOException extends AbstractTruffleException {
@@ -37,7 +38,7 @@ final class InspectorIOException extends AbstractTruffleException {
     private static final long serialVersionUID = 1205823327748715981L;
 
     InspectorIOException(String hostAndPort, IOException e) {
-        super(String.format("Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
+        super(String.format(Locale.US, "Starting inspector on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
     @ExportMessage

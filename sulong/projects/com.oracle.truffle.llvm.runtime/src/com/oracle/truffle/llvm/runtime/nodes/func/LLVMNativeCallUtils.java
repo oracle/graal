@@ -56,22 +56,6 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(boolean enabled, LLVMDispatchNode.NativeSymbolExecutorNode nativeSymbolExecutorNode, Object function, Object[] nativeArgs,
-                    LLVMFunctionDescriptor descriptor) {
-        CompilerAsserts.partialEvaluationConstant(enabled);
-        if (enabled) {
-            if (descriptor != null) {
-                traceNativeCall(LLVMContext.get(nativeSymbolExecutorNode), descriptor);
-            }
-        }
-        try {
-            return nativeSymbolExecutorNode.execute(function, nativeArgs);
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
-        }
-    }
-
     @TruffleBoundary
     private static String argsToString(Object[] nativeArgs) {
         StringJoiner joiner = new StringJoiner(", ", "(", ")");

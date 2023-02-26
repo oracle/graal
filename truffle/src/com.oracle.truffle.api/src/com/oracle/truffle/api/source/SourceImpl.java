@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,7 +193,7 @@ final class SourceImpl extends Source {
         final boolean interactive;
         final boolean cached;
         final boolean embedderSource;
-        // TODO remove legacy field with deprecated Source builders.
+        // TODO GR-38632 remove legacy field with deprecated Source builders.
         volatile Integer cachedHashCode;
 
         Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean embedderSource) {
@@ -416,6 +416,7 @@ final class SourceImpl extends Source {
             return (URI) uri;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         @CompilerDirectives.TruffleBoundary
         URL getURL() {

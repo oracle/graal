@@ -25,7 +25,6 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -36,7 +35,6 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
 
 /**
  * Try to replace box operations with dominating box operations.
@@ -57,7 +55,11 @@ import org.graalvm.compiler.phases.BasePhase;
  * boxedVal2 = boxedVal1;
  * </pre>
  */
-public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
+public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+
+    public BoxNodeOptimizationPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -107,7 +109,7 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
                                     }
                                 }
                                 box.replaceAtUsages(boxUsageOnBoxedVal);
-                                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", box, boxUsageOnBoxedVal);
+                                graph.getOptimizationLog().report(getClass(), "BoxUsageReplacement", box);
                                 GraphUtil.removeFixedWithUnusedInputs(box);
                                 continue boxLoop;
                             }

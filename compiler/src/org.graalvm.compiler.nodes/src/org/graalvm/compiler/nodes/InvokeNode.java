@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,15 +102,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.polymorphic = false;
         this.inlineControl = InlineControl.Normal;
         this.identity = identity;
-    }
-
-    public InvokeNode(InvokeWithExceptionNode invoke) {
-        super(TYPE, invoke.stamp);
-        this.callTarget = invoke.callTarget;
-        this.bci = invoke.bci;
-        this.polymorphic = invoke.polymorphic;
-        this.inlineControl = invoke.inlineControl;
-        this.identity = invoke.getKilledLocationIdentity();
     }
 
     @Override
@@ -238,6 +229,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public NodeCycles estimatedNodeCycles() {
+        return estimatedNodeCycles(callTarget);
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return estimatedNodeSize(callTarget);
+    }
+
+    static NodeCycles estimatedNodeCycles(CallTargetNode callTarget) {
         if (callTarget == null) {
             return CYCLES_UNKNOWN;
         }
@@ -250,12 +250,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return CYCLES_8;
             default:
+                assert false : "Should not reach here";
                 return CYCLES_UNKNOWN;
         }
     }
 
-    @Override
-    public NodeSize estimatedNodeSize() {
+    static NodeSize estimatedNodeSize(CallTargetNode callTarget) {
         if (callTarget == null) {
             return SIZE_UNKNOWN;
         }
@@ -268,6 +268,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return SIZE_8;
             default:
+                assert false : "Should not reach here";
                 return SIZE_UNKNOWN;
         }
     }

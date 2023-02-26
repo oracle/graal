@@ -34,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 public class AnnotationsProcessor {
 
@@ -46,6 +47,7 @@ public class AnnotationsProcessor {
             Collections.addAll(all, allAnnotations);
             Collections.addAll(all, declaredAnnotations);
             final Set<Annotation> usedAnnotations = all.stream()
+                            .filter(a -> !SubstitutionReflectivityFilter.shouldExclude(a.annotationType(), metaAccess, metaAccess.getUniverse()))
                             .filter(a -> {
                                 try {
                                     AnalysisType annotationClass = metaAccess.lookupJavaType(a.getClass());

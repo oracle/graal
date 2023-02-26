@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -48,6 +48,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -79,11 +80,11 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp",
-          lineStart = 0,
-          lineEnd   = 382,
-          commit    = "e58c12e61828485bfffbc9d1b865302b93a94158",
-          sha1      = "e03b4280eebe9392433389ab16c4aa52bb01270b")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
+          lineStart = 365,
+          lineEnd   = 707,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "f9be8829233550e1708f81a2770fccac94c9c940")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 
@@ -310,7 +311,7 @@ public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
         masm.subsd(xmm5, xmm2);
         masm.andl(rdx, 16711680);
         masm.shrl(rdx, 12);
-        masm.movdqu(xmm0, new AMD64Address(r11, rdx, AMD64Address.Scale.Times1, -1504));
+        masm.movdqu(xmm0, new AMD64Address(r11, rdx, Stride.S1, -1504));
         masm.movdqu(xmm4, recordExternalAddress(crb, coeff16));        // 0x385593b1, 0xc025c917,
                                                                        // 0xdc963467, 0x3ffc6a02
         masm.addsd(xmm1, xmm5);

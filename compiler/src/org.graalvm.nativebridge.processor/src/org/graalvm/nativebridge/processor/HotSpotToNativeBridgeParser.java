@@ -29,57 +29,47 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
     static final String GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateHotSpotToNativeBridge";
 
-    private final TypeCache typeCache;
-    private final HotSpotToNativeBridgeGenerator generator;
-
     private HotSpotToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
-        super(processor, typeCache, typeCache.generateHSToNativeBridge, typeCache.nativeObject);
-        this.typeCache = typeCache;
-        this.generator = new HotSpotToNativeBridgeGenerator(this, typeCache);
+        super(processor, typeCache,
+                        createConfiguration(processor.env().getTypeUtils(), typeCache),
+                        NativeToHotSpotBridgeParser.createConfiguration(typeCache));
     }
 
     @Override
-    Iterable<List<? extends TypeMirror>> getSubClassReferenceConstructorTypes() {
-        return Collections.singleton(Arrays.asList(typeCache.nativeIsolate, types.getPrimitiveType(TypeKind.LONG)));
+    AbstractBridgeGenerator createGenerator(DefinitionData definitionData) {
+        return new HotSpotToNativeBridgeGenerator(this, (TypeCache) typeCache, definitionData);
     }
 
     @Override
-    Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes() {
-        return Collections.singleton(Collections.singletonList(typeCache.nativeObject));
-    }
-
-    @Override
-    List<TypeMirror> getExceptionHandlerTypes() {
-        return Arrays.asList(typeCache.jniEnv, typeCache.throwable);
-    }
-
-    @Override
-    AbstractBridgeGenerator getGenerator() {
-        return generator;
-    }
-
-    @Override
-    DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType, Collection<MethodData> toGenerate,
-                    List<? extends VariableElement> annotatedTypeConstructorParams,
-                    ExecutableElement delegateAccessor, ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle) {
+    DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType,
+                    Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
+                    ExecutableElement customDispatchAccessor, ExecutableElement customReceiverAccessor,
+                    VariableElement endPointHandle, DeclaredType jniConfig, MarshallerData throwableMarshaller,
+                    Set<DeclaredType> annotationsToIgnore, Set<DeclaredType> annotationsForMarshallerLookup) {
         DeclaredType centryPointPredicate = (DeclaredType) getAnnotationValue(annotation, "include");
-        DeclaredType jniConfig = (DeclaredType) getAnnotationValue(annotation, "jniConfig");
-        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor, exceptionHandler, endPointHandle,
-                        centryPointPredicate, jniConfig);
+        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, customDispatchAccessor, customReceiverAccessor,
+                        endPointHandle, centryPointPredicate, jniConfig, throwableMarshaller, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
     static HotSpotToNativeBridgeParser create(NativeBridgeProcessor processor) {
         return new HotSpotToNativeBridgeParser(processor, new TypeCache(processor));
+    }
+
+    static Configuration createConfiguration(Types types, AbstractTypeCache typeCache) {
+        return new Configuration(typeCache.generateHSToNativeBridge, typeCache.nativeObject,
+                        Collections.singleton(Arrays.asList(typeCache.nativeIsolate, types.getPrimitiveType(TypeKind.LONG))),
+                        Collections.singleton(Collections.singletonList(typeCache.nativeObject)));
     }
 
     static final class HotSpotToNativeDefinitionData extends DefinitionData {
@@ -87,9 +77,12 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
         final DeclaredType centryPointPredicate;
 
         HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
-                        List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor, ExecutableElement receiverAccessor,
-                        ExecutableElement exceptionHandler, VariableElement endPointHandle, DeclaredType centryPointPredicate, DeclaredType jniConfig) {
-            super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor, exceptionHandler, endPointHandle, jniConfig);
+                        List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
+                        ExecutableElement receiverAccessor, VariableElement endPointHandle, DeclaredType centryPointPredicate,
+                        DeclaredType jniConfig, MarshallerData throwableMarshaller,
+                        Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
+            super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
+                            endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             this.centryPointPredicate = centryPointPredicate;
         }
     }
@@ -97,28 +90,14 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
     static class TypeCache extends AbstractTypeCache {
 
         final DeclaredType centryPoint;
-        final DeclaredType generateHSToNativeBridge;
-        final DeclaredType hsObject;
         final DeclaredType isolateThreadContext;
-        final DeclaredType jniExceptionWrapper;
-        final DeclaredType nativeIsolate;
         final DeclaredType nativeIsolateThread;
-        final DeclaredType nativeObject;
-        final DeclaredType nativeObjectHandles;
-        final DeclaredType wordFactory;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
             this.centryPoint = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint");
-            this.generateHSToNativeBridge = (DeclaredType) processor.getType(GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION);
-            this.hsObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.isolateThreadContext = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext");
-            this.jniExceptionWrapper = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper");
-            this.nativeIsolate = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolate");
             this.nativeIsolateThread = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolateThread");
-            this.nativeObject = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObject");
-            this.nativeObjectHandles = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObjectHandles");
-            this.wordFactory = (DeclaredType) processor.getType("org.graalvm.word.WordFactory");
         }
     }
 }

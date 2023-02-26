@@ -27,11 +27,27 @@ package org.graalvm.compiler.nodes.loop;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopMaxUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static org.graalvm.compiler.core.common.GraalOptions.MinimumPeelFrequency;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.DefaultLoopFrequency;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.DefaultUnswitchFactor;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.ExactFullUnrollMaxNodes;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.ExactPartialUnrollMaxNodes;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.FullUnrollConstantCompareBoost;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.FullUnrollMaxIterations;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.FullUnrollMaxNodes;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchFrequencyBoost;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchFrequencyMaxFactor;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchFrequencyMinFactor;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchMaxIncrease;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchMinSplitFrequency;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.LoopUnswitchTrivial;
+import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.UnrollMaxIterations;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -40,10 +56,9 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.VirtualState.VirtualClosure;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -58,9 +73,23 @@ import org.graalvm.compiler.options.OptionValues;
 public class DefaultLoopPolicies implements LoopPolicies {
 
     public static class Options {
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(500);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
+        // @formatter:off
+        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
+        public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
+        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
+        public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(20);
+        @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
+        public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(20.0);
+        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
+        public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
+        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
+        public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
+        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Expert)
+        public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
+        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Expert)
+        public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);
+        @Option(help = "Default unswitching factor for control split node with unkown profile data", type = OptionType.Expert)
+        public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
@@ -69,10 +98,15 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
+        // @formatter:on
     }
 
     @Override
-    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers) {
+    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
+        if (peelingIteration > 0) {
+            // Do not do iterative peeling by default.
+            return false;
+        }
         LoopBeginNode loopBegin = loop.loopBegin();
         double entryProbability = cfg.blockFor(loopBegin.forwardEnd()).getRelativeFrequency();
         StructuredGraph graph = cfg.graph;
@@ -149,19 +183,19 @@ public class DefaultLoopPolicies implements LoopPolicies {
         if (maxTrips.equals(0)) {
             return FullUnrollability.SHOULD_FULL_UNROLL;
         }
-        if (maxTrips.isGreaterThan(Options.FullUnrollMaxIterations.getValue(options))) {
+        if (maxTrips.isGreaterThan(FullUnrollMaxIterations.getValue(options))) {
             return FullUnrollability.TOO_MANY_ITERATIONS;
         }
         int globalMax = MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount();
         if (globalMax <= 0) {
             return FullUnrollability.TOO_LARGE;
         }
-        int maxNodes = counted.isExactTripCount() ? Options.ExactFullUnrollMaxNodes.getValue(options) : Options.FullUnrollMaxNodes.getValue(options);
+        int maxNodes = counted.isExactTripCount() ? ExactFullUnrollMaxNodes.getValue(options) : FullUnrollMaxNodes.getValue(options);
         for (Node usage : counted.getLimitCheckedIV().valueNode().usages()) {
             if (usage instanceof CompareNode) {
                 CompareNode compare = (CompareNode) usage;
                 if (compare.getY().isConstant()) {
-                    maxNodes += Options.FullUnrollConstantCompareBoost.getValue(options);
+                    maxNodes += FullUnrollConstantCompareBoost.getValue(options);
                 }
             }
         }
@@ -199,7 +233,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             return false;
         }
         OptionValues options = loop.entryPoint().getOptions();
-        int maxNodes = Options.ExactPartialUnrollMaxNodes.getValue(options);
+        int maxNodes = ExactPartialUnrollMaxNodes.getValue(options);
         maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount()));
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         int unrollFactor = loopBegin.getUnrollFactor();
@@ -211,7 +245,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             }
             loopBegin.setLoopOrigFrequency(loopFrequency);
         }
-        int maxUnroll = Options.UnrollMaxIterations.getValue(options);
+        int maxUnroll = UnrollMaxIterations.getValue(options);
         // Now correct size for the next unroll. UnrollMaxIterations == 1 means perform the
         // pre/main/post transformation but don't actually unroll the main loop.
         size += size;
@@ -247,28 +281,16 @@ public class DefaultLoopPolicies implements LoopPolicies {
         return loopBegin.unswitches() < LoopMaxUnswitch.getValue(options);
     }
 
-    private static final class CountingClosure implements VirtualClosure {
-        int count;
-
-        @Override
-        public void apply(VirtualState node) {
-            count++;
-        }
-    }
-
-    private static class IsolatedInitialization {
-        static final CounterKey UNSWITCH_SPLIT_WITH_PHIS = DebugContext.counter("UnswitchSplitWithPhis");
-    }
-
-    @Override
-    public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-        if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
-            return UnswitchingDecision.NO;
-        }
-
-        int phis = 0;
+    /**
+     * Compute an approximation of the change in the number of nodes of the graph if the given
+     * control split nodes are unswitched.
+     *
+     * @param loop the loop to unswitch.
+     * @param controlSplits the control split nodes to consider.
+     * @return the approximate code size change in nodes.
+     */
+    private static int approxCodeSizeChange(LoopEx loop, List<ControlSplitNode> controlSplits) {
         StructuredGraph graph = loop.loopBegin().graph();
-        DebugContext debug = graph.getDebug();
         NodeBitMap branchNodes = graph.createNodeBitMap();
         for (ControlSplitNode controlSplit : controlSplits) {
             for (Node successor : controlSplit.successors()) {
@@ -276,36 +298,302 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 // this may count twice because of fall-through in switches
                 loop.nodesInLoopBranch(branchNodes, branch);
             }
-            Block postDomBlock = loop.loopsData().getCFG().blockFor(controlSplit).getPostdominator();
-            if (postDomBlock != null) {
-                IsolatedInitialization.UNSWITCH_SPLIT_WITH_PHIS.increment(debug);
-                phis += ((MergeNode) postDomBlock.getBeginNode()).phis().count();
-            }
         }
         int inBranchTotal = branchNodes.count();
 
-        CountingClosure stateNodesCount = new CountingClosure();
-        double loopFrequency = loop.localLoopFrequency();
-        OptionValues options = loop.loopBegin().getOptions();
-        int maxDiff = Options.LoopUnswitchTrivial.getValue(options) + (int) (Options.LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0 + phis));
+        int loopTotal = loop.size();
+        int diff = (loopTotal - inBranchTotal);
 
-        maxDiff = Math.min(maxDiff, Options.LoopUnswitchMaxIncrease.getValue(options));
-        int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
-        maxDiff = Math.min(maxDiff, remainingGraphSpace);
-
-        loop.loopBegin().stateAfter().applyToVirtual(stateNodesCount);
-        int loopTotal = loop.size() - loop.loopBegin().phis().count() - stateNodesCount.count - 1;
-        int actualDiff = (loopTotal - inBranchTotal);
         ControlSplitNode firstSplit = controlSplits.get(0);
-
         int copies = firstSplit.successors().count() - 1;
-        actualDiff = actualDiff * copies;
+        diff = diff * copies;
 
-        debug.log("shouldUnswitch(%s, %s) : delta=%d (%.2f%% inside of branches), max=%d, f=%.2f, phis=%d -> %b", loop, controlSplits, actualDiff, (double) (inBranchTotal) / loopTotal * 100, maxDiff,
-                        loopFrequency, phis, actualDiff <= maxDiff);
-        if (actualDiff <= maxDiff) {
-            // check whether we're allowed to unswitch this loop
-            return loop.canDuplicateLoop() ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+        return diff;
+    }
+
+    /**
+     * Compute the sum of the local frequencies ({@link AbstractBlockBase#getRelativeFrequency()})
+     * of the control split nodes. If a control split node is within an inner loop then its
+     * frequency is divided by the local loop frequencies of the inner loops.
+     *
+     * The result should be between 0 and {@code controlSplits.size()} times the local loop
+     * frequency.
+     *
+     * Lets take the following code :
+     *
+     * <pre>
+     *  for (int i = 0; i < 1000; ++i) {
+     *      // Loop1, loop local frequency = 1000
+     *      if (i % 2 == 0) {
+     *          // relative frequency = 500
+     *          if (invariant (1) ) { [...] } else { [...] }
+     *      } else {
+     *          // relative frequency = 500
+     *          if (i % 4 == 1) {
+     *              // relative frequency = 250
+     *              for (int j = 0; j < 10; ++j) {
+     *                  // Loop2, loop local frequency = 10, relative frequency = 2500
+     *                  if (invariant (2) ) { [...] } else { [...] }
+     *              }
+     *          } else { [...] }
+     *      }
+     *  }
+     * </pre>
+     *
+     * Loop1 has a local loop frequency of 1000, invariant (1) is reached 500 times, invariant (2)
+     * 2500 times as loop2 has a local loop frequency of 10. Invariant (2) could be unswitched from
+     * loop2 so we only count a frequency of 250 for it. Finally the result is the sum of the two
+     * frequencies which is 750. This mean that on average each time the loop is executed, the
+     * invariant is used 750 times.
+     */
+    private static double splitLocalLoopFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
+        int loopDepth = loop.loop().getDepth();
+        double loopLocalFrequency = loop.localLoopFrequency();
+        ControlFlowGraph cfg = loop.loopsData().getCFG();
+        double loopRelativeFrequency = cfg.blockFor(loop.loopBegin()).getRelativeFrequency();
+
+        double freq = 0.0;
+        for (ControlSplitNode node : controlSplits) {
+            Block b = cfg.blockFor(node);
+            double f = b.getRelativeFrequency();
+            for (Loop<Block> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
+                f /= loop.loopsData().loop(l).localLoopFrequency();
+            }
+
+            freq += f;
+        }
+
+        return freq / loopRelativeFrequency * loopLocalFrequency;
+    }
+
+    /**
+     * Compute the maximum code size change in the number of nodes for the given loop. It is used by
+     * the unswitching heuristic to prevent the CFG to become too big.
+     *
+     * @param loop the loop to unswitch
+     * @return the maximum code size change (in the number of nodes)
+     */
+    private static int loopMaxCodeSizeChange(LoopEx loop) {
+        StructuredGraph graph = loop.loopBegin().graph();
+        OptionValues options = loop.loopBegin().getOptions();
+
+        boolean isTrusted = ProfileSource.isTrusted(loop.localFrequencySource());
+        double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
+        /* When a loop has a greater local loop frequency we allow a bigger change in code size */
+        int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0));
+
+        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
+        int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
+        return Math.min(maxDiff, remainingGraphSpace);
+    }
+
+    @Override
+    public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+        if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
+            return UnswitchingDecision.NO;
+        }
+        // check whether we're allowed to unswitch this loop
+        if (!loop.canDuplicateLoop()) {
+            return UnswitchingDecision.NO;
+        }
+
+        DebugContext debug = loop.loopBegin().getDebug();
+        OptionValues options = debug.getOptions();
+        double localLoopFrequency = loop.localLoopFrequency();
+        int loopSize = loop.size();
+        int loopMaxCodeSizeChange = loopMaxCodeSizeChange(loop);
+
+        // We prioritize invariant conditions with the highest frequency
+        List<ControlSplitNode> bestSplit = null;
+        double bestSplitFrequency = 0.0;
+        int bestCodeSizeChange = 0;
+        double bestFactor = 0.0;
+        for (List<ControlSplitNode> split : controlSplits.getValues()) {
+            boolean isTrusted = true;
+            for (ControlSplitNode node : split) {
+                isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
+            }
+
+            int approxCodeSizeChange = approxCodeSizeChange(loop, split);
+            if (approxCodeSizeChange > loopMaxCodeSizeChange) {
+                /*
+                 * To prevent the code to become too big, invariant that generate big code size
+                 * changes are discarded.
+                 */
+                debug.log("control split %s discarded because the code size difference is too big, loop size=%d, loop f=%.2f, max diff=%d, diff=%d, relative code size diff=%d%%", split, loopSize,
+                                localLoopFrequency, loopMaxCodeSizeChange, approxCodeSizeChange, (int) (100.0 * approxCodeSizeChange / loopSize));
+                continue;
+            }
+
+            double splitFrequency = splitLocalLoopFrequency(loop, split);
+            if (splitFrequency < LoopUnswitchMinSplitFrequency.getValue(options)) {
+                /*
+                 * When a invariant is unswitched then its corresponding control split node is
+                 * reached once each time the loop is executed so we only want to unswitch
+                 * conditions that are on average reached at least once par execution of the whole
+                 * loop.
+                 */
+                debug.log("control split %s discarded because infrequent, f=%.2f", split, splitFrequency);
+                continue;
+            }
+
+            /**
+             * Even if invariants don't depend from any of a loop's local variable, it doesn't mean
+             * that their values are not correlated with the value of an other condition. For
+             * example in the following code, the compiler adds a null check before accessing in the
+             * array. This condition only depends on the variable {@code array} and is an invariant.
+             *
+             * <pre>
+             * final class A {
+             *     final int length;
+             *     final int[] array;
+             *
+             *     public A(int length, int[] array) {
+             *         assert length >= 0;
+             *         assert array == null || length < array.length;
+             *         assert array != null || length == 0;
+             *         this.length = length;
+             *         this.array = array;
+             *     }
+             *
+             *     public int foo(int upto) {
+             *         int res = 1;
+             *         for (int i = 0; i < upto; ++i) {
+             *             if (i < length) {
+             *                 // The compiler adds a null check and an index in bound check.
+             *                 res += this.array[i];
+             *             } else {
+             *                 res *= 2;
+             *             }
+             *         }
+             *         return res;
+             *     }
+             * }
+             * </pre>
+             *
+             * However the fields of A are final and the constructor checks that if array is null
+             * then length must be zero. So we know that each time the condition {@code i < length}
+             * evaluates to true then array is not null. As a consequence the success probability of
+             * the invariant (i.e. is array null) is 0.0.
+             *
+             * So if the compiler unswitch the null check the code becomes :
+             *
+             * <pre>
+             *  int foo(int upto) {
+             *      int res = 1;
+             *      if (this.array == null) {
+             *          // Frequency = ~0
+             *          for (int i = 0; i < upto; ++i) {
+             *              if (i < length) {
+             *                  Deop null pointer exception.
+             *              } else {
+             *                  res *= 2;
+             *              }
+             *          }
+             *      } else {
+             *          // Frequency = 1.0
+             *          for (int i = 0; i < upto; ++i) {
+             *              if (i < length) {
+             *                  // With an index in bound check (but no null check)
+             *                  res += this.array[i];
+             *              } else {
+             *                  res *= 2;
+             *              }
+             *          }
+             *      }
+             *      return res;
+             *  }
+             * </pre>
+             *
+             * But if the method is mostly called on instances that have {@code array == null} then
+             * the hottest path is wrong!
+             *
+             * The previous behavior happens when the compiler changes the order of correlated ifs.
+             * In the simple case where we only have two ifs:
+             *
+             * <pre>
+             *  if (C) {
+             *      if (I) { ... } else { ... }
+             *  } else { ... }
+             * </pre>
+             *
+             * The profile data gives probabilities about C ( P(C) ) and about I knowing that C is
+             * true ( P(I|C) ). However when moving I out of C, we are interested in the probability
+             * of I : P(I)=P(I|C)P(C) + P(I|!C)(1-P(C)) but we don't know P(I|!C). We can bound P(I)
+             * by P(I|C)P(C) and P(I|C)P(C) + (1-P(C)) (by respectively taking P(I|!C) equal to 0
+             * and 1).
+             *
+             * This range is proportional to P(C). So when an invariant might be correlated with a
+             * an other condition (i.e. it's success probability is close to 0 or 1), the compiler
+             * only unswitches it if it is executed often. Otherwise if its success probability is
+             * close to 0.5, it is probably uncorrelated and can safely be unswitched.
+             *
+             * This is the idea behind the following heuristic. {@link factor} is 0 for control
+             * split with success probabilities close to 1 or 0 and 1 for evenly distributed splits.
+             *
+             * The initial value of {@link factor} is computed such that if all the successor
+             * probabilities are equals (i.e. 1 / successorCount) then its final value is 1 and the
+             * its inverted and capped value is close to 0 meaning that the invariant can have any
+             * frequency and it will be unswitched. On the other hand when one of the successor
+             * probabilities is close to 0 then factor will be close to 0 and so its inverted and
+             * capped version will be closed to 1 meaning that for the invariant to be unswitched it
+             * must be executed often.
+             *
+             * Let's consider the following program with a probability of 0.1 for the null check.
+             * The initial value of factor is 2^(2*1) = 4 and its final value is 4 * 0.9 * 0.1 =
+             * 0.36. Then its inverted and capped value is 1 - 0.36 = 0.64 meaning that for this
+             * invariant to be unswitched it must be used during more that 64% of the loop's
+             * iterations.
+             *
+             * <pre>
+             *  Object o = [...];
+             *  for (int i = 0; i < 1000; ++i) {
+             *      if (very_likely(i)) {
+             *          if (o == null) { Deop } else { [.1.] }
+             *      } else { [.2.] }
+             *  }
+             * </pre>
+             */
+            double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
+            if (isTrusted) {
+                for (ControlSplitNode s : split) {
+                    for (double p : s.successorProbabilities()) {
+                        factor *= p;
+                    }
+                }
+                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+            } else {
+                debug.log("control split %s has an untrusted profile source", split);
+                factor = DefaultUnswitchFactor.getValue(options);
+            }
+
+            // We cap the factor and we invert it to make guards' range narrow.
+            double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));
+
+            if (splitFrequency < cappedFactor * localLoopFrequency) {
+                /*
+                 * Invariants that are executed not often with respect to their successor
+                 * probabilities are discarded as they might change the hottest path.
+                 */
+                debug.log("control split %s not frequenct enough with respect to factor, factor=%.2f, split f=%.2f, loop f=%.2f", split, cappedFactor, splitFrequency, localLoopFrequency);
+                continue;
+            }
+
+            if (splitFrequency > bestSplitFrequency) {
+                bestSplitFrequency = splitFrequency;
+                bestSplit = split;
+                bestCodeSizeChange = approxCodeSizeChange;
+                bestFactor = cappedFactor;
+            }
+        }
+
+        if (bestSplit != null) {
+            debug.log("shouldUnswitch(%s, %s) : best=%s, loop size=%d, f=%.2f, max=%d, delta=%d, invariant f=%.2f, factor=%.2f", loop, controlSplits, bestSplit, loopSize, localLoopFrequency,
+                            loopMaxCodeSizeChange,
+                            bestCodeSizeChange,
+                            bestSplitFrequency, bestFactor);
+
+            return UnswitchingDecision.yes(bestSplit);
         } else {
             return UnswitchingDecision.NO;
         }

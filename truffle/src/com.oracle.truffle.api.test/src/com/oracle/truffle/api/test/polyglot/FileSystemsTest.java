@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -83,6 +85,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,11 +99,13 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -139,43 +144,97 @@ public class FileSystemsTest {
     private static final String FOLDER_NEW_COPY = "folder_copy";
     private static final String FILE_CHANGE_ATTRS = "existing_attrs.txt";
     private static final String FILE_TMP_DIR = "tmpfolder";
+    private static final String FULL_IO_DEPRECATED = "Full IO - Deprecated";
+    private static final String NO_IO_DEPRECATED = "No IO - Deprecated";
+    private static final String CUSTOM_FS_DEPRECATED = "Custom File System - Deprecated";
+    private static final String FULL_IO = "Full IO";
+    private static final String NO_IO = "No IO";
+    private static final String NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE = "No IO under language home - public file";
+    private static final String NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE = "No IO under language home - internal file";
+    private static final String READ_ONLY = "Read Only";
+    private static final String CONDITIONAL_IO_READ_WRITE_PART = "Conditional IO - read/write part";
+    private static final String CONDITIONAL_IO_READ_ONLY_PART = "Conditional IO - read only part";
+    private static final String CONDITIONAL_IO_PRIVATE_PART = "Conditional IO - private part";
+    private static final String MEMORY_FILE_SYSTEM = "Memory FileSystem";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES = "Memory FileSystem With Language Homes";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE = "Memory FileSystem With Language Homes - internal file";
+    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME = "Context pre-initialization filesystem build time";
+    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization filesystem execution time";
 
-    private static Collection<Configuration> cfgs;
+    private static final Map<String, Configuration> cfgs = new HashMap<>();
     private static Consumer<Env> languageAction;
 
     private final Configuration cfg;
 
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
-        if (!TruffleTestAssumptions.isWeakEncapsulation()) {
+    public static Collection<String> createParameters() {
+        if (TruffleTestAssumptions.isStrongEncapsulation()) {
             return Collections.emptyList();
         }
-        assert cfgs == null;
-        final List<Configuration> result = new ArrayList<>();
+        return Arrays.asList(
+                        FULL_IO_DEPRECATED,
+                        NO_IO_DEPRECATED,
+                        CUSTOM_FS_DEPRECATED,
+                        FULL_IO,
+                        NO_IO,
+                        NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
+                        NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
+                        READ_ONLY,
+                        CONDITIONAL_IO_READ_WRITE_PART,
+                        CONDITIONAL_IO_READ_ONLY_PART,
+                        CONDITIONAL_IO_PRIVATE_PART,
+                        MEMORY_FILE_SYSTEM,
+                        MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES,
+                        MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
+                        CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME,
+                        CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME);
+    }
+
+    @BeforeClass
+    public static void createConfigurations() throws IOException, ReflectiveOperationException {
+        assert cfgs.isEmpty();
+        if (TruffleTestAssumptions.isStrongEncapsulation()) {
+            return;
+        }
         final FileSystem fullIO = FileSystem.newDefaultFileSystem();
+        createDeprecatedConfigurations(fullIO);
+
         // Full IO
         Path accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
-        Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).build();
+        Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(IOAccess.ALL).build();
         setCwd(ctx, accessibleDir, null);
-        result.add(new Configuration("Full IO", ctx, accessibleDir, fullIO, true, true, true, true));
+        cfgs.put(FULL_IO, new Configuration(FULL_IO, ctx, accessibleDir, fullIO, true, true, true, true));
+
         // No IO
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(IOAccess.NONE).build();
         Path privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
-        result.add(new Configuration("No IO", ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, true, false, false, false));
+        cfgs.put(NO_IO, new Configuration(NO_IO, ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, true, false, false, false));
+
         // No IO under language home - public file
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(IOAccess.NONE).build();
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
-        result.add(new Configuration("No IO under language home - public file", ctx, privateDir, fullIO, true, false, false, false));
+        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, new Configuration(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, ctx, privateDir, fullIO, true, false, false, false));
+
         // No IO under language home - internal file
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(IOAccess.NONE).build();
         privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
-        result.add(new Configuration("No IO under language home - internal file", ctx, privateDir, privateDir, fullIO, true, true, false, false, true, (env, p) -> env.getInternalTruffleFile(p)));
+        cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
+                        new Configuration(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, (env, p) -> env.getInternalTruffleFile(p)));
+
+        // Read Only
+        accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+                        fullIO);
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newReadOnlyFileSystem(fullIO)).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        setCwd(ctx, accessibleDir, null);
+        cfgs.put(READ_ONLY, new Configuration(READ_ONLY, ctx, accessibleDir, fullIO, true, true, false, true));
+
         // Checked IO
         accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
@@ -185,42 +244,66 @@ public class FileSystemsTest {
                         fullIO);
         AccessPredicate read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         AccessPredicate write = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
-        FileSystem fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(accessibleDir), read, write);
+        FileSystem fileSystem = new RestrictedFileSystem(newFullIOFileSystem(accessibleDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(CONDITIONAL_IO_READ_WRITE_PART, new Configuration(CONDITIONAL_IO_READ_WRITE_PART, ctx, accessibleDir, fullIO, false, true, true, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
-        fileSystem = new RestrictedFileSystem(
-                        FileSystemProviderTest.newFullIOFileSystem(readOnlyDir), read, write);
+        fileSystem = new RestrictedFileSystem(newFullIOFileSystem(readOnlyDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(CONDITIONAL_IO_READ_ONLY_PART, new Configuration(CONDITIONAL_IO_READ_ONLY_PART, ctx, readOnlyDir, fullIO, false, true, false, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
-        fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(privateDir), read, write);
+        fileSystem = new RestrictedFileSystem(newFullIOFileSystem(privateDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(CONDITIONAL_IO_PRIVATE_PART, new Configuration(CONDITIONAL_IO_PRIVATE_PART, ctx, privateDir, fullIO, false, false, false, true));
 
         // Memory
         fileSystem = new MemoryFileSystem();
         Path memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
-        ((MemoryFileSystem) fileSystem).setCurrentWorkingDirectory(memDir);
+        fileSystem.setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(MEMORY_FILE_SYSTEM, new Configuration(MEMORY_FILE_SYSTEM, ctx, memDir, fileSystem, false, true, true, true));
+
+        // Memory with language home
+        fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+        memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        createContent(memDir, fileSystem);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, ctx, memDir, fileSystem, false, true, true, true));
+
+        // Memory with language home - in language home
+        fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+        memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        privateDir = createContent(memDir, fileSystem);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        setCwd(ctx, privateDir, privateDir);
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
+                        new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true));
 
         // PreInitializeContextFileSystem in image build time
         fileSystem = createPreInitializeContextFileSystem();
         Path workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toString()), fileSystem);
         fileSystem.setCurrentWorkingDirectory(workDir);
         createContent(workDir, fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Context pre-initialization filesystem build time", ctx, workDir, fileSystem, true, true, true, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME, new Configuration(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME, ctx, workDir, fileSystem, true, true, true, true));
 
         // PreInitializeContextFileSystem in image execution time
         fileSystem = createPreInitializeContextFileSystem();
@@ -228,25 +311,46 @@ public class FileSystemsTest {
         fileSystem.setCurrentWorkingDirectory(workDir);
         switchToImageExecutionTime(fileSystem, workDir);
         createContent(workDir, fileSystem);
-        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Context pre-initialization filesystem execution time", ctx, workDir, fileSystem, true, true, true, true));
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(ioAccess).build();
+        cfgs.put(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME, new Configuration(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME, ctx, workDir, fileSystem, true, true, true, true));
+    }
 
-        cfgs = result;
-        return result;
+    @SuppressWarnings("deprecation")
+    private static void createDeprecatedConfigurations(FileSystem fullIO) throws IOException {
+        // Full IO using deprecated Context.Builder methods
+        Path accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+                        fullIO);
+        Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).build();
+        setCwd(ctx, accessibleDir, null);
+        cfgs.put(FULL_IO_DEPRECATED, new Configuration(FULL_IO, ctx, accessibleDir, fullIO, true, true, true, true));
+
+        // No IO using deprecated Context.Builder methods
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
+        Path privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+                        fullIO);
+        cfgs.put(NO_IO_DEPRECATED, new Configuration(NO_IO, ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, true, false, false, false));
+
+        // Memory file system using deprecated Context.Builder methods
+        FileSystem fileSystem = new MemoryFileSystem();
+        Path memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        createContent(memDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        cfgs.put(CUSTOM_FS_DEPRECATED, new Configuration(MEMORY_FILE_SYSTEM, ctx, memDir, fileSystem, false, true, true, true));
     }
 
     @AfterClass
     public static void tearDownClass() throws IOException {
-        if (cfgs != null) {
-            for (Configuration cfg : cfgs) {
-                cfg.close();
-            }
-            cfgs = null;
+        for (Map.Entry<String, Configuration> cfgEntry : cfgs.entrySet()) {
+            cfgEntry.getValue().close();
         }
+        cfgs.clear();
     }
 
-    public FileSystemsTest(final Configuration cfg) {
-        this.cfg = cfg;
+    public FileSystemsTest(final String cfgName) {
+        assert cfgs.containsKey(cfgName);
+        this.cfg = cfgs.get(cfgName);
     }
 
     @Before
@@ -1069,7 +1173,7 @@ public class FileSystemsTest {
                 visitor.assertConsumed();
                 // TestVisitor cannot be used for SKIP_SIBLINGS due to random order of files on file
                 // system
-                FileVisitor<TruffleFile> fileVisitor = new FileVisitor<TruffleFile>() {
+                FileVisitor<TruffleFile> fileVisitor = new FileVisitor<>() {
 
                     private boolean skipReturned;
                     private Set<TruffleFile> importantFiles;
@@ -1452,8 +1556,12 @@ public class FileSystemsTest {
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
                 Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME));
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
-                file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
-                Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                // Workaround for issue JDK-8298187: The file last access time does not work on
+                // JDK-20 on macOS with the hfs file system.
+                if (supportsSetLastAccessTime()) {
+                    file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
+                    Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                }
                 file.setAttribute(TruffleFile.CREATION_TIME, time);
                 Assert.assertEquals(time, file.getAttribute(TruffleFile.CREATION_TIME));
                 file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
@@ -1479,6 +1587,18 @@ public class FileSystemsTest {
             }
         };
         ctx.eval(LANGUAGE_ID, "");
+    }
+
+    /**
+     * Setting file last access time does not work on JDK-20 on macOS with the hfs file system,
+     * issue JDK-8298187.
+     */
+    private boolean supportsSetLastAccessTime() throws IOException {
+        if (Runtime.version().feature() == 20 && OSUtils.getCurrent() == OSUtils.OS.Darwin) {
+            Path unwrappedPath = Paths.get(cfg.path.toString());
+            return !Files.exists(unwrappedPath) || !"hfs".equals(Files.getFileStore(unwrappedPath).type());
+        }
+        return true;
     }
 
     @Test
@@ -2137,24 +2257,12 @@ public class FileSystemsTest {
         }
     }
 
-    private static final class LanguageContext {
-        private final Env env;
-
-        LanguageContext(final Env env) {
-            this.env = env;
-        }
-
-        Env env() {
-            return env;
-        }
-    }
-
     @TruffleLanguage.Registration(id = LANGUAGE_ID, name = LANGUAGE_ID, version = "1.0")
-    public static class VirtualizedFileSystemTestLanguage extends TruffleLanguage<LanguageContext> {
+    public static class VirtualizedFileSystemTestLanguage extends TruffleLanguage<Env> {
 
         @Override
-        protected LanguageContext createContext(Env env) {
-            return new LanguageContext(env);
+        protected Env createContext(Env env) {
+            return env;
         }
 
         @Override
@@ -2163,13 +2271,18 @@ public class FileSystemsTest {
             return new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    languageAction.accept(CONTEXT_REF.get(this).env());
+                    doLanguageAction(CONTEXT_REF.get(this));
                     return result;
+                }
+
+                @TruffleBoundary
+                private void doLanguageAction(Env env) {
+                    languageAction.accept(env);
                 }
             }.getCallTarget();
         }
 
-        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(VirtualizedFileSystemTestLanguage.class);
+        private static final ContextReference<Env> CONTEXT_REF = ContextReference.create(VirtualizedFileSystemTestLanguage.class);
     }
 
     private static Path createContent(
@@ -2307,7 +2420,13 @@ public class FileSystemsTest {
         preInitClose.invoke(fileSystem);
         Method patchStart = clazz.getDeclaredMethod("onLoadPreinitializedContext", FileSystem.class);
         patchStart.setAccessible(true);
-        patchStart.invoke(fileSystem, FileSystemProviderTest.newFullIOFileSystem(Paths.get(workDir)));
+        patchStart.invoke(fileSystem, newFullIOFileSystem(Paths.get(workDir)));
+    }
+
+    static FileSystem newFullIOFileSystem(final Path currentWorkingDirectory) {
+        FileSystem res = FileSystem.newDefaultFileSystem();
+        res.setCurrentWorkingDirectory(currentWorkingDirectory);
+        return res;
     }
 
     static class ForwardingFileSystem implements FileSystem {

@@ -35,6 +35,6 @@ public final class Record {
     }
 
     public Record second() {
-        return new Record(bci, local + 1, type);
+        return new Record(bci, local + 1, LoadStoreFinder.TYPE.STORE /*- kills second slot for long and double */);
     }
 }

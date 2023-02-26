@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,8 @@ public abstract class RegexASTNode implements JsonConvertible {
     private int flags;
     private int minPath = 0;
     private int maxPath = 0;
+    private int prefixLengthMin = 0;
+    private int prefixLengthMax = 0;
 
     protected RegexASTNode() {
     }
@@ -412,6 +414,26 @@ public abstract class RegexASTNode implements JsonConvertible {
         maxPath += n;
     }
 
+    public int getPrefixLengthMin() {
+        return prefixLengthMin;
+    }
+
+    public void setPrefixLengthMin(int prefixLengthMin) {
+        this.prefixLengthMin = prefixLengthMin;
+    }
+
+    public int getPrefixLengthMax() {
+        return prefixLengthMax;
+    }
+
+    public void setPrefixLengthMax(int prefixLengthMax) {
+        this.prefixLengthMax = prefixLengthMax;
+    }
+
+    public boolean hasVariablePrefixLength() {
+        return getPrefixLengthMin() != getPrefixLengthMax();
+    }
+
     /**
      * Returns the subtree root node that this node is a part of. If this node is nested inside
      * several look-around assertion nodes, returns the innermost one that contains this node. Every
@@ -460,6 +482,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public boolean isLookBehindAssertion() {
         return this instanceof LookBehindAssertion;
+    }
+
+    public boolean isAtomicGroup() {
+        return this instanceof AtomicGroup;
     }
 
     public boolean isMatchFound() {
@@ -518,6 +544,14 @@ public abstract class RegexASTNode implements JsonConvertible {
         return (LookBehindAssertion) this;
     }
 
+    public AtomicGroup asAtomicGroup() {
+        return (AtomicGroup) this;
+    }
+
+    public RegexASTSubtreeRootNode asSubtreeRootNode() {
+        return (RegexASTSubtreeRootNode) this;
+    }
+
     public MatchFound asMatchFound() {
         return (MatchFound) this;
     }
@@ -539,6 +573,9 @@ public abstract class RegexASTNode implements JsonConvertible {
                         Json.prop("type", typeName),
                         Json.prop("parent", astNodeId(parent)),
                         Json.prop("minPath", minPath),
+                        Json.prop("maxPath", maxPath),
+                        Json.prop("prefixLengthMin", prefixLengthMin),
+                        Json.prop("prefixLengthMax", prefixLengthMax),
                         Json.prop("isPrefix", isPrefix()),
                         Json.prop("isDead", isDead()));
     }

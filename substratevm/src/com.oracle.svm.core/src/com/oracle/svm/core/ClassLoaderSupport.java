@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -50,11 +51,11 @@ public abstract class ClassLoaderSupport {
 
     public interface ResourceCollector {
 
-        boolean isIncluded(String moduleName, String resourceName);
+        boolean isIncluded(String moduleName, String resourceName, URI resourceURI);
 
-        void addResource(String moduleName, String resourceName, InputStream resourceStream);
+        void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar);
 
-        void addDirectoryResource(String moduleName, String dir, String content);
+        void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);

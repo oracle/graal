@@ -179,7 +179,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     public static List<TypeMirror> getCachedAnnotations() {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        return Arrays.asList(types.Cached, types.CachedLibrary, types.CachedContext, types.CachedLanguage, types.Bind);
+        return Arrays.asList(types.Cached, types.CachedLibrary, types.Bind);
     }
 
     public static NodeParser createExportParser(TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
@@ -519,16 +519,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
                 }
 
-                if (!cache.isCachedContext() && !cache.isCachedLanguage() &&
-                                specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
-                    /*
-                     * We explicitly support cached language references and lookups thereof in AOT.
-                     * But the generated code introduces a check to ensure that only the language of
-                     * the root node is used.
-                     */
-                    if (specialization.isOnlyLanguageReferencesBound(cache.getDefaultExpression())) {
-                        continue;
-                    }
+                if (specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
 
                     if (!cachedLibraryAOT) {
                         cache.addError("Failed to generate code for @%s: " + //
@@ -1293,7 +1284,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } else {
             generateUncached = false;
         }
-        return new NodeData(context, templateType, typeSystem, useNodeFactory, generateUncached);
+        boolean generatePackagePrivate = findFirstAnnotation(typeHierarchy, types.GeneratePackagePrivate) != null;
+        return new NodeData(context, templateType, typeSystem, useNodeFactory, generateUncached, generatePackagePrivate);
 
     }
 
@@ -1997,7 +1989,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             Set<SpecializationData> resolvedSpecializations = specialization.getReplaces();
             Set<String> includeNames = specialization.getReplacesNames();
             for (String includeName : includeNames) {
-                // TODO reduce complexity of this lookup.
+                // TODO GR-38632 reduce complexity of this lookup.
                 List<SpecializationData> foundSpecializations = lookupSpecialization(node, includeName);
 
                 AnnotationValue value = getAnnotationValue(specialization.getMarkerAnnotation(), "replaces");
@@ -2397,102 +2389,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
                     cachedLibraries.add(cache);
                 }
-            } else if (cache.isCachedLanguage()) {
-                TypeMirror languageType = cache.getParameter().getType();
-
-                boolean isLanguage = ElementUtils.isAssignable(languageType, types.TruffleLanguage);
-                boolean isLanguageReference = ElementUtils.isAssignable(languageType, types.TruffleLanguage_LanguageReference);
-
-                if (!isLanguage && !isLanguageReference) {
-                    cache.addError("Invalid @%s specification. The parameter type must be a subtype of %s or of type LanguageReference<%s>.",
-                                    types.CachedLanguage.asElement().getSimpleName().toString(),
-                                    types.TruffleLanguage.asElement().getSimpleName().toString(),
-                                    types.TruffleLanguage.asElement().getSimpleName().toString());
-                    continue parameters;
-                }
-
-                TypeMirror referenceType;
-                if (isLanguageReference) {
-                    TypeMirror typeArgument = getFirstTypeArgument(languageType);
-                    if (typeArgument == null || !ElementUtils.isAssignable(typeArgument, types.TruffleLanguage)) {
-                        cache.addError("Invalid @%s specification. The first type argument of the LanguageReference must be a subtype of '%s'.",
-                                        types.CachedLanguage.asElement().getSimpleName().toString(),
-                                        types.TruffleLanguage.asElement().getSimpleName().toString());
-                    } else {
-                        verifyLanguageType(types.CachedLanguage, cache, typeArgument);
-                    }
-                    referenceType = languageType;
-                    languageType = typeArgument;
-                } else {
-                    verifyLanguageType(types.CachedLanguage, cache, languageType);
-                    referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_LanguageReference), Arrays.asList(languageType));
-                }
-                if (cache.hasErrors()) {
-                    continue parameters;
-                }
-
-                DSLExpressionResolver cachedResolver = importStatics(resolver, types.TruffleLanguage_LanguageReference);
-                DSLExpression.Variable thisReceiver = new DSLExpression.Variable(null, "this");
-                cachedResolver.addVariable("this", new CodeVariableElement(types.Node, "this"));
-
-                DSLExpression expression = new DSLExpression.Call(null, "create", Arrays.asList(new DSLExpression.ClassLiteral(languageType)));
-                if (isLanguage) {
-                    expression = new DSLExpression.Call(expression, "get", Collections.singletonList(thisReceiver));
-                }
-
-                cache.setReferenceType(referenceType);
-                cache.setLanguageType(languageType);
-                cache.setDefaultExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
-                cache.setUncachedExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
-                cache.setAlwaysInitialized(true);
-            } else if (cache.isCachedContext()) {
-                AnnotationMirror cachedContext = cache.getMessageAnnotation();
-                TypeMirror languageType = ElementUtils.getAnnotationValue(TypeMirror.class, cachedContext, "value");
-                if (!ElementUtils.isAssignable(languageType, languageType)) {
-                    cache.addError("Invalid @%s specification. The value type must be a subtype of %s.",
-                                    types.CachedContext.asElement().getSimpleName().toString(),
-                                    types.TruffleLanguage.asElement().getSimpleName().toString());
-                    continue parameters;
-                }
-                verifyLanguageType(types.CachedContext, cache, languageType);
-                if (cache.hasErrors()) {
-                    continue parameters;
-                }
-                TypeMirror contextType = findContextTypeFromLanguage(languageType);
-                if (contextType == null || contextType.getKind() != TypeKind.DECLARED) {
-                    cache.addError("Invalid @%s specification. The context type could not be inferred from super type in language '%s'.",
-                                    types.CachedContext.asElement().getSimpleName().toString(),
-                                    ElementUtils.getSimpleName(languageType));
-                    continue parameters;
-                }
-
-                TypeMirror declaredContextType = parameter.getType();
-                if (ElementUtils.typeEquals(ElementUtils.eraseGenericTypes(parameter.getType()), ElementUtils.eraseGenericTypes(types.TruffleLanguage_ContextReference))) {
-                    declaredContextType = getFirstTypeArgument(parameter.getType());
-                }
-
-                if (!ElementUtils.typeEquals(contextType, declaredContextType)) {
-                    cache.addError("Invalid @%s specification. The parameter type must match the context type '%s' or 'ContextReference<%s>'.",
-                                    types.CachedContext.asElement().getSimpleName().toString(),
-                                    ElementUtils.getSimpleName(contextType),
-                                    ElementUtils.getSimpleName(contextType));
-                    continue parameters;
-                }
-                TypeMirror referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_ContextReference), Arrays.asList(contextType));
-
-                cache.setReferenceType(referenceType);
-                cache.setLanguageType(languageType);
-
-                DSLExpressionResolver cachedResolver = importStatics(resolver, types.TruffleLanguage_ContextReference);
-                DSLExpression.Variable thisReceiver = new DSLExpression.Variable(null, "this");
-                cachedResolver.addVariable("this", new CodeVariableElement(types.Node, "this"));
-                DSLExpression expression = new DSLExpression.Call(null, "create", Arrays.asList(new DSLExpression.ClassLiteral(languageType)));
-                if (!cache.isReference()) {
-                    expression = new DSLExpression.Call(expression, "get", Collections.singletonList(thisReceiver));
-                }
-                cache.setDefaultExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
-                cache.setUncachedExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
-                cache.setAlwaysInitialized(true);
             } else if (cache.isBind()) {
                 AnnotationMirror dynamic = cache.getMessageAnnotation();
                 String expression = ElementUtils.getAnnotationValue(String.class, dynamic, "value", false);
@@ -2557,23 +2453,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return null;
     }
 
-    private void verifyLanguageType(DeclaredType annotationType, CacheExpression cache, TypeMirror languageType) {
-        if (ElementUtils.typeEquals(types.HostLanguage, languageType)) {
-            // allowed without Registration annotation
-            return;
-        }
-
-        AnnotationMirror registration = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(languageType), types.TruffleLanguage_Registration);
-        if (registration == null) {
-            cache.addError("Invalid @%s specification. The type '%s' is not a valid language type. Valid language types must be annotated with @%s.",
-                            annotationType.asElement().getSimpleName().toString(),
-                            ElementUtils.getSimpleName(ElementUtils.eraseGenericTypes(languageType)),
-                            types.TruffleLanguage_Registration.asElement().getSimpleName().toString());
-        }
-    }
-
     private SpecializationData parseCachedLibraries(SpecializationData specialization, DSLExpressionResolver resolver, List<CacheExpression> libraries) {
-
         SpecializationData uncachedSpecialization = null;
         List<CacheExpression> uncachedLibraries = null;
         /*
@@ -2643,7 +2523,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             DSLExpression substituteCachedExpression = null;
             DSLExpression substituteUncachedExpression = null;
-
+            boolean supportsMerge = false;
             // try substitutions
             if (mode == ParseMode.EXPORTED_MESSAGE) {
                 Parameter receiverParameter = specialization.findParameterOrDie(specialization.getNode().getChildExecutions().get(0));
@@ -2672,7 +2552,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 if (substituteCachedExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
                     substituteCachedExpression = receiverExpression;
-
+                    supportsMerge = true;
                     cachedLibrary.setMergedLibrary(true);
                 }
             }
@@ -2684,7 +2564,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setDefaultExpression(substituteCachedExpression);
                 cachedLibrary.setUncachedExpression(substituteUncachedExpression);
                 cachedLibrary.setAlwaysInitialized(true);
-                continue;
+
+                if (uncachedLibrary != null) {
+                    uncachedLibrary.setDefaultExpression(substituteUncachedExpression);
+                    uncachedLibrary.setUncachedExpression(substituteUncachedExpression);
+                    uncachedLibrary.setMergedLibrary(supportsMerge);
+                    uncachedLibrary.setAlwaysInitialized(true);
+                }
+
             } else {
                 seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, true);
                 cachedLibrary.setDefaultExpression(receiverExpression);
@@ -2802,19 +2689,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         String initializer = getAnnotationValue(String.class, cachedAnnotation, "value");
         String uncached = getAnnotationValue(String.class, cachedAnnotation, "uncached");
 
-        String parameters = "";
-        if (!expressionParameters.isEmpty()) {
-            StringBuilder b = new StringBuilder();
-            for (int i = 0; i < expressionParameters.size(); i++) {
-                String param = expressionParameters.get(i);
-                b.append(param);
-                if (i != 0) {
-                    b.append(", ");
-                }
-            }
-            parameters = b.toString();
-        }
-
+        String parameters = String.join(", ", expressionParameters);
         initializer = initializer.replace("$parameters", parameters);
         uncached = uncached.replace("$parameters", parameters);
 
@@ -3028,7 +2903,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (fallbackSpecializations.size() == 1 && node.getSpecializations().size() == 1) {
-            // TODO this limitation should be lifted
+            // TODO GR-38632 this limitation should be lifted
             for (SpecializationData fallback : fallbackSpecializations) {
                 fallback.addError("@%s defined but no @%s.", getSimpleName(types.Fallback), getSimpleName(types.Specialization));
             }

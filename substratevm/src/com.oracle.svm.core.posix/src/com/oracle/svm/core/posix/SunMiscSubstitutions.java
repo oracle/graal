@@ -27,25 +27,25 @@ package com.oracle.svm.core.posix;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
@@ -56,30 +56,11 @@ import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_misc implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.misc." + annotation.className();
-        }
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
+@TargetClass(className = "jdk.internal.misc.Signal")
 final class Target_jdk_internal_misc_Signal {
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static /* native */ int findSignal(String signalName) {
-        return Util_jdk_internal_misc_Signal.numberFromName(signalName);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static /* native */ int findSignal0(String signalName) {
+    private static int findSignal0(String signalName) {
         return Util_jdk_internal_misc_Signal.numberFromName(signalName);
     }
 
@@ -147,7 +128,7 @@ final class Util_jdk_internal_misc_Signal {
         }
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
-        CIntPointer sigset = StackValue.get(CIntPointer.class);
+        CIntPointer sigset = UnsafeStackValue.get(CIntPointer.class);
         sigset.write(1 << (sig - 1));
         Signal.sigprocmask(Signal.SIG_UNBLOCK(), (Signal.sigset_tPointer) sigset, WordFactory.nullPointer());
         return dispatcherToNativeH(oldDispatcher);
@@ -187,7 +168,7 @@ final class Util_jdk_internal_misc_Signal {
                     dispatchThread.setName("Signal Dispatcher");
                     dispatchThread.setDaemon(true);
                     dispatchThread.start();
-                    RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> DispatchThread.interrupt(dispatchThread));
+                    RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> DispatchThread.interrupt(dispatchThread));
 
                     /* Initialization is complete. */
                     initialized = true;
@@ -389,8 +370,8 @@ final class Util_jdk_internal_misc_Signal {
     }
 }
 
-@AutomaticFeature
-class IgnoreSIGPIPEFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class IgnoreSIGPIPEFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -398,25 +379,43 @@ class IgnoreSIGPIPEFeature implements Feature {
     }
 }
 
-final class IgnoreSIGPIPEStartupHook implements Runnable {
+final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
+
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @Uninterruptible(reason = "empty signal handler, Isolate is not set up")
+    static void noopSignalHandler(@SuppressWarnings("unused") int sig) {
+    }
+
+    private static final CEntryPointLiteral<Signal.SignalDispatcher> NOOP_SIGNAL_HANDLER = //
+                    CEntryPointLiteral.create(IgnoreSIGPIPEStartupHook.class, "noopSignalHandler", int.class);
 
     /**
      * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
      * default action is to terminate the process, will instead return an error code from the
      * specific write operation.
      *
-     * From pipe(7}: If all file descriptors referring to the read end of a pipe have been closed,
+     * From pipe(7): If all file descriptors referring to the read end of a pipe have been closed,
      * then a write(2) will cause a SIGPIPE signal to be generated for the calling process. If the
      * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
+     *
+     * Note that the handler must be an empty function and not SIG_IGN. The problem is SIG_IGN is
+     * inherited to subprocess but we only want to affect the current process.
+     *
+     * From signal(7): A child created via fork(2) inherits a copy of its parent's signal
+     * dispositions. During an execve(2), the dispositions of handled signals are reset to the
+     * default; the dispositions of ignored signals are left unchanged.
      */
     @Override
-    public void run() {
-        final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
-        VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), NOOP_SIGNAL_HANDLER.getFunctionPointer());
+            VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+        }
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.misc.VM")
 final class Target_jdk_internal_misc_VM {
 
     /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */
@@ -425,7 +424,7 @@ final class Target_jdk_internal_misc_VM {
         final long maxDiffSecs = 0x0100000000L;
         final long minDiffSecs = -maxDiffSecs;
 
-        Time.timeval tv = StackValue.get(Time.timeval.class);
+        Time.timeval tv = UnsafeStackValue.get(Time.timeval.class);
         int status = Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
         assert status != -1 : "linux error";
         long seconds = tv.tv_sec();

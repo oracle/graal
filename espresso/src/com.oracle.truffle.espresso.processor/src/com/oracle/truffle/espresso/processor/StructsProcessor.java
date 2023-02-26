@@ -208,7 +208,7 @@ public class StructsProcessor extends AbstractProcessor {
             }
         }
         String source = generateStructCollector(structs);
-        commit(null, STRUCTS_CLASS, source);
+        commit(STRUCTS_CLASS, source);
 
         done = true;
 
@@ -232,14 +232,14 @@ public class StructsProcessor extends AbstractProcessor {
         // Generate code
         String source = generateStruct(strName, members, nativeTypes, length, className);
         // Commit and write to files.
-        commit(null, className, source);
+        commit(className, source);
         return className;
     }
 
-    void commit(Element method, String className, String classFile) {
+    void commit(String className, String classFile) {
         try {
             // Create the file
-            JavaFileObject file = processingEnv.getFiler().createSourceFile(STRUCTS_PACKAGE + "." + className, method);
+            JavaFileObject file = processingEnv.getFiler().createSourceFile(STRUCTS_PACKAGE + "." + className);
             Writer wr = file.openWriter();
             wr.write(classFile);
             wr.close();

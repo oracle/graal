@@ -74,7 +74,13 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
     protected int totalSize;
 
     public static UnsafeArrayTypeWriter create(boolean supportsUnalignedMemoryAccess) {
-        if (supportsUnalignedMemoryAccess) {
+        return create(supportsUnalignedMemoryAccess, false);
+    }
+
+    public static UnsafeArrayTypeWriter create(boolean supportsUnalignedMemoryAccess, boolean bigEndian) {
+        if (bigEndian) {
+            return new BigEndianUnsafeArrayTypeWriter();
+        } else if (supportsUnalignedMemoryAccess) {
             return new UnalignedUnsafeArrayTypeWriter();
         } else {
             return new AlignedUnsafeArrayTypeWriter();
@@ -285,5 +291,37 @@ final class AlignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
         UNSAFE.putByte(chunk.data, offset + 5, (byte) (value >> 40));
         UNSAFE.putByte(chunk.data, offset + 6, (byte) (value >> 48));
         UNSAFE.putByte(chunk.data, offset + 7, (byte) (value >> 56));
+    }
+}
+
+final class BigEndianUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
+    private static final Unsafe UNSAFE = getUnsafe();
+
+    @Override
+    protected void putS2(long value, Chunk chunk, long offset) {
+        assert TypeConversion.isS2(value);
+        UNSAFE.putByte(chunk.data, offset + 0, (byte) (value >> 8));
+        UNSAFE.putByte(chunk.data, offset + 1, (byte) (value >> 0));
+    }
+
+    @Override
+    protected void putS4(long value, Chunk chunk, long offset) {
+        assert TypeConversion.isS4(value);
+        UNSAFE.putByte(chunk.data, offset + 0, (byte) (value >> 24));
+        UNSAFE.putByte(chunk.data, offset + 1, (byte) (value >> 16));
+        UNSAFE.putByte(chunk.data, offset + 2, (byte) (value >> 8));
+        UNSAFE.putByte(chunk.data, offset + 3, (byte) (value >> 0));
+    }
+
+    @Override
+    protected void putS8(long value, Chunk chunk, long offset) {
+        UNSAFE.putByte(chunk.data, offset + 0, (byte) (value >> 56));
+        UNSAFE.putByte(chunk.data, offset + 1, (byte) (value >> 48));
+        UNSAFE.putByte(chunk.data, offset + 2, (byte) (value >> 40));
+        UNSAFE.putByte(chunk.data, offset + 3, (byte) (value >> 32));
+        UNSAFE.putByte(chunk.data, offset + 4, (byte) (value >> 24));
+        UNSAFE.putByte(chunk.data, offset + 5, (byte) (value >> 16));
+        UNSAFE.putByte(chunk.data, offset + 6, (byte) (value >> 8));
+        UNSAFE.putByte(chunk.data, offset + 7, (byte) (value >> 0));
     }
 }

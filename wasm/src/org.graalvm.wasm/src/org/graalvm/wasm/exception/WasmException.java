@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.exception;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,10 +49,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -91,13 +88,11 @@ public final class WasmException extends AbstractTruffleException {
         return create(failure, location, String.format(format, args));
     }
 
-    @BytecodeInterpreterSwitchBoundary
     @TruffleBoundary
     public static WasmException format(Failure failure, Node location, String format, Object arg) {
         return create(failure, location, String.format(format, arg));
     }
 
-    @BytecodeInterpreterSwitchBoundary
     @TruffleBoundary
     public static WasmException format(Failure failure, Node location, String format, int arg) {
         return create(failure, location, String.format(format, arg));

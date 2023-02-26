@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,16 +34,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -58,8 +55,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class TraceCompilationTest extends TestWithPolyglotOptions {
-
-    private static final String CONFIGURED_PROPERTY = ExceptionActionTest.class.getSimpleName() + ".configured";
 
     @Test
     public void testCompilationSuccessTracingOff() throws Exception {
@@ -128,16 +123,19 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     @Test
     public void testNoEngineTracingOn() throws Exception {
-        executeForked(() -> {
-            PrintStream origSystemErr = System.err;
-            ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
-            System.setErr(new PrintStream(rawStdErr, true, "UTF-8"));
-            OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(10).getCallTarget();
-            target.call();
-            System.setErr(origSystemErr);
-            String strStdErr = rawStdErr.toString("UTF-8");
-            Assert.assertTrue(strStdErr, strStdErr.contains("[engine] opt done"));
-            return null;
+        SubprocessTestUtils.executeInSubprocess(TraceCompilationTest.class, () -> {
+            try {
+                PrintStream origSystemErr = System.err;
+                ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
+                System.setErr(new PrintStream(rawStdErr, true, "UTF-8"));
+                OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(10).getCallTarget();
+                target.call();
+                System.setErr(origSystemErr);
+                String strStdErr = rawStdErr.toString("UTF-8");
+                Assert.assertTrue(strStdErr, strStdErr.contains("[engine] opt done"));
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe.getMessage(), ioe);
+            }
         }, "-Dpolyglot.engine.BackgroundCompilation=false", "-Dpolyglot.engine.CompileImmediately=true", "-Dpolyglot.engine.TraceCompilation=true");
     }
 
@@ -165,69 +163,6 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
                         null);
     }
 
-    private static void executeForked(Callable<Void> r, String... additionalVmOptions) throws Exception {
-        if (!isConfigured()) {
-            String testName = getTestName();
-            execute(testName, additionalVmOptions);
-        } else {
-            r.call();
-        }
-    }
-
-    private static boolean isConfigured() {
-        return Boolean.getBoolean(CONFIGURED_PROPERTY);
-    }
-
-    private static String getTestName() {
-        boolean inExecuteForked = false;
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        if (stack != null) {
-            for (StackTraceElement frame : stack) {
-                String methodName = frame.getMethodName();
-                if ("executeForked".equals(methodName)) {
-                    inExecuteForked = true;
-                } else if (inExecuteForked && !"testHelper".equals(methodName)) {
-                    return frame.getMethodName();
-                }
-            }
-        }
-        throw new IllegalStateException("Failed to find test name");
-    }
-
-    private static void execute(String testName, String... additionalVmOptions) throws IOException, InterruptedException {
-        SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(configure(getVmArgs(), additionalVmOptions),
-                        "com.oracle.mxtool.junit.MxJUnitWrapper",
-                        String.format("%s#%s", TraceCompilationTest.class.getName(), testName));
-        Assert.assertEquals(String.join("\n", subprocess.output), 0, subprocess.exitCode);
-    }
-
-    private static List<String> configure(List<String> vmArgs, String... additionalVmOptions) {
-        List<String> newVmArgs = new ArrayList<>();
-        newVmArgs.addAll(vmArgs.stream().filter(new Predicate<String>() {
-            @Override
-            public boolean test(String vmArg) {
-                // Filter out the LogFile option to prevent overriding of the unit tests log file by
-                // a sub-process.
-                return !vmArg.contains("LogFile") &&
-                                !vmArg.contains("graal.DumpOnError") &&
-                                !vmArg.contains("polyglot.log.file") &&
-                                !vmArg.contains("polyglot.engine.TraceCompilation") &&
-                                !vmArg.contains("polyglot.engine.TraceCompilationDetails");
-            }
-        }).collect(Collectors.toList()));
-        for (String additionalVmOption : additionalVmOptions) {
-            newVmArgs.add(1, additionalVmOption);
-        }
-        newVmArgs.add(1, String.format("-D%s=true", CONFIGURED_PROPERTY));
-        return newVmArgs;
-    }
-
-    private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
-        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-        return vmArgs;
-    }
-
     private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected) throws Exception {
         testHelper(rootProvider, additionalOptions, expected, unexpected, null);
     }
@@ -241,7 +176,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, Pattern[] expected, Pattern[] unexpected, Consumer<LogRecord> onPublishAction)
                     throws Exception {
-        executeForked(() -> {
+        SubprocessTestUtils.executeInSubprocess(TraceCompilationTest.class, () -> {
             TestHandler.Builder builder = TestHandler.newBuilder().onPublish(onPublishAction);
             for (Pattern s : expected) {
                 builder.expect(s);
@@ -257,7 +192,6 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             OptimizedCallTarget target = (OptimizedCallTarget) rootProvider.get().getCallTarget();
             target.call();
             handler.assertLogs();
-            return null;
         });
     }
 
@@ -300,7 +234,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
 
         @Override
         public synchronized void publish(LogRecord lr) {
-            allEvents.add(new LogEntry(Thread.currentThread().getId(), state, lr.getMessage()));
+            allEvents.add(new LogEntry(GraalServices.getCurrentThreadId(), state, lr.getMessage()));
             switch (state) {
                 case NEW:
                     return;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,11 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
+
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -62,17 +65,39 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private final NFA nfa;
     private final boolean searching;
+    private final boolean trackLastGroup;
     private boolean dfaGeneratorBailedOut;
 
-    public TRegexNFAExecutorNode(NFA nfa) {
+    private TRegexNFAExecutorNode(NFA nfa, int numberOfTransitions) {
+        super(nfa.getAst(), numberOfTransitions);
         this.nfa = nfa;
-        nfa.setInitialLoopBack(false);
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
+        this.trackLastGroup = nfa.getAst().getOptions().getFlavor().usesLastGroupResultField();
+    }
+
+    private TRegexNFAExecutorNode(TRegexNFAExecutorNode copy) {
+        super(copy);
+        this.nfa = copy.nfa;
+        this.searching = copy.searching;
+        this.trackLastGroup = copy.trackLastGroup;
+        this.dfaGeneratorBailedOut = copy.dfaGeneratorBailedOut;
+    }
+
+    public static TRegexNFAExecutorNode create(NFA nfa) {
+        nfa.setInitialLoopBack(false);
+        int numberOfTransitions = 0;
         for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
             if (nfa.getTransitions()[i] != null) {
                 nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
+                numberOfTransitions++;
             }
         }
+        return new TRegexNFAExecutorNode(nfa, numberOfTransitions);
+    }
+
+    @Override
+    public TRegexNFAExecutorNode shallowCopy() {
+        return new TRegexNFAExecutorNode(this);
     }
 
     public NFA getNFA() {
@@ -81,6 +106,11 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     public void notifyDfaGeneratorBailedOut() {
         dfaGeneratorBailedOut = true;
+    }
+
+    @Override
+    public String getName() {
+        return "nfa";
     }
 
     @Override
@@ -95,18 +125,18 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates());
+        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
     }
 
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
+    public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 
         final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1);
         int anchoredInitialState = nfa.getAnchoredEntry()[offset].getTarget().getId();
         int unAnchoredInitialState = nfa.getUnAnchoredEntry()[offset].getTarget().getId();
-        if (unAnchoredInitialState != anchoredInitialState && inputAtBegin(locals)) {
+        if (unAnchoredInitialState != anchoredInitialState && nfa.getState(anchoredInitialState) != null && inputAtBegin(locals)) {
             locals.addInitialState(anchoredInitialState);
         }
         if (nfa.getState(unAnchoredInitialState) != null) {
@@ -117,12 +147,12 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         }
         while (true) {
             if (dfaGeneratorBailedOut) {
-                LoopNode.reportLoopCount(this, 1);
+                locals.incLoopCount(this);
             }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
-            if (inputHasNext(locals)) {
+            if (injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
                 findNextStates(locals);
                 // If locals.successorsEmpty() is true, then all of our paths have either been
                 // finished, discarded due to priority or failed to match. If we managed to finish
@@ -132,7 +162,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 // the very start of the string (i.e. searching is false). Such a search would
                 // only have walked through the rest of the string without considering any other
                 // paths.
-                if (locals.successorsEmpty() && (!searching || locals.hasResult())) {
+                if (injectBranchProbability(EXIT_PROBABILITY, locals.successorsEmpty() && (!searching || locals.hasResult()))) {
                     return locals.getResult();
                 }
             } else {
@@ -146,11 +176,11 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private void findNextStates(TRegexNFAExecutorLocals locals) {
         int c = inputReadAndDecode(locals);
-        while (locals.hasNext()) {
+        while (injectBranchProbability(CONTINUE_PROBABILITY, locals.hasNext())) {
             expandState(locals, locals.next(), c, false);
             // If we have found a path to a final state, then we will trim all paths with lower
             // priority (i.e. the rest of the elements in curStates).
-            if (locals.isResultPushed()) {
+            if (injectBranchProbability(EXIT_PROBABILITY, locals.isResultPushed())) {
                 return;
             }
         }
@@ -160,7 +190,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // The loopback priority has to be lower than the priority of any path completed so far.
         // Therefore, we only follow the loopback if no path has been completed so far
         // (i.e. !locals.hasResult()).
-        if (searching && !locals.hasResult() && locals.getIndex() >= locals.getFromIndex()) {
+        if (injectBranchProbability(CONTINUE_PROBABILITY, searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
             expandState(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), c, true);
         }
     }
@@ -192,13 +222,16 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private void findNextStatesAtEnd(TRegexNFAExecutorLocals locals) {
-        while (locals.hasNext()) {
+        while (injectBranchProbability(CONTINUE_PROBABILITY, locals.hasNext())) {
             expandStateAtEnd(locals, nfa.getState(locals.next()), false);
-            if (locals.isResultPushed()) {
+            if (injectBranchProbability(EXIT_PROBABILITY, locals.isResultPushed())) {
                 return;
             }
         }
-        if (searching && !locals.hasResult()) {
+        // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
+        // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
+        // loopBack state is only accessible after consuming at least one character.
+        if (injectBranchProbability(CONTINUE_PROBABILITY, searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }

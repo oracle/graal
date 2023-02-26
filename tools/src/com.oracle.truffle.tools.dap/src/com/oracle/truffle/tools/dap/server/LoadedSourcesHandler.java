@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.dap.server;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
@@ -33,21 +35,24 @@ import com.oracle.truffle.tools.dap.types.LoadedSourceEvent;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import org.graalvm.collections.Pair;
 
 public final class LoadedSourcesHandler implements LoadSourceListener {
 
     private final ExecutionContext context;
     private final DebuggerSession debuggerSession;
     private final Map<Source, Integer> sourceIDs = new HashMap<>(100);
-    private final List<Source> sources = new ArrayList<>(100);
+    private final List<DAPSourceWrapper> sources = new ArrayList<>(100);
+    private final Map<String, Source> sourcesByPath = new HashMap<>(100);
     private final Map<String, Consumer<Source>> toRunOnLoad = new HashMap<>();
+    private volatile List<Source> sourcesBacklog = null;
+    private final Object sourcesLock = sourceIDs;
 
     public LoadedSourcesHandler(ExecutionContext context, DebuggerSession debuggerSession) {
         this.context = context;
@@ -63,7 +68,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
     }
 
     public int getScriptId(Source source) {
-        synchronized (sourceIDs) {
+        synchronized (sourcesLock) {
             Integer id = sourceIDs.get(source);
             if (id != null) {
                 return id;
@@ -73,25 +78,36 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
     }
 
     public Source getSource(int id) {
-        synchronized (sourceIDs) {
-            return sources.get(id - 1);
+        synchronized (sourcesLock) {
+            if (id > sources.size()) {
+                return null;
+            }
+            return sources.get(id - 1).truffleSource;
         }
     }
 
     public Source getSource(String path) {
-        synchronized (sourceIDs) {
-            return sources.stream().filter(source -> Objects.equals(path, getPath(source))).findFirst().orElse(null);
+        synchronized (sourcesLock) {
+            return sourcesByPath.get(path);
         }
     }
 
     public List<com.oracle.truffle.tools.dap.types.Source> getLoadedSources() {
-        synchronized (sourceIDs) {
-            return Collections.unmodifiableList(sources.stream().map(this::from).collect(Collectors.toList()));
+        synchronized (sourcesLock) {
+            int n = sources.size();
+            com.oracle.truffle.tools.dap.types.Source[] arr = new com.oracle.truffle.tools.dap.types.Source[n];
+            for (int i = 0; i < n; i++) {
+                arr[i] = sources.get(i).dapSource;
+            }
+            return Collections.unmodifiableList(Arrays.asList(arr));
         }
     }
 
     public void runOnLoad(String path, Consumer<Source> task) {
-        synchronized (sourceIDs) {
+        if (path == null) {
+            return;
+        }
+        synchronized (sourcesLock) {
             Source source = getSource(path);
             if (source != null) {
                 if (task != null) {
@@ -107,61 +123,134 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         }
     }
 
-    public int assureLoaded(Source sourceLoaded) {
+    public com.oracle.truffle.tools.dap.types.Source assureLoaded(Source sourceLoaded) {
+        TruffleContext truffleContext = context.getEnv().getEnteredContext();
+        if (truffleContext == null) {
+            truffleContext = context.getATruffleContext();
+        }
+        if (truffleContext == null) {
+            synchronized (sourcesLock) {
+                if (sourcesBacklog == null) {
+                    sourcesBacklog = new ArrayList<>();
+                }
+                sourcesBacklog.add(sourceLoaded);
+            }
+            return null;
+        } else {
+            return assureLoaded(sourceLoaded, truffleContext);
+        }
+    }
+
+    public com.oracle.truffle.tools.dap.types.Source assureLoaded(Source sourceLoaded, TruffleContext truffleContext) {
         Source sourceResolved = debuggerSession.resolveSource(sourceLoaded);
         Source source = (sourceResolved != null) ? sourceResolved : sourceLoaded;
         int id;
-        Consumer<Source> task;
-        synchronized (sourceIDs) {
+        Consumer<Source> task = null;
+        com.oracle.truffle.tools.dap.types.Source dapSource;
+        synchronized (sourcesLock) {
             Integer eid = sourceIDs.get(source);
             if (eid != null) {
-                return eid;
+                return sources.get(eid - 1).dapSource;
             }
             id = sources.size() + 1;
             sourceIDs.put(source, id);
-            sources.add(source);
-            task = toRunOnLoad.remove(getPath(source));
+            dapSource = from(source, truffleContext);
+            sources.add(new DAPSourceWrapper(dapSource, source));
+            String path = dapSource.getPath();
+            if (path != null) {
+                sourcesByPath.put(path, source);
+                task = toRunOnLoad.remove(path);
+            }
+        }
+        DebugProtocolClient client = context.getClient();
+        if (client != null) {
+            client.loadedSource(LoadedSourceEvent.EventBody.create("new", dapSource));
         }
         if (task != null) {
             task.accept(sourceLoaded);
         }
-        DebugProtocolClient client = context.getClient();
-        if (client != null) {
-            client.loadedSource(LoadedSourceEvent.EventBody.create("new", from(source)));
-        }
-        return id;
+        return dapSource;
     }
 
-    public com.oracle.truffle.tools.dap.types.Source from(Source source) {
+    private com.oracle.truffle.tools.dap.types.Source from(Source source, TruffleContext truffleContext) {
         if (source == null) {
             return null;
         }
         com.oracle.truffle.tools.dap.types.Source src = com.oracle.truffle.tools.dap.types.Source.create().setName(source.getName());
-        String path = getPath(source);
+        Pair<String, Boolean> pathSrcRef = getPath(source, truffleContext);
+        String path = pathSrcRef.getLeft();
         if (path != null) {
             src.setPath(path);
-        } else {
+        }
+        if (pathSrcRef.getRight()) {
+            assert Thread.holdsLock(sourcesLock);
             src.setSourceReference(sourceIDs.get(source));
         }
         return src;
     }
 
-    private String getPath(Source source) {
+    private Pair<String, Boolean> getPath(Source source, TruffleContext truffleContext) {
         String path = source.getPath();
-        if (path == null) {
-            URI uri = source.getURI();
-            if (uri.isAbsolute()) {
-                path = uri.getPath();
+        boolean srcRef = path == null;
+        TruffleFile tFile = null;
+        try {
+            if (path == null) {
+                URI uri = source.getURI();
+                if (uri.isAbsolute()) {
+                    tFile = context.getEnv().getTruffleFile(truffleContext, uri);
+                }
+            } else {
+                if (!source.getURI().isAbsolute()) {
+                    tFile = context.getEnv().getTruffleFile(truffleContext, path);
+                }
             }
-        } else {
-            if (!source.getURI().isAbsolute()) {
-                try {
-                    path = context.getEnv().getTruffleFile(path).getAbsoluteFile().toUri().toString();
-                } catch (SecurityException ex) {
-                    // Can not resolve relative path
+        } catch (UnsupportedOperationException ex) {
+            // Unsupported URI/path
+        }
+        if (tFile != null) {
+            try {
+                path = tFile.getAbsoluteFile().getPath();
+                srcRef = !tFile.isReadable();
+            } catch (SecurityException ex) {
+                // Can not resolve relative path
+            }
+        } else if (path != null) {
+            try {
+                srcRef = !context.getEnv().getTruffleFile(truffleContext, path).isReadable();
+            } catch (SecurityException ex) {
+                // Can not verify readability
+                srcRef = true;
+            }
+        }
+        return Pair.create(path, srcRef);
+    }
+
+    void notifyNewTruffleContext(TruffleContext truffleContext) {
+        if (sourcesBacklog != null) {
+            List<Source> oldSources = null;
+            synchronized (sourcesLock) {
+                if (sourcesBacklog != null) {
+                    oldSources = sourcesBacklog;
+                    sourcesBacklog = null;
+                }
+            }
+            if (oldSources != null) {
+                for (Source source : oldSources) {
+                    assureLoaded(source, truffleContext);
                 }
             }
         }
-        return path;
+    }
+
+    private static final class DAPSourceWrapper {
+
+        final com.oracle.truffle.tools.dap.types.Source dapSource;
+        final Source truffleSource;
+
+        DAPSourceWrapper(com.oracle.truffle.tools.dap.types.Source dapSource, Source truffleSource) {
+            this.dapSource = dapSource;
+            this.truffleSource = truffleSource;
+        }
+
     }
 }

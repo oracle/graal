@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,6 +70,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 19.0
  */
+@SuppressWarnings("serial")
 public final class DebugException extends RuntimeException {
 
     private static final long serialVersionUID = 5017970176581546348L;
@@ -322,7 +323,6 @@ public final class DebugException extends RuntimeException {
      *
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public boolean isInternalError() {
         if (!isTruffleException(exception)) {
             if (exception instanceof DebugException) {
@@ -339,7 +339,6 @@ public final class DebugException extends RuntimeException {
      * @return an exception object, or <code>null</code>
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public DebugValue getExceptionObject() {
         if (!isTruffleException(exception)) {
             return null;

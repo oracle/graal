@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,9 +34,14 @@
 
 typedef int int_t;
 POLYGLOT_DECLARE_TYPE(int_t)
+typedef double double_t;
+POLYGLOT_DECLARE_TYPE(double_t)
 
 polyglot_typeid get_int_t_typeid() {
     return polyglot_int_t_typeid();
+}
+polyglot_typeid get_double_t_typeid() {
+    return polyglot_double_t_typeid();
 }
 
 struct StructA {
@@ -71,6 +76,20 @@ int test_va_list_callback(int (*callback)(va_list *, void *), void *libHandle, .
     return res;
 }
 
-int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *saNative, void *saManaged) {
+int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, double a2, void *saNative, void *saManaged) {
     return test_va_list_callback(callback, libHandle, a0, a1, a2, saNative, polyglot_as_StructA(saManaged));
+}
+
+int deref_chr_chr_ptr(char **ptr) {
+    return (int) **ptr;
+}
+
+int test_maybe_va_ptr(int (*callback)(char *)) {
+    char chr = 'A';
+    char *chr_ptr = &chr;
+    /* should be of type i8* which maps to the alias of va_list on some platforms (darwin-aarch64, windows-amd64) */
+    char **chr_chr_ptr = alloca(sizeof(char *));
+    chr_chr_ptr = &chr_ptr;
+
+    return callback(chr_chr_ptr);
 }

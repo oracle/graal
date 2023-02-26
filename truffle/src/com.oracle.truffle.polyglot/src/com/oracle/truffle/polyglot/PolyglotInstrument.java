@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -201,7 +201,6 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     }
 
     void ensureClosed() {
-        assert Thread.holdsLock(engine.lock);
         if (created && !closed) {
             synchronized (instrumentLock) {
                 if (created && !closed) {
@@ -249,4 +248,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         }
     }
 
+    public String getWebsite() {
+        return PolyglotLanguage.websiteSubstitutions(cache.getWebsite());
+    }
 }

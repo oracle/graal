@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Target;
 
 /**
@@ -32,6 +33,7 @@ import java.lang.annotation.Target;
  * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
  */
 @Target(ElementType.TYPE)
+@Repeatable(StubPorts.class)
 public @interface StubPort {
     /**
      * Relevant path of source code file containing the ported stub.

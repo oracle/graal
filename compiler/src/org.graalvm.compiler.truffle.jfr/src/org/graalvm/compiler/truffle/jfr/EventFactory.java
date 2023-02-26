@@ -34,8 +34,6 @@ public interface EventFactory {
 
     void addInitializationListener(Runnable listener);
 
-    void removeInitializationListener(Runnable listener);
-
     CompilationEvent createCompilationEvent();
 
     DeoptimizationEvent createDeoptimizationEvent();
@@ -48,7 +46,7 @@ public interface EventFactory {
 
     void removePeriodicEvent(Class<? extends Event> event, Runnable producer);
 
-    public interface Provider {
+    interface Provider {
         EventFactory getEventFactory();
     }
 }

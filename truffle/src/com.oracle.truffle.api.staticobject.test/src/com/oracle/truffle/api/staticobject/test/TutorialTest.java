@@ -44,6 +44,7 @@ import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -198,7 +199,7 @@ public class TutorialTest extends StaticObjectModelTest {
 
             try {
                 property.setObject(staticObject2, "wrong shape");
-                assert false;
+                Assert.assertFalse(te.supportsSafetyChecks());
             } catch (IllegalArgumentException e) {
             }
         }

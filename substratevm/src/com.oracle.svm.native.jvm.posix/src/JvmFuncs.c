@@ -38,6 +38,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <limits.h>
 
 #include <jni.h>
 
@@ -318,6 +319,27 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
     }
     return NULL;
 }
+
+#ifdef __APPLE__
+char temp_path_storage[PATH_MAX];
+JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
+    // see os_bsd.cpp line 910
+    static char *temp_path = NULL;
+    if (temp_path == NULL) {
+        int pathSize = confstr(_CS_DARWIN_USER_TEMP_DIR, temp_path_storage, PATH_MAX);
+        if (pathSize == 0 || pathSize > PATH_MAX) {
+            strlcpy(temp_path_storage, "/tmp/", sizeof(temp_path_storage));
+        }
+        temp_path = temp_path_storage;
+    }
+    return (*env)->NewStringUTF(env, temp_path);
+}
+#else
+JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
+    // see os_linux.cpp line 1380
+    return (*env)->NewStringUTF(env, "/tmp");
+}
+#endif /* __APPLE__ */
 
 JNIEXPORT jobject JNICALL Java_sun_nio_ch_sctp_SctpChannelImpl_initIDs(JNIEnv *env) {
     (*env)->FatalError(env, "Currently SCTP not supported for native-images");

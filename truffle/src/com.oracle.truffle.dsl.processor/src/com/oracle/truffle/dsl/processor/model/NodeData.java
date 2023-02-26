@@ -92,11 +92,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean isUncachable;
     private boolean isNodeBound;
     private boolean generateUncached;
+    private boolean generatePackagePrivate;
     private Set<String> allowedCheckedExceptions;
     private Map<CacheExpression, String> sharedCaches = Collections.emptyMap();
     private ExecutableTypeData polymorphicExecutable;
 
-    public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory, boolean generateUncached) {
+    public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory, boolean generateUncached, boolean generatePackagePrivate) {
         super(context, type, null);
         this.nodeId = ElementUtils.getSimpleName(type);
         this.typeSystem = typeSystem;
@@ -107,6 +108,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
         this.generateUncached = generateUncached;
+        this.generatePackagePrivate = generatePackagePrivate;
     }
 
     public void setGenerateStatistics(boolean generateStatistics) {
@@ -126,7 +128,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {
-        this(context, type, null, false, false);
+        this(context, type, null, false, false, false);
     }
 
     public void setNodeBound(boolean isNodeBound) {
@@ -153,6 +155,17 @@ public class NodeData extends Template implements Comparable<NodeData> {
      */
     public boolean isGenerateUncached() {
         return generateUncached;
+    }
+
+    public void setGeneratePackagePrivate(boolean generatePackagePrivate) {
+        this.generatePackagePrivate = generatePackagePrivate;
+    }
+
+    /**
+     * Returns true if the generated code should be package-private.
+     */
+    public boolean isGeneratePackagePrivate() {
+        return generatePackagePrivate;
     }
 
     /**
@@ -333,6 +346,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public TypeMirror getNodeType() {
         return getTemplateType().asType();
+    }
+
+    public Modifier getVisibility() {
+        return generatePackagePrivate ? null : ElementUtils.getVisibility(getTemplateType().getModifiers());
     }
 
     public boolean needsFactory() {

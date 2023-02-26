@@ -30,12 +30,13 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
-import java.util.Map;
-import java.util.Map.Entry;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.util.VMError;
 
 public class TraceFileWriter extends Tracer implements TracingResultWriter {
@@ -53,21 +54,22 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
     }
 
     @Override
-    protected void traceEntry(Map<String, Object> entry) {
+    protected void traceEntry(EconomicMap<String, Object> entry) {
         try {
             StringWriter str = new StringWriter();
             try (JsonWriter json = new JsonWriter(str)) {
                 json.append('{');
                 boolean first = true;
-                for (Entry<String, ?> mapEntry : entry.entrySet()) {
+                MapCursor<String, Object> cursor = entry.getEntries();
+                while (cursor.advance()) {
                     if (!first) {
                         json.append(", ");
                     }
-                    json.quote(mapEntry.getKey()).append(':');
-                    if (mapEntry.getValue() instanceof Object[]) {
-                        printArray(json, (Object[]) mapEntry.getValue());
+                    json.quote(cursor.getKey()).append(':');
+                    if (cursor.getValue() instanceof Object[]) {
+                        printArray(json, (Object[]) cursor.getValue());
                     } else {
-                        printValue(json, mapEntry.getValue());
+                        printValue(json, cursor.getValue());
                     }
                     first = false;
                 }

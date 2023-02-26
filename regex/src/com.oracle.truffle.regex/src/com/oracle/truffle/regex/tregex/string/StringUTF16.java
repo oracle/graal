@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 public final class StringUTF16 implements AbstractString {
 
     private final String str;
 
     public StringUTF16(char[] str) {
-        this.str = new String(str);
+        this(new String(str));
     }
 
     public StringUTF16(String str) {
@@ -79,6 +81,16 @@ public final class StringUTF16 implements AbstractString {
     @Override
     public boolean regionMatches(int offset, AbstractString other, int ooffset, int encodedLength) {
         return str.regionMatches(offset, ((StringUTF16) other).str, ooffset, encodedLength);
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUTF16Uncached(pattern, str.toCharArray());
     }
 
     @Override

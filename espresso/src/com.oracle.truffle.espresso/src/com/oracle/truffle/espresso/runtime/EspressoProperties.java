@@ -38,8 +38,8 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.substitutions.ModuleExtension;
 
 /**
  * All VM properties are overridable via options, some properties (e.g. boot classpath) are derived
@@ -240,7 +240,7 @@ public interface EspressoProperties {
                         .extDirs(EspressoOptions.parsePaths(System.getProperty("java.ext.dirs")));
     }
 
-    static Builder processOptions(Builder builder, OptionValues options) {
+    static Builder processOptions(Builder builder, OptionValues options, EspressoContext context) {
         // Always set JavaHome first.
         Path javaHome = options.hasBeenSet(EspressoOptions.JavaHome)
                         ? options.get(EspressoOptions.JavaHome)
@@ -275,30 +275,14 @@ public interface EspressoProperties {
 
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
 
-        // Inject hotswap.jar
-        if (options.get(EspressoOptions.JDWPOptions) != null) {
-            Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
-            if (Files.isReadable(hotswapJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
-                bootClasspath.add(hotswapJar);
+        for (ModuleExtension me : ModuleExtension.get(context)) {
+            Path jarPath = espressoHome.resolve("lib").resolve(me.jarName());
+            if (Files.isReadable(jarPath)) {
+                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding " + me.jarName() + " to the boot classpath");
+                bootClasspath.add(jarPath);
             } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+                TruffleLogger.getLogger(EspressoLanguage.ID).warning(jarPath + " not found at " + espressoHome.resolve("lib"));
             }
-        } else {
-            JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
-        }
-
-        // Inject polyglot.jar
-        if (options.get(EspressoOptions.Polyglot)) {
-            Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
-            if (Files.isReadable(polyglotJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
-                bootClasspath.add(polyglotJar);
-            } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("polyglot.jar (Polyglot API) not found at " + espressoHome.resolve("lib"));
-            }
-        } else {
-            TruffleLogger.getLogger(EspressoLanguage.ID).fine("Polyglot support is (--java.Poylglot=false) disabled.");
         }
 
         // Process boot classpath + append and prepend options.
@@ -398,7 +382,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             paths.add(path);
             return paths;
         }
-        throw EspressoError.shouldNotReachHere("Cannot find boot class path for java home: ", javaHome());
+        throw EspressoError.shouldNotReachHere("Cannot find boot class path for java home: " + javaHome());
     }
 
     protected static void expandEnvToPath(String envName, List<Path> paths) {
@@ -430,44 +414,6 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             }
         }
         throw EspressoError.shouldNotReachHere("Cannot find GraalVM home from Espresso home. Espresso is not running from within GraalVM.");
-    }
-}
-
-enum OS {
-    Darwin,
-    Linux,
-    Solaris,
-    Windows;
-
-    private static final OS current = findCurrent();
-
-    private static OS findCurrent() {
-        final String name = System.getProperty("os.name");
-        if (name.equals("Linux")) {
-            return OS.Linux;
-        }
-        if (name.equals("SunOS")) {
-            return OS.Solaris;
-        }
-        if (name.equals("Mac OS X") || name.equals("Darwin")) {
-            return OS.Darwin;
-        }
-        if (name.startsWith("Windows")) {
-            return OS.Windows;
-        }
-        throw EspressoError.shouldNotReachHere("unknown OS: " + name);
-    }
-
-    public static OS getCurrent() {
-        return current;
-    }
-
-    public static boolean isWindows() {
-        return getCurrent() == OS.Windows;
-    }
-
-    public static boolean isUnix() {
-        return getCurrent() != OS.Windows;
     }
 }
 
@@ -505,6 +451,7 @@ final class LinuxBuilder extends PlatformBuilder {
         Path graalJavaHome = findGraalVMJavaHome(espressoHome());
         paths.add(graalJavaHome.resolve("lib").resolve(CPU_ARCH).resolve("truffle"));
         paths.add(graalJavaHome.resolve("lib").resolve("truffle"));
+        paths.add(espressoHome().resolve("lib"));
         return paths;
     }
 

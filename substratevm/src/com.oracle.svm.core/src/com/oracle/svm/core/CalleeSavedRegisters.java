@@ -100,6 +100,10 @@ public class CalleeSavedRegisters {
         VMError.guarantee(saveAreaOffsetInFrame == checkedSaveAreaOffsetInFrame, "Must have a single value for the callee save register area");
     }
 
+    public boolean calleeSaveable(Register register) {
+        return offsetsInSaveArea.get(register) != null;
+    }
+
     public int getSaveAreaSize() {
         return saveAreaSize;
     }

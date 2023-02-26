@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.configure;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.net.URI;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,11 +39,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.json.JSONParser;
+import org.graalvm.util.json.JSONParserException;
 
-import com.oracle.svm.core.util.json.JSONParserException;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.JavaNetSubstitutions;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class ConfigurationParser {
+    public static InputStream openStream(URI uri) throws IOException {
+        URL url = uri.toURL();
+        if ("file".equals(url.getProtocol()) || "jar".equalsIgnoreCase(url.getProtocol()) ||
+                        (!SubstrateUtil.HOSTED && JavaNetSubstitutions.RESOURCE_PROTOCOL.equals(url.getProtocol()))) {
+            return url.openStream();
+        }
+        throw VMError.shouldNotReachHere("For security reasons, reading configurations is not supported from URIs with protocol: " + url.getProtocol());
+    }
+
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
@@ -50,16 +67,24 @@ public abstract class ConfigurationParser {
         this.strictConfiguration = strictConfiguration;
     }
 
-    public void parseAndRegister(Path path) throws IOException {
-        try (Reader reader = Files.newBufferedReader(path)) {
-            parseAndRegister(reader);
+    public void parseAndRegister(URI uri) throws IOException {
+        try (Reader reader = openReader(uri)) {
+            parseAndRegister(new JSONParser(reader).parse(), uri);
         }
     }
 
-    public abstract void parseAndRegister(Reader reader) throws IOException;
+    protected static BufferedReader openReader(URI uri) throws IOException {
+        return new BufferedReader(new InputStreamReader(openStream(uri)));
+    }
+
+    public void parseAndRegister(Reader reader) throws IOException {
+        parseAndRegister(new JSONParser(reader).parse(), null);
+    }
+
+    public abstract void parseAndRegister(Object json, URI origin) throws IOException;
 
     @SuppressWarnings("unchecked")
-    protected static List<Object> asList(Object data, String errorMessage) {
+    public static List<Object> asList(Object data, String errorMessage) {
         if (data instanceof List) {
             return (List<Object>) data;
         }
@@ -67,20 +92,25 @@ public abstract class ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
+    public static EconomicMap<String, Object> asMap(Object data, String errorMessage) {
+        if (data instanceof EconomicMap) {
+            return (EconomicMap<String, Object>) data;
         }
         throw new JSONParserException(errorMessage);
     }
 
-    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+    protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
         Set<String> unseenRequired = new HashSet<>(requiredAttrs);
-        unseenRequired.removeAll(map.keySet());
+        for (String key : map.getKeys()) {
+            unseenRequired.remove(key);
+        }
         if (!unseenRequired.isEmpty()) {
             throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
-        Set<String> unknownAttributes = new HashSet<>(map.keySet());
+        Set<String> unknownAttributes = new HashSet<>();
+        for (String key : map.getKeys()) {
+            unknownAttributes.add(key);
+        }
         unknownAttributes.removeAll(requiredAttrs);
         unknownAttributes.removeAll(optionalAttrs);
 
@@ -100,17 +130,15 @@ public abstract class ConfigurationParser {
         if (strictConfiguration) {
             throw new JSONParserException(message);
         } else {
-            // Checkstyle: stop
             System.err.println("Warning: " + message);
-            // Checkstyle: resume
         }
     }
 
-    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
+    protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs) {
         checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
-    protected static String asString(Object value) {
+    public static String asString(Object value) {
         if (value instanceof String) {
             return (String) value;
         }
@@ -145,10 +173,10 @@ public abstract class ConfigurationParser {
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected ConfigurationCondition parseCondition(Map<String, Object> data) {
+    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
-            Map<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+            EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
             Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
             if (conditionType instanceof String) {
                 return ConfigurationCondition.create((String) conditionType);

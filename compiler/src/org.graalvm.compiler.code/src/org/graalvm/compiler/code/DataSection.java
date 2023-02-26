@@ -38,7 +38,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
@@ -292,7 +291,7 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Determines if this object has been {@link #close(OptionValues) closed}.
+     * Determines if this object has been {@link #close closed}.
      */
     public boolean closed() {
         return closed;
@@ -302,8 +301,10 @@ public final class DataSection implements Iterable<Data> {
      * Computes the layout of the data section and closes this object to further updates.
      *
      * This must be called exactly once.
+     *
+     * @param minDataAlignment minimum alignment for an item in the data section
      */
-    public void close(OptionValues option) {
+    public void close(OptionValues option, int minDataAlignment) {
         checkOpen();
         closed = true;
 
@@ -313,12 +314,14 @@ public final class DataSection implements Iterable<Data> {
         int position = 0;
         int alignment = 1;
         for (Data d : dataItems) {
-            alignment = lcm(alignment, d.alignment);
-            position = align(position, d.alignment);
+            int itemAlignment = Math.max(minDataAlignment, d.alignment);
+
+            alignment = lcm(alignment, itemAlignment);
+            position = align(position, itemAlignment);
             if (Options.ForceAdversarialLayout.getValue(option)) {
-                if (position % (d.alignment * 2) == 0) {
-                    position = position + d.alignment;
-                    assert position % d.alignment == 0;
+                if (position % (itemAlignment * 2) == 0) {
+                    position = position + itemAlignment;
+                    assert position % itemAlignment == 0;
                 }
             }
             d.ref.setOffset(position);
@@ -381,11 +384,11 @@ public final class DataSection implements Iterable<Data> {
         assert buffer.remaining() >= sectionSize;
         int start = buffer.position();
         for (Data d : dataItems) {
-            BufferUtil.asBaseBuffer(buffer).position(start + d.ref.getOffset());
+            buffer.position(start + d.ref.getOffset());
             onEmit.accept(d.ref, d.getSize());
             d.emit(buffer, patch);
         }
-        BufferUtil.asBaseBuffer(buffer).position(start + sectionSize);
+        buffer.position(start + sectionSize);
     }
 
     public Data findData(DataSectionReference ref) {

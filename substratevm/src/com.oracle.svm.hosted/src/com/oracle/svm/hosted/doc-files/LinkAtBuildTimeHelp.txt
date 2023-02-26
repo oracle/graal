@@ -1,0 +1,19 @@
+Require types to be fully defined at image build-time. If used without args, all classes in scope of the option are required to be fully defined.
+
+Using --link-at-build-time without arguments is only allowed on command line or when embedded in a
+native-image.properties file of some zip/jar file on the module-path (but not on class-path).
+
+In the module path case, the option will cause all classes of the module to be required to be
+fully defined at image build-time. If used without arguments on command line all classes are
+required to be fully defined at image build-time.
+
+Using --link-at-build-time with arguments is allowed in every scope:
+
+  1. On command line
+  2. Embedded in a native-image.properties file of some zip/jar file on module-path
+  3. Embedded in a native-image.properties file of some zip/jar file on class-path
+
+If the option is embedded in native-image.properties file in some zip/jar file all class-names
+and package-names passed to the option have to be found in the zip/jar files the option is embedded
+in. Using --link-at-build-time with arguments on command line does not have that restriction.
+

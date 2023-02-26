@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,17 +61,46 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+class HostedWrapper {
+    GraalConfiguration config;
+
+    HostedWrapper(GraalConfiguration config) {
+        this.config = config;
+    }
+}
+
 public class GraalConfiguration {
 
     private static final String COMPILER_CONFIGURATION_NAME = CommunityCompilerConfigurationFactory.NAME;
 
-    public static GraalConfiguration instance() {
+    public static GraalConfiguration hostedInstance() {
+        return ImageSingletons.lookup(HostedWrapper.class).config;
+    }
+
+    public static void setHostedInstanceIfEmpty(GraalConfiguration config) {
+        if (!ImageSingletons.contains(HostedWrapper.class)) {
+            ImageSingletons.add(HostedWrapper.class, new HostedWrapper(config));
+        }
+    }
+
+    public static GraalConfiguration runtimeInstance() {
         return ImageSingletons.lookup(GraalConfiguration.class);
     }
 
+    public static void setRuntimeInstance(GraalConfiguration config) {
+        ImageSingletons.add(GraalConfiguration.class, config);
+    }
+
     public static void setDefaultIfEmpty() {
-        if (!ImageSingletons.contains(GraalConfiguration.class)) {
-            ImageSingletons.add(GraalConfiguration.class, new GraalConfiguration());
+        // Avoid constructing a new instance if not necessary
+        if (!ImageSingletons.contains(GraalConfiguration.class) || !ImageSingletons.contains(HostedWrapper.class)) {
+            GraalConfiguration instance = new GraalConfiguration();
+            if (!ImageSingletons.contains(GraalConfiguration.class)) {
+                ImageSingletons.add(GraalConfiguration.class, instance);
+            }
+            if (!ImageSingletons.contains(HostedWrapper.class)) {
+                ImageSingletons.add(HostedWrapper.class, new HostedWrapper(instance));
+            }
         }
     }
 
@@ -81,12 +110,12 @@ public class GraalConfiguration {
                         ConfigurationValues.getTarget());
     }
 
-    public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {
-        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(options);
+    public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted, Architecture arch) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(options, arch);
     }
 
-    public Suites createFirstTierSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {
-        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options);
+    public Suites createFirstTierSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted, Architecture arch) {
+        return ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(options, arch);
     }
 
     public LIRSuites createLIRSuites(OptionValues options) {

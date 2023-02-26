@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.printer.BinaryGraphPrinter;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,13 +52,13 @@ public class BasePhaseBinaryGraphTest {
         assertEquals(MyPhase.class.getName(), res);
     }
 
-    private static final class MyPhase extends BasePhase<Void> {
+    private static final class MyPhase extends TestBasePhase<Void> {
         @Override
         protected void run(StructuredGraph graph, Void context) {
         }
 
         @Override
-        protected CharSequence getName() {
+        public CharSequence getName() {
             return super.getName();
         }
     }

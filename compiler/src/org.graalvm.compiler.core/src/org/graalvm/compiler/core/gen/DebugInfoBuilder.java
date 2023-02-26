@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,6 +91,7 @@ public class DebugInfoBuilder {
         assert objectStates.size() == 0;
         assert pendingVirtualObjects.size() == 0;
 
+        boolean validForDeoptimization = true;
         // collect all VirtualObjectField instances:
         FrameState current = topState;
         do {
@@ -103,6 +104,7 @@ public class DebugInfoBuilder {
                     }
                 }
             }
+            validForDeoptimization = validForDeoptimization && current.isValidForDeoptimization();
             current = current.outerFrameState();
         } while (current != null);
 
@@ -189,9 +191,9 @@ public class DebugInfoBuilder {
         objectStates.clear();
 
         if (deoptReasonAndAction == null && deoptSpeculation == null) {
-            return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
+            return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge, validForDeoptimization);
         } else {
-            return new ImplicitLIRFrameState(frame, virtualObjectsArray, exceptionEdge, deoptReasonAndAction, deoptSpeculation);
+            return new ImplicitLIRFrameState(frame, virtualObjectsArray, exceptionEdge, deoptReasonAndAction, deoptSpeculation, validForDeoptimization);
         }
     }
 

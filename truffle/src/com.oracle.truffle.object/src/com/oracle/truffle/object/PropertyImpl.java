@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -91,7 +89,6 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public Property relocate(Location newLocation) {
         if (!getLocation().equals(newLocation)) {
             return new PropertyImpl(key, newLocation, flags);
@@ -111,16 +108,6 @@ public final class PropertyImpl extends Property {
         return getLocation().get(store, condition);
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public void setInternal(DynamicObject store, Object value) {
-        try {
-            ((LocationImpl) getLocation()).setInternal(store, value);
-        } catch (IncompatibleLocationException e) {
-            throw new IllegalStateException();
-        }
-    }
-
     private static boolean verifyShapeParameter(DynamicObject store, Shape shape) {
         assert shape == null || store.getShape() == shape : "wrong shape";
         return true;
@@ -128,9 +115,9 @@ public final class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
+    public void set(DynamicObject store, Object value, Shape shape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         assert verifyShapeParameter(store, shape);
-        getLocation().set(store, value, shape);
+        ((LocationImpl) getLocation()).set(store, value, shape);
     }
 
     /** @since 0.17 or earlier */
@@ -138,8 +125,8 @@ public final class PropertyImpl extends Property {
     public void setSafe(DynamicObject store, Object value, Shape shape) {
         assert verifyShapeParameter(store, shape);
         try {
-            getLocation().set(store, value, shape);
-        } catch (IncompatibleLocationException | FinalLocationException ex) {
+            ((LocationImpl) getLocation()).set(store, value, shape);
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
             throw new IllegalStateException();
         }
     }
@@ -150,43 +137,19 @@ public final class PropertyImpl extends Property {
         assert verifyShapeParameter(store, shape);
         try {
             set(store, value, shape);
-        } catch (IncompatibleLocationException | FinalLocationException ex) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
             setSlowCase(store, value);
         }
-    }
-
-    private static boolean verifyShapeParameters(DynamicObject store, Shape oldShape, Shape newShape) {
-        assert store.getShape() == oldShape : "wrong shape";
-        assert newShape.isValid() : "invalid shape";
-        return true;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
-        assert verifyShapeParameters(store, oldShape, newShape);
-        getLocation().set(store, value, oldShape, newShape);
     }
 
     /** @since 0.17 or earlier */
     @Override
     public void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert verifyShapeParameters(store, oldShape, newShape);
+        assert verifyShapeParameter(store, oldShape);
         try {
-            getLocation().set(store, value, oldShape, newShape);
-        } catch (IncompatibleLocationException ex) {
+            ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
             throw new IllegalStateException();
-        }
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert verifyShapeParameters(store, oldShape, newShape);
-        try {
-            getLocation().set(store, value, oldShape, newShape);
-        } catch (IncompatibleLocationException ex) {
-            setWithShapeSlowCase(store, value, oldShape, newShape);
         }
     }
 
@@ -208,7 +171,6 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public boolean isSame(Property obj) {
         if (this == obj) {
             return true;
@@ -252,11 +214,6 @@ public final class PropertyImpl extends Property {
         oldShape.getLayoutStrategy().propertySetFallback(this, store, value, oldShape);
     }
 
-    private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
-        ShapeImpl oldShape = (ShapeImpl) currentShape;
-        oldShape.getLayoutStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
-    }
-
     /** @since 0.17 or earlier */
     @Override
     public boolean isHidden() {
@@ -264,14 +221,7 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public Property copyWithFlags(int newFlags) {
         return new PropertyImpl(key, location, newFlags);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public Property copyWithRelocatable(boolean newRelocatable) {
-        return this;
     }
 }

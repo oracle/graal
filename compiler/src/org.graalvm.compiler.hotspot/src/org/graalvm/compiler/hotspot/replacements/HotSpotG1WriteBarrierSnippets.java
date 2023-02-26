@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,16 +200,51 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);
 
             HotSpotG1WriteBarrierSnippets receiver = new HotSpotG1WriteBarrierSnippets(providers.getRegisters());
-            g1PreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION, SATB_QUEUE_INDEX_LOCATION,
+            g1PreWriteBarrier = snippet(providers,
+                            G1WriteBarrierSnippets.class,
+                            "g1PreWriteBarrier",
+                            null,
+                            receiver,
+                            SATB_QUEUE_LOG_LOCATION,
+                            SATB_QUEUE_MARKING_ACTIVE_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION,
                             SATB_QUEUE_BUFFER_LOCATION);
-            g1ReferentReadBarrier = snippet(G1WriteBarrierSnippets.class, "g1ReferentReadBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
-                            SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
-            g1PostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1PostWriteBarrier", null, receiver, GC_CARD_LOCATION, CARD_QUEUE_LOG_LOCATION, CARD_QUEUE_INDEX_LOCATION,
+            g1ReferentReadBarrier = snippet(providers,
+                            G1WriteBarrierSnippets.class,
+                            "g1ReferentReadBarrier",
+                            null,
+                            receiver,
+                            SATB_QUEUE_LOG_LOCATION,
+                            SATB_QUEUE_MARKING_ACTIVE_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION,
+                            SATB_QUEUE_BUFFER_LOCATION);
+            g1PostWriteBarrier = snippet(providers,
+                            G1WriteBarrierSnippets.class,
+                            "g1PostWriteBarrier",
+                            null,
+                            receiver,
+                            GC_CARD_LOCATION,
+                            CARD_QUEUE_LOG_LOCATION,
+                            CARD_QUEUE_INDEX_LOCATION,
                             CARD_QUEUE_BUFFER_LOCATION);
-            g1ArrayRangePreWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
-                            SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
-            g1ArrayRangePostWriteBarrier = snippet(G1WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier", null, receiver, GC_CARD_LOCATION, CARD_QUEUE_LOG_LOCATION,
-                            CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION);
+            g1ArrayRangePreWriteBarrier = snippet(providers,
+                            G1WriteBarrierSnippets.class,
+                            "g1ArrayRangePreWriteBarrier",
+                            null,
+                            receiver,
+                            SATB_QUEUE_LOG_LOCATION,
+                            SATB_QUEUE_MARKING_ACTIVE_LOCATION,
+                            SATB_QUEUE_INDEX_LOCATION,
+                            SATB_QUEUE_BUFFER_LOCATION);
+            g1ArrayRangePostWriteBarrier = snippet(providers,
+                            G1WriteBarrierSnippets.class,
+                            "g1ArrayRangePostWriteBarrier",
+                            null,
+                            receiver,
+                            GC_CARD_LOCATION,
+                            CARD_QUEUE_LOG_LOCATION,
+                            CARD_QUEUE_INDEX_LOCATION,
+                            CARD_QUEUE_BUFFER_LOCATION);
         }
 
         public void lower(G1PreWriteBarrier barrier, LoweringTool tool) {
@@ -244,7 +279,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
         @Override
         public ValueNode uncompress(ValueNode expected) {
             assert oopEncoding != null;
-            return HotSpotCompressionNode.uncompress(expected, oopEncoding);
+            return HotSpotCompressionNode.uncompress(expected.graph(), expected, oopEncoding);
         }
     }
 }

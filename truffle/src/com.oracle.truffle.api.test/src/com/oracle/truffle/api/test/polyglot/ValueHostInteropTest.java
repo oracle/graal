@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,9 +51,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
@@ -78,7 +77,6 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.hamcrest.CoreMatchers;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -87,7 +85,6 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -98,8 +95,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
-
-    public static final boolean Java9OrLater = System.getProperty("java.specification.version").compareTo("1.9") >= 0;
 
     public static class Data {
         public int x;
@@ -133,9 +128,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testAccessInvisibleAPIVirtualCall() {
-        if (TruffleOptions.AOT) {
-            return;
-        }
+        TruffleTestAssumptions.assumeNotAOT();
         Value imageClass = context.asValue(java.awt.image.BufferedImage.class);
         Value image = imageClass.newInstance(450, 450, BufferedImage.TYPE_INT_RGB);
         Value graphics = image.invokeMember("getGraphics");
@@ -144,18 +137,11 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testAccessInvisibleAPIDirect() {
-        if (TruffleOptions.AOT) {
-            return;
-        }
+        TruffleTestAssumptions.assumeNotAOT();
         try {
             languageEnv.lookupHostSymbol("sun.awt.image.OffScreenImage");
-            if (Java9OrLater) {
-                fail("On >= Java9 sun.awt.image should not be visible.");
-            }
+            fail("On >= Java9 sun.awt.image should not be visible.");
         } catch (RuntimeException e) {
-            if (!Java9OrLater) {
-                fail("On < Java9 sun.awt.image should be visible.");
-            }
         }
     }
 
@@ -192,16 +178,24 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals("Assume delegated", 42.1d, xyp.plus(xyp.x(), xyp.y()), 0.05);
     }
 
+    public static class DataWithCallDetector extends Data {
+        final AtomicReference<Boolean> thisCalled;
+
+        public DataWithCallDetector(AtomicReference<Boolean> thisCalled) {
+            this.thisCalled = thisCalled;
+        }
+
+        @Override
+        public Object assertThis(Object param) {
+            thisCalled.set(true);
+            return super.assertThis(param);
+        }
+    }
+
     @Test
     public void assertThisIsSame() {
         AtomicReference<Boolean> thisCalled = new AtomicReference<>(false);
-        Data data = new Data() {
-            @Override
-            public Object assertThis(Object param) {
-                thisCalled.set(true);
-                return super.assertThis(param);
-            }
-        };
+        Data data = new DataWithCallDetector(thisCalled);
         XYPlus xyp = context.asValue(data).as(XYPlus.class);
 
         XYPlus anotherThis = xyp.assertThis(data);
@@ -379,7 +373,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(0L, arrObj.getArraySize());
     }
 
-    private static final TypeLiteral<List<String>> LIST_STRING = new TypeLiteral<List<String>>() {
+    private static final TypeLiteral<List<String>> LIST_STRING = new TypeLiteral<>() {
     };
 
     @Test
@@ -459,6 +453,21 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(String.class, stringStatic.getMember("class").asHostObject());
     }
 
+    @Test
+    public void testClassStaticIdentity() {
+        // GR-38266: Static object should not be identical to class object.
+        // Note: Value.equals uses isIdentical.
+        Value stringClass = context.asValue(String.class);
+        Value stringStatic = stringClass.getMember("static");
+        assertFalse("static object should not be identical to class object", stringStatic.equals(stringClass) || stringClass.equals(stringStatic));
+        assertTrue(stringStatic.getMember("class").equals(stringClass));
+        assertTrue(context.asValue(String.class).equals(stringClass));
+        assertTrue(context.asValue(String.class).getMember("static").equals(stringStatic));
+    }
+
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface FunctionalWithDefaults {
         Object call(Object... args);
@@ -470,12 +479,14 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
-        Assume.assumeFalse("Cannot get reflection data for a lambda", TruffleOptions.AOT);
         Value object = context.asValue((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         assertArrayEquals(new Object[]{"call"}, object.getMemberKeys().toArray());
         assertEquals(42, object.execute(42).asInt());
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface FunctionalWithObjectMethodOverrides {
         @Override
@@ -526,7 +537,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Ignore("Interface not accessible")
     @Test
     public void executableAsFunctionalInterface3() throws Exception {
-        assumeTrue("JDK 9 or later", System.getProperty("java.specification.version").compareTo("1.9") >= 0);
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(42, f.call((Object) 13, (Object) 29));
@@ -752,7 +762,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
-    private static final TypeLiteral<Map<String, String>> MAP_STRING_STRING = new TypeLiteral<Map<String, String>>() {
+    private static final TypeLiteral<Map<String, String>> MAP_STRING_STRING = new TypeLiteral<>() {
     };
 
     @SuppressWarnings("unchecked")
@@ -863,6 +873,9 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     public interface XYPlus {
         List<String> arr();
 
@@ -924,6 +937,39 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     }
 
+    public static class CustomList extends AbstractList<String> {
+        final Set<String> keys;
+
+        public CustomList(Set<String> keys) {
+            this.keys = keys;
+        }
+
+        @Override
+        public String get(int index) {
+            Iterator<String> iterator = keys.iterator();
+            for (int i = 0; i < index; i++) {
+                iterator.next();
+            }
+            return iterator.next();
+        }
+
+        @Override
+        public int size() {
+            return keys.size();
+        }
+
+        @Override
+        public String remove(int index) {
+            Iterator<String> iterator = keys.iterator();
+            for (int i = 0; i < index; i++) {
+                iterator.next();
+            }
+            String removed = iterator.next();
+            iterator.remove();
+            return removed;
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings({"static-method", "unused"})
     static final class RemoveKeysObject implements TruffleObject {
@@ -941,34 +987,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @ExportMessage
         @TruffleBoundary
         Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            List<String> list = new AbstractList<String>() {
-                final Set<String> keys = RemoveKeysObject.this.keys.keySet();
-
-                @Override
-                public String get(int index) {
-                    Iterator<String> iterator = keys.iterator();
-                    for (int i = 0; i < index; i++) {
-                        iterator.next();
-                    }
-                    return iterator.next();
-                }
-
-                @Override
-                public int size() {
-                    return keys.size();
-                }
-
-                @Override
-                public String remove(int index) {
-                    Iterator<String> iterator = keys.iterator();
-                    for (int i = 0; i < index; i++) {
-                        iterator.next();
-                    }
-                    String removed = iterator.next();
-                    iterator.remove();
-                    return removed;
-                }
-            };
+            List<String> list = new CustomList(RemoveKeysObject.this.keys.keySet());
             return new ListArray(list);
         }
 

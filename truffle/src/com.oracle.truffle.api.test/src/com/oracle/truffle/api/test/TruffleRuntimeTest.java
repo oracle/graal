@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,10 +120,9 @@ public class TruffleRuntimeTest {
     @Test
     public void testCreateCallTarget() {
         RootNode rootNode = createTestRootNode(null);
-        RootCallTarget target = runtime.createCallTarget(rootNode);
+        RootCallTarget target = rootNode.getCallTarget();
         assertNotNull(target);
         assertSame(target, rootNode.getCallTarget());
-        assertSame(target, runtime.createCallTarget(rootNode));
         for (int i = 0; i < 10000; i++) {
             assertEquals(target.call(), 42);
         }

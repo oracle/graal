@@ -3,37 +3,9 @@
     "name" : "java.io.FileDescriptor",
     "methods" : [
         { "name" : "closeAll",
-          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is  megamorphic.",
+          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is megamorphic.",
           "parameterTypes" : [
               "java.io.Closeable"
-        ]}
-    ]
-  },
-  {
-    "name" : "java.lang.StringCoding",
-    "methods" : [
-        { "name" : "encode" ,
-          "parameterTypes" : [
-              "char[]",
-              "int",
-              "int"
-        ]},
-        { "name" : "decode",
-          "parameterTypes" : [
-              "byte[]",
-              "int",
-              "int"
-        ]}
-    ]
-  },
-  {
-    "name" : "java.lang.UNIXProcess",
-    "methods" : [
-        { "name" : "lambda$null$0" ,
-          "justification" : "UNIXProcess internal processReaperExecutor.",
-          "parameterTypes" : [
-              "java.lang.ThreadGroup",
-              "java.lang.Runnable"
         ]}
     ]
   },
@@ -98,10 +70,17 @@
   {
     "name" : "java.util.ServiceLoader",
     "methods" : [
+      { "name" : "loadProvider" ,
+        "justification" : " Loads a service provider in a module."
+      }
+    ]
+  },
+  {
+    "name" : "java.util.ServiceLoader$LazyClassPathLookupIterator",
+    "methods" : [
         { "name" : "parse" ,
           "justification" : "Reads META-INF/services files from classpath.",
           "parameterTypes" : [
-              "java.lang.Class",
               "java.net.URL"
         ]}
     ]
@@ -142,14 +121,6 @@
     ]
   },
   {
-    "name" : "java.util.concurrent.ForkJoinPool",
-    "methods" : [
-        { "name" : "makeCommonPool" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
     "name" : "java.util.concurrent.locks.LockSupport",
     "allDeclaredMethods" : true,
     "justification" : "The LockSupport uses sun.misc.Unsafe"
@@ -165,14 +136,6 @@
   },
   {
     "name" : "sun.nio.ch.SocketChannelImpl",
-    "methods" : [
-        { "name" : "toString" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.security.ProtectionDomain",
     "methods" : [
         { "name" : "toString" ,
           "parameterTypes" : [
@@ -206,30 +169,6 @@
     "methods" : [
         { "name" : "next" ,
           "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "com.oracle.svm.core.jdk.Resources",
-    "methods" : [
-        { "name" : "createURL" ,
-          "parameterTypes" : [
-            "java.lang.String"
-        ]},
-        { "name" : "createURL" ,
-          "parameterTypes" : [
-            "java.lang.String",
-            "int"
-        ]}
-    ]
-  },
-    {
-    "name" : "com.oracle.svm.core.jdk.ResourcesHelper",
-    "methods" : [
-        { "name" : "urlToResource" ,
-          "parameterTypes" : [
-            "java.lang.String",
-            "java.net.URL"
         ]}
     ]
   },
@@ -279,6 +218,35 @@
       {
         "name": "forName",
         "justification": "Only classes that were present during the image build (on the classpath or predefined classes) can be accessed."
+      }
+    ]
+  },
+  {
+    "name": "java.math.BigInteger",
+    "methods": [
+      {
+        "name": "multiply",
+        "justification": "JDK 19 introduced parallelMultiply(BI) that shares its implementation with multiply(BI), which causes a spurious privileged call being found in the latter, so we explicitly deny parallelMultiply(BI) and allow multiply(BI) to avoid this false positive."
+      }
+    ]
+  },
+  {
+    "name": "java.util.Arrays",
+    "methods": [
+      {
+        "name": "sort",
+        "justification": "In the JDK 17 Arrays#sort and Arrays#parallelSort share the same DualPivotQuicksort#sort(array,parallelism,low,high) implementation that uses ForkJoinPool for parallelism > 1. This causes a spurious privileged call being found in the Arrays#sort, so we allow Arrays#sort to avoid this false positive and keep Arrays#parallelSort denied."
+      }
+    ]
+  },
+  {  
+    "name": "java.util.ServiceLoader$ModuleServicesLookupIterator",
+    "methods": [
+      {
+        "name": "loaderFor",
+        "parameterTypes" : [
+          "java.lang.Module"
+        ]
       }
     ]
   }

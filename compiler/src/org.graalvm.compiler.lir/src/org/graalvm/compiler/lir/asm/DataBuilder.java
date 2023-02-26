@@ -141,9 +141,7 @@ public abstract class DataBuilder {
     /**
      * @return the maximum alignment that is supported by the runtime
      */
-    public int getMaxSupportedAlignment() {
-        return Integer.MAX_VALUE;
-    }
+    public abstract int getMaxSupportedAlignment();
 
     /**
      * Determines whether a data constant can be forced to be aligned by {@code sizeInBytes}.

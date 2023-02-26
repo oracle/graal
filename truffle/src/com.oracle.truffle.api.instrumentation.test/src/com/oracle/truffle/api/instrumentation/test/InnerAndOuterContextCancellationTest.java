@@ -109,7 +109,13 @@ public class InnerAndOuterContextCancellationTest {
 
     private void teardownSingleRun() {
         if (context != null) {
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
+            }
         }
     }
 
@@ -329,6 +335,10 @@ public class InnerAndOuterContextCancellationTest {
                         throw e;
                     }
                 }
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
             }
             return null;
         }
@@ -389,6 +399,10 @@ public class InnerAndOuterContextCancellationTest {
                             if (!e.isCancelled()) {
                                 throw e;
                             }
+                        }
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
                         }
                     }
                 }));

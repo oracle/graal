@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     @CompilationFinal(dimensions = 1) public static final int[] BRAND_I32 = getI32(BRAND, 12);
     @CompilationFinal(dimensions = 1) public static final int[] VENDOR_ID_I32 = getI32(VENDOR_ID, 3);
 
-    private IntValueProfile profile;
+    private final IntValueProfile profile;
 
     private static int[] getI32(String s, int len) {
         CompilerAsserts.neverPartOfCompilation();
@@ -87,6 +87,10 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     // FN=80000001h: ECX
     public static final int LAHF_LM_IS_SUPPORTED = 1;
 
+    public static final int EDX_SSE_SUPPORTED = 1 << 25;
+    public static final int EDX_SSE2_SUPPORTED = 1 << 26;
+    public static final int ECX_SSE3_SUPPORTED = 1 << 0;
+
     public LLVMAMD64CpuidNode(LLVMAMD64WriteValueNode eax, LLVMAMD64WriteValueNode ebx, LLVMAMD64WriteValueNode ecx, LLVMAMD64WriteValueNode edx) {
         this.eax = eax;
         this.ebx = ebx;
@@ -120,8 +124,8 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
                 // 27:20 - Extended Family
                 a = 0;
                 b = 0;
-                c = RDRND_IS_SUPPORTED;
-                d = TSC_IS_SUPPORTED;
+                c = RDRND_IS_SUPPORTED | ECX_SSE3_SUPPORTED;
+                d = TSC_IS_SUPPORTED | EDX_SSE_SUPPORTED | EDX_SSE2_SUPPORTED;
                 break;
             case 7:
                 // Extended Features (FIXME: assumption is ECX=0)

@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Collections;
+import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
@@ -49,26 +48,25 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
+    public void parseAndRegister(Object json, URI origin) {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 
     @SuppressWarnings("unchecked")
-    private void parseTopLevelObject(Map<String, Object> obj) {
+    private void parseTopLevelObject(EconomicMap<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
-        for (Map.Entry<String, Object> pair : obj.entrySet()) {
-            if ("resources".equals(pair.getKey())) {
-                resourcesObject = pair.getValue();
-            } else if ("bundles".equals(pair.getKey())) {
-                bundlesObject = pair.getValue();
+        MapCursor<String, Object> cursor = obj.getEntries();
+        while (cursor.advance()) {
+            if ("resources".equals(cursor.getKey())) {
+                resourcesObject = cursor.getValue();
+            } else if ("bundles".equals(cursor.getKey())) {
+                bundlesObject = cursor.getValue();
             }
         }
         if (resourcesObject != null) {
-            if (resourcesObject instanceof Map) { // New format
-                Map<String, Object> resourcesObjectMap = (Map<String, Object>) resourcesObject;
+            if (resourcesObject instanceof EconomicMap) { // New format
+                EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
                 checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
                 Object includesObject = resourcesObjectMap.get("includes");
                 Object excludesObject = resourcesObjectMap.get("excludes");
@@ -100,7 +98,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     private void parseBundle(Object bundle) {
-        Map<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
+        EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
         ConfigurationCondition condition = parseCondition(resource);
@@ -139,7 +137,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     }
 
     private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
-        Map<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
+        EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
         checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
         ConfigurationCondition condition = parseCondition(resource);
         Object valueObject = resource.get(valueKey);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,13 +53,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 final class FunctionsObject implements TruffleObject {
 
-    final Map<String, SLFunction> functions = new HashMap<>();
+    final Map<TruffleString, SLFunction> functions = new HashMap<>();
 
     FunctionsObject() {
     }
@@ -82,7 +83,7 @@ final class FunctionsObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
-        Object value = functions.get(member);
+        Object value = functions.get(SLStrings.fromJavaString(member));
         if (value != null) {
             return value;
         }
@@ -92,7 +93,7 @@ final class FunctionsObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMemberReadable(String member) {
-        return functions.containsKey(member);
+        return functions.containsKey(SLStrings.fromJavaString(member));
     }
 
     @ExportMessage

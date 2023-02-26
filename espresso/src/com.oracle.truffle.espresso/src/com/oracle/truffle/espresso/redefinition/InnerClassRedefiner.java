@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.redefinition;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -89,7 +88,7 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(redefineInfo.getClassBytes(), context);
+                Symbol<Symbol.Name> klassName = ClassfileParser.getClassName(context.getClassLoadingEnv(), redefineInfo.getClassBytes());
                 Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klassName.toString());
                 if (matcher.matches()) {
                     // don't assume that associated old klass instance represents this redefineInfo
@@ -99,7 +98,7 @@ public final class InnerClassRedefiner {
                     // get the outer classinfo if present
                     HotSwapClassInfo info = handled.get(getOuterClassName(klassName));
                     if (info != null) {
-                        HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context);
+                        HotSwapClassInfo classInfo = ClassInfo.create(klassName, redefineInfo.getClassBytes(), info.getClassLoader(), context, redefineInfo.isInnerTestKlass());
                         info.addInnerClass(classInfo);
                         handled.put(klassName, classInfo);
                         it.remove();
@@ -108,7 +107,7 @@ public final class InnerClassRedefiner {
                     // pure named class
                     it.remove();
                     if (redefineInfo.getKlass() != null) {
-                        HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context);
+                        HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context, redefineInfo.isInnerTestKlass());
                         handled.put(klassName, classInfo);
                         hotswapState.put(klassName, classInfo);
                     }
@@ -136,7 +135,7 @@ public final class InnerClassRedefiner {
                 if (rules != null && !rules.isEmpty()) {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
-                    } catch (IllegalClassFormatException ex) {
+                    } catch (ClassFormatError ex) {
                         throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
                     }
                 }
@@ -160,7 +159,7 @@ public final class InnerClassRedefiner {
         ArrayList<Symbol<Symbol.Name>> innerNames = new ArrayList<>(1);
         try {
             searchConstantPoolForInnerClassNames(hotswapInfo, innerNames);
-        } catch (IllegalClassFormatException ex) {
+        } catch (ClassFormatError ex) {
             throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
         }
 
@@ -183,7 +182,7 @@ public final class InnerClassRedefiner {
                     // NoSuchMethod errors because they're marked as removed
                 }
                 if (classBytes != null) {
-                    hotswapInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context));
+                    hotswapInfo.addInnerClass(ClassInfo.create(innerName, classBytes, definingLoader, context, false));
                 }
             }
         }
@@ -196,7 +195,7 @@ public final class InnerClassRedefiner {
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             while ((readLen = (int) context.getMeta().java_io_InputStream_read.invokeDirect(inputStream, guestBuf, 0, buf.length)) != -1) {
-                byte[] bytes = guestBuf.unwrap();
+                byte[] bytes = guestBuf.unwrap(context.getLanguage());
                 outputStream.write(bytes, 0, readLen);
             }
             return outputStream.toByteArray();
@@ -207,7 +206,7 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<Symbol<Symbol.Name>> innerNames) throws IllegalClassFormatException {
+    private void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<Symbol<Symbol.Name>> innerNames) throws ClassFormatError {
         byte[] bytes = classInfo.getBytes();
         assert bytes != null;
 

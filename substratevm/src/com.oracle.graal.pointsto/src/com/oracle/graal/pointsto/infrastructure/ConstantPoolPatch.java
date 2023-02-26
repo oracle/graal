@@ -25,8 +25,12 @@
 
 package com.oracle.graal.pointsto.infrastructure;
 
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface ConstantPoolPatch {
     JavaType lookupReferencedType(int index, int opcode);
+
+    JavaMethod lookupMethod(int index, int opcode, ResolvedJavaMethod caller);
 }

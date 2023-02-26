@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,8 +60,6 @@ import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
@@ -155,7 +153,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
     }
 
-    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?, ?> node, int clampedShiftAmt) {
+    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?> node, int clampedShiftAmt) {
         assert clampedShiftAmt >= 0;
         if (clampedShiftAmt <= 4) {
             switch (node.getInputBits()) {
@@ -290,10 +288,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return emitBitFieldHelper(kind, op, value, lsb, width);
     }
 
-    private static boolean isL2INarrow(NarrowNode narrow) {
-        return narrow.getInputBits() == Long.SIZE && narrow.getResultBits() == Integer.SIZE;
-    }
-
     private ComplexMatchResult emitExtendedAddSubShift(BinaryNode op, ValueNode x, ValueNode y, ExtendType extType, int shiftAmt) {
         assert op instanceof AddNode || op instanceof SubNode;
         return builder -> {
@@ -317,7 +311,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, LeftShiftNode lshift, ValueNode ext, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift);
         int shiftAmt = getClampedShiftAmt(lshift);
-        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, shiftAmt)) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?>) ext, shiftAmt)) {
             return null;
         }
         ExtendType extType;
@@ -628,9 +622,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             Value a = operand(src);
             Value b;
             if (y instanceof AddNode) {
-                b = x instanceof LeftShiftNode ? operand(shiftAmount) : getArithmeticLIRGenerator().emitNegate(operand(shiftAmount));
+                b = x instanceof LeftShiftNode ? operand(shiftAmount) : getArithmeticLIRGenerator().emitNegate(operand(shiftAmount), false);
             } else {
-                b = x instanceof LeftShiftNode ? getArithmeticLIRGenerator().emitNegate(operand(shiftAmount)) : operand(shiftAmount);
+                b = x instanceof LeftShiftNode ? getArithmeticLIRGenerator().emitNegate(operand(shiftAmount), false) : operand(shiftAmount);
             }
             return getArithmeticLIRGenerator().emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ROR, false, a, b);
         };
@@ -805,62 +799,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * Goal: Remove narrow(s) when they do not affect the binary operation.
-     *
-     * GR-33732: remove once emitNarrow changes are merged.
-     */
-    @MatchRule("(Add=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(Sub=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(Mul=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(And=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(Or=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(Xor=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(LeftShift=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(RightShift=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(UnsignedRightShift=binary (Narrow=narrow a) (Narrow b))")
-    @MatchRule("(Add=binary a (Narrow=narrow b))")
-    @MatchRule("(Sub=binary a (Narrow=narrow b))")
-    @MatchRule("(Mul=binary a (Narrow=narrow b))")
-    @MatchRule("(And=binary a (Narrow=narrow b))")
-    @MatchRule("(Or=binary a (Narrow=narrow b))")
-    @MatchRule("(Xor=binary a (Narrow=narrow b))")
-    @MatchRule("(LeftShift=binary a (Narrow=narrow b))")
-    @MatchRule("(RightShift=binary a (Narrow=narrow b))")
-    @MatchRule("(UnsignedRightShift=binary a (Narrow=narrow b))")
-    @MatchRule("(Sub=binary (Narrow=narrow a) b)")
-    @MatchRule("(LeftShift=binary (Narrow=narrow a) b)")
-    @MatchRule("(RightShift=binary (Narrow=narrow a) b)")
-    @MatchRule("(UnsignedRightShift=binary (Narrow=narrow a) b)")
-    public ComplexMatchResult elideL2IForBinary(BinaryNode binary, NarrowNode narrow) {
-        assert isNumericInteger(binary);
-
-        NarrowNode a = narrow;
-        ValueNode b = binary.getX() == narrow ? binary.getY() : binary.getX();
-        boolean isL2INarrowA = isL2INarrow(a);
-        boolean isL2INarrowB = (b instanceof NarrowNode) && isL2INarrow((NarrowNode) b);
-        if (!isL2INarrowA && !isL2INarrowB) {
-            // no narrow to elide
-            return null;
-        }
-        // Get the value of L2I NarrowNode as the src value.
-        ValueNode src1 = isL2INarrowA ? a.getValue() : a;
-        ValueNode src2 = isL2INarrowB ? ((NarrowNode) b).getValue() : b;
-
-        AArch64ArithmeticOp op = binaryOpMap.get(binary.getClass());
-        assert op != null;
-        boolean commutative = binary.getNodeClass().isCommutative();
-        LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, binary.getStackKind());
-
-        // Must keep the right operator order for un-commutative binary operations.
-        if (a == binary.getX()) {
-            return builder -> getArithmeticLIRGenerator().emitBinary(
-                            resultKind, op, commutative, operand(src1), operand(src2));
-        }
-        return builder -> getArithmeticLIRGenerator().emitBinary(
-                        resultKind, op, commutative, operand(src2), operand(src1));
-    }
-
-    /**
      * Goal: Use AArch64's add/sub (extended register) instructions to fold in and operand.
      */
     @MatchRule("(Add=op x (And y Constant=constant))")
@@ -885,7 +823,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op x (ZeroExtend=ext y))")
     @MatchRule("(Sub=op x (ZeroExtend=ext y))")
     public ComplexMatchResult mergeSignExtendIntoAddSub(BinaryNode op, UnaryNode ext, ValueNode x, ValueNode y) {
-        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, 0)) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?>) ext, 0)) {
             return null;
         }
 
@@ -896,30 +834,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             extType = getZeroExtendType(((ZeroExtendNode) ext).getInputBits());
         }
         return emitExtendedAddSubShift(op, x, y, extType, 0);
-    }
-
-    /**
-     * Goal: Remove narrow, since it does not affect the not/negate.
-     *
-     * GR-33732: remove once emitNarrow changes are merged.
-     */
-    @MatchRule("(Negate=unary (Narrow=narrow value))")
-    @MatchRule("(Not=unary (Narrow=narrow value))")
-    public ComplexMatchResult elideL2IForUnary(UnaryNode unary, NarrowNode narrow) {
-        assert isNumericInteger(unary);
-        if (!isL2INarrow(narrow)) {
-            return null;
-        }
-
-        AArch64ArithmeticOp op = unary instanceof NegateNode ? AArch64ArithmeticOp.NEG
-                        : AArch64ArithmeticOp.NOT;
-        return builder -> {
-            AllocatableValue input = gen.asAllocatable(operand(narrow.getValue()));
-            LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, unary.getStackKind());
-            Variable result = gen.newVariable(resultKind);
-            gen.append(new AArch64ArithmeticOp.UnaryOp(op, result, moveSp(input)));
-            return result;
-        };
     }
 
     /**
@@ -989,23 +903,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             }
         }
         return null;
-    }
-
-    /**
-     * Goal: Remove unneeded narrow before extension.
-     *
-     * GR-33732: remove once emitNarrow changes are merged.
-     */
-    @MatchRule("(SignExtend=extend (Narrow value))")
-    @MatchRule("(ZeroExtend=extend (Narrow value))")
-    public ComplexMatchResult mergeNarrowExtend(UnaryNode extend, ValueNode value) {
-        if (extend instanceof SignExtendNode) {
-            SignExtendNode sxt = (SignExtendNode) extend;
-            return builder -> getArithmeticLIRGenerator().emitSignExtend(operand(value), sxt.getInputBits(), sxt.getResultBits());
-        }
-        assert extend instanceof ZeroExtendNode;
-        ZeroExtendNode zxt = (ZeroExtendNode) extend;
-        return builder -> getArithmeticLIRGenerator().emitZeroExtend(operand(value), zxt.getInputBits(), zxt.getResultBits());
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -70,6 +71,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         I64(8),
         FLOAT(4),
         DOUBLE(8),
+        FP80(10),
         POINTER(8),
         VECTOR(-1),
         ARRAY(-1),
@@ -155,6 +157,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return 0f;
                 case DOUBLE:
                     return 0d;
+                case FP80:
+                    return LLVM80BitFloat.createPositiveZero();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere("unexpected type " + type);
@@ -179,6 +183,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return ForeignToLLVMType.FLOAT;
                 case DOUBLE:
                     return ForeignToLLVMType.DOUBLE;
+                case X86_FP80:
+                    return ForeignToLLVMType.FP80;
                 default:
                     throw new IllegalStateException("unexpected primitive kind " + ((PrimitiveType) type).getPrimitiveKind());
             }
@@ -232,6 +238,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                         return ToI64.slowPathPrimitiveConvert(this, value);
                     case I8:
                         return ToI8.slowPathPrimitiveConvert(this, value);
+                    case FP80:
+                        return ToFP80.slowPathPrimitiveConvert(value);
                     default:
                         throw new IllegalStateException(type.toString());
                 }

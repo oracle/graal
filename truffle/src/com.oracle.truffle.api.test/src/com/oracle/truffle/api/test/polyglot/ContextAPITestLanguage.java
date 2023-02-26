@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,64 +40,42 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import java.util.Map;
-import java.util.function.Function;
-
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 
-@TruffleLanguage.Registration(id = ContextAPITestLanguage.ID, name = ContextAPITestLanguage.ID, version = "1.0", characterMimeTypes = ContextAPITestLanguage.MIME)
-public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
+@TruffleLanguage.Registration
+public class ContextAPITestLanguage extends AbstractExecutableTestLanguage {
+    static final String ID = TestUtils.getDefaultLanguageId(ContextAPITestLanguage.class);
 
-    static final String ID = "ContextAPITestLanguage";
-    static final String MIME = "text/x-ContextAPITestLanguage";
-    static Function<Env, Object> runinside;
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static final class ContextTestFunction implements TruffleObject {
 
-    static class LanguageContext {
-
-        int disposeCalled;
-        Env env;
-        Map<String, Object> config;
-
-    }
-
-    private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(ContextAPITestLanguage.class);
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        Object result = "null result";
-        if (runinside != null) {
-            try {
-                result = runinside.apply(REFERENCE.get(null).env);
-            } finally {
-                runinside = null;
-            }
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
         }
-        if (result == null) {
-            result = "null result";
+
+        @ExportMessage
+        Object execute(Object[] arguments) {
+            return 42;
         }
-        final Object finalResult = result;
-        return new RootNode(this) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return finalResult;
-            }
-        }.getCallTarget();
+
     }
 
     @Override
-    protected LanguageContext createContext(Env env) {
-        ContextAPITest.langContext = new LanguageContext();
-        ContextAPITest.langContext.env = env;
-        return ContextAPITest.langContext;
-    }
-
-    @Override
-    protected void disposeContext(LanguageContext context) {
-        context.disposeCalled++;
+    protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+        if (contextArguments.length > 0) {
+            return new ContextTestFunction();
+        } else {
+            return "null result";
+        }
     }
 
 }

@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.vm.structs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -46,6 +47,7 @@ public final class NativeMemberOffsetGetter implements MemberOffsetGetter {
     public long getInfo(String str) {
         long result = lookupInfo(str);
         if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Struct offset lookup for " + str + " failed.");
         }
         return result;

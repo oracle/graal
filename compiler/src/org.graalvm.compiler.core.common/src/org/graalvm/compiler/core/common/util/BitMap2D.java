@@ -53,20 +53,6 @@ public final class BitMap2D {
         this.bitsPerSlot = bitsPerSlot;
     }
 
-    public int sizeInBits() {
-        return map.size();
-    }
-
-    // Returns number of full slots that have been allocated
-    public int sizeInSlots() {
-        return map.size() / bitsPerSlot;
-    }
-
-    public boolean isValidIndex(int slotIndex, int bitWithinSlotIndex) {
-        assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
-        return (bitIndex(slotIndex, bitWithinSlotIndex) < sizeInBits());
-    }
-
     public boolean at(int slotIndex, int bitWithinSlotIndex) {
         assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
         return map.get(bitIndex(slotIndex, bitWithinSlotIndex));
@@ -75,29 +61,6 @@ public final class BitMap2D {
     public void setBit(int slotIndex, int bitWithinSlotIndex) {
         assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
         map.set(bitIndex(slotIndex, bitWithinSlotIndex));
-    }
-
-    public void clearBit(int slotIndex, int bitWithinSlotIndex) {
-        assert verifyBitWithinSlotIndex(bitWithinSlotIndex);
-        map.clear(bitIndex(slotIndex, bitWithinSlotIndex));
-    }
-
-    public void atPutGrow(int slotIndex, int bitWithinSlotIndex, boolean value) {
-        int size = sizeInSlots();
-        if (size <= slotIndex) {
-            while (size <= slotIndex) {
-                size *= 2;
-            }
-            BitSet newBitMap = new BitSet(size * bitsPerSlot);
-            newBitMap.or(map);
-            map = newBitMap;
-        }
-
-        if (value) {
-            setBit(slotIndex, bitWithinSlotIndex);
-        } else {
-            clearBit(slotIndex, bitWithinSlotIndex);
-        }
     }
 
     public void clear() {

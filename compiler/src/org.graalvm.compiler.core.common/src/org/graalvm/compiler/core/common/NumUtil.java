@@ -33,6 +33,11 @@ import jdk.vm.ci.code.CodeUtil;
  */
 public class NumUtil {
 
+    public enum Signedness {
+        SIGNED,
+        UNSIGNED
+    }
+
     public static boolean isShiftCount(int x) {
         return 0 <= x && x < 32;
     }
@@ -113,6 +118,11 @@ public class NumUtil {
     public static byte safeToByte(int v) {
         assert isByte(v);
         return (byte) v;
+    }
+
+    public static short safeToUShort(int v) {
+        assert isUShort(v);
+        return (short) v;
     }
 
     public static short safeToShort(int v) {

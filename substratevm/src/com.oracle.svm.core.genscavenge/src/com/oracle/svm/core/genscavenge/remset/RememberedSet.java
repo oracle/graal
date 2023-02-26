@@ -27,35 +27,30 @@ package com.oracle.svm.core.genscavenge.remset;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * A remembered set keeps track of references between generations (from the old generation to the
  * young generation, or from the image heap to the runtime heap). During collections, the remembered
  * set is used to avoid scanning the entire image heap and old generation.
  */
-public interface RememberedSet {
+public interface RememberedSet extends BarrierSetProvider {
     @Fold
     static RememberedSet get() {
         return ImageSingletons.lookup(RememberedSet.class);
     }
-
-    /** Creates the barrier set that the compiler should use for emitting read/write barriers. */
-    BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 
     /** Returns the header size of aligned chunks. */
     UnsignedWord getHeaderSizeOfAlignedChunk();

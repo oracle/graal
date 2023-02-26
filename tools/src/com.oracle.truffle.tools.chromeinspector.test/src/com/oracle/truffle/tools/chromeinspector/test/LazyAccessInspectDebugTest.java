@@ -29,6 +29,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
@@ -193,6 +196,7 @@ public class LazyAccessInspectDebugTest {
 
             @Node.Child private TestStatementNode statement;
             private final SourceSection statementSection;
+            @CompilationFinal private volatile Integer slotIndex;
 
             TestRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source source) {
                 super(language);
@@ -214,9 +218,18 @@ public class LazyAccessInspectDebugTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 TruffleObject obj = new LazyReadObject(false);
-                int slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("o");
+                int slot = getSlotIndex(frame.getFrameDescriptor());
                 frame.setAuxiliarySlot(slot, obj);
                 return statement.execute(frame);
+            }
+
+            private int getSlotIndex(FrameDescriptor fd) {
+                Integer index = this.slotIndex;
+                if (index == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.slotIndex = index = fd.findOrAddAuxiliarySlot("o");
+                }
+                return index;
             }
 
             @Override

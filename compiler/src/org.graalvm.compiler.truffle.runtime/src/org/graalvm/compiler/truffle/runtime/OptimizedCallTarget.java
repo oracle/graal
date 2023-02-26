@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,7 +48,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
@@ -56,7 +56,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -108,7 +107,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  *                                         rootNode.execute()
  * </pre>
  */
-@SuppressWarnings({"deprecation", "hiding"})
+@SuppressWarnings({"hiding"})
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
@@ -202,13 +201,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @CompilationFinal(dimensions = 1) final Class<?>[] types;
 
         private ArgumentsProfile() {
-            this.assumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.NEVER_VALID;
             this.types = null;
         }
 
         private ArgumentsProfile(Class<?>[] types, String assumptionName) {
             assert types != null;
-            this.assumption = createValidAssumption(assumptionName);
+            this.assumption = (OptimizedAssumption) Assumption.create(assumptionName);
             this.types = types;
         }
 
@@ -233,13 +232,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         final Class<?> type;
 
         private ReturnProfile() {
-            this.assumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.NEVER_VALID;
             this.type = null;
         }
 
         private ReturnProfile(Class<?> type) {
             assert type != null;
-            this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.assumption = (OptimizedAssumption) Assumption.create(RETURN_TYPE_ASSUMPTION_NAME);
             this.type = type;
         }
 
@@ -290,16 +289,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     public final EngineData engine;
 
-    /** Only set for a source CallTarget with a clonable RootNode. */
+    /**
+     * Only set for a source CallTarget, when
+     * {@code rootNode.isCloningAllowed() && !rootNode.isCloneUninitializedSupported()}.
+     */
     private volatile RootNode uninitializedRootNode;
 
     /**
-     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
+     * Source CallTarget if this target is a split CallTarget, null if this target is a source
+     * CallTarget.
      */
-    private volatile SpeculationLog speculationLog;
-
-    /** Source target if this target was duplicated. */
     private final OptimizedCallTarget sourceCallTarget;
+
+    /**
+     * The speculation log to keep track of assumptions taken and failed for previous compilations.
+     */
+    protected volatile SpeculationLog speculationLog;
 
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -376,6 +381,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public boolean isTrivial() {
         return GraalRuntimeAccessor.NODES.isTrivial(rootNode);
+    }
+
+    private FrameDescriptor getParentFrameDescriptor() {
+        return GraalRuntimeAccessor.NODES.getParentFrameDescriptor(rootNode);
     }
 
     /**
@@ -467,8 +476,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return doInvoke(args);
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -492,8 +501,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 throw rethrow(profileExceptionType(t));
             }
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -503,8 +512,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             ensureInitialized();
             return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments), getTier());
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -526,10 +535,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             return CompilationState.INTERPRETED;
         }
-    }
-
-    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
-        return true;
     }
 
     // This call method is hidden from stack traces.
@@ -603,7 +608,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
 
-    private static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
+    public static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
         return FixedPointMath.multiply(runtime().compilationThresholdScale(), callAndLoopThresholdInInterpreter);
     }
 
@@ -650,6 +655,55 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compile(true);
     }
 
+    private void propagateCallAndLoopCount() {
+        WeakReference<OptimizedDirectCallNode> currentSingleCallNode = this.singleCallNode;
+        // Since getParentFrameDescriptor is expensive we do these checks before that call
+        if (!engine.propagateCallAndLoopCount || currentSingleCallNode == MULTIPLE_CALLS || currentSingleCallNode == NO_CALL) {
+            return;
+        }
+        final FrameDescriptor parentFrameDescriptor = getParentFrameDescriptor();
+        if (parentFrameDescriptor == null) {
+            return;
+        }
+        int depth = 0;
+        do {
+            OptimizedDirectCallNode callerCallNode = currentSingleCallNode.get();
+            if (callerCallNode == null) {
+                return;
+            }
+            RootNode callerRootNode = callerCallNode.getRootNode();
+            if (callerRootNode == null) {
+                return;
+            }
+            OptimizedCallTarget callerCallTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+            // Recursive
+            if (this.isSameOrSplit(callerCallTarget)) {
+                return;
+            }
+            if (callerCallTarget.frameDescriptorEquals(parentFrameDescriptor)) {
+                callerCallNode.forceInlining();
+                callerCallTarget.callAndLoopCount += this.callAndLoopCount;
+                return;
+            }
+            currentSingleCallNode = callerCallTarget.singleCallNode;
+            depth++;
+        } while (depth < engine.propagateCallAndLoopCountMaxDepth &&
+                        currentSingleCallNode != NO_CALL &&
+                        currentSingleCallNode != MULTIPLE_CALLS);
+    }
+
+    private boolean frameDescriptorEquals(FrameDescriptor parentFrameDescriptor) {
+        assert parentFrameDescriptor != null;
+        if (parentFrameDescriptor.equals(rootNode.getFrameDescriptor())) {
+            return true;
+        }
+        if (isSplit()) {
+            RootNode sourceRootNode = sourceCallTarget.getRootNode();
+            return parentFrameDescriptor.equals(sourceRootNode.getFrameDescriptor());
+        }
+        return false;
+    }
+
     private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
         try {
             Object toRet = rootNode.execute(frame);
@@ -665,8 +719,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (CompilerDirectives.inInterpreter() && tier != CompilationState.INTERPRETED) {
                 notifyDeoptimized(frame);
             }
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert frame != null && this != null && tier != null;
+            // reachability fence is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(frame);
+            Reference.reachabilityFence(this);
+            Reference.reachabilityFence(tier);
         }
     }
 
@@ -692,7 +748,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private synchronized void initialize(boolean validate) {
         if (!initialized) {
-            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
+            if (isSourceCallTarget() && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
@@ -757,6 +813,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
+                    if (lastTier) {
+                        propagateCallAndLoopCount();
+                    }
                     if (!wasExecuted() && !engine.backgroundCompilation) {
                         prepareForAOTImpl();
                     }
@@ -839,7 +898,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final OptimizedCallTarget cloneUninitialized() {
-        assert sourceCallTarget == null : "Cannot clone a clone.";
+        assert !isSplit() : "Cannot clone a clone.";
         ensureInitialized();
         RootNode clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(this, rootNode, uninitializedRootNode);
         return (OptimizedCallTarget) clonedRoot.getCallTarget();
@@ -922,6 +981,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
+    @Override
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {
@@ -995,7 +1055,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         String result = nameCache;
         if (result == null) {
             result = rootNode.toString();
-            if (sourceCallTarget != null) {
+            if (isSplit()) {
                 result += " <split-" + id + ">";
             }
             nameCache = result;
@@ -1125,14 +1185,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         });
         return callNodes.toArray(new TruffleCallNode[0]);
-    }
-
-    public final CompilerOptions getCompilerOptions() {
-        final CompilerOptions options = rootNode.getCompilerOptions();
-        if (options != null) {
-            return options;
-        }
-        return DefaultCompilerOptions.INSTANCE;
     }
 
     /*
@@ -1412,19 +1464,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private static OptimizedAssumption createInvalidAssumption(String name) {
-        OptimizedAssumption result = createValidAssumption(name);
-        result.invalidate();
-        return result;
-    }
-
-    private static OptimizedAssumption createValidAssumption(String name) {
-        return (OptimizedAssumption) Truffle.getRuntime().createAssumption(name);
-    }
-
     /*
      * Splitting related code.
      */
+
+    public final boolean isSourceCallTarget() {
+        return sourceCallTarget == null;
+    }
 
     public final boolean isSplit() {
         return sourceCallTarget != null;

@@ -25,28 +25,27 @@
  */
 package com.oracle.svm.configure.trace;
 
-import java.util.List;
-import java.util.Map;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 
 public class SerializationProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
-    private final SerializationConfiguration serializationConfiguration;
 
-    public SerializationProcessor(AccessAdvisor advisor, SerializationConfiguration serializationConfiguration) {
+    public SerializationProcessor(AccessAdvisor advisor) {
         this.advisor = advisor;
-        this.serializationConfiguration = serializationConfiguration;
-    }
-
-    public SerializationConfiguration getSerializationConfiguration() {
-        return serializationConfiguration;
     }
 
     @Override
-    void processEntry(Map<String, ?> entry) {
+    @SuppressWarnings("unchecked")
+    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
@@ -54,14 +53,42 @@ public class SerializationProcessor extends AbstractProcessor {
         }
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
+        SerializationConfiguration serializationConfiguration = configurationSet.getSerializationConfiguration();
+
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
+
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), false)) {
+                return;
+            }
+
+            String className = (String) args.get(0);
+
+            if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                serializationConfiguration.registerLambdaCapturingClass(condition, className);
+            } else {
+                serializationConfiguration.registerWithTargetConstructorClass(condition, className, (String) args.get(1));
+            }
+        } else if ("SerializedLambda.readResolve".equals(function)) {
+            expectSize(args, 1);
 
             if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
                 return;
             }
 
-            serializationConfiguration.registerWithTargetConstructorClass(condition, (String) args.get(0), (String) args.get(1));
+            serializationConfiguration.registerLambdaCapturingClass(condition, (String) args.get(0));
+        } else if ("ProxyClassSerialization".equals(function)) {
+            expectSize(args, 1);
+
+            List<String> interfaces = (List<String>) args.get(0);
+
+            for (String iface : interfaces) {
+                if (advisor.shouldIgnore(lazyValue(iface), LazyValueUtils.lazyValue(null))) {
+                    return;
+                }
+            }
+
+            serializationConfiguration.registerProxyClass(condition, (List<String>) args.get(0));
         }
     }
 }

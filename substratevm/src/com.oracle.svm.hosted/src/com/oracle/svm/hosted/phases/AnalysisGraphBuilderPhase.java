@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -33,42 +34,57 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
+    protected final SVMHost hostVM;
+
     public AnalysisGraphBuilderPhase(CoreProviders providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+        this.hostVM = hostVM;
     }
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
+
+        private final SVMHost hostVM;
+
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
+                        IntrinsicContext intrinsicContext, SVMHost hostVM) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
+            this.hostVM = hostVM;
         }
 
         @Override
         protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             boolean result = super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
             if (result) {
-                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod();
+                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod(nonNullReason(graph.currentNodeSourcePosition()));
             }
             return result;
+        }
+
+        private static Object nonNullReason(Object reason) {
+            return reason == null ? "Unknown invocation location." : reason;
         }
 
         @Override
@@ -81,8 +97,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * bits of graal. Thus the modules that contain such plugins need to be allowed such
              * access.
              */
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.meta", false, accessingClass);
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.nodes", false, accessingClass);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
@@ -99,6 +115,34 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return ExceptionEdgeAction.OMIT;
             }
             return super.getActionForInvokeExceptionEdge(lastInlineInfo);
+        }
+
+        private boolean tryNodePluginForDynamicInvocation(BootstrapMethodIntrospection bootstrap) {
+            for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                var result = plugin.convertInvokeDynamic(this, bootstrap);
+                if (result != null) {
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight());
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void genInvokeDynamic(int cpi, int opcode) {
+            if (parseOnce) {
+                BootstrapMethodIntrospection bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
+                if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
+                    return;
+                }
+            }
+            super.genInvokeDynamic(cpi, opcode);
+        }
+
+        @Override
+        protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
+            hostVM.recordFieldStore(field, method);
+            super.genStoreField(receiver, field, value);
         }
     }
 }

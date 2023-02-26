@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Static Object Model
+permalink: /graalvm-as-a-platform/language-implementation-framework/StaticObjectModel/
+---
 # Static Object Model
 
 This guide demonstrates how to get started with using the [StaticShape](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html) and [StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html) APIs introduced with GraalVM 21.3.0.

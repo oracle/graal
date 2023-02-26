@@ -92,7 +92,7 @@ public class BitOpsTest extends AssemblerTest {
                     Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = IntField.class.getDeclaredField("x");
-                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                         LZCNT.emit(asm, DWORD, ret, arg);
                         asm.ret(0);
                         return asm.close(true);
@@ -135,7 +135,7 @@ public class BitOpsTest extends AssemblerTest {
                     Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = LongField.class.getDeclaredField("x");
-                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                         LZCNT.emit(asm, QWORD, ret, arg);
                         asm.ret(0);
                         return asm.close(true);
@@ -178,7 +178,7 @@ public class BitOpsTest extends AssemblerTest {
                     Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = IntField.class.getDeclaredField("x");
-                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                         TZCNT.emit(asm, DWORD, ret, arg);
                         asm.ret(0);
                         return asm.close(true);
@@ -221,7 +221,7 @@ public class BitOpsTest extends AssemblerTest {
                     Register ret = registerConfig.getReturnRegister(JavaKind.Int);
                     try {
                         Field f = LongField.class.getDeclaredField("x");
-                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) UNSAFE.objectFieldOffset(f));
+                        AMD64Address arg = new AMD64Address(asRegister(cc.getArgument(0)), (int) getObjectFieldOffset(f));
                         TZCNT.emit(asm, QWORD, ret, arg);
                         asm.ret(0);
                         return asm.close(true);

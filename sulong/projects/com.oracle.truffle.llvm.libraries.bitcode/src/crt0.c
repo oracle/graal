@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,10 @@
 #include <stdio.h>
 #include <locale.h>
 #include <graalvm/llvm/polyglot.h>
+
+#include "exit.h"
+#include "abort.h"
+
 #ifdef __linux__
 #include <elf.h>
 #else
@@ -48,7 +52,9 @@ typedef struct {
 } Elf64_auxv_t;
 #endif
 
+#if !defined(_WIN32)
 extern char **environ;
+#endif
 char *__progname;
 static Elf64_auxv_t *__auxv;
 long *__sulong_start_arguments = NULL;
@@ -142,42 +148,42 @@ int _start(int type, char *application_path_java_byte_array, void *main) {
         default:
         case 0: {
             int (*i32main)(int argc, char **argv, char **envp) = (int (*)(int, char **, char **)) main;
-            exit(i32main(argc, argv, envp));
+            __sulong_exit(i32main(argc, argv, envp));
             break;
         }
         /* Rust */
         case 1: {
             long (*i64main)(long argc, char **argv) = (long (*)(long, char **)) main;
-            exit(i64main(argc, argv));
+            __sulong_exit(i64main(argc, argv));
             break;
         }
         /* non-standard C: void main(int, char**, char**) */
         case 2: {
             void (*vmain)(int argc, char **argv, char **envp) = (void (*)(int, char **, char **)) main;
             vmain(argc, argv, envp);
-            exit(0);
+            __sulong_exit(0);
             break;
         }
         /* non-standard C: char main(int, char**, char**) */
         case 3: {
             char (*i8main)(int argc, char **argv, char **envp) = (char (*)(int, char **, char **)) main;
-            exit(i8main(argc, argv, envp));
+            __sulong_exit(i8main(argc, argv, envp));
             break;
         }
         /* non-standard C: short main(int, char**, char**) */
         case 4: {
             short (*i16main)(int argc, char **argv, char **envp) = (short (*)(int, char **, char **)) main;
-            exit(i16main(argc, argv, envp));
+            __sulong_exit(i16main(argc, argv, envp));
             break;
         }
         /* non-standard C: long main(int, char**, char**) */
         case 5: {
             long (*i64main)(int argc, char **argv, char **envp) = (long (*)(int, char **, char **)) main;
-            exit(i64main(argc, argv, envp));
+            __sulong_exit(i64main(argc, argv, envp));
             break;
         }
     }
-    abort();
+    __sulong_abort();
 }
 
 #ifdef __linux__

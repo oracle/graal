@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutParser.DataTypeSpeci
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
@@ -52,7 +53,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 public final class DataLayout {
 
     private final ArrayList<DataTypeSpecification> dataLayout;
-    private final ByteOrder byteOrder;
+    private ByteOrder byteOrder;
 
     private final IdentityHashMap<Type, Long> sizeCache = new IdentityHashMap<>();
     private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
@@ -62,9 +63,12 @@ public final class DataLayout {
         this.byteOrder = byteOrder;
     }
 
-    public DataLayout(String layout) {
+    public DataLayout(String layout, String defaultLayout) {
         this.dataLayout = new ArrayList<>();
-        this.byteOrder = DataLayoutParser.parseDataLayout(layout, dataLayout);
+        this.byteOrder = DataLayoutParser.parseDataLayout(defaultLayout, dataLayout);
+        if (!defaultLayout.equalsIgnoreCase(layout)) {
+            this.byteOrder = DataLayoutParser.parseDataLayout(layout, dataLayout);
+        }
     }
 
     public ByteOrder getByteOrder() {
@@ -209,5 +213,65 @@ public final class DataLayout {
             }
         }
         return null;
+    }
+
+    public long getByteSize(Type type) throws TypeOverflowException {
+        return type.getSize(this);
+    }
+
+    public int getBytePadding(long offset, Type type) {
+        return Type.getPadding(offset, type, this);
+    }
+
+    public static final class StructureTypeOffsets {
+        Type[] types;
+        long[] offsets;
+
+        private StructureTypeOffsets(Type[] retTypes, long[] retOffsets) {
+            this.types = retTypes;
+            this.offsets = retOffsets;
+        }
+
+        public Type[] getTypes() {
+            return types;
+        }
+
+        public long[] getOffsets() {
+            return offsets;
+        }
+
+        public static StructureTypeOffsets fromStructuredType(DataLayout dataLayout, StructureType retType) throws TypeOverflowException {
+            Type[] retTypes = null;
+            long[] retOffsets = null;
+            StructureType struct = retType;
+            retOffsets = new long[struct.getNumberOfElementsInt()];
+            retTypes = new Type[struct.getNumberOfElementsInt()];
+            long currentOffset = 0;
+            for (int i = 0; i < struct.getNumberOfElements(); i++) {
+                Type elemType = struct.getElementType(i);
+
+                if (!struct.isPacked()) {
+                    currentOffset = Type.addUnsignedExact(currentOffset, dataLayout.getBytePadding(currentOffset, elemType));
+                }
+
+                retOffsets[i] = currentOffset;
+                retTypes[i] = elemType;
+                currentOffset = Type.addUnsignedExact(currentOffset, dataLayout.getByteSize(elemType));
+            }
+            assert currentOffset <= dataLayout.getByteSize(retType) : "currentOffset " + currentOffset + " vs. byteSize " + dataLayout.getByteSize(retType);
+
+            return new StructureTypeOffsets(retTypes, retOffsets);
+        }
+
+        public static StructureTypeOffsets fromType(DataLayout dataLayout, Type retType) throws TypeOverflowException {
+            if (retType instanceof StructureType) {
+                return fromStructuredType(dataLayout, (StructureType) retType);
+            }
+            return new StructureTypeOffsets(null, null);
+        }
+    }
+
+    public StructureTypeOffsets getStructureTypeOffsets(Type type) throws TypeOverflowException {
+        return StructureTypeOffsets.fromType(this, type);
     }
 }

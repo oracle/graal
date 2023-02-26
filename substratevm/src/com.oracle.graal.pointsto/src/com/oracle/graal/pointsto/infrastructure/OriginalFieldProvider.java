@@ -35,16 +35,8 @@ public interface OriginalFieldProvider {
     static Field getJavaField(SnippetReflectionProvider reflectionProvider, ResolvedJavaField field) {
         if (field instanceof OriginalFieldProvider) {
             return ((OriginalFieldProvider) field).getJavaField();
-        }
-        Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, field.getDeclaringClass());
-        try {
-            return declaringClass.getDeclaredField(field.getName());
-        } catch (Throwable e) {
-            /*
-             * Return null if there is some incomplete classpath issue or the field is either
-             * missing or hidden from reflection.
-             */
-            return null;
+        } else {
+            return reflectionProvider.originalField(field);
         }
     }
 

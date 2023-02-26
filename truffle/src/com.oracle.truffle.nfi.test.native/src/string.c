@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,10 +107,10 @@ EXPORT const char *native_string_callback(const char *(*str_ret)()) {
 
 #if defined(_WIN32)
 EXPORT char *reexport_strdup(const char *str) {
-  return strdup(str);
+    return strdup(str);
 }
 
 EXPORT void reexport_free(char *str) {
-  free(str);
+    free(str);
 }
 #endif

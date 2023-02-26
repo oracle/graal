@@ -242,7 +242,7 @@ public final class SulongLibrary implements TruffleObject {
             return call.call(library.main.getMainCallTarget(), args);
         }
 
-        @Specialization(replaces = "doGeneric")
+        @Specialization(guards = "library.main == null")
         static Object doUnsupported(@SuppressWarnings("unused") SulongLibrary library, @SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }

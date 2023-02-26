@@ -24,24 +24,23 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
 @Platforms({Platform.WINDOWS.class})
-class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
+final class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void getStackInformation(WordPointer stackEndPtr, WordPointer stackSizePtr) {
@@ -67,12 +66,10 @@ class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackBase() {
+        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        WordPointer stackSizePtr = StackValue.get(WordPointer.class);
-        getStackInformation(stackEndPtr, stackSizePtr);
-        UnsignedWord stackEnd = stackEndPtr.read();
-        UnsignedWord stackSize = stackSizePtr.read();
-        return stackEnd.add(stackSize);
+        lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
+        return stackBasePtr.read();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -84,32 +81,30 @@ class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
+        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        lookupStack(stackBasePtr, stackEndPtr, requestedStackSize);
+        return stackEndPtr.read();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
         WordPointer stackSizePtr = StackValue.get(WordPointer.class);
         getStackInformation(stackEndPtr, stackSizePtr);
         UnsignedWord stackEnd = stackEndPtr.read();
+        UnsignedWord stackSize = stackSizePtr.read();
+        stackBasePtr.write(stackEnd.add(stackSize));
 
         if (requestedStackSize.notEqual(WordFactory.zero())) {
             /*
              * if stackSize > requestedStackSize, then artificially limit stack end to match
              * requested stack size.
              */
-            UnsignedWord stackSize = stackSizePtr.read();
             if (stackSize.aboveThan(requestedStackSize)) {
                 UnsignedWord stackAdjustment = stackSize.subtract(requestedStackSize);
-                return stackEnd.add(stackAdjustment);
+                stackEndPtr.write(stackEnd.add(stackAdjustment));
             }
         }
-
-        return stackEnd;
-    }
-}
-
-@Platforms({Platform.WINDOWS.class})
-@AutomaticFeature
-class WindowsStackOverflowSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StackOverflowCheck.OSSupport.class, new WindowsStackOverflowSupport());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,14 +47,14 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
-import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 
 public class EmscriptenModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 19;
+    private static final int NUMBER_OF_FUNCTIONS = 20;
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
@@ -76,6 +76,7 @@ public class EmscriptenModule extends BuiltinModule {
         defineFunction(instance, "emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBigNode(language, instance));
         defineFunction(instance, "emscripten_get_heap_size", types(), types(I32_TYPE), new EmscriptenGetHeapSizeNode(language, instance));
         defineFunction(instance, "emscripten_resize_heap", types(I32_TYPE), types(I32_TYPE), new EmscriptenResizeHeapNode(language, instance));
+        defineFunction(instance, "emscripten_notify_memory_growth", types(I32_TYPE), types(), new EmscriptenNotifyMemoryGrowthNode(language, instance));
         defineFunction(instance, "gettimeofday", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new GetTimeOfDayNode(language, instance));
         defineFunction(instance, "llvm_exp2_f64", types(F64_TYPE), types(F64_TYPE), new LLVMExp2F64Node(language, instance));
         defineFunction(instance, "__wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWriteNode(language, instance));
@@ -87,11 +88,11 @@ public class EmscriptenModule extends BuiltinModule {
         defineFunction(instance, "__syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall54", language, instance));
         defineFunction(instance, "__syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall6", language, instance));
         defineFunction(instance, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, instance));
-        defineGlobal(instance, "_table_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "_memory_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "DYNAMICTOP_PTR", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(instance, "DYNAMIC_BASE", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineTable(instance, "table", 0, -1, ReferenceTypes.FUNCREF);
+        defineGlobal(instance, "_table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "_memory_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(instance, "DYNAMIC_BASE", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineTable(instance, "table", 0, -1, WasmType.FUNCREF_TYPE);
         return instance;
     }
 }

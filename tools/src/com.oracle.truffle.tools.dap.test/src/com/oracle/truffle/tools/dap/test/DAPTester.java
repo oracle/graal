@@ -41,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
@@ -62,18 +63,33 @@ public final class DAPTester {
     private final Context context;
     private Future<Value> lastValue;
 
-    private DAPTester(DAPSessionHandler handler, Engine engine) {
+    private DAPTester(DAPSessionHandler handler, Context context) {
         this.handler = handler;
-        this.context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+        this.context = context;
     }
 
     public static DAPTester start(boolean suspend) throws IOException {
+        return start(suspend, null);
+    }
+
+    public static DAPTester start(boolean suspend, Consumer<Context> prolog) throws IOException {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         Engine engine = Engine.newBuilder().err(err).build();
+        Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+        Runnable runProlog;
+        if (prolog != null) {
+            runProlog = () -> prolog.accept(context);
+        } else {
+            runProlog = null;
+        }
         Instrument testInstrument = engine.getInstruments().get(DAPTestInstrument.ID);
         DAPSessionHandlerProvider sessionHandlerProvider = testInstrument.lookup(DAPSessionHandlerProvider.class);
-        DAPSessionHandler sessionHandler = sessionHandlerProvider.getSessionHandler(suspend, false, false);
-        return new DAPTester(sessionHandler, engine);
+        DAPSessionHandler sessionHandler = sessionHandlerProvider.getSessionHandler(suspend, false, false, runProlog);
+        return new DAPTester(sessionHandler, context);
+    }
+
+    Context getContext() {
+        return context;
     }
 
     public void finish() throws IOException {
@@ -166,7 +182,7 @@ public final class DAPTester {
                     break;
                 }
             }
-            Assert.assertFalse("Unexpected message received: " + receivedMessage, expectedObjects.size() == size);
+            Assert.assertFalse("Unexpected message received:\n" + receivedMessage + "\nExpected message:\n" + expectedObjects, expectedObjects.size() == size);
             size = expectedObjects.size();
         }
         return true;

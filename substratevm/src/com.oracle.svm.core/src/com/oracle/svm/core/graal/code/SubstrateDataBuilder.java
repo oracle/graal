@@ -33,6 +33,7 @@ import org.graalvm.compiler.code.DataSection.Patches;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -90,5 +91,12 @@ public class SubstrateDataBuilder extends DataBuilder {
             }
             patches.registerPatch(position, constant);
         }
+    }
+
+    @Override
+    public int getMaxSupportedAlignment() {
+        // See RuntimeCodeInstaller.prepareCodeMemory
+        // Code and data are allocated in one go
+        return SubstrateOptions.codeAlignment();
     }
 }

@@ -48,10 +48,10 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 final class InterfaceTables {
 
-    private static final Comparator<TableData> SORTER = new Comparator<TableData>() {
+    private static final Comparator<TableData> SORTER = new Comparator<>() {
         @Override
         public int compare(TableData o1, TableData o2) {
-            return Integer.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());
+            return Long.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());
         }
     };
 
@@ -136,7 +136,7 @@ final class InterfaceTables {
      * @param declared The declared methods of the interface.
      * @return the requested klass array
      */
-    public static InterfaceCreationResult constructInterfaceItable(ObjectKlass.KlassVersion thisInterfKlass, Method.MethodVersion[] declared) {
+    public static InterfaceCreationResult constructInterfaceItable(ObjectKlass.KlassVersion thisInterfKlass, ObjectKlass[] superInterfaces, Method.MethodVersion[] declared) {
         assert thisInterfKlass.isInterface();
         CompilerAsserts.neverPartOfCompilation();
         ArrayList<Method.MethodVersion> tmpMethodTable = new ArrayList<>();
@@ -152,8 +152,8 @@ final class InterfaceTables {
         Method.MethodVersion[] methods = tmpMethodTable.toArray(Method.EMPTY_VERSION_ARRAY);
         ArrayList<ObjectKlass.KlassVersion> tmpKlassTable = new ArrayList<>();
         tmpKlassTable.add(thisInterfKlass);
-        for (ObjectKlass interf : thisInterfKlass.getKlass().getSuperInterfaces()) {
-            for (ObjectKlass.KlassVersion supInterf : interf.getVersionIKlassTable()) {
+        for (ObjectKlass interf : superInterfaces) {
+            for (ObjectKlass.KlassVersion supInterf : interf.getiKlassTable()) {
                 if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
@@ -208,51 +208,11 @@ final class InterfaceTables {
             fixVTable(self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getKlass().getInterfaceMethodsTable());
         }
         // Third step
-        for (int tableIndex = 0; tableIndex < tables.length; tableIndex++) {
-            Entry[] entries = tables[tableIndex];
+        for (Entry[] entries : tables) {
             Method.MethodVersion[] itable = getITable(entries, vtable, mirandas, declaredMethods);
             tmpTables.add(itable);
-
-            // Update leaf assumptions for super interfaces
-            ObjectKlass currInterface = iklassTable[tableIndex].getKlass();
-            updateLeafAssumptions(itable, currInterface);
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
-    }
-
-    /**
-     * Note: Leaf assumptions are not invalidated on creation of an interface. This means that in
-     * the following example:
-     * 
-     * <pre>
-     * interface A {
-     *     default void m() {
-     *     }
-     * }
-     * 
-     * interface B extends A {
-     *     default void m() {
-     *     }
-     * }
-     * </pre>
-     * 
-     * Unless a concrete class that implements B is loaded, the leaf assumption for A.m() will not
-     * be invalidated.
-     */
-    private static void updateLeafAssumptions(Method.MethodVersion[] itable, ObjectKlass currInterface) {
-        for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
-            Method.MethodVersion m = itable[methodIndex];
-            // This class' itable entry for this method is not the interface's declared method.
-            if (m.getDeclaringKlassRef() != currInterface) {
-                Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
-                // sanity checks
-                assert intfMethod.getDeclaringKlassRef() == currInterface;
-                assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
-                if (intfMethod.leafAssumption()) {
-                    intfMethod.invalidateLeaf();
-                }
-            }
-        }
     }
 
     // Actual implementations
@@ -266,7 +226,7 @@ final class InterfaceTables {
         }
         // At this point, no more mirandas should be created.
         if (superKlass != null) {
-            for (ObjectKlass.KlassVersion superKlassInterf : superKlass.getVersionIKlassTable()) {
+            for (ObjectKlass.KlassVersion superKlassInterf : superKlass.getiKlassTable()) {
                 fillMirandas(superKlassInterf);
             }
         }
@@ -306,6 +266,7 @@ final class InterfaceTables {
                     virtualMethod = declared[index];
                     break;
                 default:
+                    CompilerAsserts.neverPartOfCompilation();
                     throw EspressoError.shouldNotReachHere();
             }
             if (!virtualMethod.getKlassVersion().isInterface()) {
@@ -354,6 +315,7 @@ final class InterfaceTables {
                 newMiranda.setVTableIndex(vtableIndex);
                 break;
             default:
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere();
         }
     }

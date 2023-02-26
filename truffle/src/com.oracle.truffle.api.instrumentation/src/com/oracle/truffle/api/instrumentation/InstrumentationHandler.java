@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
+import com.oracle.truffle.api.instrumentation.NearestNodesCollector.NodeListSection;
+import com.oracle.truffle.api.instrumentation.NearestNodesCollector.NodeSection;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -89,6 +91,9 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 /**
  * Central coordinator class for the Truffle instrumentation framework. Allocated once per
@@ -185,8 +190,17 @@ final class InstrumentationHandler {
             if (!sourceSectionBindings.isEmpty() || sourcesLoaded.hasBindings()) {
                 VisitorBuilder visitorBuilder = new VisitorBuilder();
                 visitorBuilder.addNotifyLoadedOperationForAllBindings(VisitOperation.Scope.ALL);
+                if (!executionBindings.isEmpty()) {
+                    visitorBuilder.addInsertNearestWrapperCorrectionOperationForAllBindings(VisitOperation.Scope.ALL);
+                }
                 visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL);
                 visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
+            } else if (!executionBindings.isEmpty()) {
+                VisitorBuilder visitorBuilder = new VisitorBuilder();
+                boolean added = visitorBuilder.addInsertNearestWrapperCorrectionOperationForAllBindings(VisitOperation.Scope.ALL);
+                if (added) {
+                    visitRoot(root, root, visitorBuilder.buildVisitor(), false, true);
+                }
             }
         }
     }
@@ -350,7 +364,7 @@ final class InstrumentationHandler {
         return binding;
     }
 
-    <T> EventBinding<T> addSourceSectionBinding(EventBinding.SourceSectionLoaded<T> binding) {
+    <T> EventBinding<T> addSourceSectionBinding(EventBinding.Source<T> binding) {
         if (TRACE) {
             trace("BEGIN: Adding binding %s, %s%n", binding.getFilter(), binding.getElement());
         }
@@ -358,7 +372,7 @@ final class InstrumentationHandler {
         hasLoadOrExecutionBinding = true;
         this.sourceSectionBindings.add(binding);
 
-        if (binding.isNotifyLoaded()) {
+        if (((EventBinding.LoadedNotifier) binding).isNotifyLoaded()) {
             if (!loadedRoots.isEmpty()) {
                 VisitorBuilder visitorBuilder = new VisitorBuilder();
                 visitorBuilder.addNotifyLoadedOperationForBinding(VisitOperation.Scope.ONLY_ORIGINAL, binding);
@@ -673,7 +687,7 @@ final class InstrumentationHandler {
                 parent = next;
             }
 
-            if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection)) {
+            if (binding.isInstrumentedFull(providedTags, rootNode, instrumentedNode, sourceSection, true)) {
                 if (TRACE) {
                     trace("  Found binding %s, %s%n", binding.getFilter(), binding.getElement());
                 }
@@ -717,7 +731,7 @@ final class InstrumentationHandler {
                 visitorBuilder.addInsertWrapperOperationForAllBindings(VisitOperation.Scope.ALL);
                 visitorBuilder.addFindSourcesOperation(VisitOperation.Scope.ALL);
                 visitorBuilder.addFindSourcesExecutedOperation(VisitOperation.Scope.ALL);
-                visitRoot(rootNode, parentInstrumentable, visitorBuilder.buildVisitor(), true, false);
+                visitRoot(rootNode, parentInstrumentable, visitorBuilder.buildVisitor(), true, false, false);
             }
         }
     }
@@ -763,13 +777,20 @@ final class InstrumentationHandler {
     }
 
     static void notifySourceSectionLoaded(EventBinding.Source<?> binding, Node node, SourceSection section) {
-        if (section == null || binding.isDisposed()) {
+        if (section == null) {
             // Do not report null source sections to keep compatibility with the past behavior.
+            return;
+        }
+        notifySourceSectionLoaded(binding, new LoadSourceSectionEvent(section, node));
+    }
+
+    static void notifySourceSectionLoaded(EventBinding.Source<?> binding, LoadSourceSectionEvent event) {
+        if (binding.isDisposed()) {
             return;
         }
         LoadSourceSectionListener listener = (LoadSourceSectionListener) binding.getElement();
         try {
-            listener.onLoad(new LoadSourceSectionEvent(section, node));
+            listener.onLoad(event);
         } catch (Throwable t) {
             if (binding.isLanguageBinding()) {
                 throw t;
@@ -861,8 +882,16 @@ final class InstrumentationHandler {
         return wrapperNode;
     }
 
-    private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
-        return addExecutionBinding(new EventBinding.Execution<>(instrumenter, filter, inputFilter, factory));
+    private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, NearestSectionFilter nearestFilter, SourceSectionFilter filter,
+                    SourceSectionFilter inputFilter, T factory) {
+        assert nearestFilter == null || inputFilter == null; // They can not be non-null both.
+        EventBinding.Source<T> binding;
+        if (nearestFilter != null) {
+            binding = new EventBinding.NearestExecution<>(instrumenter, nearestFilter, filter, factory);
+        } else {
+            binding = new EventBinding.Execution<>(instrumenter, filter, inputFilter, factory);
+        }
+        return addExecutionBinding(binding);
     }
 
     private <T extends ExecutionEventListener> EventBinding<T> attachListener(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T listener) {
@@ -873,8 +902,15 @@ final class InstrumentationHandler {
         return addSourceLoadedBinding(new EventBinding.SourceLoaded<>(abstractInstrumenter, filter, null, listener, true, notifyLoaded));
     }
 
-    private <T> EventBinding<T> attachSourceSectionListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-        return addSourceSectionBinding(new EventBinding.SourceSectionLoaded<>(abstractInstrumenter, filter, null, listener, true, notifyLoaded));
+    private <T> EventBinding<T> attachSourceSectionListener(AbstractInstrumenter abstractInstrumenter, NearestSectionFilter nearestFilter, SourceSectionFilter baseFilter, T listener,
+                    boolean notifyLoaded) {
+        EventBinding.Source<T> binding;
+        if (nearestFilter != null) {
+            binding = new EventBinding.LoadNearestSection<>(abstractInstrumenter, nearestFilter, baseFilter, listener, false, notifyLoaded);
+        } else {
+            binding = new EventBinding.SourceSectionLoaded<>(abstractInstrumenter, baseFilter, null, listener, false, notifyLoaded);
+        }
+        return addSourceSectionBinding(binding);
     }
 
     private void visitLoadedSourceSections(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, LoadSourceSectionListener listener) {
@@ -1140,7 +1176,6 @@ final class InstrumentationHandler {
         }
     }
 
-    @SuppressWarnings("deprecation")
     static void removeWrapper(ProbeNode node) {
         if (TRACE) {
             trace("Remove wrapper for %s%n", node.getContext().getInstrumentedSourceSection());
@@ -1149,7 +1184,6 @@ final class InstrumentationHandler {
         ((Node) wrapperNode).replace(wrapperNode.getDelegateNode());
     }
 
-    @SuppressWarnings("deprecation")
     private static void invalidateWrapper(Node node) {
         Node parent = node.getParent();
         if (!(parent instanceof WrapperNode)) {
@@ -1249,11 +1283,12 @@ final class InstrumentationHandler {
         }
 
         protected final Scope scope;
-        protected EventBinding.Source<?>[] bindingsAtConstructionTime;
+        protected final EventBinding.Source<?>[] bindingsAtConstructionTime;
+        protected EconomicMap<EventBinding.Source<?>, EconomicMap<Source, NearestNodesCollector>> nearestNodeCollectors;
         /**
          * True if this operation contains only one binding. The reason for storing this in a
          * separate field is that the bindings collection is either a singleton list or an async
-         * collectionswhich does not support size(). Which one of those it is is know only at
+         * collection, which does not support size(). Which one of those it is is known only at
          * construction time.
          */
         private final boolean singleBindingOperation;
@@ -1306,8 +1341,54 @@ final class InstrumentationHandler {
         protected void postVisitCleanup() {
         }
 
-        protected void postVisitNotifications() {
+        private boolean updateNearestNode(EventBinding.Source<?> binding, Node instrumentableNode, SourceSection sourceSection, SourceSection rootSection) {
+            if (!(binding instanceof EventBinding.NearestSourceSection)) {
+                return false;
+            }
+            EventBinding.NearestSourceSection<?> nearestBinding = (EventBinding.NearestSourceSection<?>) binding;
+            NearestSectionFilter nearestFilter = nearestBinding.getNearestFilter();
+            if (nearestNodeCollectors == null) {
+                nearestNodeCollectors = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+            }
+            EconomicMap<Source, NearestNodesCollector> collectorMap = nearestNodeCollectors.get(nearestBinding);
+            if (collectorMap == null) {
+                collectorMap = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+                nearestNodeCollectors.put(nearestBinding, collectorMap);
+            }
+            Source source = sourceSection.getSource();
+            NearestNodesCollector collector = collectorMap.get(source);
+            if (collector == null) {
+                collector = new NearestNodesCollector(nearestFilter);
+                collectorMap.put(source, collector);
+            }
+            collector.loadedSection(instrumentableNode, sourceSection, rootSection);
+            return true;
         }
+
+        @SuppressWarnings("unused")
+        protected void postVisitNotifications(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+        }
+
+        protected final void visitNearestSections(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            for (EventBinding.Source<?> binding : bindingsAtConstructionTime) {
+                EconomicMap<Source, NearestNodesCollector> collectorMap = nearestNodeCollectors.get(binding);
+                if (collectorMap != null) {
+                    Set<Class<? extends Tag>> allTags = convertTags(providedTags);
+                    for (NearestNodesCollector collector : collectorMap.getValues()) {
+                        NodeSection nearest = collector.getNearest(allTags);
+                        if (nearest != null) {
+                            NodeListSection oldNearest = ((EventBinding.NearestSourceSection<?>) binding).setTheNearest(nearest, rootSourceSection, allTags);
+                            performNearest(binding, nearest, oldNearest);
+                        }
+                    }
+                }
+            }
+        }
+
+        @SuppressWarnings("unused")
+        protected void performNearest(EventBinding.Source<?> binding, NodeSection nearest, NodeListSection oldNearest) {
+        }
+
     }
 
     private class InsertWrapperOperation extends VisitOperation {
@@ -1322,6 +1403,26 @@ final class InstrumentationHandler {
         @Override
         protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
             insertWrapper(node, section);
+        }
+
+        @Override
+        protected void postVisitNotifications(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            if (nearestNodeCollectors != null) {
+                visitNearestSections(providedTags, rootSourceSection);
+            }
+        }
+
+        @Override
+        protected void performNearest(EventBinding.Source<?> binding, NodeSection nearest, NodeListSection oldNearest) {
+            if (oldNearest != null) {
+                for (WeakReference<Node> nodeRef : oldNearest.nodes) {
+                    Node oldNode = nodeRef.get();
+                    if (oldNode != null) {
+                        invalidateWrapper(oldNode);
+                    }
+                }
+                insertWrapper(nearest.node, nearest.section);
+            }
         }
     }
 
@@ -1365,13 +1466,28 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void postVisitNotifications() {
+        protected void postVisitNotifications(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
             if (notifyBindings) {
                 for (BindingLoadSourceSectionEvent loadEvent : sourceSectionLoadedList) {
                     notifySourceSectionLoaded(loadEvent.binding, loadEvent.node, loadEvent.sourceSection);
                 }
             }
+            if ((scope == Scope.ALL || scope == Scope.ONLY_ORIGINAL) && nearestNodeCollectors != null) {
+                visitNearestSections(providedTags, rootSourceSection);
+            }
         }
+
+        @Override
+        protected void performNearest(EventBinding.Source<?> binding, NodeSection nearest, NodeListSection oldNearest) {
+            if (oldNearest != null && !Objects.equals(oldNearest.section, nearest.section)) {
+                notifySourceSectionLoaded(binding, nearest.node, nearest.section);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Set<Class<? extends Tag>> convertTags(Set<Class<?>> tags) {
+        return (Set<Class<? extends Tag>>) (Set<?>) tags;
     }
 
     private static class BindingLoadSourceSectionEvent {
@@ -1398,6 +1514,22 @@ final class InstrumentationHandler {
         @Override
         protected void perform(EventBinding.Source<?> binding, Node node, SourceSection section, boolean executedRoot) {
             invalidateWrapper(node);
+        }
+
+        @Override
+        protected void postVisitNotifications(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
+            if ((scope == Scope.ALL || scope == Scope.ONLY_ORIGINAL)) {
+                for (EventBinding.Source<?> binding : bindingsAtConstructionTime) {
+                    if (binding instanceof EventBinding.NearestSourceSection) {
+                        List<Node> nodes = ((EventBinding.NearestSourceSection<?>) binding).getNearestNodes();
+                        if (nodes != null) {
+                            for (Node node : nodes) {
+                                invalidateWrapper(node);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1469,7 +1601,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        protected void postVisitNotifications() {
+        protected void postVisitNotifications(Set<Class<?>> providedTags, SourceSection rootSourceSection) {
             if (updateGlobalSourceList) {
                 if (newSources.isEmpty()) {
                     return;
@@ -1572,6 +1704,26 @@ final class InstrumentationHandler {
                 shouldMaterializeSyntaxNodes = true;
             }
             return this;
+        }
+
+        // Correction of the nearest execution binding that takes loaded roots into account
+        boolean addInsertNearestWrapperCorrectionOperationForAllBindings(VisitOperation.Scope scope) {
+            CopyOnWriteList<EventBinding.Source<?>> nearestExecutionBindings = null;
+            for (EventBinding.Source<?> binding : executionBindings.getArray()) {
+                if (binding instanceof EventBinding.NearestExecution) {
+                    if (nearestExecutionBindings == null) {
+                        nearestExecutionBindings = new CopyOnWriteList<>(new EventBinding.Source<?>[]{binding});
+                    } else {
+                        nearestExecutionBindings.add(binding);
+                    }
+                }
+            }
+            if (nearestExecutionBindings != null) {
+                operations.add(new InsertWrapperOperation(scope, nearestExecutionBindings));
+                shouldMaterializeSyntaxNodes = true;
+                return true;
+            }
+            return false;
         }
 
         VisitorBuilder addInsertWrapperOperationForBinding(VisitOperation.Scope scope, EventBinding.Source<?> binding) {
@@ -1944,11 +2096,11 @@ final class InstrumentationHandler {
                 operation.postVisitCleanup();
             }
             for (VisitOperation operation : operations) {
-                operation.postVisitNotifications();
+                operation.postVisitNotifications(providedTags, rootSourceSection);
             }
         }
 
-        boolean shouldPerformForBinding(VisitOperation operation, EventBinding.Source<?> binding, Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode,
+        private boolean isInstrumented(VisitOperation operation, EventBinding.Source<?> binding, Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode,
                         SourceSection sourceSection) {
             if (singleBindingOptimization && operation.singleBindingOperation) {
                 if (singleBindingOptimizationPass) {
@@ -1958,8 +2110,23 @@ final class InstrumentationHandler {
                     return false;
                 }
             } else {
-                return binding.isInstrumentedFull(providedTags, root, instrumentableNode, sourceSection) ||
+                return binding.isInstrumentedFull(providedTags, root, instrumentableNode, sourceSection, false) ||
                                 binding.isChildInstrumentedFull(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection);
+            }
+        }
+
+        boolean shouldPerformForBinding(VisitOperation operation, EventBinding.Source<?> binding, Node parentInstrumentable, SourceSection parentSourceSection, Node instrumentableNode,
+                        SourceSection sourceSection) {
+            if (isInstrumented(operation, binding, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
+                if (operation.updateNearestNode(binding, instrumentableNode, sourceSection, rootSourceSection)) {
+                    // We're collecting the nearest, no perform now.
+                    // We'll perform in postVisit().
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                return false;
             }
         }
 
@@ -1996,7 +2163,6 @@ final class InstrumentationHandler {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void traceFilterCheck(String result, Node instrumentableNode, SourceSection sourceSection) {
         trace("  Filter %4s node:%s section:%s %n", result, instrumentableNode, sourceSection);
     }
@@ -2033,7 +2199,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void verifyFilter(SourceSectionFilter filter) {
+        void verifyFilter(NearestSectionFilter nearestFilter, SourceSectionFilter sourceSectionFilter) {
         }
 
         String getInstrumentClassName() {
@@ -2164,7 +2330,7 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void verifyFilter(SourceSectionFilter filter) {
+        void verifyFilter(NearestSectionFilter nearestFilter, SourceSectionFilter sourceSectionFilter) {
         }
 
         @Override
@@ -2229,10 +2395,16 @@ final class InstrumentationHandler {
         }
 
         @Override
-        void verifyFilter(SourceSectionFilter filter) {
+        void verifyFilter(NearestSectionFilter nearestFilter, SourceSectionFilter sourceSectionFilter) {
+            if (nearestFilter != null) {
+                verifyTags(nearestFilter, nearestFilter.getReferencedTags());
+            }
+            verifyTags(sourceSectionFilter, sourceSectionFilter.getReferencedTags());
+        }
+
+        void verifyTags(Object filter, Set<Class<?>> referencedTags) {
             Set<Class<?>> providedTags = getProvidedTags(language);
             // filters must not reference tags not declared in @RequiredTags
-            Set<Class<?>> referencedTags = filter.getReferencedTags();
             if (!providedTags.containsAll(referencedTags)) {
                 Set<Class<?>> missingTags = new HashSet<>(referencedTags);
                 missingTags.removeAll(providedTags);
@@ -2304,7 +2476,7 @@ final class InstrumentationHandler {
             InstrumentationHandler.this.addSourceExecutionBinding(binding);
         }
 
-        void attachSourceSectionBinding(EventBinding.SourceSectionLoaded<?> binding) {
+        void attachSourceSectionBinding(EventBinding.Source<?> binding) {
             InstrumentationHandler.this.addSourceSectionBinding(binding);
         }
 
@@ -2360,22 +2532,28 @@ final class InstrumentationHandler {
 
         @Override
         public <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
-            verifyFilter(filter);
-            return InstrumentationHandler.this.attachFactory(this, filter, inputFilter, factory);
+            verifyFilter(null, filter);
+            return InstrumentationHandler.this.attachFactory(this, null, filter, inputFilter, factory);
+        }
+
+        @Override
+        public <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(NearestSectionFilter nearestFilter, SourceSectionFilter baseFilter, T factory) {
+            verifyFilter(nearestFilter, baseFilter);
+            return InstrumentationHandler.this.attachFactory(this, nearestFilter, baseFilter, null, factory);
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter filter, SourceSectionFilter inputFilter, T listener) {
-            verifyFilter(filter);
+            verifyFilter(null, filter);
             return InstrumentationHandler.this.attachListener(this, filter, inputFilter, listener);
         }
 
-        @Override
         @SuppressWarnings("deprecation")
+        @Override
         public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources) {
             verifySourceOnly(filter);
-            verifyFilter(filter);
+            verifyFilter(null, filter);
             return InstrumentationHandler.this.attachSourceListener(this, filter, listener, includeExistingSources);
         }
 
@@ -2387,13 +2565,20 @@ final class InstrumentationHandler {
 
         @Override
         public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-            verifyFilter(filter);
-            return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
+            verifyFilter(null, filter);
+            return InstrumentationHandler.this.attachSourceSectionListener(this, null, filter, listener, notifyLoaded);
+        }
+
+        @Override
+        public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(NearestSectionFilter nearestFilter, SourceSectionFilter baseFilter, T listener,
+                        boolean notifyLoaded) {
+            verifyFilter(nearestFilter, baseFilter);
+            return InstrumentationHandler.this.attachSourceSectionListener(this, nearestFilter, baseFilter, listener, notifyLoaded);
         }
 
         @Override
         public void visitLoadedSourceSections(SourceSectionFilter filter, LoadSourceSectionListener listener) {
-            verifyFilter(filter);
+            verifyFilter(null, filter);
             InstrumentationHandler.this.visitLoadedSourceSections(this, filter, listener);
         }
 
@@ -2417,8 +2602,21 @@ final class InstrumentationHandler {
 
         @Override
         public <T extends LoadSourceSectionListener> EventBinding<T> createLoadSourceSectionBinding(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
-            verifyFilter(filter);
+            verifyFilter(null, filter);
             return new EventBinding.SourceSectionLoaded<>(this, filter, null, listener, false, notifyLoaded);
+        }
+
+        @Override
+        public <T extends LoadSourceSectionListener> EventBinding<T> createLoadSourceSectionBinding(NearestSectionFilter nearestFilter, SourceSectionFilter baseFilter, T listener,
+                        boolean notifyLoaded) {
+            verifyFilter(nearestFilter, baseFilter);
+            EventBinding.Source<T> binding;
+            if (nearestFilter != null) {
+                binding = new EventBinding.LoadNearestSection<>(this, nearestFilter, baseFilter, listener, false, notifyLoaded);
+            } else {
+                binding = new EventBinding.SourceSectionLoaded<>(this, baseFilter, null, listener, false, notifyLoaded);
+            }
+            return binding;
         }
 
         @Override
@@ -2443,7 +2641,7 @@ final class InstrumentationHandler {
             }
         }
 
-        abstract void verifyFilter(SourceSectionFilter filter);
+        abstract void verifyFilter(NearestSectionFilter nearestFilter, SourceSectionFilter sourceSectionFilter);
 
     }
 
@@ -2476,7 +2674,7 @@ final class InstrumentationHandler {
 
         @Override
         public Iterator<E> iterator() {
-            return new Iterator<E>() {
+            return new Iterator<>() {
                 private final E[] snapshot = getArray();
                 private int cursor = 0;
 
@@ -2665,7 +2863,7 @@ final class InstrumentationHandler {
          */
         @Override
         public Iterator<R> iterator() {
-            return new Iterator<R>() {
+            return new Iterator<>() {
 
                 /*
                  * We need to capture the values field in the iterator to have a consistent view on

@@ -1,3 +1,10 @@
+---
+layout: docs
+toc_group: embedding
+link_title: Enterprise Sandbox Resource Limits
+permalink: /reference-manual/embed-languages/sandbox-resource-limits/
+---
+
 ## Enterprise Sandbox Resource Limits
 
 GraalVM Enterprise provides the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
@@ -13,20 +20,23 @@ The options are a best effort approach to limiting resource usage of guest appli
 
 The resource limits may be configured using the following options:
 
-* `--sandbox.MaxStatements=<long>` Limit the maximum number of guest language statements.
-* `--sandbox.MaxStatementsIncludeInternal=<boolean>` Whether to include internal sources in the max statements computation.
-* `--sandbox.MaxCPUTime=<duration>` Limit the total maximum CPU time that was spent running the application.
-* `--sandbox.MaxCPUTimeCheckInterval=<duration>` Time interval to check the active CPU time for a context.
-* `--sandbox.MaxStackFrames=<int>` Limits the maximum number of guest stack frames.
-* `--sandbox.MaxThreads=<int>` Limit the number of threads that can be concurrently used by a context.
-* `--sandbox.MaxASTDepth=<int>` Limit the maximum depth of AST nodes for a guest language function.
-* `--sandbox.MaxHeapMemory=<size>` Specifies the maximum heap memory that can be retained by the application during its run.
-* `--sandbox.AllocatedBytesCheckInterval=<duration>` Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context.
-* `--sandbox.AllocatedBytesCheckEnabled=<boolean>` Specifies whether checking of allocated bytes for an execution context is enabled. If disabled, retained size checking for the context can be triggered only by the low memory trigger.
-* `--sandbox.AllocatedBytesCheckFactor=<factor>` Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated.
-* `--sandbox.RetainedBytesCheckInterval=<duration>` Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context.
-* `--sandbox.RetainedBytesCheckFactor=<factor>` Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context (one with `sandbox.MaxHeapMemory` set) is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
-* `--sandbox.UseLowMemoryTrigger=<boolean>` Specifies whether stopping the world is enabled. If enabled, engines with at least one memory-limited execution context are paused when the total number of bytes allocated in the heap for the whole host VM exceeds the specified factor of total heap memory of the host VM. If disabled, retained size checking for memory-limited execution contexts can be triggered only by the allocated bytes checker. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
+<!-- BEGIN: sandbox-options -->
+- `--sandbox.AllocatedBytesCheckEnabled=true|false` : Specifies whether checking of allocated bytes for an execution context is enabled. Is set to 'true' by default.
+- `--sandbox.AllocatedBytesCheckFactor=[0.0, inf)` : Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated. Is set to '1.0' by default.
+- `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default.
+- `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
+- `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
+- `--sandbox.MaxCPUTimeCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check the active CPU time for an execution context. Is set to '10ms' by default.
+- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
+- `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
+- `--sandbox.MaxStatementsIncludeInternal` : Configures whether to include internal sources in the max statements computation.
+- `--sandbox.MaxThreads=[1, inf)` : Limits the number of threads that can be entered by a context at the same point in time (default: no limit).
+- `--sandbox.RetainedBytesCheckFactor=[0.0, inf)` : Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. Is set to '0.7' by default.
+- `--sandbox.RetainedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context. Is set to '10ms' by default.
+- `--sandbox.TraceLimits=true|false` : Records the maximum amount of resources used during execution, and reports a summary of resource limits to the log file upon application exit. Users may also provide limits to enforce while tracing. This flag can be used to estimate an application's optimal sandbox parameters, either by tracing the limits of a stress test or peak usage.
+- `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heapfor the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
+<!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
 In addition to that the limits may be reset at any point of time during the execution. Resetting is only aplicable to `sandbox.MaxStatements` and `sandbox.MaxCPUTime`.
@@ -45,6 +55,9 @@ By default no CPU time limit is enforced.
 If the time limit is exceeded then the polyglot context is cancelled and the execution stops by throwing a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
 As soon as the time limit is triggered, no further application code can be executed with this context.
 It will continuously throw a `PolyglotException` for any method of the polyglot context that will be invoked.
+
+The used CPU time of a context includes time spent in callbacks to host code.
+This is also the case when running with [Polyglot Isolates].
 
 The used CPU time of a context typically does not include time spent waiting for synchronization or IO.
 The CPU time of all threads will be added and checked against the CPU time limit.
@@ -67,16 +80,14 @@ try (Context context = Context.newBuilder("js")
                            .option("sandbox.MaxCPUTime", "500ms")
                            .option("sandbox.MaxCPUTimeCheckInterval", "5ms")
                        .build();) {
-    try {
-        context.eval("js", "while(true);");
-        assert false;
-    } catch (PolyglotException e) {
-        // triggered after 500ms;
-        // context is closed and can no longer be used
-        // error message: Maximum CPU time limit of 500ms exceeded.
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "while(true);");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after 500ms;
+    // context is closed and can no longer be used
+    // error message: Maximum CPU time limit of 500ms exceeded.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```
 
@@ -108,17 +119,15 @@ try (Context context = Context.newBuilder("js")
                            .option("sandbox.MaxStatements", "2")
                            .option("sandbox.MaxStatementsIncludeInternal", "false")
                        .build();) {
-    try {
-        context.eval("js", "purpose = 41");
-        context.eval("js", "purpose++");
-        context.eval("js", "purpose++"); // triggers max statements
-        assert false;
-    } catch (PolyglotException e) {
-        // context is closed and can no longer be used
-        // error message: Maximum statements limit of 2 exceeded.
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "purpose = 41");
+    context.eval("js", "purpose++");
+    context.eval("js", "purpose++"); // triggers max statements
+    assert false;
+} catch (PolyglotException e) {
+    // context is closed and can no longer be used
+    // error message: Maximum statements limit of 2 exceeded.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```
 
@@ -144,7 +153,7 @@ If used together with the AST depth limit it can be used to estimate total stack
 ## Limiting the number of active threads
 
 Limits the number of threads that can be used by a context at the same point in time.
-By default, an arbitary number of threads can be used.
+By default, an arbitrary number of threads can be used.
 If a set limit is exceeded, entering the context fails with a `PolyglotException` and the polyglot context is canceled.
 Resetting resource limits does not affect thread limits.
 
@@ -152,9 +161,11 @@ Resetting resource limits does not affect thread limits.
 
 The `sandbox.MaxHeapMemory` option allows you to specify the maximum heap memory the application is allowed to retain during its run.
 `sandbox.MaxHeapMemory` must be positive. This option is only supported on a HotSpot-based VM.
-Enabling this option in AOT mode will result in PolyglotException.
+Enabling this option in a native executable will result in a `PolyglotException`.
+The option is also not supported with [Polyglot Isolates], which have different means of controlling memory consumption.
 When exceeding of the limit is detected, the corresponding context is automatically cancelled and then closed.
 
+Only objects residing in the guest application count towards the limit - memory allocated during callbacks to host code does not.
 The efficacy of this option (also) depends on the garbage collector used.
 
 #### Example Usage
@@ -164,17 +175,37 @@ try (Context context = Context.newBuilder("js")
                            .allowExperimentalOptions(true)
                            .option("sandbox.MaxHeapMemory", "100MB")
                        .build()) {
-    try {
-        context.eval("js", "var r = {}; var o = r; while(true) { o.o = {}; o = o.o; };");
-        assert false;
-    } catch (PolyglotException e) {
-        // triggered after the retained size is greater than 100MB;
-        // context is closed and can no longer be used
-        // error message: Maximum heap memory limit of 104857600 bytes exceeded. Current memory at least...
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "var r = {}; var o = r; while(true) { o.o = {}; o = o.o; };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after the retained size is greater than 100MB;
+    // context is closed and can no longer be used
+    // error message: Maximum heap memory limit of 104857600 bytes exceeded. Current memory at least...
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
+```
+
+## Determining Sandbox Resource Limits
+
+The sandbox.TraceLimits option allows you to trace a running process and record the maximum resource utilization. This can be used to estimate parameters to define a sandbox for the workload. For example, a web server's sandbox parameters could be obtained by enabling this option and either stress-testing the server, or letting the server run during peak usage. When this option is enabled, the report is saved to the log file after the workload completes. Users can change the location of the log file by using --log.file=<path> with a language launcher or -Dpolyglot.log.file=<path> when using a java launcher. Each resource limit in the report can be passed directly to a sandbox option in order to enforce the limit.
+
+See, for example, how to trace limits for a Python workload:
+
+```
+graalpy --log.file=limits.log --experimental-options --sandbox.TraceLimits=true workload.py
+
+limits.log:
+[trace-limits] Sandbox Limits Statistics:
+HEAP                                12MB
+CPU                                   7s
+STATEMENTS                       9441565
+STACKFRAMES                           29
+THREADS                                1
+ASTDEPTH                              15
+
+Sandbox Command Line Options:
+--sandbox.MaxHeapMemory=12MB --sandbox.MaxCPUTime=7s --sandbox.MaxStatements=9441565 --sandbox.MaxStackFrames=29 --sandbox.MaxThreads=1 --sandbox.MaxASTDepth=15
 ```
 
 #### Implementation details and expert options
@@ -251,14 +282,12 @@ try (Context context = Context.newBuilder("js")
                            .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                        .build();) {
-    try {
-        context.eval("js", /*... initialization script ...*/);
-        context.resetLimits();
-        context.eval("js", /*... user script ...*/);
-        assert false;
-    } catch (PolyglotException e) {
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", /*... initialization script ...*/);
+    context.resetLimits();
+    context.eval("js", /*... user script ...*/);
+    assert false;
+} catch (PolyglotException e) {
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```

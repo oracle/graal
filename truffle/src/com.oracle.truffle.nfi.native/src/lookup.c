@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,8 +50,8 @@
 
 #if defined(ENABLE_ISOLATED_NAMESPACE)
 
-static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfName, jint mode) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
+static void *loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfName, jint mode) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) context;
     void *handle = NULL;
 
     // Double-checked locking on the NFI context instance.
@@ -62,7 +62,7 @@ static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfN
         if (namespace_id == 0) {
             handle = dlmopen(LM_ID_NEWLM, utfName, mode);
             if (handle != NULL) {
-                if (dlinfo((void*) handle, RTLD_DI_LMID, &namespace_id) != 0) {
+                if (dlinfo((void *) handle, RTLD_DI_LMID, &namespace_id) != 0) {
                     // Library was loaded, but can't peek the link-map list (namespace); should not reach here.
                     jclass internal_error = (*env)->FindClass(env, "java/lang/InternalError");
                     const char *error = dlerror();
@@ -85,9 +85,10 @@ static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfN
 
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name,
+                                                                                             jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) context;
     void *handle = NULL;
 
 #if defined(ENABLE_ISOLATED_NAMESPACE)
@@ -95,7 +96,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
         handle = loadLibraryInNamespace(env, context, utfName, flags & ~ISOLATED_NAMESPACE);
     } else {
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
-    handle = dlopen(utfName, flags);
+        handle = dlopen(utfName, flags);
 #if defined(ENABLE_ISOLATED_NAMESPACE)
     }
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
@@ -106,15 +107,15 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     }
 
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong)(intptr_t)handle;
+    return (jlong) (intptr_t) handle;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
-    dlclose((void*)(intptr_t)handle);
+    dlclose((void *) (intptr_t) handle);
 }
 
 static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) (intptr_t) context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     void *ret;
 
@@ -129,14 +130,15 @@ static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
         }
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong)(intptr_t)check_intrinsify(ctx, ret);
+    return (jlong) (intptr_t) check_intrinsify(ctx, ret);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library,
+                                                                                        jstring name) {
     if (library == 0) {
         return lookup(env, context, RTLD_DEFAULT, name);
     } else {
-        return lookup(env, context, (void *)(intptr_t)library, name);
+        return lookup(env, context, (void *) (intptr_t) library, name);
     }
 }
 

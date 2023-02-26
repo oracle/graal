@@ -374,7 +374,7 @@ public class LoggingTest {
     @Test
     public void testNoParameters() {
         String message = "Test{0}";
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 for (TruffleLogger logger : loggers) {
@@ -413,7 +413,7 @@ public class LoggingTest {
     }
 
     private static void assertLoggerOutput(String expected, Consumer<TruffleLogger> log) {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 log.accept(loggers[0]);
@@ -431,7 +431,7 @@ public class LoggingTest {
     @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 for (TruffleLogger logger : loggers) {
@@ -455,7 +455,7 @@ public class LoggingTest {
 
     @Test
     public void testParametersObjects() {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
                 for (TruffleLogger logger : loggers) {
@@ -479,10 +479,10 @@ public class LoggingTest {
 
     @Test
     public void testInnerContextLogging() {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        AbstractLoggingLanguage.action = new BiPredicate<>() {
             @Override
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                TruffleContext tc = context.getEnv().newContextBuilder().build();
+                TruffleContext tc = context.getEnv().newInnerContextBuilder().initializeCreatorContext(true).build();
                 final Object prev = tc.enter(null);
                 try {
                     for (TruffleLogger logger : loggers) {
@@ -928,7 +928,7 @@ public class LoggingTest {
         try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
-            LoggingLanguageFirst.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+            LoggingLanguageFirst.action = new BiPredicate<>() {
                 @Override
                 public boolean test(LoggingContext ctx, TruffleLogger[] loggers) {
                     Assert.assertTrue(loggers.length > 0);
@@ -1022,7 +1022,7 @@ public class LoggingTest {
     public void testInvalidId() {
         Context.Builder builder = newContextBuilder();
         TestHandler handler = new TestHandler();
-        LoggingLanguageFirst.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        LoggingLanguageFirst.action = new BiPredicate<>() {
             @Override
             public boolean test(LoggingContext ctx, TruffleLogger[] defaultLoggers) {
                 try {
@@ -1301,7 +1301,7 @@ public class LoggingTest {
         if (loggerIds.length != loggerNames.length || loggerNames.length != messages.length) {
             throw new IllegalArgumentException("loggerIds, loggerNames and messages must have same length.");
         }
-        return new BiPredicate<LoggingContext, TruffleLogger[]>() {
+        return new BiPredicate<>() {
             @Override
             @CompilerDirectives.TruffleBoundary
             public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
@@ -1348,7 +1348,7 @@ public class LoggingTest {
 
     private static String getRedirectMessage() {
         try {
-            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$RedirectNotificationOutputStream");
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$StreamLogHandler");
             Field fld = clz.getDeclaredField("REDIRECT_FORMAT");
             fld.setAccessible(true);
             String format = (String) fld.get(null);
@@ -1626,12 +1626,17 @@ public class LoggingTest {
                 public Object execute(VirtualFrame frame) {
                     boolean doDefaultLogging = true;
                     if (action != null) {
-                        doDefaultLogging = action.test(getReference().get(this), allLoggers);
+                        doDefaultLogging = isDefaultLogging();
                     }
                     if (doDefaultLogging) {
                         doLog();
                     }
                     return getReference().get(this).getEnv().asGuestValue(null);
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private boolean isDefaultLogging() {
+                    return action.test(getReference().get(this), allLoggers);
                 }
             };
             return root.getCallTarget();

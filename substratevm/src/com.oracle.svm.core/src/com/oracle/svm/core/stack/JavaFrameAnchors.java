@@ -25,8 +25,9 @@
 package com.oracle.svm.core.stack;
 
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -39,10 +40,18 @@ public class JavaFrameAnchors {
     private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord("JavaFrameAnchors.lastAnchor").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     public static void pushFrameAnchor(JavaFrameAnchor anchor) {
+        /*
+         * Set IP and SP to null during initialization, these values will later be overwritten by
+         * proper ones. The intention is to not see stale values when debugging or in signal
+         * handlers.
+         */
+        anchor.setLastJavaIP(WordFactory.nullPointer());
+        anchor.setLastJavaSP(WordFactory.nullPointer());
         anchor.setPreviousAnchor(lastAnchor.get());
         lastAnchor.set(anchor);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JavaFrameAnchor popFrameAnchor() {
         JavaFrameAnchor result = lastAnchor.get();
         lastAnchor.set(result.getPreviousAnchor());

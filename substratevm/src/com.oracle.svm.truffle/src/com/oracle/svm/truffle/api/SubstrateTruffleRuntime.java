@@ -46,13 +46,14 @@ import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -60,6 +61,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -99,7 +101,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private CallMethods hostedCallMethods;
+    private KnownMethods hostedCallMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;
@@ -131,11 +133,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateFastThreadLocal.SINGLETON;
     }
 
-    @Override
-    protected AutoCloseable openCompilerThreadScope() {
-        return new CompilerThreadScope();
-    }
-
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
@@ -145,7 +142,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
     }
 
     private void teardown() {
@@ -170,7 +167,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
-        return callMethods.anyFrameMethod;
+        return knownMethods.anyFrameMethod;
     }
 
     @Override
@@ -195,11 +192,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
-    @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void lookupCallMethods(MetaAccessProvider metaAccess) {
-        super.lookupCallMethods(metaAccess);
-        hostedCallMethods = CallMethods.lookup(GraalAccess.getOriginalProviders().getMetaAccess());
+    public void initializeHostedKnownMethods(MetaAccessProvider hostedMetaAccess) {
+        hostedCallMethods = new KnownMethods(hostedMetaAccess);
     }
 
     @Override
@@ -210,11 +205,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected CallMethods getCallMethods() {
+    public KnownMethods getKnownMethods() {
         if (SubstrateUtil.HOSTED) {
             return hostedCallMethods;
         } else {
-            return callMethods;
+            return knownMethods;
         }
     }
 
@@ -231,14 +226,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
-            // Checkstyle: stop
             synchronized (this) {
                 if (!initialized) {
                     initializeAtRuntime(callTarget);
                     initialized = true;
                 }
             }
-            // Checkstyle: resume
         }
     }
 
@@ -249,7 +242,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void notifyTransferToInterpreter() {
-        CompilerAsserts.neverPartOfCompilation();
         /*
          * Nothing to do here. We print the stack trace in the Deoptimizer when the actual
          * deoptimization happened.
@@ -374,6 +366,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                return false;
+            }
+        }
+        return super.isInlineable(method);
+    }
+
+    @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
@@ -388,8 +392,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
     }
 
+    @Override
+    public long getStackOverflowLimit() {
+        StackOverflowCheck stackOverflowCheck = ImageSingletons.lookup(StackOverflowCheck.class);
+        return stackOverflowCheck.getStackOverflowBoundary().rawValue();
+    }
+
     /**
-     * Compilation task used when truffle runtime is run in single threaded mode.
+     * Compilation task used when Truffle runtime is run in single threaded mode.
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
@@ -423,21 +433,4 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
     }
-
-    private static final class CompilerThreadScope implements AutoCloseable {
-
-        CompilerThreadScope() {
-            open();
-        }
-
-        // Substituted by EnterpriseTruffleFeature
-        private void open() {
-        }
-
-        // Substituted by EnterpriseTruffleFeature
-        @Override
-        public void close() {
-        }
-    }
-
 }

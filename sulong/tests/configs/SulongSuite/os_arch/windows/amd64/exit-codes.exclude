@@ -1,0 +1,4 @@
+# On Windows native only the last byte/short of the exit code is guarranteed to
+# be the returned value
+c/main-i8.c.dir
+c/main-i16.c.dir

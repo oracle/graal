@@ -94,7 +94,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return blocks;
     }
 
-    private boolean inverted = true;
+    private boolean inverted = false;
 
     public boolean isInverted() {
         return inverted;
@@ -102,6 +102,21 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
 
     public void setInverted(boolean inverted) {
         this.inverted = inverted;
+    }
+
+    /**
+     * Determine if {@code potentialAncestor} equals {@code this} or an ancestor along the
+     * {@link #getParent()} link.
+     */
+    public boolean isAncestorOrSelf(Loop<?> potentialAncestor) {
+        Loop<?> p = this;
+        while (p != null) {
+            if (p == potentialAncestor) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
     }
 
     /**

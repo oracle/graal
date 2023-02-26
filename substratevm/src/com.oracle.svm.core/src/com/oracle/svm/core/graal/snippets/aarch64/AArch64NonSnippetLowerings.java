@@ -41,12 +41,12 @@ final class AArch64NonSnippetLowerings extends NonSnippetLowerings {
 
     @SuppressWarnings("unused")
     public static void registerLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new AArch64NonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new AArch64NonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }
 
     private AArch64NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        super(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }
 }

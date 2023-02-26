@@ -120,7 +120,7 @@ public final class DebuggerConnection implements Commands {
 
     @Override
     public Callable<Void> createLineBreakpointCommand(BreakpointInfo info) {
-        return new Callable<Void>() {
+        return new Callable<>() {
             @Override
             public Void call() {
                 LineBreakpointInfo lineInfo = (LineBreakpointInfo) info;
@@ -135,7 +135,7 @@ public final class DebuggerConnection implements Commands {
 
     @Override
     public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
-        return new Callable<Void>() {
+        return new Callable<>() {
             @Override
             public Void call() {
                 DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);

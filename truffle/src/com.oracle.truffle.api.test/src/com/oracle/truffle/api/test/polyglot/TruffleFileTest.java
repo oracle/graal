@@ -52,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
@@ -67,6 +68,7 @@ import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -99,10 +101,13 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -413,7 +418,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testNormalizeEmptyPath() {
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         TruffleFile file = languageEnv.getInternalTruffleFile("");
         assertEquals("", file.normalize().getPath());
         file = languageEnv.getInternalTruffleFile(".");
@@ -428,7 +433,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
      */
     @Test
     public void testEmptyPath() throws Exception {
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new EmptyPathTestFs()).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new EmptyPathTestFs()).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
         TruffleFile file = languageEnv.getInternalTruffleFile("");
         TruffleFile otherFile = languageEnv.getInternalTruffleFile("other");
 
@@ -515,7 +521,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertTrue(internalFile.isSameFile(internalFile));
         assertFalse(publicFile.isSameFile(internalFile));
         assertFalse(internalFile.isSameFile(publicFile));
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         context.initialize("DuplicateMimeTypeLanguage1");
         publicFile = languageEnv.getPublicTruffleFile(path);
         internalFile = languageEnv.getInternalTruffleFile(path);
@@ -547,7 +553,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path workDir = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
         Path targetPath = workDir.relativize(Files.createFile(Files.createDirectory(workDir.resolve("folder")).resolve("target")));
         try {
-            setupEnv(Context.newBuilder().allowIO(true).build());
+            setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
             languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(workDir.toString()));
             TruffleFile symLink = languageEnv.getPublicTruffleFile("link");
             TruffleFile targetRelativePath = languageEnv.getPublicTruffleFile(targetPath.toString());
@@ -572,7 +578,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetTruffleFileInternalAllowedIO() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).build(), new InternalTruffleFileTestLanguage());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build(), new InternalTruffleFileTestLanguage());
         StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
         TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
         assertFalse(predicate.called);
@@ -596,7 +602,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetTruffleFileInternalCustomFileSystem() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build(),
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build(),
                         new InternalTruffleFileTestLanguage());
         StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
         TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
@@ -664,7 +671,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path write4 = Files.createFile(p.resolve("write4"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
-            setupEnv(Context.newBuilder().fileSystem(fs).allowIO(true).build());
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
             assertEquals(0, fs.openFileCount);
             SeekableByteChannel readByteChannel1 = languageEnv.getPublicTruffleFile(read1.toString()).newByteChannel(EnumSet.of(StandardOpenOption.READ));
             assertEquals(1, fs.openFileCount);
@@ -696,6 +704,14 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             assertEquals(4, fs.openFileCount);
             context.close();
             assertEquals(0, fs.openFileCount);
+            // The compiler can release channel and stream references before the Context#close is
+            // called because these references are no longer in use. In this case, objects
+            // referenced by these references can be gc-ed because registered closeables are weakly
+            // referenced. We need reachability fences to keep these references alive.
+            Reference.reachabilityFence(readByteChannel2);
+            Reference.reachabilityFence(inputStream2);
+            Reference.reachabilityFence(writeByteChannel2);
+            Reference.reachabilityFence(outputStream2);
         } finally {
             delete(p);
         }
@@ -709,7 +725,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path dir2 = Files.createDirectory(p.resolve("read2"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
-            setupEnv(Context.newBuilder().fileSystem(fs).allowIO(true).build());
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
             assertEquals(0, fs.openDirCount);
             DirectoryStream<TruffleFile> dirStream1 = languageEnv.getPublicTruffleFile(dir1.toString()).newDirectoryStream();
             assertEquals(1, fs.openDirCount);
@@ -719,6 +736,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             dirStream1.close();
             assertEquals(1, fs.openDirCount);
             context.close();
+            // The compiler can release the dirStream2 reference before the Context#close is called
+            // because the dirStream2 is no longer in use. In this case, object referenced by the
+            // dirStream2 can be gc-ed because registered closeables are weakly referenced. We need
+            // a reachability fence to keep the dirStream2 reference alive.
+            Reference.reachabilityFence(dirStream2);
             assertEquals(0, fs.openDirCount);
         } finally {
             delete(p);
@@ -737,6 +759,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         };
         languageEnv.registerOnDispose(closeable);
         context.close();
+        // The compiler can release the closeable reference before the Context#close is called
+        // because the closeable is no longer in use. In this case, object referenced by the
+        // closeable can be gc-ed because registered closeables are weakly referenced. We need a
+        // reachability fence to keep the closeable reference alive.
+        Reference.reachabilityFence(closeable);
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
         assertTrue(record.isPresent());
         assertEquals(Level.WARNING, record.map(LogRecord::getLevel).get());
@@ -759,6 +786,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
                 assertTrue(pe.isInternalError());
             });
         } finally {
+            // The compiler can release the closeable reference before the Context#close is called
+            // because the closeable is no longer in use. In this case, object referenced by the
+            // closeable can be gc-ed because registered closeables are weakly referenced. We need a
+            // reachability fence to keep the closeable reference alive.
+            Reference.reachabilityFence(closeable);
             context = null;
         }
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
@@ -766,10 +798,56 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testInvalidScheme() {
-        assertFails(() -> languageEnv.getPublicTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getInternalTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getTruffleFileInternal(URI.create("http://127.0.0.1/foo.js"), (f) -> false), UnsupportedOperationException.class);
+    public void testInvalidURI() throws IOException {
+        URI httpScheme = URI.create("http://127.0.0.1/foo.js");
+        Path tmp = Files.createTempDirectory("invalidscheme");
+        Path existingJar = tmp.resolve("exiting.jar");
+        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(existingJar, StandardOpenOption.CREATE))) {
+            out.putNextEntry(new ZipEntry("file.txt"));
+            out.write("content\n".getBytes(UTF_8));
+            out.closeEntry();
+        }
+        Path nonExistingJar = tmp.resolve("non_existing.jar");
+        URI jarSchemeExistingFile = URI.create("jar:" + existingJar.toUri() + "!/");
+        URI jarSchemeNonExistingFile = URI.create("jar:" + nonExistingJar.toUri() + "!/");
+        URI invalidUri = URI.create("file://localhost:8000/tmp");
+        java.nio.file.FileSystem nioJarFS = FileSystems.newFileSystem(jarSchemeExistingFile, Collections.emptyMap());
+        try {
+            // Context with enabled IO
+            testInvalidSchemeImpl(httpScheme);
+            testInvalidSchemeImpl(jarSchemeExistingFile);
+            testInvalidSchemeImpl(jarSchemeNonExistingFile);
+            testWrongURIPreconditionsImpl(invalidUri);
+            // Context with disabled IO
+            setupEnv(Context.newBuilder().build());
+            testInvalidSchemeImpl(httpScheme);
+            testInvalidSchemeImpl(jarSchemeExistingFile);
+            testInvalidSchemeImpl(jarSchemeNonExistingFile);
+            testWrongURIPreconditionsImpl(invalidUri);
+        } finally {
+            nioJarFS.close();
+            delete(tmp);
+        }
+    }
+
+    private void testInvalidSchemeImpl(URI uri) {
+        assertFails(() -> languageEnv.getPublicTruffleFile(uri), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(uri), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), UnsupportedOperationException.class);
+    }
+
+    private void testWrongURIPreconditionsImpl(URI uri) {
+        assertFails(() -> languageEnv.getPublicTruffleFile(uri), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(uri), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testInvalidPath() {
+        String invalidPath = "\0";
+        assertFails(() -> languageEnv.getPublicTruffleFile(invalidPath), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(invalidPath), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(invalidPath, (f) -> false), IllegalArgumentException.class);
     }
 
     private static void delete(Path path) throws IOException {
@@ -903,6 +981,10 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         public static LanguageContext getContext() {
             return CONTEXT_REF.get(null);
         }
+
+        public DuplicateMimeTypeLanguage1() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Language2Detector.class)
@@ -914,10 +996,26 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             }
         }
 
+        public DuplicateMimeTypeLanguage2() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "InternalTruffleFileTestLanguage", name = "InternalTruffleFileTestLanguage", characterMimeTypes = "text/x-internal-file-test")
     public static final class InternalTruffleFileTestLanguage extends ProxyLanguage {
+
+        public InternalTruffleFileTestLanguage() {
+            /*
+             * Whenever the language is not used as a standalone language, e.g. it is used in
+             * AbstractPolyglotTest#setupEnv, or the delegation is set directly by
+             * ProxyLanguage#setDelegate, we cannot set wrapper to false for all instances, because
+             * the instance created by Truffle framework must delegate to the instance set by
+             * ProxyLanguage#setDelegate.
+             */
+            if (ProxyLanguage.getDelegate().getClass() == ProxyLanguage.class) {
+                wrapper = false;
+            }
+        }
 
         public String getHome() {
             return getLanguageHome();

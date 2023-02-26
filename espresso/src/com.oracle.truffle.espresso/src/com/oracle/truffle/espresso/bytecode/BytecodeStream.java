@@ -27,7 +27,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
@@ -250,6 +249,25 @@ public final class BytecodeStream {
     }
 
     /**
+     * Reads a 1-byte constant pool index for the current instruction. Used by
+     * {@link Bytecodes#LDC}.
+     *
+     * @return the constant pool index
+     */
+    public char readCPI1(int curBCI) {
+        return (char) Bytes.beU1(code, curBCI + 1);
+    }
+
+    /**
+     * Reads a 2-byte constant pool index for the current instruction.
+     *
+     * @return the constant pool index
+     */
+    public char readCPI2(int curBCI) {
+        return (char) Bytes.beU2(code, curBCI + 1);
+    }
+
+    /**
      * Reads a constant pool index for the current instruction.
      *
      * @return the constant pool index
@@ -315,9 +333,10 @@ public final class BytecodeStream {
      * size and the {@link Bytecodes#WIDE} bytecode.
      */
     private int lengthOf(int curBCI) {
-        int length = Bytecodes.lengthOf(opcode(curBCI));
+        int opcode = opcode(curBCI);
+        int length = Bytecodes.lengthOf(opcode);
         if (length == 0) {
-            switch (opcode(curBCI)) {
+            switch (opcode) {
                 case Bytecodes.TABLESWITCH: {
                     return BytecodeTableSwitch.INSTANCE.size(this, curBCI);
                 }
@@ -336,15 +355,14 @@ public final class BytecodeStream {
                     // Should rather be CompilerAsserts.neverPartOfCompilation() but this is
                     // reachable in SVM.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw error(opcode(curBCI));
+                    throw EspressoError.shouldNotReachHere(unknownVariableLengthBytecodeMessage(opcode));
             }
         }
         return length;
     }
 
-    @TruffleBoundary
-    private static EspressoError error(int opcode) {
-        throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
+    private static String unknownVariableLengthBytecodeMessage(int opcode) {
+        return "unknown variable-length bytecode: " + opcode;
     }
 
     public void printBytecode(Klass klass, PrintStream out) {
@@ -432,7 +450,7 @@ public final class BytecodeStream {
                 out.println(str.toString());
             }
         } catch (Throwable e) {
-            throw EspressoError.unexpected("Exception thrown during bytecode printing, aborting...", e);
+            throw EspressoError.shouldNotReachHere("Exception thrown during bytecode printing, aborting...", e);
         }
     }
 

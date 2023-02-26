@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -66,7 +65,6 @@ import com.oracle.truffle.host.HostMethodScope.ScopedObject;
  */
 final class HostLanguage extends TruffleLanguage<HostContext> {
 
-    @CompilationFinal private GuestToHostCodeCache guestToHostCache;
     @CompilationFinal HostClassCache hostClassCache; // effectively final
     final AbstractHostAccess access;
     final AbstractPolyglotImpl polyglot;
@@ -109,15 +107,6 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         return true;
     }
 
-    GuestToHostCodeCache getGuestToHostCache() {
-        GuestToHostCodeCache cache = this.guestToHostCache;
-        if (cache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            guestToHostCache = cache = new GuestToHostCodeCache(this);
-        }
-        return cache;
-    }
-
     private Object unwrapIfScoped(Object obj) {
         if (!methodScopingEnabled) {
             return obj;
@@ -143,9 +132,9 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
                  * applies.
                  */
             } else {
-                throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
+                throw HostAccessor.ENGINE.createPolyglotEngineException(new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
                                 "The host access configuration must be the same for all contexts of an engine. " +
-                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context."));
             }
         } else {
             this.hostClassCache = cache;
@@ -169,7 +158,10 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         } else {
             wrapped = value;
         }
-        return HostObject.forObject(wrapped, hostContext);
+        if (wrapped != null) {
+            return HostObject.forObject(wrapped, hostContext);
+        }
+        return null;
     }
 
     @Override

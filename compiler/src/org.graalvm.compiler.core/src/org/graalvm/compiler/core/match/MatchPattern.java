@@ -166,7 +166,7 @@ public class MatchPattern {
      */
     private final boolean ignoresSideEffects;
 
-    private static final MatchPattern[] EMPTY_PATTERNS = new MatchPattern[0];
+    private static final MatchPattern[] EMPTY_PATTERNS = {};
 
     public MatchPattern(String name, boolean singleUser, boolean consumable, boolean ignoresSideEffects) {
         this(null, name, singleUser, consumable, ignoresSideEffects);

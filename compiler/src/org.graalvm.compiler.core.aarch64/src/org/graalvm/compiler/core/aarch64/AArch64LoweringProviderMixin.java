@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,17 @@
 
 package org.graalvm.compiler.core.aarch64;
 
+import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
 public interface AArch64LoweringProviderMixin extends LoweringProvider {
+
+    @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        return true;
+    }
 
     @Override
     default Integer smallestCompareWidth() {
@@ -44,4 +52,40 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
         return true;
     }
 
+    @Override
+    default boolean writesStronglyOrdered() {
+        /* AArch64 only requires a weak memory model. */
+        return false;
+    }
+
+    @Override
+    default boolean narrowsUseCastValue() {
+        return true;
+    }
+
+    @Override
+    default boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
+        if (!access.isCompatibleWithExtend(extendKind)) {
+            return false;
+        }
+
+        boolean supportsSigned = false;
+        boolean supportsZero = false;
+        if (access instanceof ReadNode) {
+            supportsZero = true;
+            supportsSigned = !((ReadNode) access).ordersMemoryAccesses();
+        }
+
+        switch (extendKind) {
+            case ZERO_16:
+            case ZERO_32:
+            case ZERO_64:
+                return supportsZero;
+            case SIGN_16:
+            case SIGN_32:
+            case SIGN_64:
+                return supportsSigned;
+        }
+        return false;
+    }
 }

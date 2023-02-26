@@ -38,14 +38,20 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
 
     public static final String NAME = "community";
 
+    public static final String INFO = "Graal Community compiler";
+
     /**
      * Must be greater than {@link EconomyCompilerConfigurationFactory#AUTO_SELECTION_PRIORITY}.
      */
-    public static final int AUTO_SELECTION_PRIORITY = 2;
+    public static final int AUTO_SELECTION_PRIORITY = 3;
 
     public CommunityCompilerConfigurationFactory() {
-        super(NAME, AUTO_SELECTION_PRIORITY);
-        assert AUTO_SELECTION_PRIORITY > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
+        this(AUTO_SELECTION_PRIORITY, INFO);
+    }
+
+    protected CommunityCompilerConfigurationFactory(int priority, String info) {
+        super(NAME, info, priority);
+        assert priority > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
     }
 
     @Override
@@ -54,7 +60,7 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
     }
 
     @Override
-    public Instrumentation createInstrumentation(OptionValues options) {
+    public final Instrumentation createInstrumentation(OptionValues options) {
         return new DefaultInstrumentation();
     }
 }

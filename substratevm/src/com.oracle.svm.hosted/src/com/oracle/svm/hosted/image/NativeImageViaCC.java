@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,36 +31,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -74,315 +62,6 @@ public abstract class NativeImageViaCC extends NativeImage {
     public NativeImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
-    }
-
-    class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
-
-        private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
-
-        BinutilsCCLinkerInvocation() {
-            additionalPreOptions.add("-z");
-            additionalPreOptions.add("noexecstack");
-            if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
-                additionalPreOptions.add("-fuse-ld=gold");
-                additionalPreOptions.add("-Wl,--rosegment");
-            }
-
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
-                /* Perform garbage collection of unused input sections. */
-                additionalPreOptions.add("-Wl,--gc-sections");
-            }
-
-            /*
-             * On Linux we use --dynamic-list to ensure only our defined entrypoints end up as
-             * global symbols in the dynamic symbol table of the image. However, when compiling a
-             * static image these are not needed, and some linkers interpret them wrong, creating a
-             * corrupt binary.
-             */
-            if (!SubstrateOptions.StaticExecutable.getValue()) {
-                try {
-                    StringBuilder exportedSymbols = new StringBuilder();
-                    exportedSymbols.append("{\n");
-                    for (String symbol : getImageSymbols(true)) {
-                        exportedSymbols.append('\"').append(symbol).append("\";\n");
-                    }
-                    exportedSymbols.append("};");
-                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
-                    additionalPreOptions.add("-Wl,--dynamic-list");
-                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-
-                    // Drop global symbols in linked static libraries: not covered by --dynamic-list
-                    additionalPreOptions.add("-Wl,--exclude-libs,ALL");
-                } catch (IOException e) {
-                    VMError.shouldNotReachHere();
-                }
-            }
-
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                additionalPreOptions.add("-Wl,-x");
-            }
-        }
-
-        @Override
-        public List<String> getImageSymbols(boolean onlyGlobal) {
-            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
-                            .map(ObjectFile.Symbol::getName)
-                            .collect(Collectors.toList());
-        }
-
-        @Override
-        protected void setOutputKind(List<String> cmd) {
-            switch (imageKind) {
-                case EXECUTABLE:
-                    break;
-                case STATIC_EXECUTABLE:
-                    if (!staticExecWithDynamicallyLinkLibC) {
-                        cmd.add("-static");
-                    }
-                    break;
-                case SHARED_LIBRARY:
-                    cmd.add("-shared");
-                    break;
-                default:
-                    VMError.shouldNotReachHere();
-            }
-        }
-
-        @Override
-        protected List<String> getLibrariesCommand() {
-            List<String> cmd = new ArrayList<>();
-            for (String lib : libs) {
-                if (staticExecWithDynamicallyLinkLibC) {
-                    String linkingMode = libCLibaries.contains(lib)
-                                    ? "dynamic"
-                                    : "static";
-                    cmd.add("-Wl,-B" + linkingMode);
-                }
-                cmd.add("-l" + lib);
-            }
-
-            // Make sure libgcc gets statically linked
-            if (staticExecWithDynamicallyLinkLibC) {
-                cmd.add("-static-libgcc");
-            }
-            return cmd;
-        }
-    }
-
-    class DarwinCCLinkerInvocation extends CCLinkerInvocation {
-
-        DarwinCCLinkerInvocation() {
-            // Workaround building images with older Xcode with new libraries
-            additionalPreOptions.add("-Wl,-U,___darwin_check_fd_set_overflow");
-
-            if (!SubstrateOptions.useLLVMBackend()) {
-                additionalPreOptions.add("-Wl,-no_compact_unwind");
-            }
-
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
-                /* Remove functions and data unreachable by entry points. */
-                additionalPreOptions.add("-Wl,-dead_strip");
-            }
-
-            /*
-             * On Darwin we use -exported_symbols_list to ensure only our defined entrypoints end up
-             * as global symbols in the dynamic symbol table of the image.
-             */
-            try {
-                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                Files.write(exportedSymbolsPath, getImageSymbols(true));
-                additionalPreOptions.add("-Wl,-exported_symbols_list");
-                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-            } catch (IOException e) {
-                VMError.shouldNotReachHere();
-            }
-
-            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                additionalPreOptions.add("-Wl,-x");
-            }
-
-            additionalPreOptions.add("-arch");
-            if (Platform.includedIn(Platform.AMD64.class)) {
-                additionalPreOptions.add("x86_64");
-            } else if (Platform.includedIn(Platform.AARCH64.class)) {
-                additionalPreOptions.add("arm64");
-            }
-        }
-
-        @Override
-        public List<String> getImageSymbols(boolean onlyGlobal) {
-            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
-                            .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
-                            .collect(Collectors.toList());
-        }
-
-        @Override
-        protected void setOutputKind(List<String> cmd) {
-            switch (imageKind) {
-                case STATIC_EXECUTABLE:
-                    throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
-                case SHARED_LIBRARY:
-                    cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN.class)) {
-                        cmd.add("-undefined");
-                        cmd.add("dynamic_lookup");
-                    }
-                    break;
-            }
-        }
-    }
-
-    class WindowsCCLinkerInvocation extends CCLinkerInvocation {
-
-        private final String imageName;
-
-        WindowsCCLinkerInvocation(String imageName) {
-            this.imageName = imageName;
-        }
-
-        @Override
-        protected void setOutputKind(List<String> cmd) {
-            switch (imageKind) {
-                case EXECUTABLE:
-                case STATIC_EXECUTABLE:
-                    // cmd.add("/MT");
-                    // Must use /MD in order to link with JDK native libraries built that way
-                    cmd.add("/MD");
-                    break;
-                case SHARED_LIBRARY:
-                    cmd.add("/MD");
-                    cmd.add("/LD");
-                    break;
-                default:
-                    VMError.shouldNotReachHere();
-            }
-        }
-
-        @Override
-        public List<String> getImageSymbols(boolean onlyGlobal) {
-            return codeCache.getSymbols(getOrCreateDebugObjectFile(), onlyGlobal).stream()
-                            .map(ObjectFile.Symbol::getName)
-                            .collect(Collectors.toList());
-        }
-
-        @Override
-        public List<String> getCommand() {
-            List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
-
-            List<String> cmd = new ArrayList<>(compilerCmd);
-            setOutputKind(cmd);
-
-            for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
-                cmd.add(staticLibrary.toString());
-            }
-
-            /* Add linker options. */
-            cmd.add("/link");
-            cmd.add("/INCREMENTAL:NO");
-            cmd.add("/NODEFAULTLIB:LIBCMT");
-
-            /* Use page size alignment to support memory mapping of the image heap. */
-            cmd.add("/FILEALIGN:4096");
-
-            /* Put .lib and .exp files in a temp dir as we don't usually need them. */
-            cmd.add("/IMPLIB:" + getTempDirectory().resolve(imageName + ".lib"));
-
-            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
-                cmd.add("/DEBUG");
-
-                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
-                    String pdbFile = imageName + ".pdb";
-                    /* We don't need a full PDB file, so leave it in a temp dir ... */
-                    cmd.add("/PDB:" + getTempDirectory().resolve(pdbFile));
-                    /* ... and provide the stripped PDB file instead. */
-                    cmd.add("/PDBSTRIPPED:" + getOutputFile().resolveSibling(pdbFile));
-                }
-            }
-
-            if (!SubstrateOptions.RemoveUnusedSymbols.getValue()) {
-                /* Disable removal as it is on by default. */
-                cmd.add("/OPT:NOREF,NOICF");
-            }
-
-            // Add clibrary paths to command
-            for (String libraryPath : nativeLibs.getLibraryPaths()) {
-                cmd.add("/LIBPATH:" + libraryPath);
-            }
-
-            for (String library : nativeLibs.getLibraries()) {
-                cmd.add(library + ".lib");
-            }
-
-            // Add required Windows Libraries
-            cmd.add("advapi32.lib");
-            cmd.add("ws2_32.lib");
-            cmd.add("secur32.lib");
-            cmd.add("iphlpapi.lib");
-            cmd.add("userenv.lib");
-
-            if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == NativeImageKind.EXECUTABLE) {
-                /*
-                 * Enable wildcard expansion in command line arguments, see
-                 * https://docs.microsoft.com/en-us/cpp/c-language/expanding-wildcard-arguments.
-                 */
-                cmd.add("setargv.obj");
-            }
-
-            cmd.addAll(getNativeLinkerOptions());
-
-            return cmd;
-        }
-    }
-
-    LinkerInvocation getLinkerInvocation(Path outputDirectory, Path tempDirectory, String imageName) {
-        CCLinkerInvocation inv;
-
-        switch (ObjectFile.getNativeFormat()) {
-            case MACH_O:
-                inv = new DarwinCCLinkerInvocation();
-                break;
-            case PECOFF:
-                inv = new WindowsCCLinkerInvocation(imageName);
-                break;
-            case ELF:
-            default:
-                inv = new BinutilsCCLinkerInvocation();
-                break;
-        }
-
-        Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
-        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
-        inv.setOutputFile(outputFile);
-        inv.setTempDirectory(tempDirectory);
-
-        inv.addLibPath(tempDirectory.toString());
-        for (String libraryPath : nativeLibs.getLibraryPaths()) {
-            inv.addLibPath(libraryPath);
-        }
-
-        for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
-            inv.addRPath(rPath);
-        }
-
-        Collection<String> libraries = nativeLibs.getLibraries();
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getName().equals("bionic")) {
-            // on Bionic LibC pthread.h and rt.h are included in standard library and adding them in
-            // linker call produces error
-            libraries = libraries.stream().filter(library -> !Arrays.asList("pthread", "rt").contains(library)).collect(Collectors.toList());
-        }
-        libraries.forEach(inv::addLinkedLibrary);
-
-        for (Path filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
-            inv.addInputFile(filename);
-        }
-
-        for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
-            inv.addInputFile(staticLibraryPath);
-        }
-
-        return inv;
     }
 
     private static List<String> diagnoseLinkerFailure(String linkerOutput) {
@@ -399,9 +78,9 @@ public abstract class NativeImageViaCC extends NativeImage {
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);
         if (m.matches()) {
-            OS os = OS.getCurrent();
-            String libPrefix = os == OS.WINDOWS ? "" : "lib";
-            String libSuffix = os == OS.WINDOWS ? ".lib" : ".a";
+            boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+            String libPrefix = targetWindows ? "" : "lib";
+            String libSuffix = targetWindows ? ".lib" : ".a";
             potentialCauses.add(String.format("It appears as though %s%s%s is missing. Please install it.", libPrefix, m.group(1), libSuffix));
         }
         return potentialCauses;
@@ -411,6 +90,9 @@ public abstract class NativeImageViaCC extends NativeImage {
     @SuppressWarnings("try")
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
+            // 0. Free codecache to make space for writing the objectFile
+            codeCache.purge();
+
             // 1. write the relocatable file
             write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
@@ -424,64 +106,79 @@ public abstract class NativeImageViaCC extends NativeImage {
              * the executable, but avoiding clobbering will help debugging.
              */
 
-            LinkerInvocation inv = getLinkerInvocation(outputDirectory, tempDirectory, imageName);
+            LinkerInvocation inv = CCLinkerInvocation.getLinkerInvocation(imageKind, nativeLibs, codeCache.getCCInputFiles(tempDirectory, imageName),
+                            outputDirectory, tempDirectory, imageName, codeCache.getSymbols(getObjectFile()));
             for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
                 inv = fn.apply(inv);
             }
-            List<String> cmd = inv.getCommand();
-            String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
 
-            Process linkerProcess = null;
             try {
-                ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
-                linkerCommand.redirectErrorStream(true);
-
-                FileUtils.traceCommand(linkerCommand);
-
-                linkerProcess = linkerCommand.start();
-
-                List<String> lines;
-                try (InputStream inputStream = linkerProcess.getInputStream()) {
-                    lines = FileUtils.readAllLines(inputStream);
-                    FileUtils.traceCommandOutput(lines);
-                }
-
-                int status = linkerProcess.waitFor();
-                if (status != 0) {
-                    String output = String.join(System.lineSeparator(), lines);
-                    throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
-                }
-
-                Path imagePath = inv.getOutputFile();
-                BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
-
-                if (OS.getCurrent() == OS.WINDOWS && !imageKind.isExecutable) {
-                    /* Provide an import library for the built shared library. */
-                    String importLib = imageName + ".lib";
-                    Path importLibPath = imagePath.resolveSibling(importLib);
-                    Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
-                }
-
-                if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
-                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
-                    if (OS.getCurrent() == OS.WINDOWS) {
-                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
-                    } else {
-                        BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
-                    }
-                }
-            } catch (IOException e) {
-                throw handleLinkerFailure(e.toString(), commandLine, null);
-            } catch (InterruptedException e) {
-                throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
-            } finally {
-                if (linkerProcess != null) {
-                    linkerProcess.destroy();
+                List<String> cmd = inv.getCommand();
+                runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+            } catch (RuntimeException e) {
+                if (inv.shouldRunFallback(e.getMessage())) {
+                    List<String> cmd = inv.getFallbackCommand();
+                    runLinkerCommand(imageName, inv, cmd, imageKind.isExecutable);
+                } else {
+                    throw e;
                 }
             }
 
             return inv;
+        }
+    }
+
+    private void runLinkerCommand(String imageName, LinkerInvocation inv, List<String> cmd, boolean imageKindIsExecutable) {
+        Process linkerProcess = null;
+        String commandLine = SubstrateUtil.getShellCommandString(cmd, false);
+        try {
+            ProcessBuilder linkerCommand = FileUtils.prepareCommand(cmd, inv.getTempDirectory());
+            linkerCommand.redirectErrorStream(true);
+
+            FileUtils.traceCommand(linkerCommand);
+
+            linkerProcess = linkerCommand.start();
+
+            List<String> lines;
+            try (InputStream inputStream = linkerProcess.getInputStream()) {
+                lines = FileUtils.readAllLines(inputStream);
+                FileUtils.traceCommandOutput(lines);
+            }
+
+            int status = linkerProcess.waitFor();
+            if (status != 0) {
+                String output = String.join(System.lineSeparator(), lines);
+                throw handleLinkerFailure("Linker command exited with " + status, commandLine, output);
+            }
+
+            Path imagePath = inv.getOutputFile();
+            imageFileSize = (int) imagePath.toFile().length();
+            BuildArtifacts.singleton().add(imageKindIsExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIBRARY, imagePath);
+
+            if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
+                /* Provide an import library for the built shared library. */
+                String importLib = imageName + ".lib";
+                Path importLibPath = imagePath.resolveSibling(importLib);
+                Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
+                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibPath);
+            }
+
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                if (Platform.includedIn(Platform.WINDOWS.class)) {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
+                } else {
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
+                }
+            }
+        } catch (IOException e) {
+            throw handleLinkerFailure(e.toString(), commandLine, null);
+        } catch (InterruptedException e) {
+            throw new InterruptImageBuilding("Interrupted during native-image linking step for " + imageName);
+        } finally {
+            if (linkerProcess != null) {
+                linkerProcess.destroy();
+            }
         }
     }
 

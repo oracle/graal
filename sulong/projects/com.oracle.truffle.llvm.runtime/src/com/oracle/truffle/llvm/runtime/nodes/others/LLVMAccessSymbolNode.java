@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,18 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -71,36 +66,15 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
     }
 
     @TruffleBoundary
-    private LLVMLinkerException notFound() {
+    protected LLVMLinkerException notFound() {
         throw new LLVMLinkerException(this, "External %s %s cannot be found.", symbol.getKind(), symbol.getName());
     }
 
-    private LLVMPointer checkNull(LLVMPointer result, BranchProfile exception) {
+    protected LLVMPointer checkNull(LLVMPointer result, BranchProfile exception) {
         if (result == null) {
             exception.enter();
             throw notFound();
         }
         return result;
-    }
-
-    /*
-     * CachedContext is very efficient in single-context mode, otherwise we should get the context
-     * from the frame.
-     */
-    @Specialization(assumptions = "singleContextAssumption()")
-    @GenerateAOT.Exclude
-    public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-        return checkNull(getContext().getSymbol(symbol, exception), exception);
-    }
-
-    protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
-        return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
-    }
-
-    @Specialization
-    public LLVMPointer accessMultiContext(VirtualFrame frame,
-                    @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
-                    @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-        return checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
     }
 }

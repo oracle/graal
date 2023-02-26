@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -44,11 +44,14 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.ReflectionUtil;
 
 public final class ImageClassLoader {
 
@@ -68,26 +71,40 @@ public final class ImageClassLoader {
     }
 
     public final Platform platform;
-    public final AbstractNativeImageClassLoaderSupport classLoaderSupport;
+    public final NativeImageClassLoaderSupport classLoaderSupport;
+    public final DeadlockWatchdog watchdog;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    ImageClassLoader(Platform platform, AbstractNativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
+
+        int watchdogInterval = SubstrateOptions.DeadlockWatchdogInterval.getValue(classLoaderSupport.getParsedHostedOptions());
+        boolean watchdogExitOnTimeout = SubstrateOptions.DeadlockWatchdogExitOnTimeout.getValue(classLoaderSupport.getParsedHostedOptions());
+        this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
-    public void initAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-        classLoaderSupport.initAllClasses(executor, this);
-        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-        if (!completed) {
-            throw shouldNotReachHere("timed out while initializing classes");
+    public void loadAllClasses() throws InterruptedException {
+        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
+            @Override
+            public void execute(Runnable task) {
+                super.execute(() -> {
+                    task.run();
+                    watchdog.recordActivity();
+                });
+            }
+        };
+        try {
+            classLoaderSupport.loadAllClasses(executor, this);
+        } finally {
+            executor.shutdown();
+            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         }
-        executor.shutdownNow();
+        classLoaderSupport.reportBuilderClassesInApplication();
     }
 
     private void findSystemElements(Class<?> systemClass) {
@@ -99,7 +116,7 @@ public final class ImageClassLoader {
         }
         if (declaredMethods != null) {
             for (Method systemMethod : declaredMethods) {
-                if (annotationsAvailable(systemMethod) && NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
+                if (isInPlatform(systemMethod)) {
                     synchronized (systemMethods) {
                         systemMethods.add(systemMethod);
                     }
@@ -115,7 +132,7 @@ public final class ImageClassLoader {
         }
         if (declaredFields != null) {
             for (Field systemField : declaredFields) {
-                if (annotationsAvailable(systemField) && NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
+                if (isInPlatform(systemField)) {
                     synchronized (systemFields) {
                         systemFields.add(systemField);
                     }
@@ -124,30 +141,10 @@ public final class ImageClassLoader {
         }
     }
 
-    /**
-     * @param element The element to check
-     * @return Returns true if the annotations on the {@code element} can be loaded without any
-     *         errors.
-     */
-    private static boolean canLoadAnnotations(AnnotatedElement element) {
+    private boolean isInPlatform(AnnotatedElement element) {
         try {
-            element.getAnnotations();
-            return true;
-        } catch (Throwable t) {
-            handleClassLoadingError(t);
-            return false;
-        }
-    }
-
-    /**
-     * @param element The element to check
-     * @return Returns true if and only if the the {@code element} has any annotations present and
-     *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
-     */
-    private static boolean annotationsAvailable(AnnotatedElement element) {
-        try {
-            final Annotation[] annotations = element.getAnnotations();
-            return annotations.length != 0;
+            Platforms platformAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(element, Platforms.class, false);
+            return NativeImageGenerator.includedIn(platform, platformAnnotation);
         } catch (Throwable t) {
             handleClassLoadingError(t);
             return false;
@@ -159,7 +156,16 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
+    private static final Field classAnnotationData = ReflectionUtil.lookupField(Class.class, "annotationData");
+
     void handleClass(Class<?> clazz) {
+        Object initialAnnotationData;
+        try {
+            initialAnnotationData = classAnnotationData.get(clazz);
+        } catch (IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+
         boolean inPlatform = true;
         boolean isHostedOnly = false;
 
@@ -168,10 +174,13 @@ public final class ImageClassLoader {
             cur = clazz;
         }
         do {
-            if (!canLoadAnnotations(cur)) {
+            Platforms platformsAnnotation;
+            try {
+                platformsAnnotation = classLoaderSupport.annotationExtractor.extractAnnotation(cur, Platforms.class, false);
+            } catch (Throwable t) {
+                handleClassLoadingError(t);
                 return;
             }
-            Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
                 isHostedOnly = true;
             } else if (!NativeImageGenerator.includedIn(platform, platformsAnnotation)) {
@@ -202,6 +211,16 @@ public final class ImageClassLoader {
                 }
                 findSystemElements(clazz);
             }
+        }
+
+        try {
+            /*
+             * Annotations should not be computed during the scanning of classes, to avoid issues
+             * with the Native Image module access setup.
+             */
+            assert classAnnotationData.get(clazz) == initialAnnotationData;
+        } catch (IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -252,8 +271,13 @@ public final class ImageClassLoader {
 
     /** Find class, return result encoding class or failure reason. */
     public TypeResult<Class<?>> findClass(String name) {
+        return findClass(name, true);
+    }
+
+    /** Find class, return result encoding class or failure reason. */
+    public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         try {
-            if (name.indexOf('.') == -1) {
+            if (allowPrimitives && name.indexOf('.') == -1) {
                 switch (name) {
                     case "boolean":
                         return TypeResult.forClass(boolean.class);
@@ -281,11 +305,15 @@ public final class ImageClassLoader {
         }
     }
 
-    Class<?> forName(String name) throws ClassNotFoundException {
-        return Class.forName(name, false, classLoaderSupport.getClassLoader());
+    public Class<?> forName(String className) throws ClassNotFoundException {
+        return forName(className, false);
     }
 
-    public Class<?> forName(String className, Object module) throws ClassNotFoundException {
+    public Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
+        return Class.forName(className, initialize, classLoaderSupport.getClassLoader());
+    }
+
+    public Class<?> forName(String className, Module module) throws ClassNotFoundException {
         if (module == null) {
             return forName(className);
         }
@@ -344,9 +372,9 @@ public final class ImageClassLoader {
         return result;
     }
 
-    private static void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
+    private void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
         for (Class<?> systemClass : classes) {
-            if (systemClass.getAnnotation(annotationClass) != null) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(systemClass, annotationClass)) {
                 result.add(systemClass);
             }
         }
@@ -355,7 +383,7 @@ public final class ImageClassLoader {
     public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
         ArrayList<Method> result = new ArrayList<>();
         for (Method method : systemMethods) {
-            if (method.getAnnotation(annotationClass) != null) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                 result.add(method);
             }
         }
@@ -367,7 +395,7 @@ public final class ImageClassLoader {
         for (Method method : systemMethods) {
             boolean match = true;
             for (Class<? extends Annotation> annotationClass : annotationClasses) {
-                if (method.getAnnotation(annotationClass) == null) {
+                if (!classLoaderSupport.annotationExtractor.hasAnnotation(method, annotationClass)) {
                     match = false;
                     break;
                 }
@@ -382,7 +410,7 @@ public final class ImageClassLoader {
     public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
-            if (field.getAnnotation(annotationClass) != null) {
+            if (classLoaderSupport.annotationExtractor.hasAnnotation(field, annotationClass)) {
                 result.add(field);
             }
         }
@@ -404,13 +432,13 @@ public final class ImageClassLoader {
     public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
-            result.add(clazz.getAnnotation(annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(clazz, annotationClass, false));
         }
         for (Method method : findAnnotatedMethods(annotationClass)) {
-            result.add(method.getAnnotation(annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(method, annotationClass, false));
         }
         for (Field field : findAnnotatedFields(annotationClass)) {
-            result.add(field.getAnnotation(annotationClass));
+            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(field, annotationClass, false));
         }
         return result;
     }
@@ -423,7 +451,31 @@ public final class ImageClassLoader {
         return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    public Optional<? extends Object> findModule(String moduleName) {
+    public Optional<Module> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
+    }
+
+    public String getMainClassNotFoundErrorMessage(String className) {
+        List<Path> classPath = applicationClassPath();
+        String classPathString = classPath.isEmpty() ? "" : String.format("%nclasspath: '%s'", pathsToString(classPath));
+        List<Path> modulePath = applicationModulePath();
+        String modulePathString = modulePath.isEmpty() ? "" : String.format("%nmodulepath: '%s'", pathsToString(modulePath));
+        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%s%s", className, classPathString, modulePathString);
+    }
+
+    private static String pathsToString(List<Path> paths) {
+        return paths.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(File.pathSeparator));
+    }
+
+    public EconomicSet<String> classes(URI container) {
+        return classLoaderSupport.classes(container);
+    }
+
+    public EconomicSet<String> packages(URI container) {
+        return classLoaderSupport.packages(container);
+    }
+
+    public boolean noEntryForURI(EconomicSet<String> set) {
+        return classLoaderSupport.noEntryForURI(set);
     }
 }

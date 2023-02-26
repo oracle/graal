@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -50,8 +52,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 public class ObjectSnippets implements Snippets {
 
     @NodeIntrinsic(ForeignCallNode.class)
@@ -59,7 +59,7 @@ public class ObjectSnippets implements Snippets {
 
     @Snippet
     public static void fastNotify(Object thisObj) {
-        if (fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, thisObj)) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notify();
@@ -68,7 +68,7 @@ public class ObjectSnippets implements Snippets {
 
     @Snippet
     public static void fastNotifyAll(Object thisObj) {
-        if (fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, thisObj)) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notifyAll();
@@ -76,19 +76,22 @@ public class ObjectSnippets implements Snippets {
     }
 
     public static class Templates extends AbstractTemplates {
-        private final SnippetInfo notifySnippet = snippet(ObjectSnippets.class, "fastNotify", originalNotifyCall(false), null);
-        private final SnippetInfo notifyAllSnippet = snippet(ObjectSnippets.class, "fastNotifyAll", originalNotifyCall(true), null);
+        private final SnippetInfo notifySnippet;
+        private final SnippetInfo notifyAllSnippet;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
-        }
 
-        private ResolvedJavaMethod originalNotifyCall(boolean notifyAll) throws GraalError {
-            if (notifyAll) {
-                return findMethod(providers.getMetaAccess(), Object.class, "notifyAll");
-            } else {
-                return findMethod(providers.getMetaAccess(), Object.class, "notify");
-            }
+            notifySnippet = snippet(providers,
+                            ObjectSnippets.class,
+                            "fastNotify",
+                            findMethod(providers.getMetaAccess(), Object.class, "notify"),
+                            null);
+            notifyAllSnippet = snippet(providers,
+                            ObjectSnippets.class,
+                            "fastNotifyAll",
+                            findMethod(providers.getMetaAccess(), Object.class, "notifyAll"),
+                            null);
         }
 
         public void lower(Node n, LoweringTool tool) {
@@ -99,9 +102,9 @@ public class ObjectSnippets implements Snippets {
                 assert stateDuringCall != null : "Must have valid state for snippet recursive notify call";
                 Arguments args = new Arguments(fn.isNotifyAll() ? notifyAllSnippet : notifySnippet, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("thisObj", fn.object);
-                SnippetTemplate template = template(fn, args);
+                SnippetTemplate template = template(tool, fn, args);
                 graph.getDebug().log("Lowering fast notify in %s: node=%s, template=%s, arguments=%s", graph, fn, template, args);
-                UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), fn, DEFAULT_REPLACER, args);
+                UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), fn, DEFAULT_REPLACER, args);
                 for (Node originalNode : duplicates.getKeys()) {
                     if (originalNode instanceof InvokeNode) {
                         InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);

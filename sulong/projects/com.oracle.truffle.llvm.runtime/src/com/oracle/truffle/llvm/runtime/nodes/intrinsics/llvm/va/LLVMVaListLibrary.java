@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.frame.Frame;
@@ -62,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMVaListLibrary extends Library {
 
     static final LibraryFactory<LLVMVaListLibrary> FACTORY = LibraryFactory.resolve(LLVMVaListLibrary.class);
+    private static final Object STOP_ITERATE = new Object();
 
     public static LibraryFactory<LLVMVaListLibrary> getFactory() {
         return FACTORY;
@@ -94,26 +94,15 @@ public abstract class LLVMVaListLibrary extends Library {
 
     /**
      * This is method works like the 3-arg <code>copy</code>, except that it obtains the frame using
-     * the Truffle runtime. Because af some Truffle inner workings, there is a risk of an NPE that
-     * must be handled by requesting the materialized frame. This method should be used only when
-     * the frame cannot be obtained otherwise.
+     * the Truffle runtime. This method should be used only when the frame cannot be obtained
+     * otherwise.
      */
+    @SuppressWarnings("deprecation")
     public void copyWithoutFrame(Object srcVaList, Object destVaList) {
-        Frame frame;
-        try {
-            frame = Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.READ_WRITE);
-        } catch (NullPointerException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            /*
-             * In getCurrentFrame()/getCallerFrame() there is an inherit danger in the sense that
-             * this API does not guarantee that the returned frame instance is valid when you later
-             * try to materialize it (here a READ_WRITE access is requested) (the comment by Allan
-             * Gregersen).
-             */
-            frame = Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.MATERIALIZE);
-        }
-
-        copy(srcVaList, destVaList, frame);
+        Truffle.getRuntime().iterateFrames(frameInstance -> {
+            copy(srcVaList, destVaList, frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE));
+            return STOP_ITERATE;
+        });
     }
 
     /**
@@ -143,19 +132,19 @@ public abstract class LLVMVaListLibrary extends Library {
 
         @Override
         public void initialize(Object vaList, Object[] arguments, int numberOfExplicitArguments, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.initialize(vaList, arguments, numberOfExplicitArguments, frame);
         }
 
         @Override
         public void cleanup(Object vaList, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.cleanup(vaList, frame);
         }
 
         @Override
         public void copy(Object srcVaList, Object destVaList, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.copy(srcVaList, destVaList, frame);
         }
 
@@ -166,7 +155,7 @@ public abstract class LLVMVaListLibrary extends Library {
 
         @Override
         public Object shift(Object vaList, Type type, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             return delegate.shift(vaList, type, frame);
         }
     }

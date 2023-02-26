@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.jvmtiagentbase;
 
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
@@ -48,12 +48,12 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIErrors;
+import com.oracle.svm.core.jni.headers.JNIJavaVM;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIErrors;
-import com.oracle.svm.jni.nativeapi.JNIJavaVM;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIVersion;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 

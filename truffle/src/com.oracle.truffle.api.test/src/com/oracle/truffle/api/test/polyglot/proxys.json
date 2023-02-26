@@ -1,7 +1,23 @@
 [
-["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$XYPlus"],
-["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithDefaults"],
-["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithObjectMethodOverrides"],
-["com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3"],
-["java.util.function.Function"]
+  ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$XYPlus"],
+  ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithDefaults"],
+  ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithObjectMethodOverrides"],
+  ["com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3"],
+  ["com.oracle.truffle.api.test.polyglot.ValueAPITest$OtherInterface0"],
+  ["com.oracle.truffle.api.test.polyglot.ValueAPITest$OtherInterface1"],
+  ["com.oracle.truffle.api.test.polyglot.ValueAPITest$OtherInterface2"],
+  ["com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyInterface"],
+  ["com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyFunctionalInterface"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$TestInterface"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ConverterFunction"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ConverterProxy"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ProxiedPoint"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$ProxiedPoint2"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$HostMembers"],
+  ["com.oracle.truffle.api.test.polyglot.HostAccessTest$FuncInterface"],
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$MarkedFunctional"],
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$MarkedInterface"],
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedInterface"],
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$EmptyInterface"],
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedFunctional"]
 ]

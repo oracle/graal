@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -41,8 +42,8 @@ public class CInterfaceWriteNode extends WriteNode {
 
     protected final String accessName;
 
-    public CInterfaceWriteNode(AddressNode address, LocationIdentity locationIdentity, ValueNode value, BarrierType barrierType, String accessName) {
-        super(TYPE, address, locationIdentity, locationIdentity, value, barrierType);
+    public CInterfaceWriteNode(AddressNode address, LocationIdentity locationIdentity, ValueNode value, BarrierType barrierType, MemoryOrderMode memoryOrder, String accessName) {
+        super(TYPE, address, locationIdentity, locationIdentity, value, barrierType, memoryOrder);
         this.accessName = accessName;
     }
 }

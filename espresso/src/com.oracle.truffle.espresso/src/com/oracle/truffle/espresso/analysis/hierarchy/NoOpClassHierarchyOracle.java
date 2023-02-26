@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,17 +23,18 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
  * An implementation of {@link ClassHierarchyOracle} which simply checks {@code final} modifier of a
  * class.
  */
-public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
-    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
+public final class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
+    private static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
-    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -41,7 +42,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+    public ClassHierarchyAssumption isLeafKlass(ObjectKlass klass) {
         if (klass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -54,12 +55,31 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         return SingleImplementor.MultipleImplementors;
     }
 
     @Override
     public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
         return NotSingleImplementor;
+    }
+
+    @Override
+    public ClassHierarchyAssumption createLeafAssumptionForNewMethod(Method newMethod) {
+        if (newMethod.isAbstract()) {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+        if (newMethod.isStatic() || newMethod.isPrivate() || newMethod.isFinalFlagSet()) {
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return ClassHierarchyAssumptionImpl.NeverValid;
+    }
+
+    @Override
+    public ClassHierarchyAssumption isLeafMethod(Method method) {
+        if (method.isStatic() || method.isPrivate() || method.isFinalFlagSet()) {
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return ClassHierarchyAssumptionImpl.NeverValid;
     }
 }

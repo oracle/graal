@@ -37,7 +37,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     private final TypeConfiguration configuration;
 
-    ParserConfigurationAdapter(TypeConfiguration configuration) {
+    public ParserConfigurationAdapter(TypeConfiguration configuration) {
         this.configuration = configuration;
     }
 
@@ -47,7 +47,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(ConfigurationCondition condition, String typeName) {
+    public TypeResult<ConfigurationType> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
         ConfigurationType type = configuration.get(condition, typeName);
         ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName);
         return TypeResult.forType(typeName, result);
@@ -74,6 +74,11 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
         type.addMethodsWithName(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
         return true;
+    }
+
+    @Override
+    public void registerUnsafeAllocated(ConfigurationType type) {
+        type.setUnsafeAllocated();
     }
 
     @Override

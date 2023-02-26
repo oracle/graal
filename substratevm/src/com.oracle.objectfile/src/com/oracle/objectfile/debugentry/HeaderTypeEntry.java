@@ -45,7 +45,8 @@ public class HeaderTypeEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+        assert debugTypeInfo.typeName().equals(typeName);
         DebugHeaderTypeInfo debugHeaderTypeInfo = (DebugHeaderTypeInfo) debugTypeInfo;
         debugHeaderTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <graalvm/llvm/polyglot.h>
 
@@ -43,7 +44,7 @@ struct Point {
 POLYGLOT_DECLARE_STRUCT(Point)
 #pragma clang diagnostic pop
 
-extern "C" int distSquared(void *a, void *b) {
+extern "C" int distSquared(polyglot_value a, polyglot_value b) {
     int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
     int distY = polyglot_as_Point(b)->y - polyglot_as_Point(a)->y;
     return distX * distX + distY * distY;
@@ -62,8 +63,8 @@ extern "C" int distSquaredDesugared(struct DoublePoint a, struct DoublePoint b) 
 
 struct ByValPoint {
     int x;
-    long a;
-    long b;
+    int64_t a;
+    int64_t b;
     int y;
 };
 
@@ -73,15 +74,15 @@ extern "C" int distSquaredByVal(struct ByValPoint a, struct ByValPoint b) {
     return distX * distX + distY * distY;
 }
 
-extern "C" long byValGet(struct ByValPoint a) {
+extern "C" int64_t byValGet(struct ByValPoint a) {
     return a.a + a.b;
 }
 
 struct NestedPoint {
     int x;
     struct {
-        long a;
-        long b;
+        int64_t a;
+        int64_t b;
     } nested;
     int y;
 };
@@ -92,7 +93,7 @@ extern "C" int distSquaredNestedByVal(struct NestedPoint a, struct NestedPoint b
     return distX * distX + distY * distY;
 }
 
-extern "C" long nestedByValGetNested(struct NestedPoint a) {
+extern "C" int64_t nestedByValGetNested(struct NestedPoint a) {
     return a.nested.a + a.nested.b;
 }
 
@@ -103,7 +104,7 @@ struct SmallNested {
     } nested;
 };
 
-extern "C" long nestedByValGetSmallNested(struct SmallNested a) {
+extern "C" int64_t nestedByValGetSmallNested(struct SmallNested a) {
     return a.x + a.nested.y;
 }
 
@@ -133,7 +134,7 @@ extern "C" int bigArrStructSum(struct BigArrStruct s) {
     return sum;
 }
 
-extern "C" void flipPoint(void *value) {
+extern "C" void flipPoint(polyglot_value value) {
     struct Point *point = polyglot_as_Point(value);
     int tmp = point->x;
     point->x = point->y;
@@ -144,14 +145,14 @@ extern "C" polyglot_typeid getPointType() {
     return polyglot_Point_typeid();
 }
 
-extern "C" void flipPointDynamic(void *value, polyglot_typeid typeId) {
+extern "C" void flipPointDynamic(polyglot_value value, polyglot_typeid typeId) {
     struct Point *point = (struct Point *) polyglot_as_typed(value, typeId);
     int tmp = point->x;
     point->x = point->y;
     point->y = tmp;
 }
 
-extern "C" int sumPoints(void *pointArray) {
+extern "C" int sumPoints(polyglot_value pointArray) {
     int sum = 0;
 
     struct Point *arr = polyglot_as_Point_array(pointArray);
@@ -163,7 +164,7 @@ extern "C" int sumPoints(void *pointArray) {
     return sum;
 }
 
-extern "C" void fillPoints(void *pointArray, int x, int y) {
+extern "C" void fillPoints(polyglot_value pointArray, int x, int y) {
     struct Point *arr = polyglot_as_Point_array(pointArray);
     int len = polyglot_get_array_size(pointArray);
 
@@ -173,7 +174,7 @@ extern "C" void fillPoints(void *pointArray, int x, int y) {
     }
 }
 
-extern "C" double modifyAndCall(void *value) {
+extern "C" double modifyAndCall(polyglot_value value) {
     struct Point *point = polyglot_as_Point(value);
     point->x *= 2;
     point->y *= 2;
@@ -200,7 +201,7 @@ struct Nested {
 POLYGLOT_DECLARE_STRUCT(Nested)
 #pragma clang diagnostic pop
 
-extern "C" void fillNested(void *arg) {
+extern "C" void fillNested(polyglot_value arg) {
     int value = 42;
 
     struct Nested *nested = polyglot_as_Nested(arg);
@@ -227,7 +228,7 @@ struct BitFields {
 POLYGLOT_DECLARE_STRUCT(BitFields)
 #pragma clang diagnostic pop
 
-extern "C" int accessBitFields(void *arg) {
+extern "C" int accessBitFields(polyglot_value arg) {
     struct BitFields *obj = polyglot_as_BitFields(arg);
     return obj->x + obj->y + obj->z;
 }
@@ -242,7 +243,7 @@ struct FusedArray {
 POLYGLOT_DECLARE_STRUCT(FusedArray)
 #pragma clang diagnostic pop
 
-extern "C" void fillFusedArray(void *arg) {
+extern "C" void fillFusedArray(polyglot_value arg) {
     struct FusedArray *fused = polyglot_as_FusedArray(arg);
     int i;
 
@@ -265,12 +266,12 @@ struct Complex {
 POLYGLOT_DECLARE_STRUCT(Complex)
 #pragma clang diagnostic pop
 
-extern "C" long readTypeMismatch(struct Complex *c) {
-    long *ptr = (long *) c;
+extern "C" int64_t readTypeMismatch(struct Complex *c) {
+    int64_t *ptr = (int64_t *) c;
     return *ptr;
 }
 
-extern "C" void writeTypeMismatch(struct Complex *c, long rawValue) {
-    long *ptr = (long *) c;
+extern "C" void writeTypeMismatch(struct Complex *c, int64_t rawValue) {
+    int64_t *ptr = (int64_t *) c;
     *ptr = rawValue;
 }

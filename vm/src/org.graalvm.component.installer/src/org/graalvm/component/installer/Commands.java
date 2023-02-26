@@ -176,6 +176,12 @@ public interface Commands {
     String LONG_OPTION_NON_INTERACTIVE = "non-interactive";
 
     /**
+     * Return in JSON format if possible.
+     */
+    String OPTION_JSON_OUTPUT = "J";
+    String LONG_OPTION_JSON_OUTPUT = "json";
+
+    /**
      * Operate on all components, irrespective of version.
      */
     String OPTION_ALL = "a";

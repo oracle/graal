@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.instrumentation.NearestSectionFilter;
 import java.net.URI;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -99,30 +98,34 @@ abstract class BreakpointLocation {
         return false;
     }
 
-    abstract SourceFilter createSourceFilter();
+    abstract boolean isLoadBindingNeeded();
 
-    abstract Predicate<Source> createSourcePredicate();
+    abstract LocationFilters createLocationFilters(SuspendAnchor suspendAnchor);
 
-    abstract boolean canAdjustLocation();
+    abstract SourceSectionFilter createExecLocationFilter(SourceSection location, SuspendAnchor suspendAnchor);
 
-    abstract SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor);
-
-    abstract SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor);
-
-    private static void setTags(SourceSectionFilter.Builder f, SourceElement[] sourceElements) {
+    private static Class<?>[] getTags(SourceElement[] sourceElements) {
         Class<?>[] elementTags = new Class<?>[sourceElements.length];
         for (int i = 0; i < elementTags.length; i++) {
             elementTags[i] = sourceElements[i].getTag();
         }
-        f.tagIs(elementTags);
+        return elementTags;
+    }
+
+    private static void setTags(SourceSectionFilter.Builder f, SourceElement[] sourceElements) {
+        f.tagIs(getTags(sourceElements));
+    }
+
+    private static void setTags(NearestSectionFilter.Builder f, SourceElement[] sourceElements) {
+        f.tagIs(getTags(sourceElements));
     }
 
     private static final class BreakpointSourceLocation extends BreakpointLocation {
 
         private final Object key;
         private final SourceSection sourceSection;
-        private int line;
-        private int column;
+        private final int line;
+        private final int column;
 
         /**
          * @param key non-null source identifier
@@ -161,8 +164,7 @@ abstract class BreakpointLocation {
             this.sourceSection = null;
         }
 
-        @Override
-        SourceFilter createSourceFilter() {
+        private SourceFilter createSourceFilter() {
             if (key == null) {
                 return null;
             }
@@ -177,14 +179,13 @@ abstract class BreakpointLocation {
             return f.build();
         }
 
-        @Override
-        Predicate<Source> createSourcePredicate() {
+        private Predicate<Source> createSourcePredicate() {
             if (key == null) {
                 return null;
             }
             if (key instanceof URI) {
                 if (key == ANY_SOURCE) {
-                    return new Predicate<Source>() {
+                    return new Predicate<>() {
                         @Override
                         public boolean test(Source s) {
                             return true;
@@ -193,7 +194,7 @@ abstract class BreakpointLocation {
                 }
                 final URI sourceUri = (URI) key;
                 final String sourceRawPath = sourceUri.getRawPath() != null ? sourceUri.getRawPath() : sourceUri.getRawSchemeSpecificPart();
-                return new Predicate<Source>() {
+                return new Predicate<>() {
                     @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
@@ -212,7 +213,7 @@ abstract class BreakpointLocation {
             } else {
                 assert key instanceof Source;
                 Source source = (Source) key;
-                return new Predicate<Source>() {
+                return new Predicate<>() {
                     @Override
                     public boolean test(Source s) {
                         return source.equals(s);
@@ -222,78 +223,43 @@ abstract class BreakpointLocation {
         }
 
         @Override
-        boolean canAdjustLocation() {
-            return key != null;
+        boolean isLoadBindingNeeded() {
+            return line != -1;
         }
 
         @Override
-        SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor) {
-            if (sourceSection != null) {
-                return sourceSection;
-            }
+        LocationFilters createLocationFilters(SuspendAnchor suspendAnchor) {
+            SourceSectionFilter.Builder f = SourceSectionFilter.newBuilder();
+            NearestSectionFilter nearestFilter = null;
             if (key == null) {
-                return null;
-            }
-            if (line == -1) {
-                return source.createUnavailableSection();
-            }
-            boolean hasColumn = column > 0;
-            SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, line, column, suspendAnchor, env);
-            if (location != null) {
-                switch (suspendAnchor) {
-                    case BEFORE:
-                        line = location.getStartLine();
-                        if (hasColumn) {
-                            column = location.getStartColumn();
-                        }
-                        break;
-                    case AFTER:
-                        line = location.getEndLine();
-                        if (hasColumn) {
-                            column = location.getEndColumn();
-                        }
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unknown suspend anchor: " + suspendAnchor);
+                f.tagIs(DebuggerTags.AlwaysHalt.class);
+            } else {
+                if (key != ANY_SOURCE) {
+                    f.sourceFilter(createSourceFilter());
+                }
+                if (line != -1) {
+                    assert sourceSection == null;
+                    NearestSectionFilter.Builder nearestBuilder = NearestSectionFilter.newBuilder(line, column);
+                    nearestBuilder.anchorStart(SuspendAnchor.BEFORE == suspendAnchor);
+                    setTags(nearestBuilder, sourceElements);
+                    nearestFilter = nearestBuilder.build();
+                } else {
+                    if (sourceSection != null) {
+                        f.sourceSectionEquals(sourceSection);
+                    }
+                    setTags(f, sourceElements);
                 }
             }
-            return location;
+            return new LocationFilters(f.build(), nearestFilter);
         }
 
         @Override
-        SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor) {
+        SourceSectionFilter createExecLocationFilter(SourceSection location, SuspendAnchor suspendAnchor) {
             SourceSectionFilter.Builder f = SourceSectionFilter.newBuilder();
             if (key == null) {
                 return f.tagIs(DebuggerTags.AlwaysHalt.class).build();
             }
-            if (key != ANY_SOURCE) {
-                if (source != null) {
-                    f.sourceIs(source);
-                } else {
-                    f.sourceFilter(createSourceFilter());
-                }
-            }
-            if (line != -1) {
-                switch (suspendAnchor) {
-                    case BEFORE:
-                        f.lineStartsIn(IndexRange.byLength(line, 1));
-                        if (column != -1) {
-                            f.columnStartsIn(IndexRange.byLength(column, 1));
-                        }
-                        break;
-                    case AFTER:
-                        f.lineEndsIn(IndexRange.byLength(line, 1));
-                        if (column != -1) {
-                            f.columnEndsIn(IndexRange.byLength(column, 1));
-                        }
-                        break;
-                    default:
-                        throw new IllegalArgumentException(suspendAnchor.name());
-                }
-            }
-            if (sourceSection != null) {
-                f.sourceSectionEquals(sourceSection);
-            }
+            f.sourceSectionEquals(location);
             setTags(f, sourceElements);
             return f.build();
         }
@@ -325,27 +291,12 @@ abstract class BreakpointLocation {
         }
 
         @Override
-        SourceFilter createSourceFilter() {
-            return null;
-        }
-
-        @Override
-        Predicate<Source> createSourcePredicate() {
-            return null;
-        }
-
-        @Override
-        boolean canAdjustLocation() {
+        boolean isLoadBindingNeeded() {
             return false;
         }
 
         @Override
-        SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor) {
-            return null;
-        }
-
-        @Override
-        SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor) {
+        LocationFilters createLocationFilters(SuspendAnchor suspendAnchor) {
             SourceSectionFilter.Builder f = SourceSectionFilter.newBuilder();
             SourceFilter.Builder sourceFilterBuilder = SourceFilter.newBuilder();
             if (filter != null) {
@@ -358,8 +309,24 @@ abstract class BreakpointLocation {
             SourceFilter sourceFilter = sourceFilterBuilder.build();
             f.sourceFilter(sourceFilter);
             setTags(f, sourceElements);
-            return f.build();
+            return new LocationFilters(f.build(), null);
         }
 
+        @Override
+        SourceSectionFilter createExecLocationFilter(SourceSection location, SuspendAnchor suspendAnchor) {
+            return null;
+        }
+
+    }
+
+    static final class LocationFilters {
+
+        final SourceSectionFilter sectionFilter;
+        final NearestSectionFilter nearestFilter;
+
+        private LocationFilters(SourceSectionFilter sectionFilter, NearestSectionFilter nearestFilter) {
+            this.sectionFilter = sectionFilter;
+            this.nearestFilter = nearestFilter;
+        }
     }
 }

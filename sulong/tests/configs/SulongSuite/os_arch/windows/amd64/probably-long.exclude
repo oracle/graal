@@ -1,0 +1,7 @@
+cpp/builtin/arithmetic/arithmetic_sadd_i64.c.dir
+cpp/builtin/arithmetic/arithmetic_smul_i64.c.dir
+cpp/builtin/arithmetic/arithmetic_ssub_i64.c.dir
+cpp/builtin/arithmetic/arithmetic_uadd_i64.c.dir
+cpp/builtin/arithmetic/arithmetic_umul_i64.c.dir
+cpp/builtin/arithmetic/arithmetic_usub_i64.c.dir
+libc/malloc/primitives/long.c.dir

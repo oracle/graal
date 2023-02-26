@@ -28,7 +28,6 @@ import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_l
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getTag;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
@@ -41,8 +40,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -93,11 +93,9 @@ final class NativeSignature {
     static class ExecuteHelper {
 
         static int alignUp(int index, int alignment) {
-            int ret = index;
-            if (ret % alignment != 0) {
-                ret += alignment - (ret % alignment);
-            }
-            return ret;
+            int mask = alignment - 1;
+            assert (alignment & mask) == 0 : "not a power of 2";
+            return (index + mask) & ~mask;
         }
 
         @SuppressWarnings("try")
@@ -107,7 +105,7 @@ final class NativeSignature {
             WordPointer argPtrs = UnmanagedMemory.malloc(nargs * SizeOf.get(WordPointer.class));
             // TODO WordPointer argPtrs = StackValue.get(nargs, SizeOf.get(WordPointer.class));
 
-            NativeTruffleEnv env = StackValue.get(NativeTruffleEnv.class);
+            NativeTruffleEnv env = UnsafeStackValue.get(NativeTruffleEnv.class);
             NFIInitialization.initializeEnv(env, ctx);
 
             try (PinnedObject primBuffer = PinnedObject.create(primArgs)) {

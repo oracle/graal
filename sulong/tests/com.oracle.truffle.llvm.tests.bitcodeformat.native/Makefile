@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -40,7 +40,8 @@ TARGETS:=hello-linux-emit-llvm.bc \
          hello-darwin-link-fembed-bitcode.dylib \
          hello-darwin-link.bundle \
          hello-windows-compile-fembed-bitcode.o \
-         hello-windows-link-fembed-bitcode.exe
+         hello-windows-link-fembed-bitcode.exe \
+				 KERNEL32.dll # used as a dummy dependency for running on linux
 
 CLANG?=clang
 

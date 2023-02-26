@@ -51,4 +51,9 @@ public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionPr
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         return true;
     }
+
+    @Override
+    public boolean canVirtualize(ResolvedJavaType instanceType) {
+        return true;
+    }
 }

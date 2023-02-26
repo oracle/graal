@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -131,7 +131,7 @@ public final class GCAccounting {
         oldChunkBytesBefore = oldSpace.getChunkBytes();
         /* Objects are allocated in the young generation. */
         allocatedChunkBytes = allocatedChunkBytes.add(youngGen.getEden().getChunkBytes());
-        if (HeapOptions.PrintGCSummary.getValue()) {
+        if (SerialGCOptions.PrintGCSummary.getValue()) {
             UnsignedWord edenObjectBytesBefore = youngGen.getEden().computeObjectBytes();
             youngObjectBytesBefore = edenObjectBytesBefore.add(youngGen.computeSurvivorObjectBytes());
             oldObjectBytesBefore = oldSpace.computeObjectBytes();
@@ -197,7 +197,7 @@ public final class GCAccounting {
         UnsignedWord afterChunkBytes = oldChunkBytesAfter.add(youngChunkBytesAfter);
         UnsignedWord collectedChunkBytes = beforeChunkBytes.subtract(afterChunkBytes);
         collectedTotalChunkBytes = collectedTotalChunkBytes.add(collectedChunkBytes);
-        if (HeapOptions.PrintGCSummary.getValue()) {
+        if (SerialGCOptions.PrintGCSummary.getValue()) {
             UnsignedWord youngObjectBytesAfter = youngGen.computeObjectBytes();
             UnsignedWord oldObjectBytesAfter = oldSpace.computeObjectBytes();
             UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);

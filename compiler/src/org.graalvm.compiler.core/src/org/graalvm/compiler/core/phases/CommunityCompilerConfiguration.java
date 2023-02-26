@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,9 @@ import org.graalvm.compiler.lir.phases.PostAllocationOptimizationStage;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationStage;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
  * The default configuration for the community edition of Graal.
@@ -46,17 +44,17 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class CommunityCompilerConfiguration implements CompilerConfiguration {
 
     @Override
-    public PhaseSuite<HighTierContext> createHighTier(OptionValues options) {
+    public HighTier createHighTier(OptionValues options) {
         return new HighTier(options);
     }
 
     @Override
-    public PhaseSuite<MidTierContext> createMidTier(OptionValues options) {
+    public MidTier createMidTier(OptionValues options) {
         return new MidTier(options);
     }
 
     @Override
-    public PhaseSuite<LowTierContext> createLowTier(OptionValues options) {
+    public LowTier createLowTier(OptionValues options, Architecture arch) {
         return new LowTier(options);
     }
 
@@ -79,4 +77,5 @@ public class CommunityCompilerConfiguration implements CompilerConfiguration {
     public LIRPhaseSuite<FinalCodeAnalysisContext> createFinalCodeAnalysisStage(OptionValues options) {
         return new FinalCodeAnalysisStage(options);
     }
+
 }

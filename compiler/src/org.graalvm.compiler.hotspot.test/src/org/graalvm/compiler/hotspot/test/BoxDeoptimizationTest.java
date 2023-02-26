@@ -35,7 +35,7 @@ import org.junit.Test;
 public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     private static void checkJDK() {
-        Assume.assumeTrue(JAVA_SPEC == 8 || JAVA_SPEC >= 13);
+        Assume.assumeTrue(JAVA_SPEC >= 13);
     }
 
     public static void testIntegerSnippet() {

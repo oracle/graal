@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -92,15 +91,11 @@ public class StringCompareToTest extends StringSubstitutionTestBase {
         OptionValues options;
         boolean needCheckNode = true;
 
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            needCheckNode = false;
-        } else {
-            List<String> vmArgs = GraalServices.getInputArguments();
-            Assume.assumeTrue(vmArgs != null);
-            for (String vmArg : vmArgs) {
-                if (vmArg.equals(DISABLE_COMPACTSTRINGS_FLAG)) {
-                    needCheckNode = false;
-                }
+        List<String> vmArgs = GraalServices.getInputArguments();
+        Assume.assumeTrue(vmArgs != null);
+        for (String vmArg : vmArgs) {
+            if (vmArg.equals(DISABLE_COMPACTSTRINGS_FLAG)) {
+                needCheckNode = false;
             }
         }
 

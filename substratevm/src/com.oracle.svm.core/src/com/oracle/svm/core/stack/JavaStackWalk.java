@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 
 /**
@@ -66,12 +66,6 @@ public interface JavaStackWalk extends PointerBase {
     @RawField
     void setAnchor(JavaFrameAnchor anchor);
 
-    /**
-     * The delimitation of this walk when we're walking on a delimited continuation/virtual thread.
-     * Otherwise null.
-     * 
-     * This field will be ignored by {@link JavaStackWalker#continueWalk} for now.
-     */
     @RawField
     Pointer getEndSP();
 

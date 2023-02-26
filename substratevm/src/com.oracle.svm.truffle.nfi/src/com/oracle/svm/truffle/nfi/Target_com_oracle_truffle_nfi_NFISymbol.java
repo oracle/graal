@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,16 +32,16 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_com_oracle_truffle_nfi_NFISymbol {
 
     @Substitute
-    static Object createBound(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
+    static Object createBound(Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
         if (nativeSymbol instanceof ErrnoMirror) {
             return nativeSymbol;
         } else {
-            return new Target_com_oracle_truffle_nfi_NFISymbol(backend, nativeSymbol, signature);
+            return new Target_com_oracle_truffle_nfi_NFISymbol(nativeSymbol, signature);
         }
     }
 
     @Alias
     @SuppressWarnings("unused")
-    Target_com_oracle_truffle_nfi_NFISymbol(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
+    Target_com_oracle_truffle_nfi_NFISymbol(Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
     }
 }

@@ -46,22 +46,18 @@ final class LinkedField extends StaticProperty {
     private final int slot;
 
     LinkedField(ParserField parserField, int slot, IdMode mode) {
-        this(parserField, slot, mode, 0);
-    }
-
-    LinkedField(ParserField parserField, int slot, IdMode mode, int flagCorrection) {
-        this.parserField = maybeCorrectParserField(parserField, mode, flagCorrection);
+        this.parserField = maybeCorrectParserField(parserField, mode);
         this.slot = slot;
     }
 
-    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode, int flagCorrection) {
+    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode) {
         switch (mode) {
             case REGULAR:
-                return flagCorrection != 0 ? parserField.withFlags(flagCorrection) : parserField;
+                return parserField;
             case WITH_TYPE:
-                return parserField.withFlags(FIELD_ID_TYPE | flagCorrection);
+                return parserField.withFlags(FIELD_ID_TYPE);
             case OBFUSCATED:
-                return parserField.withFlags(FIELD_ID_OBFUSCATE | flagCorrection);
+                return parserField.withFlags(FIELD_ID_OBFUSCATE);
         }
         throw EspressoError.shouldNotReachHere();
     }
@@ -160,10 +156,6 @@ final class LinkedField extends StaticProperty {
 
     public boolean isHidden() {
         return getParserField().isHidden();
-    }
-
-    public boolean isRedefineAdded() {
-        return getParserField().isRedefineAdded();
     }
 
     ParserField getParserField() {

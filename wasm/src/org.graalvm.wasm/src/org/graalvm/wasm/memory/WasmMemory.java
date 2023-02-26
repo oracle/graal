@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -86,6 +86,11 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected final int declaredMaxSize;
 
     /**
+     * @see #minSize()
+     */
+    protected int currentMinSize;
+
+    /**
      * The maximum practical size of this memory instance (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
@@ -111,6 +116,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
+        this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
     }
 
@@ -131,8 +137,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * The minimum size of this memory as declared in the binary (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
-     * This is a lower bound on this memory's size. This memory can only be imported with a lower or
-     * equal minimum size.
+     * This is different from the current minimum size, which can be larger.
      */
     public final int declaredMinSize() {
         return declaredMinSize;
@@ -149,6 +154,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      */
     public final int declaredMaxSize() {
         return declaredMaxSize;
+    }
+
+    /**
+     * The current minimum size of the memory (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
+     * pages}). The size can change based on calls to {@link #grow(int)}.
+     * <p>
+     * This is a lower bound on this memory's size. This memory can only be imported with a lower or
+     * equal minimum size.
+     */
+    public final int minSize() {
+        return currentMinSize;
     }
 
     public abstract boolean grow(int extraPageSize);
@@ -212,6 +228,35 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     public abstract WasmMemory duplicate();
 
+    /**
+     * Initializes the content of the memory based on the given data instance.
+     * 
+     * @param dataInstance The source data instance that should be copied to the memory
+     * @param sourceOffset The offset in the source data segment
+     * @param destinationOffset The offset in the memory
+     * @param length The number of bytes that should be copied
+     */
+    public abstract void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length);
+
+    /**
+     * Fills the memory with the given value.
+     * 
+     * @param offset The offset in the memory
+     * @param length The number of bytes that should be filled
+     * @param value The value that should be used for filling the memory
+     */
+    public abstract void fill(int offset, int length, byte value);
+
+    /**
+     * Copies data from another memory into this memory.
+     * 
+     * @param source The source memory
+     * @param sourceOffset The offset in the source memory
+     * @param destinationOffset The offset in this memory
+     * @param length The number of bytes that should be copied
+     */
+    public abstract void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length);
+
     @TruffleBoundary
     protected final WasmException trapOutOfBounds(Node node, long address, int length) {
         final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
@@ -228,7 +273,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @return the read {@code String}
      */
     @CompilerDirectives.TruffleBoundary
-    public String readString(int startOffset, WasmNode node) {
+    public String readString(int startOffset, WasmFunctionNode node) {
         ByteArrayList bytes = new ByteArrayList();
         byte currentByte;
         int offset = startOffset;
@@ -319,7 +364,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         long[] chunk = view(address, length);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < chunk.length; i++) {
-            sb.append("0x").append(hex(address + i * 8)).append(" | ");
+            sb.append("0x").append(hex(address + i * 8L)).append(" | ");
             for (int j = 0; j < 8; j++) {
                 sb.append(viewByte(address + i * 8 + j)).append(" ");
             }

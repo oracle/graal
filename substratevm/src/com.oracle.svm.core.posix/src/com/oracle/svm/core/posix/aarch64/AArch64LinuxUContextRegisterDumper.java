@@ -26,16 +26,14 @@ package com.oracle.svm.core.posix.aarch64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.aarch64.AArch64ReservedRegisters;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
@@ -46,18 +44,14 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 
-@Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
-@AutomaticFeature
-class AArch64LinuxUContextRegisterDumperFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+@AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
+@Platforms(Platform.LINUX_AARCH64_BASE.class)
+class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
+    AArch64LinuxUContextRegisterDumper() {
         VMError.guarantee(AArch64.r27.equals(AArch64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AArch64.r28.equals(AArch64ReservedRegisters.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(RegisterDumper.class, new AArch64LinuxUContextRegisterDumper());
     }
-}
 
-class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
@@ -112,12 +106,14 @@ class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
         return WordFactory.pointer(sigcontext.sp());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         mcontext_linux_aarch64_t sigcontext = uContext.uc_mcontext_linux_aarch64();
         return WordFactory.pointer(sigcontext.pc());

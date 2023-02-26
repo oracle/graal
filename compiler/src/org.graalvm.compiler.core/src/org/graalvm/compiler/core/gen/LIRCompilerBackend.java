@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,11 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -41,6 +43,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.lir.ComputeCodeEmissionOrder;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.alloc.OutOfRegistersException;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -53,9 +56,9 @@ import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisC
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -140,9 +143,12 @@ public class LIRCompilerBackend {
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
 
-            AbstractBlockBase<?>[] codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-            AbstractBlockBase<?>[] linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
-            LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions(), graph.getDebug());
+            CodeEmissionOrder<?> blockOrder = backend.newBlockOrder(blocks.length, startBlock);
+            AbstractBlockBase<?>[] linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
+            LIR lir = new LIR(schedule.getCFG(), linearScanOrder, graph.getOptions(), graph.getDebug());
+            if (ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(graph.getOptions())) {
+                lir.setCodeEmittingOrder(blockOrder.computeCodeEmittingOrder(graph.getOptions(), ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS));
+            }
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
             RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo);
@@ -157,7 +163,7 @@ public class LIRCompilerBackend {
             try (DebugContext.Scope s = debug.scope("LIRStages", nodeLirGen, lirGenRes, lir)) {
                 // Dump LIR along with HIR (the LIR is looked up from context)
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
-                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, registerAllocationConfig);
+                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, registerAllocationConfig, blockOrder);
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
@@ -170,7 +176,7 @@ public class LIRCompilerBackend {
     }
 
     private static LIRGenerationResult emitLowLevel(TargetDescription target, LIRGenerationResult lirGenRes, LIRGeneratorTool lirGen, LIRSuites lirSuites,
-                    RegisterAllocationConfig registerAllocationConfig) {
+                    RegisterAllocationConfig registerAllocationConfig, CodeEmissionOrder<?> blockOrder) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
         PreAllocationOptimizationContext preAllocOptContext = new PreAllocationOptimizationContext(lirGen);
         lirSuites.getPreAllocationOptimizationStage().apply(target, lirGenRes, preAllocOptContext);
@@ -180,7 +186,7 @@ public class LIRCompilerBackend {
         lirSuites.getAllocationStage().apply(target, lirGenRes, allocContext);
         debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After AllocationStage");
 
-        PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen);
+        PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen, blockOrder);
         lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, postAllocOptContext);
         debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After PostAllocationOptimizationStage");
 

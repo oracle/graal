@@ -24,28 +24,28 @@
  */
 package com.oracle.svm.truffle.tck;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
 
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -58,7 +58,7 @@ final class WhiteListParser extends ConfigurationParser {
 
     private final ImageClassLoader imageClassLoader;
     private final BigBang bb;
-    private Set<AnalysisMethod> whiteList;
+    private Set<AnalysisMethodNode> whiteList;
 
     WhiteListParser(ImageClassLoader imageClassLoader, BigBang bb) {
         super(true);
@@ -66,7 +66,7 @@ final class WhiteListParser extends ConfigurationParser {
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
     }
 
-    Set<AnalysisMethod> getLoadedWhiteList() {
+    Set<AnalysisMethodNode> getLoadedWhiteList() {
         if (whiteList == null) {
             throw new IllegalStateException("Not parsed yet.");
         }
@@ -74,12 +74,10 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
+    public void parseAndRegister(Object json, URI origin) {
         if (whiteList == null) {
             whiteList = new HashSet<>();
         }
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
         parseClassArray(castList(json, "First level of document must be an array of class descriptors"));
     }
 
@@ -89,7 +87,7 @@ final class WhiteListParser extends ConfigurationParser {
         }
     }
 
-    private void parseClass(Map<String, Object> data) {
+    private void parseClass(EconomicMap<String, Object> data) {
         checkAttributes(data, "class descriptor object", Collections.singleton("name"), Arrays.asList("justification", "allDeclaredConstructors", "allDeclaredMethods", "methods"));
         Object classObject = data.get("name");
         String className = castProperty(classObject, String.class, "name");
@@ -100,9 +98,10 @@ final class WhiteListParser extends ConfigurationParser {
                 throw new JSONParserException("Class " + className + " not found");
             }
 
-            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                String name = entry.getKey();
-                Object value = entry.getValue();
+            MapCursor<String, Object> cursor = data.getEntries();
+            while (cursor.advance()) {
+                String name = cursor.getKey();
+                Object value = cursor.getValue();
                 switch (name) {
                     case "allDeclaredConstructors":
                         if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
@@ -130,7 +129,7 @@ final class WhiteListParser extends ConfigurationParser {
         }
     }
 
-    private void parseMethod(Map<String, Object> data, AnalysisType clazz) {
+    private void parseMethod(EconomicMap<String, Object> data, AnalysisType clazz) {
         checkAttributes(data, "method descriptor object", Collections.singleton("name"), Arrays.asList("justification", "parameterTypes"));
         String methodName = castProperty(data.get("name"), String.class, "name");
         List<AnalysisType> methodParameterTypes = null;
@@ -185,6 +184,9 @@ final class WhiteListParser extends ConfigurationParser {
             useType = type;
         }
         Class<?> clz = imageClassLoader.findClass(useType).get();
+        if (clz == null) {
+            return null;
+        }
         verifySupportedOnActivePlatform(clz);
         return bb.getMetaAccess().lookupJavaType(clz);
     }
@@ -192,12 +194,12 @@ final class WhiteListParser extends ConfigurationParser {
     private void verifySupportedOnActivePlatform(Class<?> clz) throws UnsupportedPlatformException {
         AnalysisUniverse universe = bb.getUniverse();
         Package pkg = clz.getPackage();
-        if (pkg != null && !universe.hostVM().platformSupported(universe, pkg)) {
+        if (pkg != null && !universe.hostVM().platformSupported(pkg)) {
             throw new UnsupportedPlatformException(clz.getPackage());
         }
         Class<?> current = clz;
         do {
-            if (!universe.hostVM().platformSupported(universe, current)) {
+            if (!universe.hostVM().platformSupported(current)) {
                 throw new UnsupportedPlatformException(current);
             }
             current = current.getEnclosingClass();
@@ -207,40 +209,34 @@ final class WhiteListParser extends ConfigurationParser {
     private boolean registerMethod(AnalysisType type, String methodName, List<AnalysisType> formalParameters) {
         Predicate<ResolvedJavaMethod> p = (m) -> methodName.equals(m.getName());
         p = p.and(new SignaturePredicate(type, formalParameters, bb));
-        Set<AnalysisMethod> methods = PermissionsFeature.findMethods(bb, type, p);
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findMethods(bb, type, p);
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerAllMethodsWithName(AnalysisType type, String name) {
-        Set<AnalysisMethod> methods = PermissionsFeature.findMethods(bb, type, (m) -> name.equals(m.getName()));
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findMethods(bb, type, (m) -> name.equals(m.getName()));
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerConstructor(AnalysisType type, List<AnalysisType> formalParameters) {
         Predicate<ResolvedJavaMethod> p = new SignaturePredicate(type, formalParameters, bb);
-        Set<AnalysisMethod> methods = PermissionsFeature.findConstructors(bb, type, p);
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findConstructors(bb, type, p);
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerDeclaredConstructors(AnalysisType type) {
         for (AnalysisMethod method : type.getDeclaredConstructors()) {
-            whiteList.add(method);
+            whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }
 
     private boolean registerDeclaredMethods(AnalysisType type) {
         for (AnalysisMethod method : type.getDeclaredMethods()) {
-            whiteList.add(method);
+            whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }
@@ -262,8 +258,8 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> castMap(Object obj, String errorMessage) {
-        return cast(obj, Map.class, errorMessage);
+    private static EconomicMap<String, Object> castMap(Object obj, String errorMessage) {
+        return cast(obj, EconomicMap.class, errorMessage);
     }
 
     private static final class SignaturePredicate implements Predicate<ResolvedJavaMethod> {

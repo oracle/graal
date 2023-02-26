@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     public final AArch64ASIMDMacroAssembler neon;
 
+    // preferred byte alignment for the start of a loop
+    public static final int PREFERRED_LOOP_ALIGNMENT = 16;
+
+    // preferred byte alignment for a branch target
+    public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
+
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
@@ -101,7 +107,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public int getPCRelativeOffset(Label label) {
         assert label.isBound();
         int offset = label.position() - position();
-        assert (offset & 0x3) == 0 : "unexpected alignment";
+        assert (offset & 0b11) == 0 : "unexpected alignment";
         return offset;
     }
 
@@ -425,7 +431,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(src)) {
+        if (dst.equals(src) && size == 64) {
             /* No action necessary */
         } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
@@ -745,6 +751,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             ldr(srcSize, rt, address);
         } else {
             super.ldrs(targetSize, srcSize, rt, address);
+        }
+    }
+
+    /**
+     * Performs a load to the zero register. The effect of this is to test the address's page
+     * permissions.
+     */
+    public void deadLoad(int srcSize, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.ldrHelper(srcSize, zr, address, true);
+        } else if (!tryMergeLoadStore(srcSize, zr, address, false, false)) {
+            super.ldrHelper(srcSize, zr, address, true);
         }
     }
 
@@ -1314,6 +1335,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * C.6.2.179 Logical Shift Left (immediate).
+     * <p>
      * dst = src << (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1324,12 +1347,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
         if (clampedShift != 0 || !dst.equals(src)) {
-            int remainingBits = size - clampedShift;
-            super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
+            int immr = (-clampedShift) & (size - 1);
+            int imms = size - 1 - clampedShift;
+            super.ubfm(size, dst, src, immr, imms);
         }
     }
 
     /**
+     * C.6.2.182 Logical Shift Right (immediate).
+     * <p>
      * dst = src >>> (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1547,7 +1573,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src Either floating-point or general-purpose register. If general-purpose register may
      *            not be stackpointer. Cannot be null in any case.
      */
-    @Override
     public void fmov(int size, Register dst, Register src) {
         assert size == 32 || size == 64;
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
@@ -1556,7 +1581,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         } else if (src.getRegisterCategory().equals(CPU)) {
             fmovCpu2Fpu(size, dst, src);
         } else {
-            super.fmov(size, dst, src);
+            fmovFpu2Fpu(size, dst, src);
         }
     }
 
@@ -1573,8 +1598,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void fmov(int size, Register dst, double imm) {
         assert size == 32 || size == 64;
         if (imm == 0.0) {
-            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is no valid immediate.";
-            fmovCpu2Fpu(size, dst, zr);
+            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is not a valid immediate.";
+            neon.moviVI(ASIMDSize.HalfReg, dst, 0);
         } else {
             super.fmov(size, dst, imm);
         }
@@ -1693,7 +1718,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         COMPARE_REG_BRANCH_ZERO(0x3), // (CBZ)
         TEST_BIT_BRANCH_NONZERO(0x4), // (TBNZ)
         TEST_BIT_BRANCH_ZERO(0x5), // (TBZ)
-        ADR(0x6); // (ADR)
+        ADR(0x6), // (ADR)
+        JUMP_TABLE_TARGET_OFFSET(0x7); // (signed 32-bit integer value)
 
         /**
          * Offset by which additional information encoded within the instruction to be patched must
@@ -1715,7 +1741,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         static int encode(PatchLabelKind patchKind, int extraInformation) {
-            assert NumUtil.isUnsignedNbit(32 - INFORMATION_OFFSET, extraInformation);
+            GraalError.guarantee(NumUtil.isUnsignedNbit(32 - INFORMATION_OFFSET, extraInformation), "unable to encode patch information 0x%x", extraInformation);
             return patchKind.encoding | (extraInformation << INFORMATION_OFFSET);
         }
 
@@ -1726,7 +1752,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void adr(Register dst, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
             super.adr(dst, getPCRelativeOffset(label));
         } else {
@@ -1744,7 +1769,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbnz(int size, Register cmp, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         assert size == 32 || size == 64;
         if (label.isBound()) {
             super.cbnz(size, cmp, getPCRelativeOffset(label));
@@ -1765,7 +1789,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbz(int size, Register cmp, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         assert size == 32 || size == 64;
         if (label.isBound()) {
             super.cbz(size, cmp, getPCRelativeOffset(label));
@@ -1786,10 +1809,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbnz(Register cmp, int uimm6, Label label) {
-        assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
             super.tbnz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
+            ImmediateOpChecks.validateUnsigned(6, uimm6);
             label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << 6;
             int extraInformation = regEncoding | uimm6;
@@ -1805,10 +1828,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbz(Register cmp, int uimm6, Label label) {
-        assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
             super.tbz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
+            ImmediateOpChecks.validateUnsigned(6, uimm6);
             label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << 6;
             int extraInformation = regEncoding | uimm6;
@@ -1823,7 +1846,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void branchConditionally(ConditionFlag condition, Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
             super.b(condition, getPCRelativeOffset(label));
         } else {
@@ -1850,11 +1872,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void jmp(Label label) {
-        // TODO Handle case where offset is too large for a single jump instruction
-        /*
-         * Note if this code is changed to potentially generate more than a single instruction, then
-         * the JumpTable code within AArch64ControlFlow must also be altered.
-         */
         if (label.isBound()) {
             super.b(getPCRelativeOffset(label));
         } else {
@@ -1877,6 +1894,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void jmp() {
         super.b();
+    }
+
+    /**
+     * Emits offset to store in JumpTable for given JumpTable start ({@code jumpTable}) and jump
+     * target ({@code entryTarget}).
+     */
+    public void emitJumpTableOffset(Label jumpTable, Label entryTarget) {
+        if (entryTarget.isBound()) {
+            int targetOffset = entryTarget.position() - jumpTable.position();
+            emitInt(targetOffset);
+        } else {
+            int offsetToJumpTableBase = position() - jumpTable.position();
+            entryTarget.addPatchAt(position(), this);
+            emitInt(PatchLabelKind.encode(PatchLabelKind.JUMP_TABLE_TARGET_OFFSET, offsetToJumpTableBase));
+        }
     }
 
     /**
@@ -1972,7 +2004,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void align(int modulus) {
-        assert modulus > 0 && (modulus & 0x3) == 0 : "Modulus has to be a positive multiple of 4.";
+        assert modulus > 0 && (modulus & 0b11) == 0 : "Modulus has to be a positive multiple of 4.";
         if (position() % modulus == 0) {
             return;
         }
@@ -1989,6 +2021,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     protected void patchJumpTarget(int patchPos, int jumpTarget) {
         final int instruction = getInt(patchPos);
         final int pcRelativeOffset = jumpTarget - patchPos;
+        assert (pcRelativeOffset & 0b11) == 0 : "unexpected alignment " + pcRelativeOffset;
         PatchLabelKind type = PatchLabelKind.fromEncoding(instruction);
         final int extraInformation = PatchLabelKind.decodeExtraInformation(instruction);
         switch (type) {
@@ -2034,6 +2067,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             case ADR: {
                 Register reg = AArch64.cpuRegisters.get(extraInformation);
                 super.adr(reg, pcRelativeOffset, patchPos);
+                break;
+            }
+            case JUMP_TABLE_TARGET_OFFSET: {
+                int offsetToJumpTableBase = extraInformation;
+                int jumpTableBase = patchPos - offsetToJumpTableBase;
+                int targetOffset = jumpTarget - jumpTableBase;
+                emitInt(targetOffset, patchPos);
                 break;
             }
             default:

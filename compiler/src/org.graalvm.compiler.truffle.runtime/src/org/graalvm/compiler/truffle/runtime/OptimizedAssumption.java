@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
@@ -32,6 +31,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -45,6 +45,7 @@ import jdk.vm.ci.meta.JavaKind.FormatWithToString;
  * {@linkplain #registerDependency() registered} dependencies to be invalidated.
  */
 public final class OptimizedAssumption extends AbstractAssumption implements FormatWithToString {
+
     /**
      * Reference to machine code that is dependent on an assumption.
      */
@@ -54,28 +55,20 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
          * is valid.
          */
         OptimizedAssumptionDependency dependency;
-
-        /**
-         * Machine code that is guaranteed to be invalid once the
-         * {@link OptimizedAssumptionDependency} object becomes unreachable.
-         */
-        WeakReference<OptimizedAssumptionDependency> weakDependency;
+        boolean pending = true;
 
         Entry next;
 
         @Override
         public synchronized void accept(OptimizedAssumptionDependency dep) {
-            if (dep == null || dep.soleExecutionEntryPoint()) {
-                this.weakDependency = new WeakReference<>(dep);
-            } else {
-                this.dependency = dep;
-            }
+            this.dependency = dep;
+            this.pending = false;
             this.notifyAll();
         }
 
         synchronized OptimizedAssumptionDependency awaitDependency() {
             boolean interrupted = false;
-            while (dependency == null && weakDependency == null) {
+            while (pending) {
                 try {
                     this.wait();
                 } catch (InterruptedException e) {
@@ -85,33 +78,21 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             if (interrupted) {
                 Thread.currentThread().interrupt();
             }
-
-            if (dependency != null) {
-                return dependency;
-            }
-            return weakDependency.get();
+            return dependency;
         }
 
-        synchronized boolean isValid() {
-            if (dependency != null) {
-                return dependency.isValid();
+        synchronized boolean isAlive() {
+            if (dependency == null) {
+                // A pending dependency is treated as alive
+                return pending;
             }
-            if (weakDependency != null) {
-                OptimizedAssumptionDependency dep = weakDependency.get();
-                return dep != null && dep.isValid();
-            }
-            // A pending dependency is treated as valid
-            return true;
+            return dependency.isAlive();
         }
 
         @Override
         public synchronized String toString() {
             if (dependency != null) {
                 return String.format("%x[%s]", hashCode(), dependency);
-            }
-            if (weakDependency != null) {
-                OptimizedAssumptionDependency dep = weakDependency.get();
-                return String.format("%x[%s]", hashCode(), dep);
             }
             return String.format("%x", hashCode());
         }
@@ -129,12 +110,20 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
 
     /**
      * Number of entries in {@link #dependencies} after most recent call to
-     * {@link #removeInvalidEntries()}.
+     * {@link #removeDeadEntries()}.
      */
     private int sizeAfterLastRemove;
 
     public OptimizedAssumption(String name) {
         super(name);
+    }
+
+    private OptimizedAssumption(Object name) {
+        super(name);
+    }
+
+    static Assumption createAlwaysValid() {
+        return new OptimizedAssumption(Lazy.ALWAYS_VALID_NAME);
     }
 
     @Override
@@ -169,6 +158,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return;
         }
 
+        if (this.name == Lazy.ALWAYS_VALID_NAME) {
+            throw new UnsupportedOperationException("Cannot invalidate this assumption - it is always valid");
+        }
+
         OptionValues engineOptions = null;
         TruffleLogger logger = null;
         boolean logStackTrace = false;
@@ -179,7 +172,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             OptimizedAssumptionDependency dependency = e.awaitDependency();
             if (dependency != null) {
                 if (reason == null) {
-                    String useName = name != null ? name : "";
+                    String useName = name != null ? name.toString() : "";
                     String useMessage = message != null ? message : "";
                     if (useName.isEmpty() && useMessage.isEmpty()) {
                         reason = "assumption invalidated";
@@ -222,12 +215,12 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
     }
 
-    private void removeInvalidEntries() {
+    private void removeDeadEntries() {
         Entry last = null;
         Entry e = dependencies;
         dependencies = null;
         while (e != null) {
-            if (e.isValid()) {
+            if (e.isAlive()) {
                 if (last == null) {
                     dependencies = e;
                 } else {
@@ -246,10 +239,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     }
 
     /**
-     * Removes all {@linkplain OptimizedAssumptionDependency#isValid() invalid} dependencies.
+     * Removes all {@linkplain OptimizedAssumptionDependency#isAlive() invalid} dependencies.
      */
-    public synchronized void removeInvalidDependencies() {
-        removeInvalidEntries();
+    public synchronized void removeDeadDependencies() {
+        removeDeadEntries();
     }
 
     /**
@@ -258,6 +251,9 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     public synchronized int countDependencies() {
         return size;
     }
+
+    private static final Consumer<OptimizedAssumptionDependency> DISCARD_DEPENDENCY = (e) -> {
+    };
 
     /**
      * Registers some dependent code with this assumption.
@@ -272,8 +268,16 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
         if (isValid) {
+            if (this.name == Lazy.ALWAYS_VALID_NAME) {
+                /*
+                 * An ALWAYS_VALID assumption does not need registration, as they are by definition
+                 * always valid. If they attempted to get invalidated an error is thrown, so we can
+                 * just discard the dependency.
+                 */
+                return DISCARD_DEPENDENCY;
+            }
             if (size >= 2 * sizeAfterLastRemove) {
-                removeInvalidEntries();
+                removeDeadEntries();
             }
             Entry e = new Entry();
             e.next = dependencies;
@@ -349,4 +353,21 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return strValue;
         }
     }
+
+    /*
+     * We use a lazy class as this is already needed when the assumption is initialized.
+     */
+    static class Lazy {
+        /*
+         * We use an Object instead of a String here to avoid accidently handing out the always
+         * valid string object in getName().
+         */
+        static final Object ALWAYS_VALID_NAME = new Object() {
+            @Override
+            public String toString() {
+                return "<always valid>";
+            }
+        };
+    }
+
 }

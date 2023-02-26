@@ -27,11 +27,18 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
+ */
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {
-    final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
+
+    final BlockingQueue<Runnable> entries;
+
+    TraversingBlockingQueue(BlockingQueue<Runnable> entries) {
+        this.entries = entries;
+    }
 
     @SuppressWarnings("unchecked")
     private static CompilationTask task(Runnable entry) {

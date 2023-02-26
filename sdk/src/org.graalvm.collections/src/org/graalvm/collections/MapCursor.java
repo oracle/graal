@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,4 +54,15 @@ public interface MapCursor<K, V> extends UnmodifiableMapCursor<K, V> {
      * @since 19.0
      */
     void remove();
+
+    /**
+     * Set the value of the current entry.
+     *
+     * @param newValue new value to be associated with the current key.
+     * @return previous value associated with the current key.
+     * @since 22.1
+     */
+    default V setValue(V newValue) {
+        throw new UnsupportedOperationException();
+    }
 }

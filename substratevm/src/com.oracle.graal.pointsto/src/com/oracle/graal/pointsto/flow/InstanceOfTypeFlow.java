@@ -24,10 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -41,16 +38,12 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public class InstanceOfTypeFlow extends TypeFlow<BytecodePosition> {
 
-    private final BytecodeLocation location;
-
-    public InstanceOfTypeFlow(ValueNode node, BytecodeLocation instanceOfLocation, AnalysisType declaredType) {
-        super(node.getNodeSourcePosition(), declaredType);
-        this.location = instanceOfLocation;
+    public InstanceOfTypeFlow(BytecodePosition position, AnalysisType declaredType) {
+        super(position, declaredType);
     }
 
     public InstanceOfTypeFlow(InstanceOfTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
-        this.location = original.location;
     }
 
     @Override
@@ -66,10 +59,6 @@ public class InstanceOfTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new InstanceOfTypeFlow(this, methodFlows);
-    }
-
-    public BytecodeLocation getLocation() {
-        return location;
     }
 
     @Override

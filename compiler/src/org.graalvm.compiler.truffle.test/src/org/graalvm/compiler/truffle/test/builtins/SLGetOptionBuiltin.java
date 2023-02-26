@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Looks up the value of an option in {@link PolyglotCompilerOptions}. In the future this builtin
@@ -40,8 +43,9 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
 
     @Specialization
     @TruffleBoundary
-    public Object getOption(String name) {
-        final OptionDescriptor option = PolyglotCompilerOptions.getDescriptors().get(name);
+    public Object getOption(TruffleString name,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+        final OptionDescriptor option = PolyglotCompilerOptions.getDescriptors().get(toJavaStringNode.execute(name));
         if (option == null) {
             throw new SLAssertionError("No such option named \"" + name + "\" found in " + PolyglotCompilerOptions.class.getName(), this);
         }

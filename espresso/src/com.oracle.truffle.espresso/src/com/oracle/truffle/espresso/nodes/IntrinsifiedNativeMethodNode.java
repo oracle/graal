@@ -28,21 +28,21 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 
-public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
+final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @Child private CallableFromNative nativeMethod;
     private final Object env;
 
-    public IntrinsifiedNativeMethodNode(CallableFromNative.Factory factory, Method method, Object env) {
-        super(method.getMethodVersion());
-        assert validParameterCount(factory, method);
-        this.nativeMethod = insert(factory.create(getMeta()));
+    IntrinsifiedNativeMethodNode(Method.MethodVersion methodVersion, CallableFromNative.Factory factory, Object env) {
+        super(methodVersion);
+        assert CallableFromNative.validParameterCount(factory, methodVersion);
+        this.nativeMethod = insert(factory.create());
         this.env = env;
     }
 
     @Override
-    Object executeBody(VirtualFrame frame) {
+    Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        Method method = getMethod();
+        Method method = getMethodVersion().getMethod();
         if (method.isStatic()) {
             int parameterCount = method.getParameterCount();
             Object[] newArgs = new Object[parameterCount + 1];
@@ -54,20 +54,7 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     }
 
     @Override
-    void initializeBody(VirtualFrame frame) {
-        // nop
-    }
-
-    @Override
     public int getBci(Frame frame) {
         return -2;
-    }
-
-    public static boolean validParameterCount(CallableFromNative.Factory factory, Method method) {
-        /*
-         * Static native methods prepends the Class in the arg array, and instance methods do not
-         * include the receiver in the parameter count.
-         */
-        return (factory.parameterCount() == method.getParameterCount() + 1);
     }
 }

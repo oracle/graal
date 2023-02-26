@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -162,6 +162,10 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
                 return [re.compile(r'.*', re.MULTILINE)]
         return []
+
+    def flakySuccessPatterns(self):
+        # bzip2 is known to have a compiler error during OSR compilation, which would trigger failurePatterns
+        return [re.compile(r'bzip2')]  # GR-38646
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:
@@ -348,23 +352,23 @@ def add_run_numbers(out):
             new_result += make_runs_line(first_20_warmup_iters_runs, line)
             first_20_warmup_iters_runs += 1
             continue
-        elif line.startswith("last"):
+        if line.startswith("last"):
             new_result += make_runs_line(last_10_iters_runs, line)
             last_10_iters_runs += 1
             continue
-        elif line.startswith("Pure-startup"):
+        if line.startswith("Pure-startup"):
             new_result += make_runs_line(pure_startup_runs, line)
             pure_startup_runs += 1
             continue
-        elif line.startswith("Startup"):
+        if line.startswith("Startup"):
             new_result += make_runs_line(startup_runs, line)
             startup_runs += 1
             continue
-        elif line.startswith("Early-warmup"):
+        if line.startswith("Early-warmup"):
             new_result += make_runs_line(early_warmup_runs, line)
             early_warmup_runs += 1
             continue
-        elif line.startswith("Late-warmup"):
+        if line.startswith("Late-warmup"):
             new_result += make_runs_line(late_warmup_runs, line)
             late_warmup_runs += 1
             continue
@@ -441,13 +445,25 @@ class ClangVm(GccLikeVm):
         super(ClangVm, self).prepare_env(env)
         env["CXXFLAGS"] = env.get("CXXFLAGS", "") + " -stdlib=libc++"
         if "LIBCXXPATH" not in env:
-            env["LIBCXXPATH"] = os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "lib")
+            toolchainPath = mx.distribution("LLVM_TOOLCHAIN").get_output()
+            out = mx.LinesOutputCapture()
+            mx.run([os.path.join(toolchainPath, "bin", "llvm-config"), "--libdir", "--host-target"], out=out)
+            env["LIBCXXPATH"] = os.path.join(*out.lines)  # os.path.join(libdir, host-target)
         return env
 
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
+    def __init__(self, config_name, options, host_vm=None, cflags=None):
+        super(SulongVm, self).__init__(host_vm)
+        self._config_name = config_name
+        self._options = options
+        self._cflags = cflags
+
+    def with_host_vm(self, host_vm):
+        return SulongVm(self._config_name, self._options, host_vm, cflags=self._cflags)
+
     def config_name(self):
-        return "default"
+        return self._config_name
 
     def toolchain_name(self):
         return "native"
@@ -463,7 +479,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def run(self, cwd, args):
         bench_file_and_args = args[-3:]
-        launcher_args = self.launcher_args(args[:-3]) + bench_file_and_args
+        launcher_args = self.launcher_args(args[:-3]) + self._options + bench_file_and_args
         if hasattr(self.host_vm(), 'run_launcher'):
             result = self.host_vm().run_launcher(self.launcherName(), launcher_args, cwd)
         else:
@@ -496,6 +512,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         # change this if we can properly install components into a graalvm deployment
         env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
         env['CXX'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CXX>'.format(self.toolchain_name()))
+        if self._cflags:
+            cflags_string = ' '.join(self._cflags)
+            env['CFLAGS'] = cflags_string
         return env
 
     def out_file(self):
@@ -510,7 +529,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcher_args(self, args):
         launcher_args = [
             '--experimental-options',
-            '--engine.CompilationFailureAction=ExitVM',
+            '--engine.CompilationFailureAction=Diagnose',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
         ]
         return launcher_args + args
@@ -728,7 +747,11 @@ native_vm_registry.add_vm(GccVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
-native_vm_registry.add_vm(SulongVm(), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default', []), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O0', [], cflags=['-O0']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O1', [], cflags=['-O1']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O2', [], cflags=['-O2', '-fno-vectorize', '-fno-slp-vectorize']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O3', [], cflags=['-O3', '-fno-vectorize', '-fno-slp-vectorize']), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',

@@ -26,13 +26,9 @@ package com.oracle.svm.core.posix;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -43,10 +39,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -54,7 +52,6 @@ import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
-import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -95,7 +92,7 @@ public class PosixUtils {
                 return Locale.LC_MESSAGES();
         }
 
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getClass().equals(GLibC.class)) {
+        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(GLibC.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();
@@ -151,30 +148,18 @@ public class PosixUtils {
         return Unistd.getpid();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static final class ProcessNameProvider implements Function<TargetClass, String> {
-        @Override
-        public String apply(TargetClass annotation) {
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                return "java.lang.UNIXProcess";
-            } else {
-                return "java.lang.ProcessImpl";
-            }
-        }
-    }
-
-    @TargetClass(classNameProvider = ProcessNameProvider.class)
-    private static final class Target_java_lang_UNIXProcess {
+    @TargetClass(className = "java.lang.ProcessImpl")
+    private static final class Target_java_lang_ProcessImpl {
         @Alias int pid;
     }
 
     public static int getpid(Process process) {
-        Target_java_lang_UNIXProcess instance = SubstrateUtil.cast(process, Target_java_lang_UNIXProcess.class);
+        Target_java_lang_ProcessImpl instance = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
         return instance.pid;
     }
 
     public static int waitForProcessExit(int ppid) {
-        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        CIntPointer statusptr = UnsafeStackValue.get(CIntPointer.class);
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
             int errno = LibC.errno();
             if (errno == Errno.ECHILD()) {
@@ -270,10 +255,12 @@ public class PosixUtils {
      * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
-        Signal.sigaction old = StackValue.get(Signal.sigaction.class);
-        Signal.sigaction act = StackValue.get(Signal.sigaction.class);
-        Signal.sigemptyset(act.sa_mask());
-        Signal.sigaddset(act.sa_mask(), signum);
+        Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
+
+        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
+        Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
+        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+
         act.sa_flags(Signal.SA_RESTART());
         act.sa_handler(handler);
         if (Signal.sigaction(signum, act, old) != 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -974,7 +975,7 @@ public abstract class Source {
         return new IllegalArgumentException("Invalid MIME type provided. MIME types consist of a type and a subtype separated by '/'.");
     }
 
-    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
+    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOSupported();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource) throws IOException {
@@ -992,8 +993,11 @@ public abstract class Source {
         if (useOrigin instanceof File) {
             final File file = (File) useOrigin;
             assert useFileSystemContext != null : "file system context must be provided by polyglot embedding API";
-            TruffleFile truffleFile = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
-            useOrigin = truffleFile;
+            try {
+                useOrigin = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                throw new AssertionError("Inconsistent path", e);
+            }
         }
 
         if (useOrigin == CONTENT_UNSET) {
@@ -1007,7 +1011,7 @@ public abstract class Source {
                 }
             } else {
                 // Canonicalize the file if it exists
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
             }
             useFileSystemContext = SourceAccessor.LANGUAGE.getFileSystemContext(useTruffleFile);
             useName = useName == null ? useTruffleFile.getName() : useName;
@@ -1036,20 +1040,11 @@ public abstract class Source {
             useUri = useUri == null ? tmpUri : useUri;
             usePath = usePath == null ? useUrl.getPath() : usePath;
             useFileSystemContext = useFileSystemContext == null ? SourceAccessor.ACCESSOR.engineSupport().getCurrentFileSystemContext() : useFileSystemContext;
+            assert useTruffleFile == null;
             try {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, useFileSystemContext);
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
-                if (useContent == CONTENT_UNSET) {
-                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
-                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
-                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
-                        useContent = read(useTruffleFile, useEncoding);
-                    } else {
-                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
-                    }
-                }
-            } catch (UnsupportedOperationException uoe) {
-                if (ALLOW_IO && SourceAccessor.hasAllAccess(useFileSystemContext)) {
+            } catch (IllegalArgumentException | UnsupportedOperationException e) {
+                if (ALLOW_IO && SourceAccessor.isSocketIOAllowed(useFileSystemContext)) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1063,6 +1058,18 @@ public abstract class Source {
                     }
                 } else {
                     throw new SecurityException("Reading of URL " + useUrl + " is not allowed.");
+                }
+            }
+            if (useTruffleFile != null) {
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
+                if (useContent == CONTENT_UNSET) {
+                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
+                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
+                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
+                        useContent = read(useTruffleFile, useEncoding);
+                    } else {
+                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
+                    }
                 }
             }
         } else if (useOrigin instanceof Reader) {
@@ -1100,6 +1107,18 @@ public abstract class Source {
         SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome,
                         embedderSource);
         return SOURCES.intern(key);
+    }
+
+    private static TruffleFile getCanonicalFileIfItExists(TruffleFile file) throws IOException {
+        if (file.exists()) {
+            try {
+                return file.getCanonicalFile();
+            } catch (NoSuchFileException ex) {
+                // The file may have been deleted between exists() and getCanonicalFile().
+                // We handle this race condition as if the file did not exist.
+            }
+        }
+        return file;
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
@@ -1246,7 +1265,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!ALLOW_IO || !SourceAccessor.hasAllAccess(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.isSocketIOAllowed(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 
@@ -1413,13 +1432,13 @@ public abstract class Source {
          * The MIME type can be guessed by the system based on {@link #findMimeType(TruffleFile)
          * files} or {@link #findMimeType(URL) urls}.
          *
+         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
+         *            type should be used.
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @see LanguageInfo#getDefaultMimeType()
          * @see LanguageInfo#getMimeTypes()
          * @see Source#findMimeType(TruffleFile)
          * @see Source#findMimeType(URL)
-         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
-         *            type should be used.
-         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @since 19.0
          */
         public SourceBuilder mimeType(@SuppressWarnings("hiding") String mimeType) {
@@ -1529,6 +1548,14 @@ public abstract class Source {
 
         void embedderSource(boolean b) {
             this.embedderSource = b;
+        }
+
+        void url(@SuppressWarnings("hiding") URL url) {
+            this.url = url;
+        }
+
+        void path(@SuppressWarnings("hiding") String path) {
+            this.path = path;
         }
 
         /**

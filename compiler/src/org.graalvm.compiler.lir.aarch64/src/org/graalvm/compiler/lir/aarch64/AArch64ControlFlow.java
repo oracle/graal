@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,14 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
@@ -49,7 +52,6 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import org.graalvm.compiler.lir.Variable;
@@ -64,7 +66,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64ControlFlow {
-    public static final class ReturnOp extends AArch64BlockEndOp implements BlockEndOp {
+    public static final class ReturnOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
 
@@ -290,7 +292,7 @@ public class AArch64ControlFlow {
         }
     }
 
-    public static class StrategySwitchOp extends AArch64BlockEndOp implements StandardOp.BlockEndOp {
+    public static class StrategySwitchOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
 
         private final Constant[] keyConstants;
@@ -378,14 +380,33 @@ public class AArch64ControlFlow {
         }
     }
 
-    public static final class TableSwitchOp extends AArch64BlockEndOp {
-        public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
+    /**
+     * This operation jumps to the appropriate destination as specified within a JumpTable, or to
+     * the default condition if there is no match within the JumpTable.
+     *
+     * <p>
+     * The JumpTable contains a series of target offsets, relative to the start of the jump table,
+     * for a contiguous series of indexes in the range [lowKey, highKey]. Finding the appropriate
+     * index within the jump table is accomplished in two steps:
+     *
+     * <ol>
+     * <li>Determine whether the index is within the JumpTable. This is accomplished by first
+     * normalizing the index (normalizedIdx == index - lowKey), and then checking whether
+     * <code>(unsigned(normalizedIdx) <= highKey - lowKey</code>). If not, then one must jump to the
+     * defaultTarget.</li>
+     *
+     * <li>If normalizedIdx is within the JumpTable, then jump to JumpTableStart +
+     * JumpTable[normalizedIdx].</li>
+     * </ol>
+     */
+    public static final class RangeTableSwitchOp extends AArch64BlockEndOp {
+        public static final LIRInstructionClass<RangeTableSwitchOp> TYPE = LIRInstructionClass.create(RangeTableSwitchOp.class);
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
         @Use({REG}) protected AllocatableValue index;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, AllocatableValue index) {
+        public RangeTableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, AllocatableValue index) {
             super(TYPE);
             this.lowKey = lowKey;
             assert defaultTarget != null;
@@ -394,57 +415,141 @@ public class AArch64ControlFlow {
             this.index = index;
         }
 
-        /**
-         * The goal of this code is to jump to the appropriate destination as specified within a
-         * JumpTable, or to the default condition if there is no match within the JumpTable.
-         *
-         * The JumpTable contains a series of jumps (trampolines) for a contiguous series of indexes
-         * in the range [lowKey, highKey]. Finding the appropriate index within the jump table is
-         * accomplished in two steps:
-         *
-         * <ol>
-         * <li>Determine whether the index is within the JumpTable. This is accomplished by first
-         * normalizing the index (normalizedIdx == index - lowKey), and then checking whether
-         * <code>(|normalizedIdx| <= highKey - lowKey</code>). If not, then one must jump to the
-         * defaultTarget.</li>
-         *
-         * <li>If normalizedIdx is with the JumpTable, then jump to JumpTable[normalizedIdx].</li>
-         * </ol>
-         */
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            Register indexReg = asRegister(index, AArch64Kind.DWORD);
-
-            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
-                Register scratchReg = scratch1.getRegister();
-                Register normalizedIdx = scratch2.getRegister();
+            try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
+                Register scratch1 = sc1.getRegister();
+                Register scratch2 = sc2.getRegister();
                 /* Compare index against jump table bounds */
                 int highKey = lowKey + targets.length - 1;
-                masm.sub(32, normalizedIdx, indexReg, lowKey);
+                masm.sub(32, scratch2, asRegister(index), lowKey);
                 int keyDiff = highKey - lowKey; // equivalent to targets.length - 1
                 if (AArch64MacroAssembler.isComparisonImmediate(keyDiff)) {
-                    masm.compare(32, normalizedIdx, keyDiff);
+                    masm.compare(32, scratch2, keyDiff);
                 } else {
-                    masm.mov(scratchReg, keyDiff);
-                    masm.cmp(32, normalizedIdx, scratchReg);
+                    masm.mov(scratch1, keyDiff);
+                    masm.cmp(32, scratch2, scratch1);
                 }
 
                 // Jump to default target if index is not within the jump table
                 masm.branchConditionally(ConditionFlag.HI, defaultTarget.label());
 
+                emitJumpTable(crb, masm, scratch1, scratch2, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+            }
+        }
+
+        public static void emitJumpTable(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register scratch, Register index, int lowKey, int highKey, Stream<Label> targets) {
+            Label jumpTable = new Label();
+            // load start of jump table
+            masm.adr(scratch, jumpTable);
+            /*
+             * Note scratch holds the start of the jump table and index stores the normalized index.
+             * Because each jumpTable index is 4 bytes large, index should be scaled.
+             */
+            AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(32, scratch, index, true, ExtendType.UXTW);
+            // load relative target offset
+            masm.ldrs(64, 32, index, jumpTableEntryAddr);
+            // compute target address (jumpTableStart + target offset)
+            masm.add(64, scratch, scratch, index);
+            // jump to target
+            masm.jmp(scratch);
+
+            masm.bind(jumpTable);
+            // emit jump table entries
+            targets.forEach(label -> masm.emitJumpTableOffset(jumpTable, label));
+            JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET_ONLY);
+            crb.compilationResult.addAnnotation(jt);
+        }
+    }
+
+    /**
+     * This operation jumps to the appropriate destination as specified within a JumpTable, or to
+     * the default condition if there is no match within the JumpTable.
+     *
+     * <p>
+     * The JumpTable is indexed via {@code hash} and the actions taken dependent on whether a
+     * {@code defaultTarget} is provided:
+     *
+     * <p>
+     * If a defaultTarget is provided, then the JumpTable uses the VALUE_AND_OFFSET format and
+     * {@code originalValue} must be checked against the value within the JumpTable. If the values
+     * match, then corresponding target (JumpTableStart + JumpTable[hash].OFFSET) is jumped to;
+     * otherwise, the code jumps to the default target.
+     *
+     * <p>
+     * If a defaultTarget is not provided, then the JumpTable uses the OFFSET_ONLY format and
+     * JumpTableStart + JumpTable[hash] can be immediately jumped to.
+     */
+    public static final class HashTableSwitchOp extends AArch64BlockEndOp {
+        public static final LIRInstructionClass<HashTableSwitchOp> TYPE = LIRInstructionClass.create(HashTableSwitchOp.class);
+        private final JavaConstant[] keys;
+        private final LabelRef defaultTarget;
+        private final LabelRef[] targets;
+        @Use({REG}) protected AllocatableValue originalValue;
+        @Use({REG}) protected AllocatableValue hash;
+
+        public HashTableSwitchOp(final JavaConstant[] keys, final LabelRef defaultTarget, LabelRef[] targets, AllocatableValue originalValue, AllocatableValue hash) {
+            super(TYPE);
+            this.keys = keys;
+            this.defaultTarget = defaultTarget;
+            this.targets = targets;
+            this.originalValue = originalValue;
+            this.hash = hash;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+                Register jumpTableBase = scratch1.getRegister();
+                Register jumpTableEntry = scratch2.getRegister();
+
                 Label jumpTable = new Label();
                 // load start of jump table
-                masm.adr(scratchReg, jumpTable);
-                // because each jumpTable index is 4 bytes large, shift normalizedIdx by 2.
-                masm.add(64, scratchReg, scratchReg, normalizedIdx, ExtendType.UXTW, 2);
-                // jump to JumpTable[normalizedIdx]
-                masm.jmp(scratchReg);
+                masm.adr(jumpTableBase, jumpTable);
+                /*
+                 * Load jump table entry specified by the hash index. Note the size of load is
+                 * dependent on the EntryFormat kind and the hash value must be scaled accordingly.
+                 */
+                EntryFormat format = defaultTarget == null ? EntryFormat.OFFSET_ONLY : EntryFormat.VALUE_AND_OFFSET;
+                int memAccessSize = format.size * Byte.SIZE;
+                AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(memAccessSize, jumpTableBase, asRegister(hash), true, ExtendType.UXTW);
+                masm.ldrs(64, memAccessSize, jumpTableEntry, jumpTableEntryAddr);
+                if (format == EntryFormat.OFFSET_ONLY) {
+                    // compute target address (jumpTableStart + offset)
+                    masm.add(64, jumpTableEntry, jumpTableBase, jumpTableEntry);
+                    // jump to target
+                    masm.jmp(jumpTableEntry);
+                } else {
+                    assert format == EntryFormat.VALUE_AND_OFFSET;
+                    /*
+                     * Note jumpTableEntry contains the value to compare again originalValue in its
+                     * lower 32 bits and the offset in its upper 32 bits.
+                     */
+
+                    // check if values match; if not, jump to default target
+                    masm.cmp(32, jumpTableEntry, asRegister(originalValue));
+                    masm.branchConditionally(ConditionFlag.NE, defaultTarget.label());
+
+                    /*
+                     * Compute target address (jumpTableStart + target offset). The shift needed to
+                     * extract the offset from the upper 32 bits is folded into the add.
+                     */
+                    masm.add(64, jumpTableBase, jumpTableBase, jumpTableEntry, AArch64Assembler.ShiftType.ASR, 32);
+                    // jump to target
+                    masm.jmp(jumpTableBase);
+                }
+
+                // ensure jump table is aligned with the entry size
+                masm.align(format.size);
                 masm.bind(jumpTable);
                 // emit jump table entries
-                for (LabelRef target : targets) {
-                    masm.jmp(target.label());
+                for (int i = 0; i < targets.length; i++) {
+                    if (format == EntryFormat.VALUE_AND_OFFSET) {
+                        masm.emitInt(keys[i].asInt());
+                    }
+                    masm.emitJumpTableOffset(jumpTable, targets[i].label());
                 }
-                JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET);
+                JumpTable jt = new JumpTable(jumpTable.position(), 0, keys.length - 1, format);
                 crb.compilationResult.addAnnotation(jt);
             }
         }

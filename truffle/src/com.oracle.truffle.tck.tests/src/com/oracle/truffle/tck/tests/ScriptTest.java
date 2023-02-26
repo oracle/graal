@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.tck.tests;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.TreeSet;
 import org.graalvm.polyglot.Value;
@@ -64,7 +65,7 @@ public class ScriptTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<TestRun> createScriptTests() {
         context = new TestContext(ScriptTest.class);
-        final Collection<TestRun> res = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
+        final Collection<TestRun> res = new TreeSet<>(Comparator.comparing(TestRun::toString));
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (Snippet script : context.getScripts(null, lang)) {
                 res.add(new TestRun(new AbstractMap.SimpleImmutableEntry<>(lang, script), Collections.emptyList()));
@@ -99,12 +100,18 @@ public class ScriptTest {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
         boolean success = false;
         try {
+            Value result = null;
             try {
-                final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null, true);
+                result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
+            } catch (IllegalArgumentException e) {
+                TestUtil.validateResult(testRun, context.getContext().asValue(e).as(PolyglotException.class));
                 success = true;
-            } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe, true);
+            } catch (PolyglotException e) {
+                TestUtil.validateResult(testRun, e);
+                success = true;
+            }
+            if (result != null) {
+                TestUtil.validateResult(testRun, result, true);
                 success = true;
             }
         } finally {

@@ -30,8 +30,8 @@ import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
@@ -40,7 +40,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     private final String qualifiedCustomTargetConstructorJavaName;
 
     public SerializationConfigurationType(ConfigurationCondition condition, String qualifiedJavaName, String qualifiedCustomTargetConstructorJavaName) {
-        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
+        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         assert qualifiedCustomTargetConstructorJavaName == null || qualifiedCustomTargetConstructorJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert qualifiedCustomTargetConstructorJavaName == null || !qualifiedCustomTargetConstructorJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
@@ -49,6 +49,18 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         Objects.requireNonNull(qualifiedJavaName);
         this.qualifiedJavaName = qualifiedJavaName;
         this.qualifiedCustomTargetConstructorJavaName = qualifiedCustomTargetConstructorJavaName;
+    }
+
+    public String getQualifiedJavaName() {
+        return qualifiedJavaName;
+    }
+
+    public String getQualifiedCustomTargetConstructorJavaName() {
+        return qualifiedCustomTargetConstructorJavaName;
+    }
+
+    public ConfigurationCondition getCondition() {
+        return condition;
     }
 
     @Override

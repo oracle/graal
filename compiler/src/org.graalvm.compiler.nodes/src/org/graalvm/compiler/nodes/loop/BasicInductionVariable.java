@@ -72,7 +72,7 @@ public class BasicInductionVariable extends InductionVariable {
         return op;
     }
 
-    public void setOP(BinaryArithmeticNode<?> newOp) {
+    public void setOp(BinaryArithmeticNode<?> newOp) {
         rawStride = newOp.getY();
         op = newOp;
     }
@@ -202,5 +202,10 @@ public class BasicInductionVariable extends InductionVariable {
     @Override
     public String toString() {
         return String.format("BasicInductionVariable %s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return init;
     }
 }

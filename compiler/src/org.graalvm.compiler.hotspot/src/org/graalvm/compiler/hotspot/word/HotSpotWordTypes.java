@@ -74,6 +74,11 @@ public class HotSpotWordTypes extends WordTypes {
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
         this.methodCountersPointerType = metaAccess.lookupJavaType(MethodCountersPointer.class);
         this.methodCountersPointerClass = MethodCountersPointer.class;
+        // These assertion sanity check that the underlying types were properly resolved
+        // in the context of libgraal where these should actually be SnippetResolvedJavaTypes
+        assert metaspacePointerType.isAssignableFrom(klassPointerType);
+        assert metaspacePointerType.isAssignableFrom(methodPointerType);
+        assert metaspacePointerType.isAssignableFrom(methodCountersPointerType);
     }
 
     @Override
@@ -81,7 +86,6 @@ public class HotSpotWordTypes extends WordTypes {
         if (type instanceof ResolvedJavaType && metaspacePointerType.isAssignableFrom((ResolvedJavaType) type)) {
             return true;
         }
-        assert type == null || !type.getName().equals("Lorg/graalvm/compiler/hotspot/word/KlassPointer;") : type.getClass() + " " + klassPointerType.getClass() + " " + type + " " + klassPointerType;
         return super.isWord(type);
     }
 
@@ -95,7 +99,7 @@ public class HotSpotWordTypes extends WordTypes {
 
     @Override
     public JavaKind asKind(JavaType type) {
-        if (klassPointerType.equals(type) || methodPointerType.equals(type)) {
+        if (type instanceof ResolvedJavaType && metaspacePointerType.isAssignableFrom((ResolvedJavaType) type)) {
             return getWordKind();
         }
         return super.asKind(type);

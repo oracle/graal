@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-class Config {
+public class Config {
 
     public static final String EVAL_SOURCE_ONLY_OPTION = "--eval-source-only";
 
@@ -45,6 +45,7 @@ class Config {
     Mode mode;
     Metric metric;
     boolean evalSourceOnlyDefault;
+    boolean compileTheWorld;
 
     final List<String> unrecognizedArguments = new ArrayList<>();
 
@@ -104,6 +105,8 @@ class Config {
     public String toString() {
         String config = "execution-mode:    " + mode + "\n" +
                         "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
+                        // This output is used by external tools to extract the metric name
+                        "metric class:      " + metric.getClass().getSimpleName() + "\n" +
                         "warmup-iterations: " + (warmupIterations == UNINITIALIZED_ITERATIONS ? "default" : warmupIterations) + "\n" +
                         "iterations:        " + (iterations == UNINITIALIZED_ITERATIONS ? "default" : iterations + "\n");
         if (multiEngine != null) {

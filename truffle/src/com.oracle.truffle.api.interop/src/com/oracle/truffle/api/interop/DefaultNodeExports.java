@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -62,22 +63,31 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings("static-method")
 final class DefaultNodeExports {
 
-    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasScope(Node node, Frame frame) {
-        RootNode root = node.getRootNode();
-        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        return language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node));
+        return hasScopeSlowPath(node);
     }
 
     @TruffleBoundary
-    @ExportMessage
-    @SuppressWarnings({"unchecked", "unused"})
-    static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+    private static boolean hasScopeSlowPath(Node node) {
         RootNode root = node.getRootNode();
         TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        if (language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node))) {
+        return language != null && (node == root || InteropAccessor.INSTRUMENT.isInstrumentable(node));
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+        return getScopeSlowPath(node, frame != null ? frame.materialize() : null);
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings("unchecked")
+    private static Object getScopeSlowPath(Node node, MaterializedFrame frame) throws UnsupportedMessageException {
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        if (language != null && (node == root || InteropAccessor.INSTRUMENT.isInstrumentable(node))) {
             return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
         }
         throw UnsupportedMessageException.create();
@@ -93,16 +103,10 @@ final class DefaultNodeExports {
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+    private static Object createDefaultScope(RootNode root, MaterializedFrame frame, Class<? extends TruffleLanguage<?>> language) {
         LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
-        for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
-            if (!isInternal(slot.getIdentifier()) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
-                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
-            }
-        }
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
             if (!isInternal(entry.getKey()) && (frame == null || InteropLibrary.isValidValue(frame.getAuxiliarySlot(entry.getValue())))) {
                 slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
@@ -153,7 +157,6 @@ final class DefaultNodeExports {
             return true;
         }
 
-        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         Object readMember(String member) throws UnknownIdentifierException {
@@ -164,11 +167,7 @@ final class DefaultNodeExports {
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
-                    return frame.getValue((com.oracle.truffle.api.frame.FrameSlot) slot);
-                } else {
-                    return frame.getAuxiliarySlot((int) slot);
-                }
+                return frame.getAuxiliarySlot((int) slot);
             }
         }
 
@@ -190,7 +189,6 @@ final class DefaultNodeExports {
             return slots.containsKey(member) && frame != null;
         }
 
-        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -201,11 +199,7 @@ final class DefaultNodeExports {
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
-                    frame.setObject((com.oracle.truffle.api.frame.FrameSlot) slot, value);
-                } else {
-                    frame.setAuxiliarySlot((int) slot, value);
-                }
+                frame.setAuxiliarySlot((int) slot, value);
             }
         }
 

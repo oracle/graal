@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public final class StackFramesHandler {
                 // should not be, double-check
                 continue;
             }
-            context.getLoadedSourcesHandler().assureLoaded(source);
+            com.oracle.truffle.tools.dap.types.Source dapSource = context.getLoadedSourcesHandler().assureLoaded(source);
             SuspendAnchor anchor = SuspendAnchor.BEFORE;
             DebugValue returnValue = null;
             if (top) {
@@ -79,12 +79,10 @@ public final class StackFramesHandler {
             }
             if (anchor == SuspendAnchor.BEFORE) {
                 sfs.add(StackFrame.create(info.getId(new FrameWrapper(frame, returnValue)), frame.getName(),
-                                context.debuggerToClientLine(sourceSection.getStartLine()), context.debuggerToClientColumn(sourceSection.getStartColumn())).setSource(
-                                                context.getLoadedSourcesHandler().from(source)));
+                                context.debuggerToClientLine(sourceSection.getStartLine()), context.debuggerToClientColumn(sourceSection.getStartColumn())).setSource(dapSource));
             } else {
                 sfs.add(StackFrame.create(info.getId(new FrameWrapper(frame, returnValue)), frame.getName(),
-                                context.debuggerToClientLine(sourceSection.getEndLine()), context.debuggerToClientColumn(sourceSection.getEndColumn())).setSource(
-                                                context.getLoadedSourcesHandler().from(source)));
+                                context.debuggerToClientLine(sourceSection.getEndLine()), context.debuggerToClientColumn(sourceSection.getEndColumn() + 1)).setSource(dapSource));
             }
             top = false;
         }
@@ -154,7 +152,7 @@ public final class StackFramesHandler {
         return null;
     }
 
-    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) {
+    public static Variable evaluateOnStackFrame(ThreadsHandler.SuspendedThreadInfo info, int frameId, String expression) throws DebugException {
         FrameWrapper frameWrapper = info.getById(FrameWrapper.class, frameId);
         DebugStackFrame frame = frameWrapper != null ? frameWrapper.getFrame() : null;
         if (frame != null) {

@@ -25,7 +25,9 @@
 package org.graalvm.jniutils;
 
 import static org.graalvm.jniutils.JNIUtil.DeleteGlobalRef;
+import static org.graalvm.jniutils.JNIUtil.DeleteWeakGlobalRef;
 import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+import static org.graalvm.jniutils.JNIUtil.NewWeakGlobalRef;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -35,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JWeak;
 import org.graalvm.word.WordFactory;
 
 /**
@@ -66,25 +69,26 @@ public class HSObject {
 
     /**
      * Creates an object encapsulating a {@code handle} whose lifetime is determined by this object.
-     * The created {@link HSObject} does not allow duplicate JNI global handles. Use
-     * {@link #HSObject(JNIEnv, JObject, boolean)} to create {@link HSObject} allowing duplicate JNI
-     * global handles.
+     * The created {@link HSObject} uses a JNI global reference and does not allow duplicate JNI
+     * references. Use {@link #HSObject(JNIEnv, JObject, boolean, boolean)} to create
+     * {@link HSObject} using a JNI weak reference or allowing duplicate JNI references.
      */
     public HSObject(JNIEnv env, JObject handle) {
-        this(env, handle, false);
+        this(env, handle, false, false);
     }
 
     /**
      * Creates an object encapsulating a {@code handle} whose lifetime is determined by this object.
      * The created {@link HSObject} possibly allows duplicate JNI global handles.
      */
-    public HSObject(JNIEnv env, JObject handle, boolean allowGlobalDuplicates) {
+    public HSObject(JNIEnv env, JObject handle, boolean allowGlobalDuplicates, boolean weak) {
         cleanHandles(env);
         if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
             checkNonExistingGlobalReference(env, handle);
         }
-        this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
-        cleaner = new Cleaner(this, this.handle, allowGlobalDuplicates);
+        String name = this.getClass().getName();
+        this.handle = weak ? NewWeakGlobalRef(env, handle, name) : NewGlobalRef(env, handle, name);
+        cleaner = new Cleaner(this, this.handle, allowGlobalDuplicates, weak);
         CLEANERS.add(cleaner);
         next = null;
     }
@@ -185,23 +189,33 @@ public class HSObject {
 
         private JObject handle;
         private final boolean allowGlobalDuplicates;
+        private final boolean weak;
 
-        Cleaner(HSObject referent, JObject handle, boolean allowGlobalDuplicates) {
+        Cleaner(HSObject referent, JObject handle, boolean allowGlobalDuplicates, boolean weak) {
             super(referent, CLEANERS_QUEUE);
             this.handle = handle;
             this.allowGlobalDuplicates = allowGlobalDuplicates;
+            this.weak = weak;
         }
 
         void clean(JNIEnv env) {
             if (CLEANERS.remove(this)) {
                 if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
                     synchronized (this) {
-                        DeleteGlobalRef(env, handle);
+                        delete(env);
                         handle = WordFactory.nullPointer();
                     }
                 } else {
-                    DeleteGlobalRef(env, handle);
+                    delete(env);
                 }
+            }
+        }
+
+        private void delete(JNIEnv env) {
+            if (weak) {
+                DeleteWeakGlobalRef(env, (JWeak) handle);
+            } else {
+                DeleteGlobalRef(env, handle);
             }
         }
     }

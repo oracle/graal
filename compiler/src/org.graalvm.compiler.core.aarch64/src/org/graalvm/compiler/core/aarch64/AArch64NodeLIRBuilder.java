@@ -49,11 +49,4 @@ public abstract class AArch64NodeLIRBuilder extends NodeLIRBuilder {
     public AArch64LIRGenerator getLIRGeneratorTool() {
         return (AArch64LIRGenerator) super.getLIRGeneratorTool();
     }
-
-    @Override
-    protected void emitPrologue(StructuredGraph graph) {
-        // XXX Maybe we need something like this.
-        // getLIRGeneratorTool().emitLoadConstantTableBase();
-        super.emitPrologue(graph);
-    }
 }

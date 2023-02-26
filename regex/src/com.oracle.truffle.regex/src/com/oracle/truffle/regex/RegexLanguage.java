@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,13 +52,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TruffleNull;
 
@@ -118,11 +116,21 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
+ * 
+ * Debug loggers: {@link com.oracle.truffle.regex.tregex.util.Loggers}.
  *
  * @see RegexOptions
  * @see RegexObject
+ * @see com.oracle.truffle.regex.tregex.util.Loggers
  */
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, //
+                id = RegexLanguage.ID, //
+                characterMimeTypes = RegexLanguage.MIME_TYPE, //
+                version = "0.1", //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
+                internal = true, //
+                interactive = false, //
+                website = "https://github.com/oracle/graal/tree/master/regex")
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 
@@ -132,12 +140,10 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     private final GroupBoundaries[] cachedGroupBoundaries;
     public final RegexParserGlobals parserGlobals;
-    public final PureNFAIndex emptyNFAIndex;
 
     public RegexLanguage() {
         this.cachedGroupBoundaries = GroupBoundaries.createCachedGroupBoundaries();
         this.parserGlobals = new RegexParserGlobals(this);
-        this.emptyNFAIndex = new PureNFAIndex(0);
     }
 
     public GroupBoundaries[] getCachedGroupBoundaries() {
@@ -173,13 +179,8 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            if (flavor == ECMAScriptFlavor.INSTANCE) {
-                RegexValidator validator = new RegexValidator(source);
-                validator.validate();
-            } else {
-                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
-                flavorProcessor.validate();
-            }
+            RegexValidator validator = flavor.createValidator(source);
+            validator.validate();
             return TruffleNull.INSTANCE;
         }
         try {

@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Utility methods on Unsigned values.
@@ -105,6 +105,7 @@ public final class UnsignedUtils {
      * Converts an {@link UnsignedWord} to a positive signed {@code int}, asserting that it can be
      * correctly represented.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int safeToInt(UnsignedWord w) {
         long l = w.rawValue();
         assert l >= 0 && l == (int) l;

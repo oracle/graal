@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/compiler,/graal-js,/graal-nodejs,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,js,lg,llrc,llrl,llrn,lsp,nfi,njs,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
-NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,gu,lib:jsvm,lib:graal-nodejs,lib:jvmcicompiler,lli
+DYNAMIC_IMPORTS=/compiler,/graal-js,/graal-nodejs,/regex,/sdk,/substratevm,/tools,/truffle
+COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,js,jss,lg,lsp,nfi-libffi,njs,poly,polynative,pro,rgx,sdk,sjsvm,tfl,tflm
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,gu,lib:graal-nodejs,lib:jvmcicompiler
 DISABLE_INSTALLABLES=False

@@ -39,7 +39,6 @@ import java.util.EnumSet;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -96,13 +95,13 @@ public class StandardOp {
          */
         @Def({REG, STACK}) private Value[] incomingValues;
         private final Label label;
-        private final boolean align;
+        private int alignment;
         private int numbPhis;
 
-        public LabelOp(Label label, boolean align) {
+        public LabelOp(Label label, int alignment) {
             super(TYPE);
             this.label = label;
-            this.align = align;
+            this.alignment = alignment;
             this.incomingValues = Value.NO_VALUES;
             this.numbPhis = 0;
         }
@@ -152,14 +151,22 @@ public class StandardOp {
             incomingValues = newArray;
         }
 
+        public void setAlignment(int alignment) {
+            this.alignment = alignment;
+        }
+
+        public int getAlignment() {
+            return alignment;
+        }
+
         private boolean checkRange(int idx) {
             return idx < incomingValues.length;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
-            if (align) {
-                crb.asm.align(GraalOptions.LoopHeaderAlignment.getValue(crb.getOptions()));
+            if (alignment != 0) {
+                crb.asm.align(alignment);
             }
             crb.asm.bind(label);
         }

@@ -789,7 +789,7 @@ public final class TruffleLogger {
         CompilerAsserts.neverPartOfCompilation("Log handler should never be called from compiled code.");
         for (TruffleLogger current = this; current != null; current = current.getParent()) {
             if (current == loggerCache.polyglotRootLogger) {
-                LanguageAccessor.engineAccess().getLogHandler(loggerCache.getSPI()).publish(record);
+                LanguageAccessor.engineAccess().publish(loggerCache.getSPI(), record);
             }
         }
     }

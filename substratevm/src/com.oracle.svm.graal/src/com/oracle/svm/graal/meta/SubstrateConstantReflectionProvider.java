@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.meta;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
@@ -43,7 +42,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
-import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -154,9 +152,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
 
         boolean isVolatile = field.isVolatile();
         JavaConstant result;
-        if (isVolatile) {
-            MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
-        }
         /*
          * We know that the memory offset we are reading from is a proper field location: we already
          * checked that the receiver is an instance of an instance field's declaring class; and for
@@ -164,12 +159,9 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
          * use read methods that do not perform further checks.
          */
         if (kind == JavaKind.Object) {
-            result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false);
+            result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false, isVolatile);
         } else {
-            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8);
-        }
-        if (isVolatile) {
-            MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8, isVolatile);
         }
         return result;
     }
@@ -179,6 +171,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (constant instanceof SubstrateObjectConstant) {
             return getImageHeapOffsetInternal((SubstrateObjectConstant) constant);
         }
+
         /* Primitive values, null values. */
         return 0;
     }

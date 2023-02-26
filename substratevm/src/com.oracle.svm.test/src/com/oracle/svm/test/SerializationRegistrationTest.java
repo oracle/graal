@@ -68,32 +68,89 @@ public class SerializationRegistrationTest {
         }
     }
 
+    public static class AssociatedRegistrationTestClass implements Serializable {
+        private static final long serialVersionUID = 8498517244399174914L;
+        private int intVal;
+        private long[] longVals;
+
+        public AssociatedRegistrationTestClass(int intVal, long[] longVals) {
+            this.intVal = intVal;
+            this.longVals = longVals;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            AssociatedRegistrationTestClass that = (AssociatedRegistrationTestClass) o;
+            if (intVal != that.intVal) {
+                return false;
+            }
+            if (longVals.length != that.longVals.length) {
+                return false;
+            }
+            for (int i = 0; i < longVals.length; i++) {
+                if (longVals[i] != that.longVals[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(intVal, longVals);
+        }
+    }
+
     private static final byte[] serializedObject;
     private static final List<SerializableTestClass> list;
+    private static AssociatedRegistrationTestClass testClass;
+    private static final byte[] serializedAssociatedRegistrationTestClass;
 
     static {
         list = new ArrayList<>();
         list.add(new SerializableTestClass("Dummy"));
         list.add(new SerializableTestClass("Test"));
+        serializedObject = serializeObject(list);
 
+        testClass = new AssociatedRegistrationTestClass(101, new long[]{1L, 2L, 123L});
+        serializedAssociatedRegistrationTestClass = serializeObject(testClass);
+    }
+
+    private static byte[] serializeObject(Object obj) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try {
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-            objectOutputStream.writeObject(list);
+            objectOutputStream.writeObject(obj);
             objectOutputStream.flush();
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
+        return byteArrayOutputStream.toByteArray();
+    }
 
-        serializedObject = byteArrayOutputStream.toByteArray();
+    private static Object deSerialize(byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        Object deserializedObject = objectInputStream.readObject();
+        return deserializedObject;
     }
 
     @Test
     public void testSerializationRegistration() throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(serializedObject);
-        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-        Object deserializedObject = objectInputStream.readObject();
+        Object deserializedObject = deSerialize(serializedObject);
         Assert.assertEquals(list, deserializedObject);
+    }
+
+    @Test
+    public void testAssociatedRegistration() throws IOException, ClassNotFoundException {
+        Object deserializedObject = deSerialize(serializedAssociatedRegistrationTestClass);
+        Assert.assertEquals(testClass, deserializedObject);
     }
 }
 
@@ -101,5 +158,6 @@ class SerializationRegistrationTestFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSerialization.register(ArrayList.class, SerializationRegistrationTest.SerializableTestClass.class);
+        RuntimeSerialization.registerIncludingAssociatedClasses(SerializationRegistrationTest.AssociatedRegistrationTestClass.class);
     }
 }

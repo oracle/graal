@@ -40,6 +40,9 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.time.Duration;
@@ -388,6 +391,11 @@ public final class PolyglotException extends RuntimeException {
      */
     public int getExitStatus() {
         return dispatch.getExitStatus(impl);
+    }
+
+    @SuppressWarnings({"static-method", "unused"})
+    private void writeObject(ObjectOutputStream outputStream) throws IOException {
+        throw new NotSerializableException(PolyglotException.class.getSimpleName() + " serialization is not supported.");
     }
 
     /**

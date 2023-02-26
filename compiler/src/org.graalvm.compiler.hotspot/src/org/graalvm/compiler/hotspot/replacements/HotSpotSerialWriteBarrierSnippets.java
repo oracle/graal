@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,9 +76,24 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
             this.lowerer = new SerialWriteBarrierLowerer(factory);
 
             HotSpotSerialWriteBarrierSnippets receiver = new HotSpotSerialWriteBarrierSnippets();
-            serialImpreciseWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialImpreciseWriteBarrier", null, receiver, GC_CARD_LOCATION);
-            serialPreciseWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialPreciseWriteBarrier", null, receiver, GC_CARD_LOCATION);
-            serialArrayRangeWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialArrayRangeWriteBarrier", null, receiver, GC_CARD_LOCATION);
+            serialImpreciseWriteBarrier = snippet(providers,
+                            SerialWriteBarrierSnippets.class,
+                            "serialImpreciseWriteBarrier",
+                            null,
+                            receiver,
+                            GC_CARD_LOCATION);
+            serialPreciseWriteBarrier = snippet(providers,
+                            SerialWriteBarrierSnippets.class,
+                            "serialPreciseWriteBarrier",
+                            null,
+                            receiver,
+                            GC_CARD_LOCATION);
+            serialArrayRangeWriteBarrier = snippet(providers,
+                            SerialWriteBarrierSnippets.class,
+                            "serialArrayRangeWriteBarrier",
+                            null,
+                            receiver,
+                            GC_CARD_LOCATION);
         }
 
         public void lower(SerialWriteBarrier barrier, LoweringTool tool) {

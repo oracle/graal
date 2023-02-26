@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -223,6 +224,11 @@ public abstract class CompilationWrapper<T> {
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
             return onCompilationFailure(new Failure(cause, initialDebug));
+        } finally {
+            // Notify the runtime that most objects allocated in the current compilation are dead
+            // and can be reclaimed. If performCompilation includes code installation, the GC pause
+            // should not prolong the time until the compiled code can be executed.
+            GraalServices.notifyLowMemoryPoint(true);
         }
     }
 
@@ -252,7 +258,7 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
-    private T handleFailure(DebugContext initialDebug, Throwable cause) {
+    protected T handleFailure(DebugContext initialDebug, Throwable cause) {
         OptionValues initialOptions = initialDebug.getOptions();
 
         synchronized (CompilationFailureAction) {

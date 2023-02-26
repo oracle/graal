@@ -30,7 +30,6 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -104,11 +103,6 @@ public class ResolvedJavaMethodBytecode implements Bytecode {
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
         return method.asStackTraceElement(bci);
-    }
-
-    @Override
-    public ProfilingInfo getProfilingInfo() {
-        return method.getProfilingInfo();
     }
 
     @Override

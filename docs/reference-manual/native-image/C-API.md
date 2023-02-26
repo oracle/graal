@@ -1,13 +1,15 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Native Image C API
-permalink: /reference-manual/native-image/C-API/
+layout: ni-docs
+toc_group: native-code-interoperability
+link_title: C API
+permalink: /reference-manual/native-image/native-code-interoperability/C-API/
+redirect_from: /$version/reference-manual/native-image/C-API/
 ---
-#  Native Image C API
 
-Native Image provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated [here](README.md#images-and-entry-points).
-The C API is available when Native Image is built as a shared library and its declarations are included in the header file that is generated during the build.
+# Native Image C API
+
+Native Image provides a GraalVM-specific API to manage Java objects from the C/C++ languages, initialize isolates and attach threads.
+The C API is available when Native Image is built as a shared library and its declarations are included in the header file that is generated during the native image build.
 
 ```c
 /*
@@ -72,11 +74,18 @@ graal_isolate_t* graal_get_isolate(graal_isolatethread_t* thread);
 int graal_detach_thread(graal_isolatethread_t* thread);
 
 /*
- * Tears down the passed isolate, waiting for any attached threads to detach from
- * it, then discards the isolate's objects, threads, and any other state or context
- * that is associated with it.
+ * Tears down the isolate of the passed (and still attached) isolate thread
+ * waiting for any attached threads to detach from it, then discards its objects,
+ * threads, and any other state or context that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
 int graal_tear_down_isolate(graal_isolatethread_t* thread);
 ```
-In addition to the C level API, there is also a way to initialize an isolate from Java and thus use Java and Native Image to [implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).
+
+In addition to the C level API, you can use the [JNI Invocation API](JNIInvocationAPI.md) to create an isolate from Java, expose and call Java methods embedded in a native shared library.
+
+### Related Documentation
+
+- [Build a Native Shared Library](guides/build-native-shared-library.md)
+- [Interoperability with Native Code](InteropWithNativeCode.md)
+- [JNI Invocation API](JNIInvocationAPI.md)

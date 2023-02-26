@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -144,10 +145,11 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
                     @CachedLibrary("this") NodeLibrary self) {
         LLVMContext ctx = LLVMContext.get(self);
+        MaterializedFrame materializedFrame = frame != null ? frame.materialize() : null;
         if (isLLDebugEnabled(ctx)) {
-            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createIRLevelScope(this, materializedFrame, ctx);
         } else {
-            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, materializedFrame, ctx);
         }
     }
 
@@ -164,7 +166,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
         if (hasRootInstance(frame)) {
             LLVMContext ctx = LLVMContext.get(self);
             try {
-                LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
+                LLVMPointer pointer = ctx.getSymbolResolved(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
                 return dataEscapeNode.executeWithTarget(pointer);
             } catch (LLVMIllegalSymbolIndexException ex) {
                 // fallthrough

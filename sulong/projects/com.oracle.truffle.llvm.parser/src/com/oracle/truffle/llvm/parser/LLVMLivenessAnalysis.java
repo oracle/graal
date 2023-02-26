@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.PrintStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +36,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -81,10 +81,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMLivenessAnalysis {
+
+    private static final Level LIFETIME_ANALYSIS_LOGGING_LEVEL = Level.FINER;
 
     private final FunctionDefinition functionDefinition;
 
@@ -111,20 +114,20 @@ public final class LLVMLivenessAnalysis {
         this.frameSlots = slots.toArray(new SSAValue[slots.size()]);
     }
 
-    public static LLVMLivenessAnalysisResult computeLiveness(Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition, PrintStream logLivenessStream) {
+    public static LLVMLivenessAnalysisResult computeLiveness(Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition) {
         LLVMLivenessAnalysis analysis = new LLVMLivenessAnalysis(functionDefinition);
 
         List<InstructionBlock> blocks = functionDefinition.getBlocks();
         BlockInfo[] blockInfos = analysis.initializeGenKill(phis, blocks);
         ArrayList<InstructionBlock>[] predecessors = computePredecessors(blocks);
         int processedBlocks = iterateToFixedPoint(blocks, analysis.frameSlots.length, blockInfos, predecessors);
-        if (logLivenessStream != null) {
-            analysis.printIntermediateResult(logLivenessStream, blocks, blockInfos, processedBlocks);
+        if (livenessLoggingEnabled()) {
+            analysis.printIntermediateResult(blocks, blockInfos, processedBlocks);
         }
 
         LLVMLivenessAnalysisResult result = analysis.computeLivenessAnalysisResult(blocks, blockInfos, predecessors);
-        if (logLivenessStream != null) {
-            analysis.printResult(logLivenessStream, blocks, result);
+        if (livenessLoggingEnabled()) {
+            analysis.printResult(blocks, result);
         }
         return result;
     }
@@ -710,77 +713,36 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private void printIntermediateResult(PrintStream logLivenessStream, List<InstructionBlock> blocks, BlockInfo[] blockInfos, int processedBlocks) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(functionDefinition.getName());
-        builder.append(" (processed ");
-        builder.append(processedBlocks);
-        builder.append(" blocks - CFG has ");
-        builder.append(blocks.size());
-        builder.append(" blocks)\n");
-        for (int i = 0; i < blockInfos.length; i++) {
-            BlockInfo blockInfo = blockInfos[i];
-            builder.append("Basic block ");
-            builder.append(i);
-            builder.append(" (");
-            builder.append(blocks.get(i).getName());
-            builder.append(")\n");
-
-            builder.append("  In:      ");
-            builder.append(formatLocals(blockInfo.in));
-            builder.append("\n");
-
-            builder.append("  Gen:     ");
-            builder.append(formatLocals(blockInfo.gen));
-            builder.append("\n");
-
-            builder.append("  Kill:    ");
-            builder.append(formatLocals(blockInfo.kill));
-            builder.append("\n");
-
-            builder.append("  Def:     ");
-            builder.append(formatLocals(blockInfo.defs));
-            builder.append("\n");
-
-            builder.append("  PhiDefs: ");
-            builder.append(formatLocals(blockInfo.phiDefs));
-            builder.append("\n");
-
-            builder.append("  PhiUses: ");
-            builder.append(formatLocals(blockInfo.phiUses));
-            builder.append("\n");
-
-            builder.append("  Out:     ");
-            builder.append(formatLocals(blockInfo.out));
-            builder.append("\n");
-        }
-
-        logLivenessStream.println(builder.toString());
+    private static boolean livenessLoggingEnabled() {
+        return LLVMContext.lifetimeAnalysisLogger().isLoggable(LIFETIME_ANALYSIS_LOGGING_LEVEL);
     }
 
-    private void printResult(PrintStream logLivenessStream, List<InstructionBlock> blocks, LLVMLivenessAnalysisResult result) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < blocks.size(); i++) {
-            builder.append("Basic block ");
-            builder.append(i);
-            builder.append(" (");
-            builder.append(blocks.get(i).getName());
-            builder.append(")\n");
+    private static void log(String message, Object... args) {
+        LLVMContext.lifetimeAnalysisLogger().log(LIFETIME_ANALYSIS_LOGGING_LEVEL, String.format(message, args));
+    }
 
-            builder.append("  NullableBefore: ");
-            builder.append(formatLocals(result.nullableBeforeBlock[i]));
-            builder.append("\n");
-
-            builder.append("  NullableWithin:  ");
-            builder.append(formatLocalNullers(result.nullableWithinBlock[i]));
-            builder.append("\n");
-
-            builder.append("  NullableAfter:  ");
-            builder.append(formatLocals(result.nullableAfterBlock[i]));
-            builder.append("\n");
+    private void printIntermediateResult(List<InstructionBlock> blocks, BlockInfo[] blockInfos, int processedBlocks) {
+        log("%s (processed) %d blocks - CFG has %d blocks", functionDefinition.getName(), processedBlocks, blocks.size());
+        for (int i = 0; i < blockInfos.length; i++) {
+            BlockInfo blockInfo = blockInfos[i];
+            log("Basic block  %d (%s)", i, blocks.get(i).getName());
+            log("  In:      %s", formatLocals(blockInfo.in));
+            log("  Gen:     %s", formatLocals(blockInfo.gen));
+            log("  Kill:    %s", formatLocals(blockInfo.kill));
+            log("  Def:     %s", formatLocals(blockInfo.defs));
+            log("  PhiDefs: %s", formatLocals(blockInfo.phiDefs));
+            log("  PhiUses: %s", formatLocals(blockInfo.phiUses));
+            log("  Out:     %s", formatLocals(blockInfo.out));
         }
+    }
 
-        logLivenessStream.println(builder.toString());
+    private void printResult(List<InstructionBlock> blocks, LLVMLivenessAnalysisResult result) {
+        for (int i = 0; i < blocks.size(); i++) {
+            log("Basic block %d (%s)", i, blocks.get(i).getName());
+            log("  NullableBefore: %s", formatLocals(result.nullableBeforeBlock[i]));
+            log("  NullableWithin: %s", formatLocalNullers(result.nullableWithinBlock[i]));
+            log("  NullableAfter:  %s", formatLocals(result.nullableAfterBlock[i]));
+        }
     }
 
     private static void appendValue(StringBuilder str, SSAValue value) {

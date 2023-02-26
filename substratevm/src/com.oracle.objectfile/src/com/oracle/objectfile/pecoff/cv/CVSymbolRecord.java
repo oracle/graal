@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import org.graalvm.compiler.debug.DebugContext;
-
 /*
  * A Symbol record is a top-level record in the CodeView .debug$S section.
  */
@@ -77,6 +75,6 @@ abstract class CVSymbolRecord {
         return "CVSymbolRecord(type=" + type + ",pos=" + recordStartPosition + ")";
     }
 
-    public void logContents(@SuppressWarnings("unused") DebugContext debugContext) {
+    public void logContents() {
     }
 }

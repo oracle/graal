@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,18 +28,19 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <cstdio>
+#include <stdint.h>
 
 class MyClass {
 private:
     int a;
     float b;
     double c;
-    long d;
+    int64_t d;
     char e;
     short f[3];
 
 public:
-    MyClass(int _a, float _b, double _c, long _d, char _e, short f1, short f2, short f3) {
+    MyClass(int _a, float _b, double _c, int64_t _d, char _e, short f1, short f2, short f3) {
         this->a = _a;
         this->b = _b;
         this->c = _c;

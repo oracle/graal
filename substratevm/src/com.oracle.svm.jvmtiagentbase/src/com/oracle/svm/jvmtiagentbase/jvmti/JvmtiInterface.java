@@ -35,10 +35,10 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNINativeInterface;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
 @CStruct(value = "jvmtiInterface_1")
 @CContext(JvmtiDirectives.class)
@@ -49,6 +49,15 @@ public interface JvmtiInterface extends PointerBase {
     int JVMTI_VERSION_9 = 0x30090000;
     @SuppressWarnings("unused")//
     int JVMTI_VERSION_11 = 0x300B0000;
+    int JVMTI_VERSION_19 = 0x30130000;
+
+    @CField("GetVersionNumber")
+    GetVersionNumberFunctionPointer GetVersionNumber();
+
+    interface GetVersionNumberFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, CIntPointer versionPtr);
+    }
 
     @CField("GetJNIFunctionTable")
     GetJNIFunctionTableFunctionPointer GetJNIFunctionTable();
@@ -158,11 +167,13 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv env, JNIMethodId method, long location);
     }
 
+    /*
+     * Note that the GetLocal*() functions execute a safepoint operation even for the current thread
+     * and we have seen it cause serious scalability issues, presumably from the fix of JDK-8249293.
+     */
+
     @CField("GetLocalObject")
     GetLocalFunctionPointer GetLocalObject();
-
-    @CField("GetLocalInt")
-    GetLocalFunctionPointer GetLocalInt();
 
     interface GetLocalFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
@@ -175,6 +186,14 @@ public interface JvmtiInterface extends PointerBase {
     interface GetLocalInstanceFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JNIObjectHandle thread, int depth, PointerBase valuePtr);
+    }
+
+    @CField("GetCurrentThread")
+    GetCurrentThreadFunctionPointer GetCurrentThread();
+
+    interface GetCurrentThreadFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, PointerBase threadPtr);
     }
 
     @CField("GetClassLoader")
@@ -319,5 +338,29 @@ public interface JvmtiInterface extends PointerBase {
     interface GetLoadedClassesFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer classCountPtr, WordPointer classesPtr);
+    }
+
+    @CField("GetNamedModule")
+    GetNamedModuleFunctionPointer GetNamedModule();
+
+    interface GetNamedModuleFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle classLoader, CCharPointer packageName, PointerBase modulePtr);
+    }
+
+    @CField("GetAllModules")
+    GetAllModulesFunctionPointer GetAllModules();
+
+    interface GetAllModulesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer moduleCountPtr, PointerBase modulesPtr);
+    }
+
+    @CField("AddModuleOpens")
+    AddModuleOpensFunctionPointer AddModuleOpens();
+
+    interface AddModuleOpensFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle module, CCharPointer pkgName, JNIObjectHandle toModule);
     }
 }

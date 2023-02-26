@@ -25,17 +25,14 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -44,6 +41,8 @@ import com.oracle.svm.core.thread.VMOperation;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
 final class PinnedObjectImpl implements PinnedObject {
+
+    @AutomaticallyRegisteredImageSingleton(value = PinnedObjectSupport.class, onlyWith = UseSerialOrEpsilonGC.class)
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
         public PinnedObject create(Object object) {
@@ -62,19 +61,6 @@ final class PinnedObjectImpl implements PinnedObject {
                 pin = pin.next;
             }
             return false;
-        }
-    }
-
-    @AutomaticFeature
-    static class PinnedObjectFeature implements Feature {
-        @Override
-        public boolean isInConfiguration(IsInConfigurationAccess access) {
-            return SubstrateOptions.UseSerialGC.getValue();
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }
     }
 

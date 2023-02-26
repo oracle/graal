@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecNode.StartsWith;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
  * This regex engine is designed for very simple cases, where the regular expression can be directly
@@ -78,8 +77,7 @@ public final class LiteralRegexEngine {
          * /a{1000000}/.
          */
         RegexProperties props = ast.getProperties();
-        if (ast.isLiteralString() && props.isFixedCodePointWidth() && (ast.getEncoding() == Encodings.UTF_16_RAW || !props.hasLoneSurrogates()) &&
-                        (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
+        if (ast.isLiteralString() && props.isFixedCodePointWidth() && !props.hasLoneSurrogates() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;
@@ -93,29 +91,29 @@ public final class LiteralRegexEngine {
         if (ast.getRoot().getMinPath() == 0) {
             if (caret) {
                 if (dollar) {
-                    return new EmptyEquals(language, ast, preCalcResultVisitor);
+                    return LiteralRegexExecNode.create(language, ast, new EmptyEquals(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
                 }
-                return new EmptyStartsWith(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new EmptyStartsWith(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
             }
             if (dollar) {
-                return new EmptyEndsWith(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new EmptyEndsWith(preCalcResultVisitor, ast.getFlags().isSticky(), ast.getOptions().isMustAdvance()));
             }
-            return new EmptyIndexOf(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new EmptyIndexOf(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
         }
         if (caret) {
             if (dollar) {
-                return new Equals(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new Equals(preCalcResultVisitor));
             }
-            return new StartsWith(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new StartsWith(preCalcResultVisitor));
         }
         if (dollar) {
-            return new EndsWith(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new EndsWith(preCalcResultVisitor, ast.getFlags().isSticky()));
         }
         if (ast.getFlags().isSticky()) {
-            return new RegionMatches(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new RegionMatches(preCalcResultVisitor));
         }
         if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
-            return new IndexOfString(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new IndexOfString(preCalcResultVisitor));
         }
         return null;
     }

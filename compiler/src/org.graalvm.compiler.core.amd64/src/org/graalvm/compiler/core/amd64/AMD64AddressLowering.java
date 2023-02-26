@@ -25,7 +25,8 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -93,15 +94,15 @@ public class AMD64AddressLowering extends AddressLowering {
             LeftShiftNode shift = (LeftShiftNode) ret.getIndex();
             if (shift.getY().isConstant()) {
                 int amount = ret.getScale().log2 + shift.getY().asJavaConstant().asInt();
-                if (Scale.isScaleShiftSupported(amount)) {
+                if (AMD64Address.isScaleShiftSupported(amount)) {
                     ret.setIndex(shift.getX());
-                    ret.setScale(Scale.fromShift(amount));
+                    ret.setScale(Stride.fromLog2(amount));
                     return true;
                 }
             }
         }
 
-        if (ret.getScale() == Scale.Times1) {
+        if (ret.getScale() == Stride.S1) {
             if (ret.getIndex() == null && ret.getBase() instanceof AddNode) {
                 AddNode add = (AddNode) ret.getBase();
                 ret.setBase(add.getX());
@@ -155,7 +156,7 @@ public class AMD64AddressLowering extends AddressLowering {
                 if (base == ret.getBase()) {
                     ret.setBase(originalBase);
                 } else if (ret.getBase() != null) {
-                    ret.setBase(graph.maybeAddOrUnique(NegateNode.create(ret.getBase(), NodeView.DEFAULT)));
+                    ret.setBase(graph.addOrUnique(NegateNode.create(ret.getBase(), NodeView.DEFAULT)));
                 }
             }
 
@@ -163,7 +164,7 @@ public class AMD64AddressLowering extends AddressLowering {
                 if (index == ret.getIndex()) {
                     ret.setIndex(originalIndex);
                 } else if (ret.getIndex() != null) {
-                    ret.setIndex(graph.maybeAddOrUnique(NegateNode.create(ret.getIndex(), NodeView.DEFAULT)));
+                    ret.setIndex(graph.addOrUnique(NegateNode.create(ret.getIndex(), NodeView.DEFAULT)));
                 }
             }
             return improved;
@@ -175,7 +176,7 @@ public class AMD64AddressLowering extends AddressLowering {
 
     private static ValueNode considerNegation(StructuredGraph graph, ValueNode value, boolean negate) {
         if (negate && value != null) {
-            return graph.maybeAddOrUnique(NegateNode.create(value, NodeView.DEFAULT));
+            return graph.addOrUnique(NegateNode.create(value, NodeView.DEFAULT));
         }
         return value;
     }

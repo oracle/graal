@@ -29,14 +29,19 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * The vanilla walkObject and walkOffsetsFromPointer methods are not inlined, but there are
@@ -61,30 +66,72 @@ public class InteriorObjRefWalker {
     @AlwaysInline("Performance critical version")
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
-        final int layoutEncoding = objHub.getLayoutEncoding();
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
 
-        // Visit each Object reference in the array part of the Object.
-        if (LayoutEncoding.isObjectArray(layoutEncoding)) {
-            int length = ArrayLengthNode.arrayLength(obj);
-            int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-            boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
-
-            Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(layoutEncoding));
-            Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
-            while (pos.belowThan(end)) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
-                if (!visitResult) {
-                    return false;
-                }
-                pos = pos.add(referenceSize);
-            }
+        switch (objHub.getHubType()) {
+            case HubType.INSTANCE:
+            case HubType.REFERENCE_INSTANCE:
+                return walkInstance(obj, visitor, objHub, objPointer);
+            case HubType.POD_INSTANCE:
+                return walkPod(obj, visitor, objHub, objPointer);
+            case HubType.STORED_CONTINUATION_INSTANCE:
+                return walkStoredContinuation(obj, visitor);
+            case HubType.OTHER:
+                return walkOther();
+            case HubType.PRIMITIVE_ARRAY:
+                return true;
+            case HubType.OBJECT_ARRAY:
+                return walkObjectArray(obj, visitor, objHub, objPointer);
         }
 
+        throw VMError.shouldNotReachHere("Object with invalid hub type.");
+    }
+
+    @AlwaysInline("Performance critical version")
+    private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
         long referenceMapIndex = objHub.getReferenceMapIndex();
 
         // Visit Object reference in the fields of the Object.
         return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor, obj);
+    }
+
+    @AlwaysInline("Performance critical version")
+    private static boolean walkPod(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
+        if (!Pod.RuntimeSupport.isPresent()) {
+            throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
+        }
+        return walkInstance(obj, visitor, objHub, objPointer) && PodReferenceMapDecoder.walkOffsetsFromPointer(objPointer, objHub.getLayoutEncoding(), visitor, obj);
+    }
+
+    @AlwaysInline("Performance critical version")
+    private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
+        if (!Continuation.isSupported()) {
+            throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
+        }
+        return StoredContinuationAccess.walkReferences(obj, visitor);
+    }
+
+    @AlwaysInline("Performance critical version")
+    private static boolean walkOther() {
+        throw VMError.shouldNotReachHere("Unexpected object with hub type 'other' in the heap.");
+    }
+
+    @AlwaysInline("Performance critical version")
+    private static boolean walkObjectArray(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
+        int length = ArrayLengthNode.arrayLength(obj);
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
+
+        Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
+        Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
+        while (pos.belowThan(end)) {
+            final boolean visitResult = visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
+            if (!visitResult) {
+                return false;
+            }
+            pos = pos.add(referenceSize);
+        }
+        return true;
     }
 }

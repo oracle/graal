@@ -54,14 +54,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @Registration(id = "test/nfi-backend", name = "NFITestBackend", internal = true, services = NFIBackendFactory.class)
 public class NFITestBackend extends TruffleLanguage<Env> {
-
-    NFIBackendTools tools;
 
     NFIBackend backend = new NFITestBackendImpl();
 
@@ -118,8 +115,7 @@ public class NFITestBackend extends TruffleLanguage<Env> {
             }
 
             @Override
-            public NFIBackend createBackend(NFIBackendTools t) {
-                tools = t;
+            public NFIBackend createBackend() {
                 return backend;
             }
         });

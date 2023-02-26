@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.309.1",
+  "mxversion" : "6.11.4",
   "name" : "sdk",
-  "version" : "22.1.0",
+  "version" : "23.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -76,28 +76,54 @@ suite = {
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "UPL",
-  "imports": {},
+  "ignore_suite_commit_info": True,
   "libraries" : {
-    "WRK": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5.tar.gz"],
-      "sha1": "6052d4452e190e707309c575fa2852a0035c5f34",
+    "WRK_MULTIARCH": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
+      "digest": "sha512:a7f7a7fd9bf8b87423a682ff1390a6ba87cc8dec43d41a3dcabb9a4fa5516b3d2e71f2384661a4248440c0ba4f2e27b8ef50d5dc123c5ae118866fa38254e23c",
       "packedResource": True,
       "license": "Apache-2.0-wrk-a211dd5",
     },
-    "WRK2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
-      "sha1": "a5c417b414f72951de4eb95641808a0a5aa31445",
+    "WRK2_MULTIARCH": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch.tar.gz"],
+      "digest": "sha512:597d64086e4d8126bea480ae5edc15b3b9ed649a4ad38c99c42968f25e260da351780921c5013200eddefcc5a4b715676df194d52ff04a5bfcec024cc6140530",
       "packedResource": True,
       "license": "Apache-2.0",
     },
     "APACHE_JMETER_5.3": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/apache-jmeter-5.3.zip"],
-      "sha1": "17480a0905d9d485bc8ce8e7be9daec2de98c251",
+      "digest": "sha512:e84dfe57397ca5bd9ed5d38c85a1081373b047ff9d41658a64a09dcf8329c25aaa7c23b5bba1b492c3d12edce7f141504baba8071b05df760303c1873ee46ddb",
       "packedResource": True,
       "license": "Apache-2.0",
     },
+    "UPX": {
+      "packedResource": True,
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "digest": "sha512:c005f55b7935f09302a37cda478101ed540f065de7a61e095f92d4fbc9bbfd9d1ffc8c342a1738466799af1213ac8e61f68efd6936c6a061c15529fca8414418",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-amd64_linux.tar.gz"],
+          },
+          "aarch64" : {
+            "digest" : "sha512:75d9c41cc3861a021a38f78992c018713c3a06adaa2b343a62fb048596f080d26e4583cafc95cbf3747f9637b22c8156353a6557c6738cf0e68f671b549f31e3",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-arm64_linux.tar.gz"],
+          }
+        },
+        "windows" : {
+          "amd64" : {
+            "digest": "sha512:228c1a8ce0a2a4d1b3b3cc1cf216c4c1f9d5ab53f351eb7e9f1a46c7c0b940002e8954b120275d50ef8728077274caba08d54d6f48668ff71978604d00d6ddc2",
+            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/upx/upx-3.96-win64.zip"],
+          }
+        },
+        "<others>" : {
+          "<others>" : {
+            "optional": True,
+          }
+        }
+      }
+    },
     "JLINE" : {
-      "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
+      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
@@ -105,8 +131,8 @@ suite = {
       }
     },
     "JLINE3" : {
-      "sha1" : "bac1579375a67379d8f308016138f9c37a646dd5",
-      "version" : "3.16.0.2",
+      "digest" : "sha512:d9518c40e206950b3815593de83b1e3632896096407937f15646c81c69f167900c67bd88f3ff2b86258960bbd108d3c0cf09a1ad7cfbf1be489b2af4feccbb58",
+      "version" : "3.16.0.3",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new",
       "requires" : ["java.logging"],
@@ -145,59 +171,63 @@ suite = {
       ],
     },
     "LLVM_ORG" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "14.0.6-3-gc7a4a53c32-bgc5e298fd27",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "9a22c2f67f359e62fe9bcf8d89c24295f9d489dd",
+            "digest" : "sha512:7cdc72501a03c148b3f36aff06363cea786b207507b04af3973130f01e60870e6677d8efa788be80086f033908997d664331da47e220f8cdba98e78d1892f1c1",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "c61f0795a8b3ca6fedcb640aa9b93db7d1c5bb14",
-          }
+            "digest" : "sha512:758cac0af84c3aed95e1e24c9102eb0b487de0d17d1d8c0c479de56b8ef6eb8321a4d94c94d7cb71fb369bddd2633d981a1071af7e028fb06957be5cde4f6ca4",
+          },
+          "riscv64": {
+            "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
+            "digest" : "sha512:70b4c5b95dc3e2e311e94df94dc032587a766429c554871a7ec13402edb1f6de1657d6b4e95c5fbb24c7957d75e4f9421158f15d08d3811e0f6d9820367ecf30",
+          },
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "f820252fc848e3f7ab7a7ebbe8e9b2d4b129a98e",
+            "digest" : "sha512:e97360157167d1edead2afaa2728cf5470b4c56f42d35e2bbf8cab9f5510801532681bd0cf96df43d37d69c72573b44f1788c1931f538275833d05b21b886c73",
           },
           "aarch64" : {
-            # GR-34811
-            "optional": True,
+            "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
+            "digest" : "sha512:6ab8d86a4d9f0df32921d44c8b4e627a848df552b0bec9a278c42a578013b49b1bb1f43bb236c89965ae10f458760b8e5cf0106f1fbf7a137550a5d981df6c47",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "sha1" : "a321d009a97545f8a6cf301678a79b4166a31d22",
+            "digest" : "sha512:53554500d1dac665118f91ad7243b4dfc4bca2c8e2ae41543dba6c57f6964c273c40e6d132c1fe42612bcdd4ce8957bf1884d8ad4db68925ebe6e4b0473652e6",
           }
         },
         "<others>": {
-            "<others>": {
-                "optional": True,
-            }
+          "<others>": {
+            "optional": True,
+          }
         },
       },
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "14.0.6-3-gc7a4a53c32-bgc5e298fd27",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "daf84066ea4f77f1b0ee7c96b14b948ae56517e9",
+      "digest" : "sha512:62821277a43e558b1c0bd6da494e64407871af87fada9017ade5a48567e418cc83ad297a729aea3d606c3290d8909eeeae9d374cd439a5254ffcfb44a83d3935",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
+      "version" : "14.0.6-3-gc7a4a53c32-bgc5e298fd27",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "623d031f0f0ec296557138b46ad153af65f839e3",
+      "digest" : "sha512:6f99f1f7950521a8a5f261b536ae7066cece753ed1dde458c7ffb4e38652f5bfe15b03cf6e0e67ec5c7c402cf57c2898f445f329bc115195f29cdb5b424089b8",
       "license" : "Apache-2.0-LLVM",
-      },
+    },
   },
   "projects" : {
     "org.graalvm.options" : {
@@ -205,7 +235,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -215,8 +245,11 @@ suite = {
         "org.graalvm.collections",
         "org.graalvm.home",
       ],
+      "requires" : [
+        "java.logging",
+      ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
 
@@ -225,7 +258,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,SDK",
     },
@@ -238,7 +271,17 @@ suite = {
         "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
+      "workingSets" : "API,SDK",
+    },
+    "com.oracle.svm.core.annotate" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+         "org.graalvm.nativeimage",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.nativeimage.test" : {
@@ -248,7 +291,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.nativeimage"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
     },
@@ -260,7 +303,13 @@ suite = {
         "JLINE",
         "JLINE3",
       ],
-      "javaCompliance" : "8+",
+      "requires" : [
+        "java.logging",
+      ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.module"],
+      },
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
     },
@@ -271,7 +320,7 @@ suite = {
         "mx:JUNIT",
         "org.graalvm.launcher"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
     },
@@ -282,14 +331,14 @@ suite = {
         "org.graalvm.polyglot",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.collections" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.collections.test" : {
@@ -300,7 +349,7 @@ suite = {
         "org.graalvm.collections",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.home" : {
@@ -310,7 +359,7 @@ suite = {
         "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.home.test" : {
@@ -321,7 +370,7 @@ suite = {
         "org.graalvm.home",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
   },
@@ -351,6 +400,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
+        "com.oracle.svm.core.annotate",
         "org.graalvm.collections",
         "org.graalvm.home",
       ],
@@ -363,6 +413,7 @@ suite = {
           "org.graalvm.collections",
           "org.graalvm.home",
           "org.graalvm.home.impl",
+          "com.oracle.svm.core.annotate",
           "org.graalvm.nativeimage.hosted",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",
@@ -370,8 +421,6 @@ suite = {
           "org.graalvm.nativeimage.c.constant",
           "org.graalvm.nativeimage.c",
           "org.graalvm.nativeimage",
-          "org.graalvm.nativeimage.impl", # Uses of org.graalvm.nativeimage.impl.RuntimeSerializationSupport
-          "org.graalvm.nativeimage.impl.clinit", # class initialization instrumentation
           "org.graalvm.polyglot.proxy",
           "org.graalvm.polyglot.io",
           "org.graalvm.polyglot.management",
@@ -380,7 +429,8 @@ suite = {
           "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.graal.graal_enterprise",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
-          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
+          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.base,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
+          "org.graalvm.nativeimage.impl.clinit to org.graalvm.nativeimage.builder",
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
@@ -439,94 +489,122 @@ suite = {
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
     },
+    "LLVM_ORG_FILTERED": {
+      "native": True,
+      "description": "LLVM_ORG build with some things removed that we don't want to redistribute",
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "layout": {
+              "./": {
+                # Starting with LLVM 13, the LLVM build tries to create symlinks if possible.
+                # On Windows, symlinks are only supported when developer mode is enabled.
+                # Get rid of the symlinks here, so our users don't need to enable developer mode.
+                "dereference": "always"
+              },
+            },
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "layout": {
+              "./": {
+                "dereference": "never"
+              },
+            },
+          },
+        },
+      },
+      "layout": {
+        "./": {
+          "source_type": "extracted-dependency",
+          "dependency": "LLVM_ORG",
+          "path": "*",
+          "exclude": [
+            "bin/bugpoint*",
+            "bin/c-index-test*",
+            "bin/clang-check*",
+            "bin/clang-extdef-mapping*",
+            "bin/clang-import-test*",
+            "bin/clang-offload-*",
+            "bin/clang-refactor*",
+            "bin/clang-rename*",
+            "bin/clang-scan-deps*",
+            "bin/diagtool*",
+            "bin/git-clang-format",
+            "bin/hmaptool",
+            "bin/llvm-addr2line*",
+            "bin/llvm-bcanalyzer*",
+            "bin/llvm-cat*",
+            "bin/llvm-cfi-verify*",
+            "bin/llvm-cov*",
+            "bin/llvm-c-test*",
+            "bin/llvm-cvtres*",
+            "bin/llvm-cxxdump*",
+            "bin/llvm-cxxfilt*",
+            "bin/llvm-cxxmap*",
+            "bin/llvm-dwp*",
+            "bin/llvm-elfabi*",
+            "bin/llvm-exegesis*",
+            "bin/llvm-jitlink*",
+            "bin/llvm-lipo*",
+            "bin/llvm-lto*",
+            "bin/llvm-lto2*",
+            "bin/llvm-mc*",
+            "bin/llvm-mca*",
+            "bin/llvm-modextract*",
+            "bin/llvm-mt*",
+            "bin/llvm-opt-report*",
+            "bin/llvm-pdbutil*",
+            "bin/llvm-profdata*",
+            "bin/llvm-rtdyld*",
+            "bin/llvm-size*",
+            "bin/llvm-split*",
+            "bin/llvm-stress*",
+            "bin/llvm-strings*",
+            "bin/llvm-symbolizer*",
+            "bin/llvm-tblgen*",
+            "bin/llvm-undname*",
+            "bin/llvm-windres*", # symlink to llvm-rc
+            "bin/llvm-xray*",
+            "bin/obj2yaml*",
+            "bin/sancov*",
+            "bin/sanstats*",
+            "bin/scan-build*",
+            "bin/scan-view*",
+            "bin/verify-uselistorder*",
+            "bin/yaml2obj*",
+            "bin/set-xcode-analyzer",
+            "share",
+            "include/clang",
+            "include/clang-c",
+            "include/lld",
+            "include/llvm",
+            "include/llvm-c",
+            "lib/cmake",
+            "lib/Checker*",
+            "lib/Sample*",
+            "lib/libRemarks*",
+            "lib/libLLVM*.a",
+            "lib/libclang.so*",
+            "lib/libclang.dylib*",
+            "lib/libclang*.a",
+            "lib/liblld*.a",
+            "libexec",
+            # the following is added by COMPILER_RT
+            "lib/clang/*/lib/linux/*clang_rt*",
+            # Windows libarary excludes
+            "lib/*.lib",
+          ]
+        },
+      },
+    },
     "LLVM_TOOLCHAIN": {
       "native": True,
       "description": "LLVM with general purpose patches used by Sulong and Native Image",
       "layout": {
         "./": [
-          {
-            "source_type": "extracted-dependency",
-            "dependency": "LLVM_ORG",
-            "path": "*",
-            "dereference": "never",
-            "exclude": [
-              "bin/bugpoint*",
-              "bin/c-index-test*",
-              "bin/clang-check*",
-              "bin/clang-extdef-mapping*",
-              "bin/clang-import-test*",
-              "bin/clang-offload-*",
-              "bin/clang-refactor*",
-              "bin/clang-rename*",
-              "bin/clang-scan-deps*",
-              "bin/diagtool*",
-              "bin/dsymutil*",
-              "bin/git-clang-format",
-              "bin/hmaptool",
-              "bin/llvm-addr2line*",
-              "bin/llvm-bcanalyzer*",
-              "bin/llvm-cat*",
-              "bin/llvm-cfi-verify*",
-              "bin/llvm-cov*",
-              "bin/llvm-c-test*",
-              "bin/llvm-cvtres*",
-              "bin/llvm-cxxdump*",
-              "bin/llvm-cxxfilt*",
-              "bin/llvm-cxxmap*",
-              "bin/llvm-dwp*",
-              "bin/llvm-elfabi*",
-              "bin/llvm-exegesis*",
-              "bin/llvm-jitlink*",
-              "bin/llvm-lipo*",
-              "bin/llvm-lto*",
-              "bin/llvm-lto2*",
-              "bin/llvm-mc*",
-              "bin/llvm-mca*",
-              "bin/llvm-modextract*",
-              "bin/llvm-mt*",
-              "bin/llvm-opt-report*",
-              "bin/llvm-pdbutil*",
-              "bin/llvm-profdata*",
-              "bin/llvm-rc*",
-              "bin/llvm-rtdyld*",
-              "bin/llvm-size*",
-              "bin/llvm-split*",
-              "bin/llvm-stress*",
-              "bin/llvm-strings*",
-              "bin/llvm-symbolizer*",
-              "bin/llvm-tblgen*",
-              "bin/llvm-undname*",
-              "bin/llvm-xray*",
-              "bin/obj2yaml*",
-              "bin/sancov*",
-              "bin/sanstats*",
-              "bin/scan-build*",
-              "bin/scan-view*",
-              "bin/verify-uselistorder*",
-              "bin/yaml2obj*",
-              "bin/set-xcode-analyzer",
-              "share",
-              "include/clang",
-              "include/clang-c",
-              "include/lld",
-              "include/llvm",
-              "include/llvm-c",
-              "lib/cmake",
-              "lib/Checker*",
-              "lib/Sample*",
-              "lib/libRemarks*",
-              "lib/libLLVM*.a",
-              "lib/libclang.so*",
-              "lib/libclang.dylib*",
-              "lib/libclang*.a",
-              "lib/liblld*.a",
-              "libexec",
-              # the following is added by COMPILER_RT
-              "lib/clang/*/lib/linux/*clang_rt*",
-              # Windows libarary excludes
-              "lib/*.lib",
-            ]
-          },
+          "extracted-dependency:LLVM_ORG_FILTERED",
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
           "file:3rd_party_license_llvm-toolchain.txt",
         ],

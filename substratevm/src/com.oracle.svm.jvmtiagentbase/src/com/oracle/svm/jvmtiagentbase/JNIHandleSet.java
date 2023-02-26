@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.jvmtiagentbase;
 
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.jni.JNIObjectHandles;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.core.jni.JNIObjectHandles;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
 /**
  * Helps with creation and management of JNI handles for JVMTI agents.
@@ -59,8 +59,10 @@ public abstract class JNIHandleSet {
     private boolean destroyed = false;
 
     final JNIMethodId javaLangClassGetName;
+    final JNIObjectHandle javaIoSerializable;
 
     public JNIHandleSet(JNIEnvironment env) {
+        javaIoSerializable = newClassGlobalRef(env, "java/io/Serializable");
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
     }

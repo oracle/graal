@@ -43,10 +43,10 @@ import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.core.graal.llvm.LLVMNativeImageCodeCache.StackMapDumper;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
@@ -161,7 +161,7 @@ public class LLVMObjectFileReader {
     }
 
     public void readStackMap(LLVMStackMapInfo info, CompilationResult compilation, ResolvedJavaMethod method, int id) {
-        String methodSymbolName = SYMBOL_PREFIX + SubstrateUtil.uniqueShortName(method);
+        String methodSymbolName = SYMBOL_PREFIX + ((HostedMethod) method).getUniqueShortName();
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                         .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
@@ -229,17 +229,6 @@ public class LLVMObjectFileReader {
 
         public int getNextOffset(int offset) {
             return sortedMethodOffsets.get(sortedMethodOffsets.indexOf(offset) + 1);
-        }
-
-        @FunctionalInterface
-        public interface OffsetRangeConsumer {
-            void apply(int start, int end);
-        }
-
-        public void forEachOffsetRange(OffsetRangeConsumer consumer) {
-            for (int i = 0; i < sortedMethodOffsets.size() - 1; ++i) {
-                consumer.apply(sortedMethodOffsets.get(i), sortedMethodOffsets.get(i + 1));
-            }
         }
 
         private List<Integer> computeSortedMethodOffsets() {

@@ -42,6 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,20 +65,12 @@ final class PolyglotThread extends Thread {
         this.callTarget = ThreadSpawnRootNode.lookup(languageContext.getLanguageInstance());
     }
 
-    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group) {
-        this(languageContext, runnable, group, 0);
-    }
-
-    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable) {
-        this(languageContext, runnable, null, 0);
-    }
-
     private static String createDefaultName(PolyglotLanguageContext creator) {
         return "Polyglot-" + creator.language.getId() + "-" + THREAD_INIT_NUMBER.getAndIncrement();
     }
 
-    boolean isOwner(PolyglotContextImpl testContext) {
-        return languageContext.context == testContext;
+    PolyglotContextImpl getOwnerContext() {
+        return languageContext.context;
     }
 
     @Override
@@ -86,7 +80,8 @@ final class PolyglotThread extends Thread {
         if (hardExitTriggeringThread != null) {
             Thread currentThread = currentThread();
             if (hardExitTriggeringThread == currentThread ||
-                            (currentThread instanceof PolyglotThread && ((PolyglotThread) currentThread).isOwner(polyglotContext) && ((PolyglotThread) currentThread).hardExitNotificationThread)) {
+                            (currentThread instanceof PolyglotThread && ((PolyglotThread) currentThread).getOwnerContext() == polyglotContext &&
+                                            ((PolyglotThread) currentThread).hardExitNotificationThread)) {
                 hardExitNotificationThread = true;
             }
         }
@@ -97,13 +92,17 @@ final class PolyglotThread extends Thread {
     public void run() {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
-        callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
-            @Override
-            @TruffleBoundary
-            public void execute() {
-                PolyglotThread.super.run();
-            }
-        });
+        try {
+            callTarget.call(languageContext, this, new PolyglotThreadRunnable() {
+                @Override
+                @TruffleBoundary
+                public void execute() {
+                    PolyglotThread.super.run();
+                }
+            });
+        } catch (Throwable t) {
+            throw PolyglotImpl.engineToLanguageException(t);
+        }
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
@@ -127,10 +126,11 @@ final class PolyglotThread extends Thread {
         }
 
         @TruffleBoundary
+        @SuppressWarnings("try")
         private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
             Object[] prev = languageContext.enterThread(thread);
             assert prev == null; // is this assertion correct?
-            try {
+            try (ThreadScope scope = languageContext.getImpl().getRootImpl().createThreadScope()) {
                 run.execute();
             } catch (CancelExecution cancel) {
                 if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {

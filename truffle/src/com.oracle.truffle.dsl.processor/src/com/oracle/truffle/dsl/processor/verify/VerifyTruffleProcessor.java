@@ -132,6 +132,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
         try {
             TruffleTypes types = context.getTypes();
             TypeElement virtualFrameType = ElementUtils.castTypeElement(types.VirtualFrame);
+            TypeElement frameType = ElementUtils.castTypeElement(types.Frame);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_TruffleBoundary))) {
                 scope = element;
@@ -144,10 +145,12 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
                     for (VariableElement parameter : method.getParameters()) {
                         Element paramType = processingEnv.getTypeUtils().asElement(parameter.asType());
-                        if (paramType != null && paramType.equals(virtualFrameType)) {
-                            errorMessage(element, "Method %s cannot be annotated with @%s and have a parameter of type %s", method.getSimpleName(),
-                                            types.CompilerDirectives_TruffleBoundary.asElement().getSimpleName().toString(),
-                                            paramType.getSimpleName());
+                        if (paramType != null && (paramType.equals(virtualFrameType) || paramType.equals(frameType))) {
+                            CharSequence truffleBoundarySimpleName = types.CompilerDirectives_TruffleBoundary.asElement().getSimpleName();
+                            errorMessage(element, "Method %s cannot be annotated with @%s and have a parameter of type %s.%n" +
+                                            "To resolve this, either change the parameter to a %s, remove the parameter or remove the @%s.", method.getSimpleName(),
+                                            truffleBoundarySimpleName, paramType.getSimpleName(), types.MaterializedFrame.asElement().getSimpleName(),
+                                            truffleBoundarySimpleName);
                         }
                     }
                 } catch (Throwable t) {
@@ -159,6 +162,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
             TypeElement nodeType = ElementUtils.castTypeElement(types.Node);
             TypeElement nodeInterfaceType = ElementUtils.castTypeElement(types.NodeInterface);
+
             for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Node_Child))) {
                 if (e.getModifiers().contains(Modifier.FINAL)) {
                     emitError("@Child field cannot be final", e);
@@ -188,7 +192,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                     reportError = true;
                 }
                 if (reportError) {
-                    emitError("@Children field must be an array of NodeInerface sub-types", annotatedField);
+                    emitError("@Children field must be an array of NodeInterface sub-types", annotatedField);
                     continue;
                 }
                 if (!processingEnv.getTypeUtils().isSubtype(annotatedField.getEnclosingElement().asType(), nodeType.asType())) {
@@ -199,6 +203,24 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                     assertNoErrorExpected(annotatedField);
                 }
             }
+
+            for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.DenyReplace))) {
+                try {
+                    if (element.getKind() != ElementKind.CLASS) {
+                        continue;
+                    }
+                    TypeElement type = (TypeElement) element;
+
+                    if (!type.getModifiers().contains(Modifier.FINAL)) {
+                        emitError(String.format("@%s may only be used for final classes.", ElementUtils.getSimpleName(types.DenyReplace)), type);
+                        continue;
+                    }
+
+                } catch (Throwable t) {
+                    reportException(isBug367599(t) ? Kind.NOTE : Kind.ERROR, element, t);
+                }
+            }
+
             return false;
         } finally {
             ProcessorContext.leave();

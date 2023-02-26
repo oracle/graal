@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,14 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -31,6 +39,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -196,31 +205,48 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      * <i>not</i> wrapped in objects; in other words, an array of primitive type is returned. If the
      * underlying method return type is void, the invocation returns null.
      *
-     * @param receiver the object the underlying method is invoked from
-     * @param args the arguments used for the method call
-     * @return the result of dispatching the method represented by this object on {@code receiver}
-     *         with parameters {@code args}
+     * return the result of dispatching the method represented by this object on {@code receiver}
+     * with parameters {@code args}
      *
-     *         IllegalAccessException if this {@code Method} object is enforcing Java language
-     *         access control and the underlying method is inaccessible.
+     * IllegalAccessException if this {@code Method} object is enforcing Java language access
+     * control and the underlying method is inaccessible.
      *
      *
-     *         IllegalArgumentException if the method is an instance method and the specified object
-     *         argument is not an instance of the class or interface declaring the underlying method
-     *         (or of a subclass or implementor thereof); if the number of actual and formal
-     *         parameters differ; if an unwrapping conversion for primitive arguments fails; or if,
-     *         after possible unwrapping, a parameter value cannot be converted to the corresponding
-     *         formal parameter type by a method invocation conversion. // @exception
-     *         InvocationTargetException if the underlying method throws an exception.
+     * IllegalArgumentException if the method is an instance method and the specified object
+     * argument is not an instance of the class or interface declaring the underlying method (or of
+     * a subclass or implementor thereof); if the number of actual and formal parameters differ; if
+     * an unwrapping conversion for primitive arguments fails; or if, after possible unwrapping, a
+     * parameter value cannot be converted to the corresponding formal parameter type by a method
+     * invocation conversion. // @exception InvocationTargetException if the underlying method
+     * throws an exception.
      *
-     * 
-     *         NullPointerException if the specified object is null and the method is an instance
-     *         method. exception ExceptionInInitializerError if the initialization provoked by this
-     *         method fails.
+     *
+     * NullPointerException if the specified object is null and the method is an instance method.
+     * exception ExceptionInInitializerError if the initialization provoked by this method fails.
      */
-    @Substitution
-    public static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, @Inject Meta meta) {
+    @Substitution(methodName = "invoke0")
+    abstract static class Invoke0 extends SubstitutionNode {
+        public abstract @JavaType(Object.class) StaticObject execute(
+                        @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object[].class) StaticObject args,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta);
+
+        @Specialization()
+        public @JavaType(Object.class) StaticObject invoke(
+                        @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object[].class) StaticObject args,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta,
+                        @Cached ToEspressoNode toEspressoNode) {
+            return invoke0(guestMethod, receiver, args, language, meta, toEspressoNode);
+        }
+    }
+
+    private static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode toEspressoNode) {
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;
@@ -230,7 +256,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
-        Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass();
+        Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
             StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
@@ -239,12 +265,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
 
         StaticObject parameterTypes = meta.java_lang_reflect_Method_parameterTypes.getObject(guestMethod);
-        StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
+        StaticObject result = callMethodReflectively(language, meta, receiver, args, reflectedMethod, klass, parameterTypes, toEspressoNode);
         return result;
     }
 
-    public static @JavaType(Object.class) StaticObject callMethodReflectively(Meta meta, @JavaType(Object.class) StaticObject receiver, @JavaType(Object[].class) StaticObject args, Method m,
-                    Klass klass, @JavaType(Class[].class) StaticObject parameterTypes) {
+    public static @JavaType(Object.class) StaticObject callMethodReflectively(EspressoLanguage language, Meta meta, @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args, Method m,
+                    Klass klass, @JavaType(Class[].class) StaticObject parameterTypes, ToEspressoNode toEspressoNode) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
         // before doing anything, even if the method to be invoked is from another class.
@@ -319,28 +346,55 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "please let Karen know");
         }
 
-        int argsLen = StaticObject.isNull(args) ? 0 : args.length();
+        boolean isForeignArray = args.isForeignObject();
+        Object rawForeign = null;
+        InteropLibrary interop = null;
+
+        int argsLen;
+        if (isForeignArray) {
+            rawForeign = args.rawForeignObject(language);
+            interop = InteropLibrary.getUncached(rawForeign);
+            try {
+                argsLen = (int) interop.getArraySize(rawForeign);
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unexpected foreign object!");
+            }
+        } else {
+            argsLen = StaticObject.isNull(args) ? 0 : args.length(language);
+        }
+
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Check number of arguments.
-        if (Signatures.parameterCount(signature, false) != argsLen) {
+        if (Signatures.parameterCount(signature) != argsLen) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 
         Object[] adjustedArgs = new Object[argsLen];
         for (int i = 0; i < argsLen; ++i) {
-            StaticObject arg = args.get(i);
-            StaticObject paramTypeMirror = parameterTypes.get(i);
-            Klass paramKlass = paramTypeMirror.getMirrorKlass();
-            // Throws guest IllegallArgumentException if the parameter cannot be casted or widened.
-            adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);
+            StaticObject paramTypeMirror = parameterTypes.get(language, i);
+            Klass paramKlass = paramTypeMirror.getMirrorKlass(meta);
+            Object arg;
+            if (isForeignArray) {
+                try {
+                    adjustedArgs[i] = toEspressoNode.execute(interop.readArrayElement(rawForeign, i), paramKlass);
+                } catch (UnsupportedTypeException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
+                }
+            } else {
+                arg = args.get(language, i);
+                // Throws guest IllegalArgumentException if the
+                // parameter cannot be casted or widened.
+                adjustedArgs[i] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
+            }
         }
 
         Object result;
         try {
             result = method.invokeDirect(receiver, adjustedArgs);
         } catch (EspressoException e) {
-            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getExceptionObject());
+            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
         }
 
         if (reflectedMethod.getReturnKind() == JavaKind.Void) {

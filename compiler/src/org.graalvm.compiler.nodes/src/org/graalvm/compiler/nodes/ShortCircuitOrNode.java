@@ -178,7 +178,9 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             } else if (forY == inner.getY()) {
                 return optimizeShortCircuit(inner, this.xNegated, this.yNegated, false);
             }
-        } else if (forY instanceof ShortCircuitOrNode) {
+        }
+
+        if (forY instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode inner = (ShortCircuitOrNode) forY;
             if (inner.getX() == forX) {
                 return optimizeShortCircuit(inner, this.yNegated, this.xNegated, true);
@@ -310,6 +312,11 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         @Override
         public OptionValues getOptions() {
             return tool.getOptions();
+        }
+
+        @Override
+        public boolean divisionOverflowIsJVMSCompliant() {
+            return tool.divisionOverflowIsJVMSCompliant();
         }
     }
 

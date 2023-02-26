@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,53 +40,78 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import org.junit.AfterClass;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.source.Source;
+import org.junit.Assume;
 
 /**
  * NFI provides a native isolated namespace on Linux (via dlmopen); one per NFI context.
  *
- * This test ensures that the same library can be loaded twice: in the global namespace and in the
- * isolated namespace; and that the libraries are effectively isolated.
+ * This test ensures that the same library can be loaded twice, in two different contexts, and that
+ * the libraries are effectively isolated.
  */
 public class IsolatedNamespaceTest extends NFITest {
 
-    private static Object globalLibrary;
-    private static Object isolatedLibrary;
+    private static class IsolatedGetAndSet implements AutoCloseable {
 
-    @Test
-    public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        // get_and_set mutates some static state.
-        Object globalGetAndSet = lookupAndBind(globalLibrary, "get_and_set", "(sint32) : sint32");
-        Object isolatedGetAndSet = lookupAndBind(isolatedLibrary, "get_and_set", "(sint32) : sint32");
-        UNCACHED_INTEROP.execute(globalGetAndSet, 123);
-        UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
-        Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(globalGetAndSet, 321));
-        Assert.assertEquals(456, (int) UNCACHED_INTEROP.execute(isolatedGetAndSet, 654));
-    }
+        private final TruffleContext ctx;
+        private final Object getAndSet;
 
-    @BeforeClass
-    public static void loadIsolatedLibraries() {
-        // The library is loaded in the global namespace.
-        globalLibrary = loadLibrary("load '" + System.getProperty("native.isolation.test.lib") + "'");
-        try {
-            // And loaded again in the isolated namespace.
-            isolatedLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.isolation.test.lib") + "'");
-        } catch (IllegalArgumentException iea) {
-            Assume.assumeNoException("Cannot load test library in isolated namespace", iea);
+        IsolatedGetAndSet(Env env, Source librarySource, Source signatureSource) {
+            this.ctx = env.newInnerContextBuilder().inheritAllAccess(true).build();
+            Object library;
+            try {
+                library = ctx.evalInternal(null, librarySource);
+            } catch (AbstractTruffleException ex) {
+                if (ex.getMessage().contains("not supported")) {
+                    Assume.assumeNoException(ex);
+                }
+                throw ex;
+            }
+
+            try {
+                Object symbol = UNCACHED_INTEROP.readMember(library, "get_and_set");
+                Object signature = ctx.evalInternal(null, signatureSource);
+                this.getAndSet = UNCACHED_INTEROP.invokeMember(signature, "bind", symbol);
+            } catch (InteropException ex) {
+                throw new AssertionError(ex);
+            }
+        }
+
+        int execute(int arg) throws InteropException {
+            Object prevCtx = ctx.enter(null);
+            try {
+                return (int) UNCACHED_INTEROP.execute(getAndSet, arg);
+            } finally {
+                ctx.leave(null, prevCtx);
+            }
+        }
+
+        @Override
+        public void close() {
+            ctx.close();
         }
     }
 
-    @AfterClass
-    public static void releaseLibraries() {
-        globalLibrary = null;
-        isolatedLibrary = null;
+    @Test
+    public void testIsolatedNamespace() throws InteropException {
+        Source signature = parseSource("(sint32) : sint32");
+        Source library = parseSource(String.format("load(ISOLATED_NAMESPACE) '%s'", getLibPath("isolationtest")));
+
+        Env env = runWithPolyglot.getTruffleTestEnv();
+        try (IsolatedGetAndSet getAndSet1 = new IsolatedGetAndSet(env, library, signature);
+                        IsolatedGetAndSet getAndSet2 = new IsolatedGetAndSet(env, library, signature)) {
+            getAndSet1.execute(123);
+            getAndSet2.execute(456);
+
+            Assert.assertEquals(123, getAndSet1.execute(321));
+            Assert.assertEquals(456, getAndSet2.execute(654));
+        }
     }
 }

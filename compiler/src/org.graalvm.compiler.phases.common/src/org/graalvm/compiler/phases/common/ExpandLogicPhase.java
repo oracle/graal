@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -34,35 +37,53 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbstractNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-public class ExpandLogicPhase extends Phase {
+public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders> {
     private static final double EPSILON = 1E-6;
+
+    public ExpandLogicPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.EXPAND_LOGIC, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
+    }
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
             processBinary(logic);
         }
         assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
 
         for (AbstractNormalizeCompareNode logic : graph.getNodes(AbstractNormalizeCompareNode.TYPE)) {
-            try (DebugCloseable context = logic.withNodeSourcePosition()) {
+            try (DebugCloseable s = logic.withNodeSourcePosition()) {
                 processNormalizeCompareNode(logic);
             }
         }
-        graph.setAfterStage(StageFlag.EXPAND_LOGIC);
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.EXPAND_LOGIC);
     }
 
     private static void processNormalizeCompareNode(AbstractNormalizeCompareNode normalize) {
@@ -154,6 +175,7 @@ public class ExpandLogicPhase extends Phase {
         firstIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing if %s", ifNode);
     }
 
     private static boolean doubleEquals(double a, double b) {
@@ -178,6 +200,7 @@ public class ExpandLogicPhase extends Phase {
             ConditionalNode secondConditional = graph.unique(new ConditionalNode(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
             ConditionalNode firstConditional = graph.unique(new ConditionalNode(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
             conditional.replaceAndDelete(firstConditional);
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing conditional %s", conditional);
         }
     }
 

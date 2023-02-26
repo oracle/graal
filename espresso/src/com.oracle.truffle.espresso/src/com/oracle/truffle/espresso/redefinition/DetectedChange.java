@@ -33,6 +33,7 @@ import java.util.Set;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 
@@ -46,6 +47,9 @@ public final class DetectedChange {
     private final Set<Method> unchangedMethods = new HashSet<>();
     private boolean classInitializerChanged;
     private Map<ParserField, Field> mappedCompatibleFields = new HashMap<>();
+    private ObjectKlass superKlass;
+    private ObjectKlass[] superInterfaces;
+    private boolean isChangedSuperClass;
 
     public void addNewField(ParserField parserField) {
         if (parserField.isStatic()) {
@@ -126,5 +130,29 @@ public final class DetectedChange {
 
     public boolean clinitChanged() {
         return classInitializerChanged;
+    }
+
+    public ObjectKlass getSuperKlass() {
+        return superKlass;
+    }
+
+    public ObjectKlass[] getSuperInterfaces() {
+        return superInterfaces;
+    }
+
+    public void addSuperKlass(ObjectKlass klass) {
+        superKlass = klass;
+    }
+
+    public void addSuperInterfaces(ObjectKlass[] interfaces) {
+        superInterfaces = interfaces;
+    }
+
+    public void markChangedSuperClass() {
+        isChangedSuperClass = true;
+    }
+
+    public boolean isChangedSuperClass() {
+        return isChangedSuperClass;
     }
 }

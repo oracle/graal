@@ -30,10 +30,12 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 
+@AutomaticallyRegisteredImageSingleton(LibCSupport.class)
 class WindowsLibCSupport implements LibCSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -51,6 +53,12 @@ class WindowsLibCSupport implements LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n) {
         return WindowsLibC.memcpy(dest, src, n);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n) {
+        return WindowsLibC.memcmp(s1, s2, n);
     }
 
     @Override
@@ -99,6 +107,12 @@ class WindowsLibCSupport implements LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord strlen(CCharPointer str) {
         return WindowsLibC.strlen(str);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int strcmp(CCharPointer s1, CCharPointer s2) {
+        return WindowsLibC.strcmp(s1, s2);
     }
 
     @Override

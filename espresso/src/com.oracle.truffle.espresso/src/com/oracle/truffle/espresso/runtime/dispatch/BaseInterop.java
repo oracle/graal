@@ -83,7 +83,7 @@ public class BaseInterop {
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         object.checkNotForeign();
         if (isMetaObject(object)) {
-            return object.getKlass().getMeta().java_lang_Class_getTypeName.invokeDirect(object);
+            return object.getMirrorKlass().getTypeName();
         }
         error.enter();
         throw UnsupportedMessageException.create();
@@ -155,7 +155,7 @@ public class BaseInterop {
                     @CachedLibrary("object") InteropLibrary thisLibrary, @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         object.checkNotForeign();
         if (thisLibrary.hasIdentity(object)) {
-            return VM.JVM_IHashCode(object);
+            return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
         }
         error.enter();
         throw UnsupportedMessageException.create();
@@ -202,9 +202,13 @@ public class BaseInterop {
     @TruffleBoundary
     public static Object toDisplayString(StaticObject object, boolean allowSideEffects) {
         if (object.isForeignObject()) {
+            if (object.getKlass() == null) {
+                return "Foreign object: null";
+            }
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             try {
-                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(), allowSideEffects));
+                EspressoLanguage language = object.getKlass().getContext().getLanguage();
+                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
             } catch (UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
             }

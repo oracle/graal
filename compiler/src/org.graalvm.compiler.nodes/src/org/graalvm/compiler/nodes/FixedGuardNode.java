@@ -217,6 +217,18 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         return 1.0d;
     }
 
+    /**
+     * Determine if the this guard will lead to an unconditional {@link DeoptimizeNode} because its
+     * condition is a constant.
+     */
+    public boolean willDeoptUnconditionally() {
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
+            return c.getValue() == negated;
+        }
+        return false;
+    }
+
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
         InterpreterValue condValue = interpreter.interpretExpr(getCondition());

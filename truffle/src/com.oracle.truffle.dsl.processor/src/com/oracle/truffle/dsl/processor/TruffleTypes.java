@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.util.List;
+
 import javax.lang.model.type.DeclaredType;
 
 public class TruffleTypes {
@@ -52,6 +54,7 @@ public class TruffleTypes {
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
+    public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
 
     public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
 
@@ -78,6 +81,7 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
+    public static final String DenyReplace_Name = "com.oracle.truffle.api.nodes.DenyReplace";
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
@@ -105,13 +109,13 @@ public class TruffleTypes {
     public static final String UnexpectedResultException_Name = "com.oracle.truffle.api.nodes.UnexpectedResultException";
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
     public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
-    public static final String MemoryFence_Name = "com.oracle.truffle.api.memory.MemoryFence";
 
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
+    public final DeclaredType DenyReplace = c.getDeclaredType(DenyReplace_Name);
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
@@ -137,15 +141,12 @@ public class TruffleTypes {
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
     public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
-    public final DeclaredType MemoryFence = c.getDeclaredTypeOptional(MemoryFence_Name);
 
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
     public static final String Cached_Exclusive_Name = "com.oracle.truffle.api.dsl.Cached.Exclusive";
     public static final String Cached_Name = "com.oracle.truffle.api.dsl.Cached";
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
-    public static final String CachedContext_Name = "com.oracle.truffle.api.dsl.CachedContext";
-    public static final String CachedLanguage_Name = "com.oracle.truffle.api.dsl.CachedLanguage";
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String ExecuteTracingSupport_Name = "com.oracle.truffle.api.dsl.ExecuteTracingSupport";
@@ -154,6 +155,7 @@ public class TruffleTypes {
     public static final String GenerateAOT_Exclude_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Exclude";
     public static final String GenerateAOT_Provider_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Provider";
     public static final String GeneratedBy_Name = "com.oracle.truffle.api.dsl.GeneratedBy";
+    public static final String GeneratePackagePrivate_Name = "com.oracle.truffle.api.dsl.GeneratePackagePrivate";
     public static final String GenerateNodeFactory_Name = "com.oracle.truffle.api.dsl.GenerateNodeFactory";
     public static final String GenerateUncached_Name = "com.oracle.truffle.api.dsl.GenerateUncached";
     public static final String ImplicitCast_Name = "com.oracle.truffle.api.dsl.ImplicitCast";
@@ -183,8 +185,6 @@ public class TruffleTypes {
     public final DeclaredType Cached = c.getDeclaredType(Cached_Name);
     public final DeclaredType Cached_Exclusive = c.getDeclaredType(Cached_Exclusive_Name);
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);
-    public final DeclaredType CachedContext = c.getDeclaredType(CachedContext_Name);
-    public final DeclaredType CachedLanguage = c.getDeclaredType(CachedLanguage_Name);
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType ExecuteTracingSupport = c.getDeclaredType(ExecuteTracingSupport_Name);
@@ -193,6 +193,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateAOT_Exclude = c.getDeclaredType(GenerateAOT_Exclude_Name);
     public final DeclaredType GenerateAOT_Provider = c.getDeclaredType(GenerateAOT_Provider_Name);
     public final DeclaredType GeneratedBy = c.getDeclaredType(GeneratedBy_Name);
+    public final DeclaredType GeneratePackagePrivate = c.getDeclaredType(GeneratePackagePrivate_Name);
     public final DeclaredType GenerateNodeFactory = c.getDeclaredType(GenerateNodeFactory_Name);
     public final DeclaredType GenerateUncached = c.getDeclaredType(GenerateUncached_Name);
     public final DeclaredType ImplicitCast = c.getDeclaredType(ImplicitCast_Name);

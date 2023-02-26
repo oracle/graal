@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,12 +70,18 @@
         printfp(#a " " #op " " #b, &z);                                                                                                              \
     }
 
+#if defined(__x86_64__) && !defined(_WIN32)
+#define LONGDOUBLE_SIZE 10
+#else
+#define LONGDOUBLE_SIZE sizeof(long double)
+#endif
+
 static void printfp(const char *msg, long double *x) {
     uint8_t *p = (uint8_t *) x;
     size_t i;
 
     printf("%s:", msg);
-    for (i = 0; i < sizeof(long double); i++)
+    for (i = 0; i < LONGDOUBLE_SIZE; i++)
         printf(" %02x", *(p++));
     printf("\n");
 }

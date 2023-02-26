@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -47,10 +47,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Implementation notes: The arrays are created after static analysis, but before compilation. We
  * need to know how many static fields are reachable in order to compute the appropriate size for
  * the arrays, which is only available after static analysis.
- * 
+ *
  * When bytecode is parsed before static analysis, the arrays are not available yet. Therefore, the
  * accessor functions {@link #getStaticObjectFields()}} and {@link #getStaticPrimitiveFields()} are
  * intrinsified to a {@link StaticFieldBaseNode}, which is then during compilation lowered to the
@@ -77,6 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * the {@link StaticFieldBaseNode} with a {@link ConstantNode} only in the low tier of the compiler
  * solves this problem.
  */
+@AutomaticallyRegisteredImageSingleton
 public final class StaticFieldsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -112,81 +114,77 @@ public final class StaticFieldsSupport {
     public static FloatingNode createStaticFieldBaseNode(boolean primitive) {
         return new StaticFieldBaseNode(primitive);
     }
+
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_1)
+    public static final class StaticFieldBaseNode extends FloatingNode implements Lowerable {
+        public static final NodeClass<StaticFieldBaseNode> TYPE = NodeClass.create(StaticFieldBaseNode.class);
+
+        public final boolean primitive;
+
+        /**
+         * We must not expose that the stamp will eventually be an array, to avoid memory graph
+         * problems. See the comment on {@link StaticFieldsSupport}.
+         */
+        protected StaticFieldBaseNode(boolean primitive) {
+            super(TYPE, StampFactory.objectNonNull());
+            this.primitive = primitive;
+        }
+
+        /**
+         * At first glance, this method looks like a circular dependency:
+         * {@link StaticFieldsSupport#getStaticPrimitiveFields} is intrinsified to a
+         * {@link StaticFieldBaseNode}, and {@link StaticFieldBaseNode} is lowered by calling
+         * {@link StaticFieldsSupport#getStaticPrimitiveFields}. So why does this code work?
+         *
+         * The intrinsification to the {@link StaticFieldBaseNode} is only effective for code
+         * executed at image run time. So when executed during AOT compilation,
+         * {@link StaticFieldBaseNode#lower} really invokes
+         * {@link StaticFieldsSupport#getStaticPrimitiveFields}, which returns the proper result.
+         *
+         * For an image that uses Graal as a JIT compiler, {@link StaticFieldBaseNode#lower} is
+         * reachable at run time. But it is AOT compiled, and lowering during that AOT compilation
+         * again invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}.
+         *
+         * So in summary, this code works because there is proper "bootstrapping" during AOT
+         * compilation where the intrinsification is not applied.
+         */
+        @Override
+        public void lower(LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                /*
+                 * Lowering to a ConstantNode must only happen after the memory graph has been
+                 * built, i.e., when the information that static fields are stored in an array is no
+                 * longer misleading alias analysis.
+                 */
+                return;
+            }
+
+            JavaConstant constant = SubstrateObjectConstant.forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            assert constant.isNonNull();
+            replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
+        }
+    }
 }
 
-@AutomaticFeature
-final class StaticFieldsFeature implements GraalFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StaticFieldsSupport.class, new StaticFieldsSupport());
-    }
+@AutomaticallyRegisteredFeature
+final class StaticFieldsFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), StaticFieldsSupport.class);
-        r.register0("getStaticObjectFields", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getStaticObjectFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
-                b.addPush(JavaKind.Object, new StaticFieldBaseNode(false));
+                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(false));
                 return true;
             }
         });
-        r.register0("getStaticPrimitiveFields", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getStaticPrimitiveFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
-                b.addPush(JavaKind.Object, new StaticFieldBaseNode(true));
+                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(true));
                 return true;
             }
         });
-    }
-}
-
-@NodeInfo(cycles = CYCLES_0, size = SIZE_1)
-final class StaticFieldBaseNode extends FloatingNode implements Lowerable {
-    public static final NodeClass<StaticFieldBaseNode> TYPE = NodeClass.create(StaticFieldBaseNode.class);
-
-    private final boolean primitive;
-
-    /**
-     * We must not expose that the stamp will eventually be an array, to avoid memory graph
-     * problems. See the comment on {@link StaticFieldsSupport}.
-     */
-    protected StaticFieldBaseNode(boolean primitive) {
-        super(TYPE, StampFactory.objectNonNull());
-        this.primitive = primitive;
-    }
-
-    /**
-     * At first glance, this method looks like a circular dependency:
-     * {@link StaticFieldsSupport#getStaticPrimitiveFields} is intrinsified to a
-     * {@link StaticFieldBaseNode}, and {@link StaticFieldBaseNode} is lowered by calling
-     * {@link StaticFieldsSupport#getStaticPrimitiveFields}. So why does this code work?
-     * 
-     * The intrinsification to the {@link StaticFieldBaseNode} is only effective for code executed
-     * at image run time. So when executed during AOT compilation, {@link StaticFieldBaseNode#lower}
-     * really invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}, which returns the proper
-     * result.
-     * 
-     * For an image that uses Graal as a JIT compiler, {@link StaticFieldBaseNode#lower} is
-     * reachable at run time. But it is AOT compiled, and lowering during that AOT compilation again
-     * invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}.
-     * 
-     * So in summary, this code works because there is proper "bootstrapping" during AOT compilation
-     * where the intrinsification is not applied.
-     */
-    @Override
-    public void lower(LoweringTool tool) {
-        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-            /*
-             * Lowering to a ConstantNode must only happen after the memory graph has been built,
-             * i.e., when the information that static fields are stored in an array is no longer
-             * misleading alias analysis.
-             */
-            return;
-        }
-
-        JavaConstant constant = SubstrateObjectConstant.forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
-        assert constant.isNonNull();
-        replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
     }
 }

@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
-/* Checkstyle: allow reflection */
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -40,9 +37,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -108,12 +106,12 @@ public class JNIRegistrationUtil {
 
     protected static void registerForThrowNew(FeatureAccess access, String... exceptionClassNames) {
         for (String exceptionClassName : exceptionClassNames) {
-            JNIRuntimeAccess.register(clazz(access, exceptionClassName));
-            JNIRuntimeAccess.register(constructor(access, exceptionClassName, String.class));
+            RuntimeJNIAccess.register(clazz(access, exceptionClassName));
+            RuntimeJNIAccess.register(constructor(access, exceptionClassName, String.class));
         }
     }
 
-    private static Set<Consumer<DuringAnalysisAccess>> runOnceCallbacks = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static final Set<Consumer<DuringAnalysisAccess>> runOnceCallbacks = Collections.newSetFromMap(new ConcurrentIdentityHashMap<>());
 
     /** Intended to be used from within a callback to ensure that it is run only once. */
     protected static boolean isRunOnce(Consumer<DuringAnalysisAccess> callback) {

@@ -45,17 +45,21 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public final class StringBufferLATIN1 extends ByteArrayBuffer implements AbstractStringBuffer {
 
-    public StringBufferLATIN1() {
-        this(16);
+    private final Encoding encoding;
+
+    public StringBufferLATIN1(Encoding encoding) {
+        this(16, encoding);
     }
 
-    public StringBufferLATIN1(int capacity) {
+    public StringBufferLATIN1(int capacity, Encoding encoding) {
         super(capacity);
+        assert encoding == Encodings.LATIN_1 || encoding == Encodings.BYTES;
+        this.encoding = encoding;
     }
 
     @Override
     public Encoding getEncoding() {
-        return Encodings.LATIN_1;
+        return encoding;
     }
 
     @Override
@@ -80,6 +84,6 @@ public final class StringBufferLATIN1 extends ByteArrayBuffer implements Abstrac
 
     @Override
     public StringLATIN1 materialize() {
-        return new StringLATIN1(toArray());
+        return new StringLATIN1(toArray(), encoding);
     }
 }

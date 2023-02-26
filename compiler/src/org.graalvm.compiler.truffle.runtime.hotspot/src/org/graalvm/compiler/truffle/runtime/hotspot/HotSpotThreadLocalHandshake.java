@@ -39,7 +39,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     private static final long THREAD_EETOP_OFFSET;
     static {
         try {
-            THREAD_EETOP_OFFSET = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            THREAD_EETOP_OFFSET = AbstractHotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
         } catch (Exception e) {
             throw new InternalError(e);
         }

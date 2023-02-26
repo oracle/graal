@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,6 +149,11 @@ public final class InspectorExecutionContext {
     }
 
     public ScriptsHandler acquireScriptsHandler() {
+        return acquireScriptsHandler(null);
+    }
+
+    // Acquire and associate with the debugger session.
+    ScriptsHandler acquireScriptsHandler(DebuggerSession debuggerSession) {
         ScriptsHandler sh;
         boolean attachListener = false;
         synchronized (this) {
@@ -160,6 +165,9 @@ public final class InspectorExecutionContext {
             }
             schCounter++;
         }
+        if (debuggerSession != null) {
+            sh.setDebuggerSession(debuggerSession);
+        }
         if (attachListener) {
             schBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, sh, true);
         }
@@ -170,6 +178,7 @@ public final class InspectorExecutionContext {
         if (--schCounter == 0) {
             schBinding.dispose();
             schBinding = null;
+            scriptsHandler.dispose();
             scriptsHandler = null;
         }
     }

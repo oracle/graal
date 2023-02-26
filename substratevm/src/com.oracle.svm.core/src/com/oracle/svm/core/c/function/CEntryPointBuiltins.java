@@ -34,12 +34,12 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 
 /**
  * Methods implementing the built-ins of {@link Builtin}, which are matched by name
@@ -57,8 +57,8 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.CREATE_ISOLATE)
     public static IsolateThread createIsolate() {
         int status = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
@@ -72,11 +72,11 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.ATTACH_THREAD)
     public static IsolateThread attachThread(Isolate isolate) {
-        int status = CEntryPointActions.enterAttachThread(isolate, true);
+        int status = CEntryPointActions.enterAttachThread(isolate, false, true);
         if (status != 0) {
             return WordFactory.nullPointer();
         }
@@ -87,11 +87,11 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.GET_CURRENT_THREAD)
     public static IsolateThread getCurrentThread(Isolate isolate) {
-        int status = CEntryPointActions.enterIsolate(isolate);
+        int status = CEntryPointActions.enterByIsolate(isolate);
         if (status != 0) {
             return WordFactory.nullPointer();
         }
@@ -102,8 +102,8 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.GET_ISOLATE)
     public static Isolate getIsolate(IsolateThread thread) {
         int status = CEntryPointActions.enter(thread);
@@ -117,8 +117,8 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.DETACH_THREAD)
     public static int detachThread(IsolateThread thread) {
         int status = CEntryPointActions.enter(thread);
@@ -130,8 +130,8 @@ public final class CEntryPointBuiltins {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.TEAR_DOWN_ISOLATE)
     public static int tearDownIsolate(IsolateThread isolateThread) {
         int result = CEntryPointActions.enter(isolateThread);

@@ -27,7 +27,7 @@
 #include "jni.h"
 #include "os.h"
 
-#include "libespresso_dynamic.h"
+#include "libjavavm_dynamic.h"
 
 #include <trufflenfi.h>
 #include <stddef.h>
@@ -69,7 +69,7 @@ typedef uint64_t julong;
 /* Usage of the JavaVM reserved fields:
  * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * ----------+----------------+---------------------+----------------+
- * reserved0 | NULL           | LibEspressoIsolate* | context handle |
+ * reserved0 | NULL           | LibJavaVMIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
@@ -237,6 +237,7 @@ typedef uint64_t julong;
     V(JVM_LatestUserDefinedLoader) \
     V(JVM_Listen) \
     V(JVM_LoadClass0) \
+    V(JVM_LoadZipLibrary) \
     V(JVM_LoadLibrary) \
     V(JVM_Lseek) \
     V(JVM_MaxObjectInspectionAge) \
@@ -342,7 +343,15 @@ typedef uint64_t julong;
     V(JVM_PhantomReferenceRefersTo) \
     V(JVM_ReferenceClear) \
     V(JVM_ReferenceRefersTo) \
-    V(JVM_RegisterLambdaProxyClassForArchiving)
+    V(JVM_RegisterLambdaProxyClassForArchiving) \
+    /* Java 19 VM methods */ \
+    V(JVM_CurrentCarrierThread) \
+    V(JVM_SetCurrentThread) \
+    V(JVM_GetStackTrace) \
+    V(JVM_ExtentLocalCache) \
+    V(JVM_SetExtentLocalCache) \
+    V(JVM_GetNextThreadIdOffset) \
+    V(JVM_RegisterContinuationMethods)
 
 #ifdef __cplusplus
 extern "C" {
@@ -414,7 +423,9 @@ jlong (*JVM_MaxMemory)(void);
 
 jint (*JVM_ActiveProcessorCount)(void);
 
-void * (*JVM_LoadLibrary)(const char *name);
+void * (*JVM_LoadZipLibrary)(void);
+
+void * (*JVM_LoadLibrary)(const char *name /*, jboolean throwException*/);
 
 void (*JVM_UnloadLibrary)(void * handle);
 
@@ -929,6 +940,29 @@ jboolean (*JVM_ReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
 
 void (*JVM_ReferenceClear)(JNIEnv *env, jobject ref);
 
+jobject (*JVM_CurrentCarrierThread)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetCurrentThread)(JNIEnv *env, jobject thisThread, jobject theThread);
+
+jobject (*JVM_GetStackTrace)(JNIEnv *env, jobject thread);
+
+jobject (*JVM_ExtentLocalCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetExtentLocalCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_RegisterContinuationMethods)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsPreviewEnabled)();
+
+jboolean (*JVM_IsContinuationsSupported)();
+
+void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
+void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
+
+jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
 
 };
 
@@ -953,10 +987,10 @@ void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
 
-#define LIB_ESPRESSO_PLAIN 0
-#define LIB_ESPRESSO_POLYGLOT 1
+#define LIB_JAVAVM_PLAIN 0
+#define LIB_JAVAVM_POLYGLOT 1
 
-typedef struct LibEspresso {
+typedef struct LibJavaVM {
     graal_create_isolate_fn_t create_isolate;
     graal_attach_thread_fn_t attach_thread;
     graal_detach_thread_fn_t detach_thread;
@@ -968,13 +1002,13 @@ typedef struct LibEspresso {
     Espresso_LeaveContext_fn_t Espresso_LeaveContext;       // leave
     Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
     Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
-    Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
-} LibEspresso;
+    Espresso_Shutdown_fn_t Espresso_Shutdown;               // shutdown
+} LibJavaVM;
 
-typedef struct LibEspressoIsolate {
-    LibEspresso *lib;
+typedef struct LibJavaVMIsolate {
+    LibJavaVM *lib;
     graal_isolate_t *isolate;
     jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
-} LibEspressoIsolate;
+} LibJavaVMIsolate;
 
 #endif // _MOKAPOT_H

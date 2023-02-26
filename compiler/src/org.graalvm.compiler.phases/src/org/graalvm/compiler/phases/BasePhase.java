@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.phases;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -33,8 +38,10 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -42,6 +49,9 @@ import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -51,13 +61,131 @@ import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 
 import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * Base class for all compiler phases. Subclasses should be stateless. There will be one global
- * instance for each compiler phase that is shared for all compilations. VM-, target- and
- * compilation-specific data can be passed with a context object.
+ * Base class for all compiler phases. Subclasses should be stateless, except for subclasses of
+ * {@link SingleRunSubphase}. There will be one global instance for each compiler phase that is
+ * shared for all compilations. VM-, target- and compilation-specific data can be passed with a
+ * context object.
  */
 public abstract class BasePhase<C> implements PhaseSizeContract {
+
+    /**
+     * Explains why a phase cannot be applied to a given graph.
+     */
+    public static class NotApplicable {
+
+        /**
+         * Describes why a phase cannot be applied at this point of the compilation.
+         */
+        public final String reason;
+
+        /**
+         * Contains the {@link Throwable} that could be thrown if the phase was executed. May be
+         * {@code null}.
+         */
+        public final Throwable cause;
+
+        public NotApplicable(String reason, Throwable cause) {
+            assert reason != null;
+            this.reason = reason;
+            this.cause = cause;
+        }
+
+        public NotApplicable(String reason) {
+            this(reason, null);
+        }
+
+        public NotApplicable(Throwable cause) {
+            this("Exception occurred", cause);
+        }
+
+        @Override
+        public String toString() {
+            if (cause == null) {
+                return reason;
+            }
+            return reason + System.lineSeparator() + "cause: " + cause;
+        }
+
+        /**
+         * @return a {@link NotApplicable} for {@code reason} if {@code condition == true} else
+         *         {@link #ALWAYS_APPLICABLE}.
+         */
+        public static Optional<NotApplicable> when(boolean condition, String reason) {
+            if (condition) {
+                return Optional.of(new NotApplicable(reason));
+            }
+            return ALWAYS_APPLICABLE;
+        }
+
+        /**
+         * @return a {@link NotApplicable} for {@code String.format(reasonFormat, reasonArgs)} if
+         *         {@code condition == true} else {@link #ALWAYS_APPLICABLE}
+         */
+        public static Optional<NotApplicable> when(boolean condition, String reasonFormat, Object... reasonArgs) {
+            if (condition) {
+                return Optional.of(new NotApplicable(String.format(reasonFormat, reasonArgs)));
+            }
+            return ALWAYS_APPLICABLE;
+        }
+
+        /**
+         * If {@code graphState} is after stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run before stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
+         */
+        public static Optional<NotApplicable> unlessRunBefore(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isAfterStage(flag), "%s must run before the %s stage", phase.getName(), flag);
+        }
+
+        /**
+         * If {@code graphState} is before stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run after stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
+         */
+        public static Optional<NotApplicable> unlessRunAfter(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isBeforeStage(flag), "%s must run after the %s stage (already applied stages: %s)",
+                            phase.getName(), flag, graphState.getStageFlags());
+        }
+
+        /**
+         * If {@code graphState} is after stage {@code flag}, returns a {@link NotApplicable}
+         * explaining that {@code phase} must be run after stage {@code flag}. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
+         *
+         * This is equivalent to {@link #unlessRunBefore} but is preferred to identify phases that
+         * can be applied at most once.
+         */
+        public static Optional<NotApplicable> ifApplied(BasePhase<?> phase, StageFlag flag, GraphState graphState) {
+            return when(graphState.isAfterStage(flag), "Cannot apply %s because graph is already after %s stage", phase.getName(), flag);
+        }
+
+        /**
+         * If {@code graphState} has a no speculation log, returns a {@link NotApplicable}
+         * explaining that {@code phase} requires a non-null speculation log. Otherwise, returns
+         * {@link #ALWAYS_APPLICABLE}.
+         */
+        public static Optional<NotApplicable> withoutSpeculationLog(BasePhase<?> phase, GraphState graphState) {
+            return when(graphState.getSpeculationLog() == null, "%s needs a %s", phase.getName(), SpeculationLog.class.getSimpleName());
+        }
+
+        /**
+         * @return the first {@linkplain Optional#isPresent() present} element in
+         *         {@code constraints} or {@link #ALWAYS_APPLICABLE} if no element is present.
+         */
+        @SafeVarargs
+        public static Optional<NotApplicable> ifAny(Optional<NotApplicable>... constraints) {
+            for (Optional<NotApplicable> constraint : constraints) {
+                if (constraint.isPresent()) {
+                    return constraint;
+                }
+            }
+            return ALWAYS_APPLICABLE;
+        }
+
+    }
 
     public static class PhaseOptions {
         // @formatter:off
@@ -65,7 +193,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
         @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
-        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a method filter", type = OptionType.Debug)
+        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a " +
+                        "method filter. Multiple exclusions can be specified separated by ':'. " +
+                        "Phase names are matched as substrings, e.g.: " +
+                        "CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes PartialEscapePhase " +
+                        "from all compilations and any phase containing 'Loop' in its name from " +
+                        "compilations of all methods in class A and of method B.foo.", type = OptionType.Debug)
         public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
         // @formatter:on
     }
@@ -87,14 +220,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     private final CounterKey inputNodesCount;
 
     /**
+     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
+     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    private final CounterKey edgeModificationCount;
+
+    /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
      */
     private final MemUseTrackerKey memUseTracker;
-
-    /** Lazy initialization to create pattern only when assertions are enabled. */
-    static class NamePatternHolder {
-        static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
-    }
 
     public static class BasePhaseStatistics {
         /**
@@ -114,6 +248,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         private final CounterKey inputNodesCount;
 
         /**
+         * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of
+         * all graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final CounterKey edgeModificationCount;
+
+        /**
          * Records memory usage within {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
          */
         private final MemUseTrackerKey memUseTracker;
@@ -123,10 +263,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount = DebugContext.counter("PhaseCount_%s", clazz).doc("Number of phase executions.");
             memUseTracker = DebugContext.memUseTracker("PhaseMemUse_%s", clazz).doc("Memory allocated in phase.");
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
+            edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
     }
 
-    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected BasePhaseStatistics computeValue(Class<?> c) {
             return new BasePhaseStatistics(c);
@@ -143,10 +284,51 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         executionCount = statistics.executionCount;
         memUseTracker = statistics.memUseTracker;
         inputNodesCount = statistics.inputNodesCount;
+        edgeModificationCount = statistics.edgeModificationCount;
     }
+
+    /**
+     * Checks if a phase must be applied at some point in the future for the compilation of a
+     * {@link StructuredGraph} to be correct.
+     *
+     * @param graphState represents the state of the {@link StructuredGraph} used for compilation
+     *            and contains the {@linkplain GraphState#getFutureRequiredStages() required stages}
+     *            that help in determining if a phase must be applied.
+     */
+    public boolean mustApply(GraphState graphState) {
+        return false;
+    }
+
+    /**
+     * Gets a precondition that prevents {@linkplain #apply(StructuredGraph, Object, boolean)
+     * applying} this phase to a graph whose state is {@code graphState}.
+     *
+     * @param graphState the state of graph to which the caller wants to apply this phase
+     *
+     * @return a {@link NotApplicable} detailing why this phase cannot be applied or a value equal
+     *         to {@link Optional#empty} if the phase can be applied
+     */
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return Optional.of(new NotApplicable("BasePhase's notApplicableTo should be implemented by each phase"));
+    }
+
+    /**
+     * Represents that a phase is applicable and will have {@link #notApplicableTo} that will return
+     * {@link Optional#empty()}.
+     */
+    public static final Optional<NotApplicable> ALWAYS_APPLICABLE = Optional.empty();
 
     public final void apply(final StructuredGraph graph, final C context) {
         apply(graph, context, true);
+    }
+
+    /**
+     * Applies all the changes on the {@link GraphState} caused by
+     * {@link #apply(StructuredGraph, Object, boolean)}.
+     *
+     * @param graphState represents the state of the {@link StructuredGraph} used for compilation.
+     */
+    public void updateGraphState(GraphState graphState) {
     }
 
     private BasePhase<?> getEnclosingPhase(DebugContext debug) {
@@ -185,21 +367,52 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    /**
+     * Similar to a {@link DebugCloseable} but the {@link #close} operation gets a {@link Throwable}
+     * argument indicating whether the call to {@link #run} completed normally or with an exception.
+     */
+    public interface ApplyScope {
+        void close(Throwable t);
+    }
+
+    /**
+     * Return an {@link ApplyScope} which will surround all the work performed by the call to
+     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclaseses to
+     * inject work which will performed before and after the application of this phase.
+     */
+    @SuppressWarnings("unused")
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
+        return null;
+    }
+
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        OptionValues options = graph.getOptions();
+
+        Optional<NotApplicable> cannotBeApplied = this.notApplicableTo(graph.getGraphState());
+        if (cannotBeApplied.isPresent()) {
+            String name = this.getClass().getName();
+            if (name.contains(".svm.") || name.contains(".truffle.")) {
+                // Not yet implemented by SVM (GR-41437) or Truffle (GR-39494).
+            } else {
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get());
+            }
+        }
+
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
+            TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
         }
 
         DebugContext debug = graph.getDebug();
-        try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+        try (DebugContext.Scope s = debug.scope(getName(), this);
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
-                        DebugContext.Scope s = debug.scope(getClass(), this);
-                        DebugCloseable c = memUseTracker.start(debug);) {
+                        DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
+            int edgesBefore = graph.getEdgeModificationCount();
             Mark before = null;
-            OptionValues options = graph.getOptions();
             boolean verifySizeContract = PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract();
             if (verifySizeContract) {
                 sizeBefore = NodeCostUtil.computeGraphSize(graph);
@@ -211,8 +424,25 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel);
             }
             inputNodesCount.add(debug, graph.getNodeCount());
-            this.run(graph, context);
+
+            // This is a manual version of a try/resource pattern since the close operation might
+            // want to know whether the run call completed with an exception or not.
+            ApplyScope applyScope = applyScope(graph, context);
+            Throwable throwable = null;
+            try {
+                this.run(graph, context);
+                this.updateGraphState(graph.getGraphState());
+            } catch (Throwable t) {
+                throwable = t;
+                throw t;
+            } finally {
+                if (applyScope != null) {
+                    applyScope.close(throwable);
+                }
+            }
+
             executionCount.increment(debug);
+            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
@@ -297,8 +527,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence getName() {
-        return new ClassTypeSequence(BasePhase.this.getClass());
+    public CharSequence getName() {
+        return new ClassTypeSequence(this.getClass());
     }
 
     protected abstract void run(StructuredGraph graph, C context);
@@ -398,4 +628,44 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             this.filters = filters;
         }
     }
+
+    /**
+     * Marker interface for fields inside phase classes that capture some state that is shared
+     * across all compilations. Such fields must be declared {@code private static volatile}. They
+     * should only be used under exceptional circumstances, e.g., to guard code that adds a
+     * {@linkplain Runtime#addShutdownHook(Thread) runtime shutdown hook} for printing global phase
+     * statistics at VM shutdown.
+     */
+    @Target(value = {ElementType.FIELD})
+    @Retention(value = RetentionPolicy.RUNTIME)
+    public static @interface SharedGlobalPhaseState {
+
+    }
+
+    /**
+     * Hashing a phase is used to implement and test phase plan serialization. Hashing a phase
+     * should take into account any fields that configure a phase. This will be done properly once a
+     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}). The hash code returned
+     * needs to be stable across VM executions.
+     */
+    @Override
+    public int hashCode() {
+        return this.getClass().getName().hashCode();
+    }
+
+    /**
+     * @see #hashCode
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (this == obj) {
+            return true;
+        }
+
+        return getClass().equals(obj.getClass());
+    }
+
 }

@@ -24,7 +24,8 @@
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class Utils {
@@ -38,13 +39,13 @@ public final class Utils {
         return interop.hasArrayElements(foreignObject);
     }
 
-    public static boolean isByteArray(EspressoContext context, StaticObject array) {
-        return array.getKlass() == context.getMeta()._byte_array;
+    public static boolean isByteArray(Meta meta, StaticObject array) {
+        return array.getKlass() == meta._byte_array;
     }
 
-    public static boolean isBufferLikeByteArray(EspressoContext context, InteropLibrary interop, StaticObject array) {
+    public static boolean isBufferLikeByteArray(EspressoLanguage language, Meta meta, InteropLibrary interop, StaticObject array) {
         assert !StaticObject.isNull(array);
         assert array.isForeignObject();
-        return isByteArray(context, array) && isBufferLike(interop, array.rawForeignObject());
+        return isByteArray(meta, array) && isBufferLike(interop, array.rawForeignObject(language));
     }
 }

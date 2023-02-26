@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,11 +60,11 @@ public abstract class LLVM80BitTest {
     }
 
     protected static LLVM80BitFloat negativeInfinity() {
-        return new LLVM80BitFloat(true, LLVM80BitFloat.ALL_ONE_EXPONENT, LLVM80BitFloat.bit(63L));
+        return LLVM80BitFloat.fromRawValues(true, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
     }
 
     protected static LLVM80BitFloat positiveInfinity() {
-        return new LLVM80BitFloat(false, LLVM80BitFloat.ALL_ONE_EXPONENT, LLVM80BitFloat.bit(63L));
+        return LLVM80BitFloat.fromRawValues(false, LLVM80BitFloat.EXPONENT_MASK, LLVM80BitFloat.bit(63L));
     }
 
     protected static LLVM80BitFloat nan() {

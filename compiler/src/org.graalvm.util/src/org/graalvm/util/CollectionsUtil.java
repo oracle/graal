@@ -24,6 +24,8 @@
  */
 package org.graalvm.util;
 
+import org.graalvm.collections.Pair;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -65,13 +67,13 @@ public final class CollectionsUtil {
         for (Iterable<T> iterable : iterables) {
             Objects.requireNonNull(iterable);
         }
-        return new Iterable<T>() {
+        return new Iterable<>() {
             @Override
             public Iterator<T> iterator() {
                 if (iterables.size() == 0) {
                     return Collections.emptyIterator();
                 }
-                return new Iterator<T>() {
+                return new Iterator<>() {
                     Iterator<Iterable<T>> cursor = iterables.iterator();
                     Iterator<T> currentIterator = cursor.next().iterator();
 
@@ -290,4 +292,34 @@ public final class CollectionsUtil {
         return strb.toString();
     }
 
+    /**
+     * Combines two iterables into an iterable of pairs with as many elements as the longer
+     * iterable. Elements are paired in the order of the original iterables. When one of the
+     * iterators is exhausted, {@code null}s are returned in its place.
+     *
+     * @param lhs the first iterable
+     * @param rhs the second iterable
+     * @return an iterable of pairs of the input elements
+     */
+    public static <L, R> Iterable<Pair<L, R>> zipLongest(Iterable<L> lhs, Iterable<R> rhs) {
+        Iterator<L> lhsIterator = lhs.iterator();
+        Iterator<R> rhsIterator = rhs.iterator();
+        return () -> new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return lhsIterator.hasNext() || rhsIterator.hasNext();
+            }
+
+            @Override
+            public Pair<L, R> next() {
+                if (lhsIterator.hasNext() && rhsIterator.hasNext()) {
+                    return Pair.create(lhsIterator.next(), rhsIterator.next());
+                } else if (lhsIterator.hasNext()) {
+                    return Pair.createLeft(lhsIterator.next());
+                } else {
+                    return Pair.createRight(rhsIterator.next());
+                }
+            }
+        };
+    }
 }

@@ -33,11 +33,11 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * {@code PhiNode}s represent the merging of edges at a control flow merges (
@@ -120,10 +120,6 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         return values().size();
     }
 
-    public void clearValues() {
-        values().clear();
-    }
-
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
@@ -167,7 +163,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
-     * If all inputs are the same value, this value is returned, otherwise {@code this}. Note that
+     * If all inputs are the same value, that value is returned, otherwise {@code this}. Note that
      * {@code null} is a valid return value, since {@link GuardPhiNode}s can have {@code null}
      * inputs.
      */
@@ -186,7 +182,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
-     * If all inputs (but the first one) are the same value, the value is returned, otherwise
+     * If all inputs (but the first one) are the same value, that value is returned, otherwise
      * {@code this}. Note that {@code null} is a valid return value, since {@link GuardPhiNode}s can
      * have {@code null} inputs.
      */
@@ -229,7 +225,6 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                     break;
                 }
             }
-
             if (onlySelfUsage) {
                 return null;
             }

@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import org.graalvm.util.DirectAnnotationAccess;
 
 /**
  * Annotation for types whose methods must be ignored for certain kinds of stack walks, such as by
@@ -39,17 +36,4 @@ import org.graalvm.util.DirectAnnotationAccess;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface InternalVMMethod {
-
-    @InternalVMMethod()
-    class Holder {
-
-        /** Instance of the annotation, useful when the annotation is manually injected. */
-        public static final InternalVMMethod INSTANCE = DirectAnnotationAccess.getAnnotation(Holder.class, InternalVMMethod.class);
-
-        /**
-         * Array that contains only the instance of the annotation, useful when the annotation is
-         * manually injected.
-         */
-        public static final Annotation[] ARRAY = new Annotation[]{INSTANCE};
-    }
 }

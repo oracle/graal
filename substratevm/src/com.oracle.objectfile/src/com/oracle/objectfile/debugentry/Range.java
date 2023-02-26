@@ -26,23 +26,54 @@
 
 package com.oracle.objectfile.debugentry;
 
-import org.graalvm.compiler.debug.DebugContext;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
- * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
- * method. Each sub-range is linked with its caller and its callees, forming a call tree.
+ * whole compiled method or a sub-range identifying a sub-sequence of the compiled instructions that
+ * may derive from top level or inlined code. Each sub-range is linked with its caller, (which may
+ * be the primary range) and its callees, forming a call tree. Subranges are either leaf nodes with
+ * no children or call nodes which have children.
+ *
+ * <ul>
+ * <li>A leaf node at the top level (depth 0) records the start and extent of a sequence of compiled
+ * code derived from the top level method. The leaf node reports itself as belonging to the top
+ * level method.
+ * <li>A leaf node at depth N records the start and extent of a sequence of compiled code derived
+ * from a leaf inlined method at a call depth of N. The leaf node reports itself as belonging to the
+ * leaf method.
+ * <li>A call node at level 0 records the start and extent of a sequence of compiled code that
+ * includes all compiled code derived from a top level call that has been inlined. All child nodes
+ * of the call node (direct or indirect) should model ranges that lie within the parent range. The
+ * call node reports itself as belonging to the top level method and its file and line information
+ * identify the location of the call.
+ * <li>A call node at level N records the start and extent of a sequence of compiled code that
+ * includes all compiled code derived from an inline call at depth N. All child nodes of the call
+ * node (direct or indirect) should model ranges that lie within the parent range. The call node
+ * reports itself as belonging to the caller method at depth N and its file and line information
+ * identify the location of the call.
+ * <ul>
+ *
+ * Ranges also record the location of local and parameter values that are valid for the range's
+ * extent. Each value maps to a corresponding parameter or local variable attached to the range's
+ * method. So, a leaf or call node at level 0 records local and parameter values for separate
+ * sub-extents of the top level method while a leaf or call node at level N+1 records local and
+ * parameter values for separate sub-extents of an inline called method whose full extent is
+ * represented by the parent call range at level N.
  */
 public class Range {
+    private static final DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
     private static final String CLASS_DELIMITER = ".";
-    private Range caller;
     private final MethodEntry methodEntry;
     private final String fullMethodName;
-    private final String fullMethodNameWithParams;
     private final int lo;
     private int hi;
     private final int line;
-    private final boolean isInlined;
     private final int depth;
     /**
      * This is null for a primary range. For sub ranges it holds the root of the call tree they
@@ -50,12 +81,13 @@ public class Range {
      */
     private final Range primary;
 
-    /*
-     * Support for tree of nested inline callee ranges
-     */
-
     /**
-     * The first direct callee whose range is wholly contained in this range.
+     * The range for the caller or the primary range when this range if for top level method code.
+     */
+    private Range caller;
+    /**
+     * The first direct callee whose range is wholly contained in this range or null if this is a
+     * leaf range.
      */
     private Range firstCallee;
 
@@ -69,6 +101,40 @@ public class Range {
      */
     private Range siblingCallee;
 
+    /**
+     * Values for the associated method's local and parameter variables that are available or,
+     * alternatively, marked as invalid in this range.
+     */
+    private DebugLocalValueInfo[] localValueInfos;
+
+    /**
+     * The set of local or parameter variables with which each corresponding local value in field
+     * localvalueInfos is associated. Local values which are associated with the same local or
+     * parameter variable will share the same reference in the corresponding array entries. Local
+     * values with which no local variable can be associated will have a null reference in the
+     * corresponding array. The latter case can happen when a local value has an invalid slot or
+     * when a local value that maps to a parameter slot has a different name or type to the
+     * parameter.
+     */
+    private DebugLocalInfo[] localInfos;
+
+    public int getLocalValueCount() {
+        assert !this.isPrimary() : "primary range does not have local values";
+        return localValueInfos.length;
+    }
+
+    public DebugLocalValueInfo getLocalValue(int i) {
+        assert !this.isPrimary() : "primary range does not have local values";
+        assert i >= 0 && i < localValueInfos.length : "bad index";
+        return localValueInfos[i];
+    }
+
+    public DebugLocalInfo getLocal(int i) {
+        assert !this.isPrimary() : "primary range does not have local vars";
+        assert i >= 0 && i < localInfos.length : "bad index";
+        return localInfos[i];
+    }
+
     /*
      * Create a primary range.
      */
@@ -79,19 +145,17 @@ public class Range {
     /*
      * Create a primary or secondary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isInline, Range caller) {
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isTopLevel, Range caller) {
         assert methodEntry != null;
         if (methodEntry.fileEntry != null) {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
             stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
         }
         this.methodEntry = methodEntry;
-        this.fullMethodName = isInline ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
-        this.fullMethodNameWithParams = constructClassAndMethodNameWithParams();
+        this.fullMethodName = isTopLevel ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
-        this.isInlined = isInline;
         this.primary = primary;
         this.firstCallee = null;
         this.lastCallee = null;
@@ -162,7 +226,7 @@ public class Range {
     }
 
     public String getFullMethodNameWithParams() {
-        return fullMethodNameWithParams;
+        return constructClassAndMethodNameWithParams();
     }
 
     public boolean isDeoptTarget() {
@@ -182,11 +246,14 @@ public class Range {
         builder.append(getMethodName());
         if (includeParams) {
             builder.append("(");
-            String prefix = "";
-            for (TypeEntry t : methodEntry.paramTypes) {
-                builder.append(prefix);
-                builder.append(t.getTypeName());
-                prefix = ", ";
+            TypeEntry[] paramTypes = methodEntry.getParamTypes();
+            if (paramTypes != null) {
+                String prefix = "";
+                for (TypeEntry t : paramTypes) {
+                    builder.append(prefix);
+                    builder.append(t.getTypeName());
+                    prefix = ", ";
+                }
             }
             builder.append(')');
         }
@@ -209,6 +276,13 @@ public class Range {
         return methodEntry.fileEntry;
     }
 
+    public int getFileIndex() {
+        // the primary range's class entry indexes all files defined by the compilation unit
+        Range primaryRange = (isPrimary() ? this : getPrimary());
+        ClassEntry owner = primaryRange.methodEntry.ownerType();
+        return owner.localFilesIdx(getFileEntry());
+    }
+
     public int getModifiers() {
         return methodEntry.modifiers;
     }
@@ -226,10 +300,6 @@ public class Range {
         return methodEntry;
     }
 
-    public boolean isInlined() {
-        return isInlined;
-    }
-
     public Range getCaller() {
         return caller;
     }
@@ -242,110 +312,93 @@ public class Range {
         return siblingCallee;
     }
 
-    public Range getLastCallee() {
-        return lastCallee;
-    }
-
     public boolean isLeaf() {
         return firstCallee == null;
+    }
+
+    public boolean includesInlineRanges() {
+        Range child = firstCallee;
+        while (child != null && child.isLeaf()) {
+            child = child.siblingCallee;
+        }
+        return child != null;
     }
 
     public int getDepth() {
         return depth;
     }
 
-    /**
-     * Minimizes the nodes in the tree that track the inline call hierarchy and associated code
-     * ranges. The initial range tree models the call hierarchy as presented in the original debug
-     * line info. It consists of a root node each of whose children is a sequence of linear call
-     * chains, either a single leaf node for some given file and line or a series of inline calls to
-     * such a leaf node. In this initial tree all node ranges in a given chain have the same lo and
-     * hi address and chains are properly ordered by range The merge algorithm works across siblings
-     * at successive depths starting at depth 1. Once all possible nodes at a given depth have been
-     * merged their children can then be merged. A successor node may only be merged into its
-     * predecessor if the nodes have contiguous ranges and idenitfy the same method, line and file.
-     * The range and children of the merged node are, respectively, the union of the input ranges
-     * and children. This preserves the invariant that child ranges lie within their parent range.
-     *
-     * @param debugContext
-     */
-    public void mergeSubranges(DebugContext debugContext) {
-        Range next = getFirstCallee();
-        if (next == null) {
-            return;
-        }
-        debugContext.log(DebugContext.INFO_LEVEL, "Merge subranges [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
-        /* merge siblings together if possible, reparenting children to the merged node */
-        while (next != null) {
-            next = next.maybeMergeSibling(debugContext);
-        }
-        /* now recurse down to merge children of whatever nodes remain */
-        next = getFirstCallee();
-        /* now this level is merged recursively merge children of each child node. */
-        while (next != null) {
-            next.mergeSubranges(debugContext);
-            next = next.getSiblingCallee();
+    public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {
+        int len = localValueInfos.length;
+        this.localValueInfos = localValueInfos;
+        this.localInfos = (len > 0 ? new DebugLocalInfo[len] : EMPTY_LOCAL_INFOS);
+        // set up mapping from local values to local variables
+        for (int i = 0; i < len; i++) {
+            localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);
         }
     }
 
-    /**
-     * Removes and merges the next sibling returning the current node or it skips past the current
-     * node as is and returns the next sibling or null if no sibling exists.
-     */
-    private Range maybeMergeSibling(DebugContext debugContext) {
-        Range sibling = getSiblingCallee();
-        debugContext.log(DebugContext.INFO_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
-        if (sibling == null) {
-            /* all child nodes at this level have been merged */
-            return null;
+    public HashMap<DebugLocalInfo, List<Range>> getVarRangeMap() {
+        MethodEntry calleeMethod;
+        if (isPrimary()) {
+            calleeMethod = getMethodEntry();
+        } else {
+            assert !isLeaf() : "should only be looking up var ranges for inlined calls";
+            calleeMethod = firstCallee.getMethodEntry();
         }
-        if (hi < sibling.lo) {
-            /* cannot merge non-contiguous ranges, move on. */
-            return sibling;
+        HashMap<DebugLocalInfo, List<Range>> varRangeMap = new HashMap<>();
+        if (calleeMethod.getThisParam() != null) {
+            varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<Range>());
         }
-        if (getMethodEntry() != sibling.getMethodEntry()) {
-            /* cannot merge distinct callers, move on. */
-            return sibling;
+        for (int i = 0; i < calleeMethod.getParamCount(); i++) {
+            varRangeMap.put(calleeMethod.getParam(i), new ArrayList<Range>());
         }
-        if (getLine() != sibling.getLine()) {
-            /* cannot merge callers with different line numbers, move on. */
-            return sibling;
+        for (int i = 0; i < calleeMethod.getLocalCount(); i++) {
+            varRangeMap.put(calleeMethod.getLocal(i), new ArrayList<Range>());
         }
-        if (isLeaf() != sibling.isLeaf()) {
-            /*
-             * cannot merge leafs with non-leafs as that results in them becoming non-leafs and not
-             * getting proper line info
-             */
-            return sibling;
-        }
-        /* splice out the sibling from the chain and update this one to include it. */
-        unlink(debugContext, sibling);
-        /* relocate the siblings children to this node. */
-        reparentChildren(debugContext, sibling);
-        /* return the merged node so we can maybe merge it again. */
-        return this;
+        return updateVarRangeMap(varRangeMap);
     }
 
-    private void unlink(DebugContext debugContext, Range sibling) {
-        assert hi == sibling.lo : String.format("gap in range [0x%x,0x%x] %s [0x%x,0x%x] %s",
-                        lo, hi, getFullMethodNameWithParams(), sibling.getLo(), sibling.getHi(), sibling.getFullMethodNameWithParams());
-        assert this.isInlined == sibling.isInlined : String.format("change in inlined [0x%x,0x%x] %s %s [0x%x,0x%x] %s %s",
-                        lo, hi, getFullMethodNameWithParams(), Boolean.valueOf(this.isInlined), sibling.lo, sibling.hi, sibling.getFullMethodNameWithParams(), Boolean.valueOf(sibling.isInlined));
-        debugContext.log(DebugContext.INFO_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
-        this.hi = sibling.hi;
-        this.siblingCallee = sibling.siblingCallee;
+    public HashMap<DebugLocalInfo, List<Range>> updateVarRangeMap(HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+        // leaf subranges of the current range may provide values for param or local vars
+        // of this range's method. find them and index the range so that we can identify
+        // both the local/param and the associated range.
+        Range subRange = this.firstCallee;
+        while (subRange != null) {
+            addVarRanges(subRange, varRangeMap);
+            subRange = subRange.siblingCallee;
+        }
+        return varRangeMap;
     }
 
-    private void reparentChildren(DebugContext debugContext, Range sibling) {
-        Range siblingNext = sibling.getFirstCallee();
-        while (siblingNext != null) {
-            debugContext.log(DebugContext.INFO_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
-                            getFullMethodNameWithParams());
-            siblingNext.caller = this;
-            Range newSiblingNext = siblingNext.siblingCallee;
-            siblingNext.siblingCallee = null;
-            addCallee(siblingNext);
-            siblingNext = newSiblingNext;
+    public void addVarRanges(Range subRange, HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+        int localValueCount = subRange.getLocalValueCount();
+        for (int i = 0; i < localValueCount; i++) {
+            DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
+            DebugLocalInfo local = subRange.getLocal(i);
+            if (local != null) {
+                switch (localValueInfo.localKind()) {
+                    case REGISTER:
+                    case STACKSLOT:
+                    case CONSTANT:
+                        List<Range> varRanges = varRangeMap.get(local);
+                        assert varRanges != null : "local not present in var to ranges map!";
+                        varRanges.add(subRange);
+                        break;
+                    case UNDEFINED:
+                        break;
+                }
+            }
         }
+    }
+
+    public DebugLocalValueInfo lookupValue(DebugLocalInfo local) {
+        int localValueCount = getLocalValueCount();
+        for (int i = 0; i < localValueCount; i++) {
+            if (getLocal(i) == local) {
+                return getLocalValue(i);
+            }
+        }
+        return null;
     }
 }

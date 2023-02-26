@@ -52,8 +52,8 @@ import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -67,21 +67,31 @@ import jdk.vm.ci.meta.PlatformKind;
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
-public abstract class AMD64BaseAssembler extends Assembler {
+public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
-    private final SIMDEncoder simdEncoder;
+    /**
+     * @see #getSimdEncoder()
+     */
+    private final SIMDEncoder vexEncoder;
+    /**
+     * @see #getSimdEncoder()
+     */
+    private final SIMDEncoder sseEncoder;
+
+    /**
+     * If {@code true}, always encode non-zero address displacements in 4 bytes, even if they would
+     * fit in one byte. The encoding of zero displacements should not be changed because we don't
+     * want to change the size of safepoint poll instructions.
+     */
+    protected boolean force4ByteNonZeroDisplacements = false;
 
     /**
      * Constructs an assembler for the AMD64 architecture.
      */
     public AMD64BaseAssembler(TargetDescription target) {
-        super(target);
-
-        if (supports(CPUFeature.AVX)) {
-            simdEncoder = new VEXEncoderImpl();
-        } else {
-            simdEncoder = new SSEEncoderImpl();
-        }
+        super(target, ((AMD64) target.arch).getFeatures().clone());
+        vexEncoder = new VEXEncoderImpl();
+        sseEncoder = new SSEEncoderImpl();
     }
 
     /**
@@ -257,6 +267,10 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
+    public void setForce4ByteNonZeroDisplacements(boolean force4ByteNonZeroDisplacements) {
+        this.force4ByteNonZeroDisplacements = force4ByteNonZeroDisplacements;
+    }
+
     protected void annotatePatchingImmediate(int operandOffset, int operandSize) {
         if (codePatchingAnnotationConsumer != null) {
             int pos = position();
@@ -265,7 +279,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     public final boolean supports(CPUFeature feature) {
-        return ((AMD64) target.arch).getFeatures().contains(feature);
+        return getFeatures().contains(feature);
     }
 
     /**
@@ -613,7 +627,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         Register base = addr.getBase();
         Register index = addr.getIndex();
 
-        Scale scale = addr.getScale();
+        Stride stride = addr.getScale();
         int disp = addr.getDisplacement();
         Object dispAnnotation = addr.getDisplacementAnnotation();
 
@@ -621,12 +635,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
             // [00 reg 101] disp32
             assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
-            if (codePatchingAnnotationConsumer != null && addr.instructionStartPosition >= 0) {
+            if (codePatchingAnnotationConsumer != null && addr.isPlaceholder()) {
                 codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(addr.instructionStartPosition, position(), 4, position() + 4 + additionalInstructionSize));
             }
             emitDisplacementInt(disp, dispAnnotation);
         } else if (base.isValid()) {
-            boolean overriddenForce4Byte = force4Byte || dispAnnotation != null;
+            boolean overriddenForce4Byte = force4Byte || dispAnnotation != null || (force4ByteNonZeroDisplacements && disp != 0);
             int baseenc = base.isValid() ? encode(base) : 0;
 
             if (index.isValid()) {
@@ -637,7 +651,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [00 reg 100][ss index base]
                     assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x04 | regenc);
-                    emitByte(scale.log2 << 6 | indexenc | baseenc);
+                    emitByte(stride.log2 << 6 | indexenc | baseenc);
                 } else {
                     if (evexDisp8Scale > 1 && !overriddenForce4Byte) {
                         if (disp % evexDisp8Scale == 0) {
@@ -655,7 +669,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                         // [01 reg 100][ss index base] imm8
                         assert !index.equals(rsp) : "illegal addressing mode";
                         emitByte(0x44 | regenc);
-                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitByte(stride.log2 << 6 | indexenc | baseenc);
                         assert dispAnnotation == null;
                         emitByte(disp & 0xFF);
                     } else {
@@ -663,7 +677,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                         // [10 reg 100][ss index base] disp32
                         assert !index.equals(rsp) : "illegal addressing mode";
                         emitByte(0x84 | regenc);
-                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitByte(stride.log2 << 6 | indexenc | baseenc);
                         emitDisplacementInt(disp, dispAnnotation);
                     }
                 }
@@ -741,7 +755,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
                 // [00 reg 100][ss index 101] disp32
                 assert !index.equals(rsp) : "illegal addressing mode";
                 emitByte(0x04 | regenc);
-                emitByte(scale.log2 << 6 | indexenc | 0x05);
+                emitByte(stride.log2 << 6 | indexenc | 0x05);
                 emitDisplacementInt(disp, dispAnnotation);
             } else {
                 // [disp] ABSOLUTE
@@ -758,6 +772,14 @@ public abstract class AMD64BaseAssembler extends Assembler {
             codePatchingAnnotationConsumer.accept(new AddressDisplacementAnnotation(position(), dispAnnotation));
         }
         emitInt(disp);
+    }
+
+    private SIMDEncoder getSimdEncoder() {
+        if (supports(CPUFeature.AVX)) {
+            return vexEncoder;
+        } else {
+            return sseEncoder;
+        }
     }
 
     private interface SIMDEncoder {
@@ -875,19 +897,19 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected final void simdPrefix(Register xreg, Register nds, AMD64Address adr, OperandSize size, int overriddenSizePrefix, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(xreg, nds, adr, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(xreg, nds, adr, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register xreg, Register nds, AMD64Address adr, OperandSize size, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(xreg, nds, adr, size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(xreg, nds, adr, size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register dst, Register nds, Register src, OperandSize size, int overriddenSizePrefix, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(dst, nds, src, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(dst, nds, src, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register dst, Register nds, Register src, OperandSize size, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(dst, nds, src, size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(dst, nds, src, size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
  // @formatter:off
@@ -955,7 +977,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * m-mmmm field.
      */
     protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv, boolean checkAVX) {
-        assert !checkAVX || ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
+        assert !checkAVX || getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
 
         assert l == L128 || l == L256 : "invalid value for VEX.L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for VEX.pp";
@@ -1268,7 +1290,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * The aaa field encodes the operand mask register.
      */
     private void emitEVEX(int l, int pp, int mm, int w, int rxb, int reg, int vvvvv, int z, int b, int aaa) {
-        assert ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
+        assert getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
 
         assert l == L128 || l == L256 || l == L512 : "invalid value for EVEX.L'L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for EVEX.pp";

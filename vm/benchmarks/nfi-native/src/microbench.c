@@ -61,7 +61,7 @@ void million_upcalls_env(TruffleEnv *env, void (*upcall)(TruffleEnv *env)) {
     }
 }
 
-void million_upcalls_many_args(int64_t (*upcall)(int32_t a, int32_t b, int32_t c, int32_t d,
+int64_t million_upcalls_many_args(int64_t (*upcall)(int32_t a, int32_t b, int32_t c, int32_t d,
                                                  int32_t e, int32_t f, int32_t g, int32_t h,
                                                  int32_t i, int32_t j, int32_t k, int32_t l)) {
     int64_t sum;

@@ -66,7 +66,7 @@ public class NativeImageResourceDirectoryStream implements DirectoryStream<Path>
             throw new DirectoryIteratorException(ioException);
         }
 
-        return new Iterator<Path>() {
+        return new Iterator<>() {
 
             @Override
             public boolean hasNext() {

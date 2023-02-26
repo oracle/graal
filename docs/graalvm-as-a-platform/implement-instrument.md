@@ -346,7 +346,7 @@ public ExecutionEventNode create(final EventContext ec) {
 
 As the above code shows, an `ExecutionEventNode` is a valid AST node.
 This implies that the instrumentation code will be optimized by the GraalVM runtime together with the instrumented application, resulting in minimal instrumentation overhead. Furthermore, this allows instrument developers to use the [Truffle framework compiler directives](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html) directly from instrumentation nodes.
-In the example, compiler directives are used to inform the GraalVM compiler that `visited` can be considered compilation-final.
+In the example, compiler directives are used to inform the Graal compiler that `visited` can be considered compilation-final.
 
 Each instrumentation node is bound to a specific code location.
 Such locations can be accessed by the agent using the provided [`EventContext`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html) object. The context object gives instrumentation nodes access to a variety of information about the current AST nodes being executed.

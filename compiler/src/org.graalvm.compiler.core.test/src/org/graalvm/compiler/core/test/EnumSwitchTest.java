@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assume;
 import org.junit.Test;
@@ -141,7 +140,7 @@ public class EnumSwitchTest extends GraalCompilerTest {
     @Override
     protected Suites createSuites(OptionValues options) {
         Suites ret = super.createSuites(options);
-        ret.getHighTier().prependPhase(new Phase() {
+        ret.getHighTier().prependPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 Assume.assumeTrue(graph.getNodes().filter(LoadIndexedNode.class).first().array().isConstant());
@@ -152,11 +151,11 @@ public class EnumSwitchTest extends GraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
-        ret.getHighTier().addBeforeLast(new Phase() {
+        ret.getHighTier().addBeforeLast(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 /* Re-writing of the switch cases eliminates the array load. */
@@ -166,7 +165,7 @@ public class EnumSwitchTest extends GraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });

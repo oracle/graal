@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
-import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -34,22 +33,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.alloc.Trace;
-import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -138,25 +133,31 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         return true;
     }
 
-    private static boolean isFrontendObject(Object object) {
-        return object instanceof Graph || object instanceof BciBlockMapping;
-    }
-
     private LIR lastLIR = null;
     private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
-        OptionValues options = debug.getOptions();
-        if (isFrontendObject(object)) {
-            if (!PrintCFG.getValue(options) && !forced) {
-                return;
-            }
-        } else {
-            if (!PrintBackendCFG.getValue(options) && !forced) {
-                return;
-            }
+        if (!shouldDump(debug, forced)) {
+            return;
         }
         dumpSandboxed(debug, object, message);
+    }
+
+    boolean shouldDump(DebugContext debug, boolean forced) {
+        OptionValues options = debug.getOptions();
+        if (PrintBackendCFG.getValue(options) || forced) {
+            return true;
+        }
+        String dump = DebugOptions.Dump.getValue(options);
+        if (dump != null) {
+            // Do not require PrintBackendCFG if the user has explicitly
+            // requested code dumping with a Dump argument containing
+            // CodeGen or CodeInstall
+            if (dump.contains("CodeGen") || dump.contains("CodeInstall")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void dumpSandboxed(DebugContext debug, Object object, String message) {
@@ -187,29 +188,14 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
             cfgPrinter.nodeLirGenerator = debug.contextLookup(NodeLIRBuilder.class);
             cfgPrinter.res = debug.contextLookup(LIRGenerationResult.class);
-            if (cfgPrinter.nodeLirGenerator != null) {
-                cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
-            }
             if (cfgPrinter.lir != null && cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph) {
                 cfgPrinter.cfg = (ControlFlowGraph) cfgPrinter.lir.getControlFlowGraph();
             }
 
             CodeCacheProvider codeCache = debug.contextLookup(CodeCacheProvider.class);
-            if (codeCache != null) {
-                cfgPrinter.target = codeCache.getTarget();
-            }
-
-            if (object instanceof BciBlockMapping) {
-                BciBlockMapping blockMap = (BciBlockMapping) object;
-                if (blockMap.getBlocks() != null) {
-                    cfgPrinter.printCFG(message, blockMap);
-                    if (blockMap.code.getCode() != null) {
-                        cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
-                    }
-                }
-            } else if (object instanceof LIR) {
+            if (object instanceof LIR) {
                 // Currently no node printing for lir
-                cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
+                cfgPrinter.printCFG(message, cfgPrinter.lir.getBlocks());
                 lastLIR = (LIR) object;
                 if (delayedIntervals != null) {
                     cfgPrinter.printIntervals(message, delayedIntervals);
@@ -217,20 +203,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             } else if (object instanceof ScheduleResult) {
                 cfgPrinter.printSchedule(message, (ScheduleResult) object);
-            } else if (object instanceof StructuredGraph) {
-                StructuredGraph graph = (StructuredGraph) object;
-                if (cfgPrinter.cfg == null) {
-                    ScheduleResult scheduleResult = GraalDebugHandlersFactory.tryGetSchedule(debug, graph);
-                    if (scheduleResult != null) {
-                        cfgPrinter.cfg = scheduleResult.getCFG();
-                    }
-                }
-                if (cfgPrinter.cfg != null) {
-                    if (graph.nodeIdCount() > cfgPrinter.cfg.getNodeToBlock().capacity()) {
-                        cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
-                    }
-                    cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
-                }
             } else if (object instanceof CompilationResult) {
                 final CompilationResult compResult = (CompilationResult) object;
                 cfgPrinter.printMachineCode(disassemble(options, codeCache, compResult, null), message);
@@ -249,14 +221,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                     delayedIntervals = (IntervalDumper) object;
                 }
             } else if (object instanceof AbstractBlockBase<?>[]) {
-                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
-            } else if (object instanceof Trace) {
-                cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
-            } else if (object instanceof TraceBuilderResult) {
-                cfgPrinter.printTraces(message, (TraceBuilderResult) object);
+                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object);
             }
         } finally {
-            cfgPrinter.target = null;
             cfgPrinter.lir = null;
             cfgPrinter.res = null;
             cfgPrinter.nodeLirGenerator = null;
@@ -311,12 +278,5 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             curMethod = null;
             curCompilation = null;
         }
-    }
-
-    public String getDumpPath() {
-        if (cfgFile != null) {
-            return PathUtilities.getAbsolutePath(cfgFile);
-        }
-        return null;
     }
 }

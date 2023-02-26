@@ -44,15 +44,15 @@ final class AMD64NonSnippetLowerings extends NonSnippetLowerings {
 
     @SuppressWarnings("unused")
     public static void registerLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        new AMD64NonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+        new AMD64NonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
     }
 
     private AMD64NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
-                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        super(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+        super(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings, hosted);
 
         lowerings.put(FloatConvertNode.class, new FloatConvertLowering(options, providers));
     }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-// Checkstyle: stop
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -33,11 +31,9 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import org.graalvm.util.DirectAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
-
-// Checkstyle: resume
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
@@ -123,6 +119,12 @@ public final class CEntryPointErrors {
     @Description("The auxiliary image was built from a different primary image.") //
     public static final int AUX_IMAGE_PRIMARY_IMAGE_MISMATCH = 21;
 
+    @Description("The isolate arguments could not be parsed.") //
+    public static final int ARGUMENT_PARSING_FAILED = 22;
+
+    @Description("Current target does not support the following CPU features that are required by the image.") //
+    public static final int CPU_FEATURE_CHECK_FAILED = 23;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {
@@ -144,7 +146,7 @@ public final class CEntryPointErrors {
                     continue;
                 }
                 int value = field.getInt(null);
-                String description = DirectAnnotationAccess.getAnnotation(field, CEntryPointErrors.Description.class).value();
+                String description = AnnotationAccess.getAnnotation(field, CEntryPointErrors.Description.class).value();
                 maxValue = Math.max(value, maxValue);
                 if (maxValue >= array.length) {
                     array = Arrays.copyOf(array, 2 * maxValue);

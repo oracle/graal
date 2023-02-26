@@ -63,7 +63,7 @@ public class StringIndexOfCharConstantBindingTest extends StringIndexOfCharTest 
 
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
-        if (this.sourceString.length() < GraalOptions.StringIndexOfLimit.getValue(graph.getOptions()) && this.constantChar < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
+        if (this.sourceString.length() < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions()) && this.constantChar < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
             StartNode start = graph.start();
             FixedNode next = start.next();
             assertTrue(next instanceof ReturnNode);

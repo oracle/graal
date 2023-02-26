@@ -50,10 +50,6 @@ public final class AcquiredCASLockNode extends FixedWithNextNode implements LIRL
         this.object = object;
     }
 
-    public ValueNode object() {
-        return object;
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         // This is just a marker node so it generates nothing

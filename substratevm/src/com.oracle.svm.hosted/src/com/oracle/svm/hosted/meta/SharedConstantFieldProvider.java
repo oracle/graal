@@ -28,8 +28,9 @@ import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -41,10 +42,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvider {
 
     protected final ClassInitializationSupport classInitializationSupport;
+    protected final UniverseMetaAccess metaAccess;
+    protected final SVMHost hostVM;
 
-    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, SVMHost hostVM) {
         super(metaAccess);
         this.classInitializationSupport = classInitializationSupport;
+        this.metaAccess = (UniverseMetaAccess) metaAccess;
+        this.hostVM = hostVM;
     }
 
     @Override
@@ -52,12 +57,16 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
         if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             return false;
         }
+        if (hostVM.preventConstantFolding(field)) {
+            return false;
+        }
+
         return super.isFinalField(field, tool);
     }
 
     @Override
     protected boolean isFinalFieldValueConstant(ResolvedJavaField field, JavaConstant value, ConstantFieldTool<?> tool) {
-        if (value.getJavaKind() == JavaKind.Object && SubstrateObjectConstant.asObject(value) instanceof MethodPointer) {
+        if (value.getJavaKind() == JavaKind.Object && metaAccess.isInstanceOf(value, MethodPointer.class)) {
             /*
              * Prevent the constant folding of MethodPointer objects. MethodPointer is a "hosted"
              * type, so it cannot be present in compiler graphs.

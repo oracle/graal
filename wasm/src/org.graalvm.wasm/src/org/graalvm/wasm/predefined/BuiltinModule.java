@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,19 +42,19 @@ package org.graalvm.wasm.predefined;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
+import org.graalvm.wasm.predefined.go.GoModule;
 import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
@@ -71,6 +71,7 @@ public abstract class BuiltinModule {
         pm.put("testutil", new TestutilModule());
         pm.put("wasi_snapshot_preview1", new WasiModule());
         pm.put("spectest", new SpectestModule());
+        pm.put("go", new GoModule());
     }
 
     public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
@@ -85,7 +86,7 @@ public abstract class BuiltinModule {
     protected abstract WasmInstance createInstance(WasmLanguage language, WasmContext context, String name);
 
     protected void defineExportedFunction(WasmInstance instance, String name, byte[] paramType, byte[] retTypes, WasmFunctionInstance functionInstance) {
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes, instance.context().getContextOptions().supportMultiValue());
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setFunctionInstance(function.index(), functionInstance);
         instance.setTarget(function.index(), functionInstance.target());
@@ -95,7 +96,7 @@ public abstract class BuiltinModule {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes, instance.context().getContextOptions().supportMultiValue());
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setTarget(function.index(), rootNode.getCallTarget());
     }
@@ -113,15 +114,29 @@ public abstract class BuiltinModule {
     }
 
     protected void defineExternalTable(WasmInstance instance, String tableName, WasmTable externalTable) {
-        instance.symbolTable().allocateExternalTable(externalTable);
-        instance.symbolTable().exportTable(tableName);
+        final boolean referenceTypes = instance.context().getContextOptions().supportBulkMemoryAndRefTypes();
+        int index = instance.symbolTable().tableCount();
+        instance.symbolTable().allocateExternalTable(index, externalTable, referenceTypes);
+        instance.symbolTable().exportTable(index, tableName);
     }
 
     protected int defineTable(WasmInstance instance, String tableName, int initSize, int maxSize, byte type) {
-        Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.", Failure.UNSPECIFIED_MALFORMED);
-        instance.symbolTable().allocateTable(initSize, maxSize);
-        instance.symbolTable().exportTable(tableName);
-        return 0;
+        final boolean referenceTypes = instance.context().getContextOptions().supportBulkMemoryAndRefTypes();
+        switch (type) {
+            case WasmType.FUNCREF_TYPE:
+                break;
+            case WasmType.EXTERNREF_TYPE:
+                if (!referenceTypes) {
+                    throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Only function types are currently supported in tables.");
+                }
+                break;
+            default:
+                throw WasmException.create(Failure.MALFORMED_REFERENCE_TYPE, "Only reference types supported in tables.");
+        }
+        int index = instance.symbolTable().tableCount();
+        instance.symbolTable().allocateTable(index, initSize, maxSize, type, referenceTypes);
+        instance.symbolTable().exportTable(index, tableName);
+        return index;
     }
 
     protected void defineExternalMemory(WasmInstance instance, String memoryName, WasmMemory externalMemory) {
@@ -135,7 +150,7 @@ public abstract class BuiltinModule {
     }
 
     protected void importFunction(WasmInstance instance, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes, instance.context().getContextOptions().supportMultiValue());
         final WasmFunction function = instance.symbolTable().importFunction(importModuleName, importFunctionName, typeIdx);
         instance.symbolTable().exportFunction(function.index(), exportName);
     }

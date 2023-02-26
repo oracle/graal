@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,26 +26,31 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ClassPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Plugin for handling a specific method invocation.
  */
-public interface InvocationPlugin extends GraphBuilderPlugin {
+public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
     /**
      * The receiver in a non-static method. The class literal for this interface must be used with
-     * {@link InvocationPlugins#put(InvocationPlugin, boolean, boolean, Class, String, Class...)} to
-     * denote the receiver argument for such a non-static method.
+     * {@link InvocationPlugins#put(Type, InvocationPlugin, boolean)} to denote the receiver
+     * argument for such a non-static method.
      */
-    interface Receiver {
+    public interface Receiver {
         /**
          * Gets the receiver value, null checking it first if necessary.
          *
@@ -70,10 +75,52 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
     }
 
     /**
+     * Name of the method.
+     */
+    public final String name;
+
+    /**
+     * Argument types of the method. If the method is non-static, element 0 of this array must be
+     * {@link InvocationPlugin.Receiver} upon initialization and rewritten to declaring class after
+     * registration.
+     */
+    final Type[] argumentTypes;
+
+    /**
+     * Determines if the method is static.
+     */
+    public final boolean isStatic;
+
+    /**
+     * Argument descriptor of the method.
+     */
+    public final String argumentsDescriptor;
+
+    /**
+     * Used for chaining a bucket of InvocationPlugins of the same method name in
+     * {@link ClassPlugins}.
+     */
+    InvocationPlugin next;
+
+    public InvocationPlugin(String name, Type... argumentTypes) {
+        this.name = name;
+        this.argumentTypes = argumentTypes;
+        this.isStatic = argumentTypes.length == 0 || argumentTypes[0] != Receiver.class;
+
+        StringBuilder buf = new StringBuilder();
+        buf.append('(');
+        for (int i = isStatic ? 0 : 1; i < argumentTypes.length; i++) {
+            buf.append(MetaUtil.toInternalName(argumentTypes[i].getTypeName()));
+        }
+        buf.append(')');
+        this.argumentsDescriptor = buf.toString();
+    }
+
+    /**
      * Determines if this plugin can only be used when inlining the method is it associated with.
      * That is, this plugin cannot be used when the associated method is the compilation root.
      */
-    default boolean inlineOnly() {
+    public boolean inlineOnly() {
         return false;
     }
 
@@ -82,56 +129,83 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      * inserts nodes prior to the invocation (e.g. some kind of marker nodes) but still expects the
      * parser to process the invocation further.
      */
-    default boolean isDecorator() {
+    public boolean isDecorator() {
         return false;
+    }
+
+    /**
+     * Determines if this plugin requires the original method to be resolvable. For instance,
+     * {@code Reference#refersTo0} is introduced in Java 16 and is optional in earlier versions in
+     * case it may be backported.
+     */
+    public boolean isOptional() {
+        return false;
+    }
+
+    /**
+     * Determines if this plugin can be disabled. For instance, HotSpot intrinsics featuring better
+     * performance with specific CPU features can be disabled; utility methods in GraalDirectives
+     * can not be disabled. See {@link InvocationPlugins.Options#DisableIntrinsics}.
+     */
+    public boolean canBeDisabled() {
+        return true;
+    }
+
+    /**
+     * Rewrite the first element of {@link #argumentTypes} to {@code receiverType} for non-static
+     * method.
+     */
+    public void rewriteReceiverType(Type receiverType) {
+        GraalError.guarantee(!isStatic, "Cannot rewrite receiver type for a static method.");
+        argumentTypes[0] = receiverType;
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
         return defaultHandler(b, targetMethod, receiver);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
         return defaultHandler(b, targetMethod, receiver, arg);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5) {
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5);
     }
 
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
                     ValueNode arg6) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6);
     }
@@ -139,9 +213,57 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
     /**
      * @see #execute
      */
-    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
                     ValueNode arg6, ValueNode arg7) {
         return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11, ValueNode arg12) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12);
+    }
+
+    /**
+     * @see #execute
+     */
+    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11, ValueNode arg12, ValueNode arg13) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
     }
 
     /**
@@ -160,50 +282,73 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      *         invocation must not modify the graph being constructed unless it is a
      *         {@linkplain InvocationPlugin#isDecorator() decorator}.
      */
-    default boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
+    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
+        int n = argsIncludingReceiver.length;
+        ValueNode[] a = argsIncludingReceiver;
         if (receiver != null) {
             assert !targetMethod.isStatic();
-            assert argsIncludingReceiver.length > 0;
-            if (argsIncludingReceiver.length == 1) {
+            assert n > 0;
+            if (n == 1) {
                 return apply(b, targetMethod, receiver);
-            } else if (argsIncludingReceiver.length == 2) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1]);
-            } else if (argsIncludingReceiver.length == 3) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2]);
-            } else if (argsIncludingReceiver.length == 4) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3]);
-            } else if (argsIncludingReceiver.length == 5) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4]);
-            } else if (argsIncludingReceiver.length == 6) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5]);
-            } else if (argsIncludingReceiver.length == 7) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5],
-                                argsIncludingReceiver[6]);
+            } else if (n == 2) {
+                return apply(b, targetMethod, receiver, a[1]);
+            } else if (n == 3) {
+                return apply(b, targetMethod, receiver, a[1], a[2]);
+            } else if (n == 4) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3]);
+            } else if (n == 5) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4]);
+            } else if (n == 6) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5]);
+            } else if (n == 7) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6]);
+            } else if (n == 8) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+            } else if (n == 9) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+            } else if (n == 10) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9]);
+            } else if (n == 11) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10]);
+            } else if (n == 12) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
+            } else if (n == 13) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12]);
             } else {
-                return defaultHandler(b, targetMethod, receiver, argsIncludingReceiver);
+                return defaultHandler(b, targetMethod, receiver, a);
             }
         } else {
             assert targetMethod.isStatic();
-            if (argsIncludingReceiver.length == 0) {
+            if (n == 0) {
                 return apply(b, targetMethod, null);
-            } else if (argsIncludingReceiver.length == 1) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0]);
-            } else if (argsIncludingReceiver.length == 2) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1]);
-            } else if (argsIncludingReceiver.length == 3) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2]);
-            } else if (argsIncludingReceiver.length == 4) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3]);
-            } else if (argsIncludingReceiver.length == 5) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4]);
-            } else if (argsIncludingReceiver.length == 6) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4],
-                                argsIncludingReceiver[5]);
-            } else if (argsIncludingReceiver.length == 7) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4],
-                                argsIncludingReceiver[5], argsIncludingReceiver[6]);
+            } else if (n == 1) {
+                return apply(b, targetMethod, null, a[0]);
+            } else if (n == 2) {
+                return apply(b, targetMethod, null, a[0], a[1]);
+            } else if (n == 3) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2]);
+            } else if (n == 4) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3]);
+            } else if (n == 5) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4]);
+            } else if (n == 6) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5]);
+            } else if (n == 7) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+            } else if (n == 8) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+            } else if (n == 9) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+            } else if (n == 10) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9]);
+            } else if (n == 11) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10]);
+            } else if (n == 12) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
+            } else if (n == 13) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12]);
             } else {
-                return defaultHandler(b, targetMethod, receiver, argsIncludingReceiver);
+                return defaultHandler(b, targetMethod, receiver, a);
             }
 
         }
@@ -212,12 +357,12 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
     /**
      * Handles an invocation when a specific {@code apply} method is not available.
      */
-    default boolean defaultHandler(@SuppressWarnings("unused") GraphBuilderContext b, ResolvedJavaMethod targetMethod, @SuppressWarnings("unused") InvocationPlugin.Receiver receiver,
+    public boolean defaultHandler(@SuppressWarnings("unused") GraphBuilderContext b, ResolvedJavaMethod targetMethod, @SuppressWarnings("unused") InvocationPlugin.Receiver receiver,
                     ValueNode... args) {
         throw new GraalError("Invocation plugin for %s does not handle invocations with %d arguments", targetMethod.format("%H.%n(%p)"), args.length);
     }
 
-    default String getSourceLocation() {
+    public String getSourceLocation() {
         Class<?> c = getClass();
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("apply") || m.getName().equals("defaultHandler")) {
@@ -228,5 +373,105 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
             return String.format("%s.%s()", c.getName(), "apply");
         }
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
+    }
+
+    public int getArgumentsSize() {
+        return argumentTypes.length - (isStatic ? 0 : 1);
+    }
+
+    public String getMethodNameWithArgumentsDescriptor() {
+        return name + argumentsDescriptor;
+    }
+
+    public boolean match(InvocationPlugin other) {
+        return isStatic == other.isStatic && name.equals(other.name) && argumentsDescriptor.equals(other.argumentsDescriptor);
+    }
+
+    public boolean match(ResolvedJavaMethod method) {
+        return isStatic == method.isStatic() && name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor);
+    }
+
+    public boolean match(Method method) {
+        if (isStatic == Modifier.isStatic(method.getModifiers()) && name.equals(method.getName())) {
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            int offset = isStatic ? 0 : 1;
+            if (parameterTypes.length == argumentTypes.length - offset) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (parameterTypes[i] != argumentTypes[i + offset]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean match(Constructor<?> c) {
+        if (!isStatic && "<init>".equals(name)) {
+            Class<?>[] parameterTypes = c.getParameterTypes();
+            if (parameterTypes.length == argumentTypes.length - 1) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (parameterTypes[i] != argumentTypes[i + 1]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getName() + " {" + (isStatic ? "static " : "") + name + argumentsDescriptor + '}';
+    }
+
+    public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {
+
+        public InlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean inlineOnly() {
+            return true;
+        }
+    }
+
+    public abstract static class OptionalInvocationPlugin extends InvocationPlugin {
+
+        public OptionalInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean isOptional() {
+            return true;
+        }
+    }
+
+    public abstract static class RequiredInvocationPlugin extends InvocationPlugin {
+
+        public RequiredInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean canBeDisabled() {
+            return false;
+        }
+    }
+
+    public abstract static class RequiredInlineOnlyInvocationPlugin extends RequiredInvocationPlugin {
+
+        public RequiredInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public final boolean inlineOnly() {
+            return true;
+        }
     }
 }

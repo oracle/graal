@@ -32,7 +32,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 public class LibC {
     public static final int EXIT_CODE_ABORT = 99;
@@ -50,6 +50,11 @@ public class LibC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n) {
         return libc().memcpy(dest, src, n);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n) {
+        return libc().memcmp(s1, s2, n);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -100,6 +105,11 @@ public class LibC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         return libc().strlen(str);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int strcmp(CCharPointer s1, CCharPointer s2) {
+        return libc().strcmp(s1, s2);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

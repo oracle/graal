@@ -47,16 +47,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -81,7 +80,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
  *
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.
- * 
+ *
  * Unfortunately, state of the art module support in SVM is not sophisticated enough to allow the
  * original ServiceLoader infrastructure to discover providers registered in modules. Therefore, as
  * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
@@ -94,8 +93,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
  * not be possible for us to deliver services in the exact same order with "flat" single loader
  * approach.
  */
-@AutomaticFeature
-public class ServiceLoaderFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ServiceLoaderFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Automatically register services for run-time lookup using ServiceLoader", type = OptionType.Expert) //
@@ -105,10 +104,10 @@ public class ServiceLoaderFeature implements Feature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     }
 
@@ -116,10 +115,9 @@ public class ServiceLoaderFeature implements Feature {
      * Services that should not be processed here, for example because they are handled by
      * specialized features.
      */
-    private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+    protected final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
                     // image builder internal ServiceLoader interfaces
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
-                    "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                     "org.graalvm.nativeimage.Platform",
                     /*
                      * Loaded in java.util.random.RandomGeneratorFactory.FactoryMapHolder, which is
@@ -136,9 +134,7 @@ public class ServiceLoaderFeature implements Feature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    private final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
-                    "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
-    ));
+    protected final Set<String> serviceProvidersToSkip = new HashSet<>();
 
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
@@ -163,9 +159,8 @@ public class ServiceLoaderFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
-        servicesToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServices.getValue().values()));
-        serviceProvidersToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values()));
+        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
+        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }
 
     @Override
@@ -362,7 +357,7 @@ public class ServiceLoaderFeature implements Feature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
         }
-        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
+        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();

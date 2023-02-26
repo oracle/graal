@@ -31,6 +31,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
+import org.graalvm.options.OptionValues;
 
 /**
  * Encapsulates minimal functionality required to interface with the native world in the JVM.
@@ -173,6 +175,15 @@ public interface NativeAccess {
                 throw EspressoError.shouldNotReachHere("unexpected kind: " + kind);
         }
         // @formatter:on
+    }
+
+    /**
+     * Allows the native backend to modify Espresso VM properties before creation e.g. inject/change
+     * paths.
+     */
+    @SuppressWarnings("unused")
+    default void updateEspressoProperties(EspressoProperties.Builder builder, OptionValues options) {
+        // nop
     }
 
     /**

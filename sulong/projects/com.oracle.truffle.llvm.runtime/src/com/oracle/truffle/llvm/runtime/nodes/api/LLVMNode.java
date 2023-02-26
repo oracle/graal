@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.WeakHashMap;
@@ -78,14 +77,9 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    protected final PrintStream nativeCallStatisticsStream() {
+    protected static final boolean nativeCallStatisticsEnabled() {
         CompilerAsserts.neverPartOfCompilation();
-        return getContext().nativeCallStatsStream();
-    }
-
-    protected final boolean nativeCallStatisticsEnabled() {
-        CompilerAsserts.neverPartOfCompilation();
-        return nativeCallStatisticsStream() != null;
+        return LLVMContext.logNativeCallStatsEnabled();
     }
 
     protected static boolean isFunctionDescriptor(Object object) {

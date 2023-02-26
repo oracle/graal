@@ -28,7 +28,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
@@ -61,10 +60,9 @@ public final class Target_sun_launcher_LauncherHelper {
 
         @Specialization
         void doCached(boolean printToStderr,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
-                        @Cached("create(context.getMeta().java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
-            Meta meta = context.getMeta();
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
+                        @Cached("create(meta.java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
             // Init output stream and print original help message
             originalPrintHelpMessage.call(printToStderr);
 

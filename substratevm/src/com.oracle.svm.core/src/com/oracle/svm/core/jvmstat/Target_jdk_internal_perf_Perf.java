@@ -30,13 +30,23 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "Perf")
+@TargetClass(className = "jdk.internal.perf.Perf")
 @SuppressWarnings({"unused", "static-method"})
 public final class Target_jdk_internal_perf_Perf {
     @Substitute
-    public ByteBuffer attach(String user, int lvmid, int mode) {
-        return ImageSingletons.lookup(PerfDataSupport.class).attach(user, lvmid, mode);
+    @TargetElement(name = "attach", onlyWith = JDK17OrEarlier.class)
+    public ByteBuffer attachJDK17(String user, int lvmid, int mode) {
+        return ImageSingletons.lookup(PerfDataSupport.class).attach(lvmid);
+    }
+
+    @Substitute
+    @TargetElement(name = "attach", onlyWith = JDK19OrLater.class)
+    public ByteBuffer attachJDK19(int lvmid) {
+        return ImageSingletons.lookup(PerfDataSupport.class).attach(lvmid);
     }
 
     @Substitute

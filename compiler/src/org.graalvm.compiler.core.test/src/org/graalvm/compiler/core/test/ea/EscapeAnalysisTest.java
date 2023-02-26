@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test.ea;
 
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
@@ -325,6 +326,7 @@ public class EscapeAnalysisTest extends EATestBase {
         Assert.assertEquals(2, graph.getNodes().filter(CommitAllocationNode.class).count());
         Assert.assertEquals(1, graph.getNodes().filter(BoxNode.class).count());
         List<Node> nodes = graph.getNodes().snapshot();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before running additional iteration of PEA");
         // verify that an additional run doesn't add or remove nodes
         new PartialEscapePhase(false, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         Assert.assertEquals(nodes.size(), graph.getNodeCount());
@@ -470,7 +472,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
-        new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
+        new LoopPeelingPhase(new DefaultLoopPolicies(), createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
         new SchedulePhase(graph.getOptions()).apply(graph, getDefaultHighTierContext());
     }
 

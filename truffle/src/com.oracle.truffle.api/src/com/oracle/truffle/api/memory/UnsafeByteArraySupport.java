@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,9 +74,18 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public byte getByte(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException {
         UNSAFE.putByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
 
+    @Override
+    public void putByte(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        UNSAFE.putByte(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 
     @Override
@@ -85,8 +94,18 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public short getShort(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException {
         UNSAFE.putShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
+
+    @Override
+    public void putShort(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        UNSAFE.putShort(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 
     @Override
@@ -95,8 +114,18 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public int getInt(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException {
         UNSAFE.putInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
+
+    @Override
+    public void putInt(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        UNSAFE.putInt(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 
     @Override
@@ -105,8 +134,18 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public long getLong(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException {
         UNSAFE.putLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
+
+    @Override
+    public void putLong(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        UNSAFE.putLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 
     @Override
@@ -115,8 +154,18 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public float getFloat(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getFloat(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putFloat(byte[] buffer, int byteOffset, float value) throws IndexOutOfBoundsException {
         UNSAFE.putFloat(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
+
+    @Override
+    public void putFloat(byte[] buffer, long byteOffset, float value) throws IndexOutOfBoundsException {
+        UNSAFE.putFloat(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 
     @Override
@@ -125,7 +174,17 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public double getDouble(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return UNSAFE.getDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset);
+    }
+
+    @Override
     public void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException {
         UNSAFE.putDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + Integer.toUnsignedLong(byteOffset), value);
+    }
+
+    @Override
+    public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
+        UNSAFE.putDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
     }
 }

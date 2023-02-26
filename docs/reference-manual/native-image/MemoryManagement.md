@@ -1,10 +1,12 @@
 ---
-layout: docs
-toc_group: native-image
-link_title: Memory Management at Image Run Time
-permalink: /reference-manual/native-image/MemoryManagement/
+layout: ni-docs
+toc_group: optimizations-and-performance
+link_title: Memory Management
+permalink: /reference-manual/native-image/optimizations-and-performance/MemoryManagement/
+redirect_from: /$version/reference-manual/native-image/MemoryManagement/
 ---
-# Memory Management at Image Run Time
+
+# Memory Management
 
 A native image, when being executed, does not run on the Java HotSpot VM but on the runtime system provided with GraalVM.
 That runtime includes all necessary components, and one of them is the memory management.
@@ -199,7 +201,7 @@ native-image -R:MinHeapSize=2m -R:MaxHeapSize=10m -R:MaxNewSize=1m HelloWorld
 ./helloworld
 ```
 
-### Compressed References
+## Compressed References
 
 GraalVM Enterprise Edition supports compressed references to Java objects that use 32-bit instead of 64-bit.
 Compressed references are enabled by default and can have a large impact on the memory footprint.
@@ -208,14 +210,14 @@ If more than 32 GB are needed, compressed references need to be disabled.
 
 * `-H:±UseCompressedReferences` (can only be specified at image build time) - determines if 32-bit instead of 64-bit references to Java objects are used.
 
-### Native Memory
+## Native Memory
 
 Native Image may also allocate memory that is separate from the Java heap.
 One common use-case is a `java.nio.DirectByteBuffer` that directly references native memory.
 
-* `-XX:MaxDirectMemorySize` (since GraalVM 20.1) - the maximum size of direct buffer allocations.
+* `-XX:MaxDirectMemorySize` - the maximum size of direct buffer allocations.
 
-### Printing Garbage Collections
+## Printing Garbage Collections
 
 When executing a native image, the following options can be be used to print some information on garbage collection.
 Which data is printed in detail depends on the used GC.
@@ -229,3 +231,7 @@ Which data is printed in detail depends on the used GC.
 # Execute a native image and print detailed garbage collection information
 ./helloworld -XX:+PrintGC -XX:+VerboseGC
 ```
+
+### Further Reading
+
+* [Memory Configuration for Native Image Build](BuildConfiguration.md#memory-configuration-for-native-image-build)

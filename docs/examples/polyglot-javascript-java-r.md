@@ -11,13 +11,13 @@ This page describes an example of a polyglot application you can run with GraalV
 
 ### Preparation
 
-1&#46; Download or clone the repository and navigate into the `polyglot-javascript-java-r` directory:
+1. Download or clone the repository and navigate into the `polyglot-javascript-java-r` directory:
   ```bash
   git clone https://github.com/graalvm/graalvm-demos
   cd graalvm-demos/polyglot-javascript-java-r
   ```
 
-2&#46; [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
+2. [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
   On Linux:
   ```bash
   export JAVA_HOME=/home/${current_user}/path/to/graalvm
@@ -35,17 +35,18 @@ This page describes an example of a polyglot application you can run with GraalV
   ```
   Note that your paths are likely to be different depending on the download location.
 
-3&#46; To run the demo, you need to enable Node.js support in GraalVM:
+3. To run the demo, you need to enable JavaScript and Node.js support in GraalVM:
   ```bash
+  gu install js
   gu install nodejs
   ```
 
-4&#46; This application contains R code. The R language support is not enabled by default in GraalVM and you should add it too:
+4. This application contains R code. The R language support is not enabled by default in GraalVM and you should add it too:
   ```bash
   gu install R
   ```
 
-5&#46; Build the benchmark. You can manually execute `npm install`, but there is also a `build.sh` script included for your convenience:
+5. Build the benchmark. You can manually execute `npm install`, but there is also a `build.sh` script included for your convenience:
   ```bash
   ./build.sh
   ```

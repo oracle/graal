@@ -673,7 +673,7 @@ public class UpgradeProcess implements AutoCloseable {
 
                 @Override
                 public Iterator<ComponentParam> iterator() {
-                    return new Iterator<ComponentParam>() {
+                    return new Iterator<>() {
                         boolean init;
 
                         @Override

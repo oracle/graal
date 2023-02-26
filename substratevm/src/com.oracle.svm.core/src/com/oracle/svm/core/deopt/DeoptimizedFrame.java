@@ -32,13 +32,13 @@ import java.lang.ref.WeakReference;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -47,10 +47,11 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
@@ -158,7 +159,7 @@ public final class DeoptimizedFrame {
 
         protected final JavaConstant constant;
 
-        protected static ConstantEntry factory(int offset, JavaConstant constant) {
+        protected static ConstantEntry factory(int offset, JavaConstant constant, FrameInfoQueryResult frameInfo) {
             switch (constant.getJavaKind()) {
                 case Boolean:
                 case Byte:
@@ -175,7 +176,7 @@ public final class DeoptimizedFrame {
                 case Object:
                     return new ObjectConstantEntry(offset, constant, SubstrateObjectConstant.asObject(constant), SubstrateObjectConstant.isCompressed(constant));
                 default:
-                    throw VMError.shouldNotReachHere(constant.getJavaKind().toString());
+                    throw Deoptimizer.fatalDeoptimizationError("Unexpected constant type: " + constant, frameInfo);
             }
         }
 
@@ -420,10 +421,22 @@ public final class DeoptimizedFrame {
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
         CodeInfo info = CodeInfoTable.getImageCodeInfo();
-        SimpleCodeInfoQueryResult codeInfoQueryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
+        SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), codeInfoQueryResult);
         long handler = codeInfoQueryResult.getExceptionOffset();
-        VMError.guarantee(handler != 0, "no exception handler registered for deopt target");
+        if (handler == 0) {
+            throwMissingExceptionHandler(info, firstAddressEntry);
+        }
         firstAddressEntry.returnAddress += handler;
     }
+
+    @NeverInline("Has more relaxed heap access requirements than caller.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Printing out error and then crashing.")
+    private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
+        CodeInfoQueryResult detailedQueryResult = new CodeInfoQueryResult();
+        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), detailedQueryResult);
+        FrameInfoQueryResult frameInfo = detailedQueryResult.getFrameInfo();
+        throw Deoptimizer.fatalDeoptimizationError("No exception handler registered for deopt target", frameInfo);
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,30 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.graphio.GraphStructure;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.nio.channels.Channels;
 
-@AutomaticFeature
-public class DashboardDumpFeature implements Feature {
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
+
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
+
+@AutomaticallyRegisteredFeature
+public class DashboardDumpFeature implements InternalFeature {
 
     private static boolean isHeapBreakdownDumped() {
         return DashboardOptions.DashboardAll.getValue() || DashboardOptions.DashboardHeap.getValue();
@@ -74,7 +76,11 @@ public class DashboardDumpFeature implements Feature {
     private final ToJson dumper;
 
     private static Path getFile(String extension) {
-        return new File(DashboardOptions.DashboardDump.getValue() + "." + extension).getAbsoluteFile().toPath();
+        String fileName = DashboardOptions.DashboardDump.getValue();
+        if (fileName == null) {
+            fileName = SubstrateOptions.Name.getValue(); // Use image name by default.
+        }
+        return new File(fileName + "." + extension).getAbsoluteFile().toPath();
     }
 
     public DashboardDumpFeature() {
@@ -109,7 +115,7 @@ public class DashboardDumpFeature implements Feature {
     }
 
     private static boolean isSane() {
-        return DashboardOptions.DashboardDump.getValue() != null && (isHeapBreakdownDumped() || isPointsToDumped() || isCodeBreakdownDumped());
+        return isHeapBreakdownDumped() || isPointsToDumped() || isCodeBreakdownDumped();
     }
 
     @Override

@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.util.BitSets;
  *
  * @see CompressedCodePointSet
  */
-public final class AllTransitionsInOneTreeMatcher {
+public final class AllTransitionsInOneTreeMatcher extends Matchers {
 
     /**
      * Data structure for optimized matching of multiple ranges in one lower byte range.

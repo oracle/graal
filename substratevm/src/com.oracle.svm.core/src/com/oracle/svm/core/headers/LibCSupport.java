@@ -30,7 +30,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 public interface LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -41,6 +41,9 @@ public interface LibCSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    <T extends PointerBase> int memcmp(T s1, T s2, UnsignedWord n);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     <T extends PointerBase> T memmove(T dest, PointerBase src, UnsignedWord n);
@@ -65,6 +68,9 @@ public interface LibCSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord strlen(CCharPointer str);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int strcmp(CCharPointer s1, CCharPointer s2);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int isdigit(int c);

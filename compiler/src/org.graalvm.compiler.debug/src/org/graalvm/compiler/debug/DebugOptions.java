@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -68,6 +69,25 @@ public class DebugOptions {
          * Do not dump graphs.
          */
         Disable;
+    }
+
+    /**
+     * Values for the {@link DebugOptions#OptimizationLog} option denoting where the structured
+     * optimization is printed.
+     */
+    public enum OptimizationLogTarget {
+        /**
+         * Print logs to JSON files in a directory.
+         */
+        Directory,
+        /**
+         * Print logs as JSON to the standard output.
+         */
+        Stdout,
+        /**
+         * Dump the optimization tree as an IGV graph.
+         */
+        Dump
     }
 
     // @formatter:off
@@ -139,12 +159,13 @@ public class DebugOptions {
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
-    @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
-    @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
+    @Option(help = "Enable dumping scheduled HIR, LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);
+
+    @Option(help ="Enables dumping of basic blocks relative PC and frequencies in the dump directory.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintBBInfo = new OptionKey<>(false);
 
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
@@ -154,7 +175,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
 
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PrintGraphTarget v = PrintGraph.getValueOrDefault(values);
@@ -198,6 +219,11 @@ public class DebugOptions {
     @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
+    @Option(help = "file:doc-files/OptimizationLogHelp.txt", type = OptionType.Debug)
+    public static final EnumMultiOptionKey<OptimizationLogTarget> OptimizationLog = new EnumMultiOptionKey<>(OptimizationLogTarget.class, null);
+    @Option(help = "Path to the directory where the optimization log is saved if OptimizationLog is set to Directory. " +
+            "Directories are created if they do no exist.", type = OptionType.Debug)
+    public static final OptionKey<String> OptimizationLogPath = new OptionKey<>(null);
     // @formatter:on
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,22 +38,32 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
 
-    @Specialization
+    static boolean isLLVMArgumentBuffer(LLVMManagedPointer pointer) {
+        return pointer.getObject() instanceof LLVMArgumentBuffer;
+    }
+
+    @Specialization(guards = "isLLVMArgumentBuffer(pointer)")
+    protected long doLLVMArgumentBuffer(LLVMManagedPointer pointer) {
+        return ((LLVMArgumentBuffer) pointer.getObject()).getArraySize();
+    }
+
+    @Specialization(guards = "!isLLVMArgumentBuffer(pointer)")
     @GenerateAOT.Exclude
-    protected long doIntrinsic(LLVMManagedPointer value,
+    protected long doGenericManagedPointer(LLVMManagedPointer pointer,
                     @Cached LLVMAsForeignNode asForeign,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
-        Object foreign = asForeign.execute(value);
+        Object foreign = asForeign.execute(pointer);
         try {
             return interop.getArraySize(foreign);
         } catch (UnsupportedMessageException ex) {

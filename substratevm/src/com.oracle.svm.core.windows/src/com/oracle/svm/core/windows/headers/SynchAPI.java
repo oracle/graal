@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 
 //Checkstyle: stop
@@ -79,5 +80,8 @@ public class SynchAPI {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int WaitForSingleObject(WinBase.HANDLE hEvent, int dwMilliseconds);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int ReleaseSemaphore(WinBase.HANDLE hSemaphore, int lReleaseCount, CIntPointer lpPreviousCount);
     }
 }

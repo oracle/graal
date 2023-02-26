@@ -1,0 +1,2 @@
+# Windows treats long double as double
+testLongDouble.cpp

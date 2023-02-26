@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import org.graalvm.compiler.code.CompilationResult;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Represents a patch for machine code during image generation. At the specified operand position,
@@ -35,9 +35,9 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
  */
 public class HostedImageHeapConstantPatch extends CompilationResult.CodeAnnotation {
 
-    public final SubstrateObjectConstant constant;
+    public final JavaConstant constant;
 
-    public HostedImageHeapConstantPatch(int operandPosition, SubstrateObjectConstant constant) {
+    public HostedImageHeapConstantPatch(int operandPosition, JavaConstant constant) {
         super(operandPosition);
         this.constant = constant;
     }

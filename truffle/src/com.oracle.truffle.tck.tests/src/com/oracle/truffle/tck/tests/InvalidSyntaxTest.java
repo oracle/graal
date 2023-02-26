@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.tck.tests;
 
 import java.util.AbstractMap;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.TreeSet;
 
@@ -63,7 +64,7 @@ public class InvalidSyntaxTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> createInvalidSyntaxTests() {
         context = new TestContext(InvalidSyntaxTest.class);
-        final Collection<Object[]> result = new TreeSet<>((a, b) -> ((String) a[0]).compareTo(((String) b[0])));
+        final Collection<Object[]> result = new TreeSet<>(Comparator.comparing(a -> ((String) a[0])));
         for (String language : TestUtil.getRequiredLanguages(context)) {
             for (Source src : context.getInstalledProviders().get(language).createInvalidSyntaxScripts(context.getContext())) {
                 result.add(new Object[]{

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
+import java.util.BitSet;
+
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -31,21 +33,18 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.BitSet;
 
 /**
  * Base class for a stub defined by a snippet.
@@ -99,10 +98,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
                 }
             }
 
-            graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
+            graph.getGraphState().setGuardsStage(GuardsStage.FLOATING_GUARDS);
             CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
             canonicalizer.apply(graph, providers);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, providers);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, providers);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

@@ -36,15 +36,67 @@ import java.util.Map;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
  * organization suitable for use by subclasses targeting a specific binary format.
+ *
+ * This class provides support for iterating over records detailing all the types and compiled
+ * methods presented via the DebugInfoProvider interface. The obvious hierarchical traversal order
+ * when generating debug info output is:
+ *
+ * 1) by top level compiled method (and associated primary Range) n.b. these are always presented to
+ * the generator in order of ascending address
+ *
+ * 2) by inlined method (sub range) within top level method, also ordered by ascending address
+ *
+ * This traversal ensures that debug records are generated in increasing address order
+ *
+ * An alternative hierarchical traversal order is
+ *
+ * 1) by top level class (unique ResolvedJavaType id) n.b. types are not guaranteed to be presented
+ * to the generator in increasing address order of their method code ranges. In particular many
+ * classes do not have top-level compiled methods and may not even have inlined methods.
+ *
+ * 2) by top level compiled method (and associated primary Range) within a class, which are ordered
+ * by ascending address
+ *
+ * 3) by inlined method (sub range) within top level method, also ordered by ascending address
+ *
+ * Since clients may need to generate records for classes with no compiled methods, the second
+ * traversal order is often employed. In rare cases clients need to sort the class list by address
+ * before traversal to ensure the generated debug records are also sorted by address.
+ *
+ * n.b. the above strategy relies on the details that methods of a given class always appear in a
+ * single continuous address range with no intervening code from other methods or data values. This
+ * means we can treat each class as a Compilation Unit, allowing data common to all methods of the
+ * class to be referenced using CU-local offsets.
+ *
+ * Just as an aside, for full disclosure, this is not strictly the full story. Sometimes a class can
+ * include speculatively optimized, compiled methods plus deopt fallback compiled variants of those
+ * same methods. In such cases the normal and/or speculatively compiled methods occupy one
+ * contiguous range and deopt methods occupy a separate higher range. The current compilation
+ * strategy ensures that the union across all classes of the normal/speculative ranges and the union
+ * across all classes of the deopt ranges lie in two distinct intervals where the highest address in
+ * the first union is strictly less than the lowest address in the second union. The implication is
+ * twofold. An address order traversal requires generating details for classes, methods and
+ * non-deopt primary ranges before generating details for the deopt primary ranges. The former
+ * details need to be generated in a distinct CU from deopt method details.
+ *
+ * A third option appears to be to traverse via files, then top level class within file etc.
+ * Unfortunately, files cannot be treated as a compilation unit. A file F may contain multiple
+ * classes, say C1 and C2. There is no guarantee that methods for some other class C' in file F'
+ * will not be compiled into the address space interleaved between methods of C1 and C2. That is a
+ * shame because generating debug info records one file at a time would allow more sharing e.g.
+ * enabling all classes in a file to share a single copy of the file and dir tables.
  */
 public abstract class DebugInfoBase {
     protected ByteOrder byteOrder;
@@ -57,62 +109,54 @@ public abstract class DebugInfoBase {
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
      */
-    private Map<Path, DirEntry> dirsIndex = new HashMap<>();
-
-    /*
-     * The obvious traversal structure for debug records is:
-     *
-     * 1) by top level compiled method (primary Range) ordered by ascending address
-     *
-     * 2) by inlined method (sub range) within top level method ordered by ascending address
-     *
-     * These can be used to ensure that all debug records are generated in increasing address order
-     *
-     * An alternative traversal option is
-     *
-     * 1) by top level class (String id)
-     *
-     * 2) by top level compiled method (primary Range) within a class ordered by ascending address
-     *
-     * 3) by inlined method (sub range) within top level method ordered by ascending address
-     *
-     * This relies on the (current) fact that methods of a given class always appear in a single
-     * continuous address range with no intervening code from other methods or data values. this
-     * means we can treat each class as a compilation unit, allowing data common to all methods of
-     * the class to be shared.
-     *
-     * A third option appears to be to traverse via files, then top level class within file etc.
-     * Unfortunately, files cannot be treated as the compilation unit. A file F may contain multiple
-     * classes, say C1 and C2. There is no guarantee that methods for some other class C' in file F'
-     * will not be compiled into the address space interleaved between methods of C1 and C2. That is
-     * a shame because generating debug info records one file at a time would allow more sharing
-     * e.g. enabling all classes in a file to share a single copy of the file and dir tables.
-     */
+    private EconomicMap<Path, DirEntry> dirsIndex = EconomicMap.create();
 
     /**
-     * List of class entries detailing class info for primary ranges.
+     * List of all types present in the native image including instance classes, array classes,
+     * primitive types and the one-off Java header struct.
      */
     private List<TypeEntry> types = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen types keyed by the unique, associated, identifying ResolvedJavaType or,
+     * in the single special case of the TypeEntry for the Java header structure, by key null.
      */
-    private Map<String, TypeEntry> typesIndex = new HashMap<>();
+    private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
-     * List of class entries detailing class info for primary ranges.
+     * List of all instance classes found in debug info. These classes do not necessarily have top
+     * level or inline compiled methods. This list includes interfaces and enum types.
      */
-    private List<ClassEntry> primaryClasses = new ArrayList<>();
+    private List<ClassEntry> instanceClasses = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen classes.
      */
-    private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
+    private EconomicMap<ResolvedJavaType, ClassEntry> instanceClassesIndex = EconomicMap.create();
     /**
-     * Index of files which contain primary or secondary ranges.
+     * Handle on type entry for header structure.
      */
-    private Map<Path, FileEntry> filesIndex = new HashMap<>();
+    private HeaderTypeEntry headerType;
+    /**
+     * Handle on class entry for java.lang.Object.
+     */
+    private ClassEntry objectClass;
     /**
      * List of of files which contain primary or secondary ranges.
      */
     private List<FileEntry> files = new ArrayList<>();
+    /**
+     * Index of files which contain primary or secondary ranges keyed by path.
+     */
+    private EconomicMap<Path, FileEntry> filesIndex = EconomicMap.create();
+
+    /**
+     * List of all loaders associated with classes included in the image.
+     */
+    private List<LoaderEntry> loaders = new ArrayList<>();
+
+    /**
+     * Index of all loaders associated with classes included in the image.
+     */
+    private EconomicMap<String, LoaderEntry> loaderIndex = EconomicMap.create();
+
     /**
      * Flag set to true if heap references are stored as addresses relative to a heap base register
      * otherwise false.
@@ -142,6 +186,10 @@ public abstract class DebugInfoBase {
      * Number of bits in oop which are guaranteed 0 by virtue of alignment.
      */
     private int oopAlignShift;
+    /**
+     * The type entry for java.lang.Class.
+     */
+    private ClassEntry hubClassEntry;
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
@@ -152,6 +200,7 @@ public abstract class DebugInfoBase {
         this.pointerSize = 0;
         this.oopAlignment = 0;
         this.oopAlignShift = 0;
+        this.hubClassEntry = null;
     }
 
     /**
@@ -211,7 +260,8 @@ public abstract class DebugInfoBase {
 
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            ResolvedJavaType idType = debugTypeInfo.idType();
+            String typeName = debugTypeInfo.typeName();
             typeName = stringTable.uniqueDebugString(typeName);
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
             int byteSize = debugTypeInfo.size();
@@ -220,16 +270,17 @@ public abstract class DebugInfoBase {
             String fileName = debugTypeInfo.fileName();
             Path filePath = debugTypeInfo.filePath();
             Path cachePath = debugTypeInfo.cachePath();
-            addTypeEntry(typeName, fileName, filePath, cachePath, byteSize, typeKind);
+            addTypeEntry(idType, typeName, fileName, filePath, cachePath, byteSize, typeKind);
         }));
 
         /* Now we can cross reference static and instance field details. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            ResolvedJavaType idType = debugTypeInfo.idType();
+            String typeName = debugTypeInfo.typeName();
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
 
             debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
-            TypeEntry typeEntry = lookupTypeEntry(typeName);
+            TypeEntry typeEntry = (idType != null ? lookupTypeEntry(idType) : lookupHeaderType());
             typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
         }));
 
@@ -246,7 +297,7 @@ public abstract class DebugInfoBase {
             int primaryLine = debugCodeInfo.line();
 
             /* Search for a method defining this primary range. */
-            ClassEntry classEntry = ensureClassEntry(ownerType);
+            ClassEntry classEntry = lookupClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
@@ -255,8 +306,8 @@ public abstract class DebugInfoBase {
              * Record all subranges even if they have no line or file so we at least get a symbol
              * for them and don't see a break in the address range.
              */
-            debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> recursivelyAddSubRanges(debugLineInfo, primaryRange, classEntry, debugContext));
-            primaryRange.mergeSubranges(debugContext);
+            EconomicMap<DebugLocationInfo, Range> subRangeIndex = EconomicMap.create();
+            debugCodeInfo.locationInfoProvider().forEach(debugLocationInfo -> addSubrange(debugLocationInfo, primaryRange, classEntry, subRangeIndex, debugContext));
         }));
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
@@ -276,6 +327,9 @@ public abstract class DebugInfoBase {
             case INSTANCE: {
                 FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
+                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
+                    hubClassEntry = (ClassEntry) typeEntry;
+                }
                 break;
             }
             case INTERFACE: {
@@ -307,12 +361,24 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    private TypeEntry addTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+        TypeEntry typeEntry = (idType != null ? typesIndex.get(idType) : null);
         if (typeEntry == null) {
             typeEntry = createTypeEntry(typeName, fileName, filePath, cachePath, size, typeKind);
             types.add(typeEntry);
-            typesIndex.put(typeName, typeEntry);
+            if (idType != null) {
+                typesIndex.put(idType, typeEntry);
+            }
+            // track object type and header struct
+            if (idType == null) {
+                headerType = (HeaderTypeEntry) typeEntry;
+            }
+            if (typeName.equals("java.lang.Object")) {
+                objectClass = (ClassEntry) typeEntry;
+            }
+            if (typeEntry instanceof ClassEntry) {
+                indexInstanceClass(idType, (ClassEntry) typeEntry);
+            }
         } else {
             if (!(typeEntry.isClass())) {
                 assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
@@ -321,77 +387,95 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    public TypeEntry lookupTypeEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
+        TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            throw new RuntimeException("type entry not found " + typeName);
+            throw new RuntimeException("type entry not found " + type.getName());
         }
         return typeEntry;
     }
 
-    ClassEntry lookupClassEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
-        if (typeEntry == null || !(typeEntry.isClass())) {
-            throw new RuntimeException("class entry not found " + typeName);
+    ClassEntry lookupClassEntry(ResolvedJavaType type) {
+        // lookup key should advertise itself as a resolved instance class or interface
+        assert type.isInstanceClass() || type.isInterface();
+        // lookup target should already be included in the index
+        ClassEntry classEntry = instanceClassesIndex.get(type);
+        if (classEntry == null || !(classEntry.isClass())) {
+            throw new RuntimeException("class entry not found " + type.getName());
         }
-        return (ClassEntry) typeEntry;
+        // lookup target should also be indexed in the types index
+        assert typesIndex.get(type) != null;
+        return classEntry;
+    }
+
+    public HeaderTypeEntry lookupHeaderType() {
+        // this should only be looked up after all types have been notified
+        assert headerType != null;
+        return headerType;
+    }
+
+    public ClassEntry lookupObjectClass() {
+        // this should only be looked up after all types have been notified
+        assert objectClass != null;
+        return objectClass;
     }
 
     /**
-     * Recursively creates subranges based on DebugLineInfo including, and appropriately linking,
-     * nested inline subranges.
+     * Recursively creates subranges based on DebugLocationInfo including, and appropriately
+     * linking, nested inline subranges.
      *
-     * @param lineInfo
+     * @param locationInfo
      * @param primaryRange
      * @param classEntry
      * @param debugContext
-     * @return the subrange for {@code lineInfo} linked with all its caller subranges up to the
+     * @return the subrange for {@code locationInfo} linked with all its caller subranges up to the
      *         primaryRange
      */
     @SuppressWarnings("try")
-    private Range recursivelyAddSubRanges(DebugInfoProvider.DebugLineInfo lineInfo, Range primaryRange, ClassEntry classEntry, DebugContext debugContext) {
-        if (lineInfo == null) {
-            return primaryRange;
-        }
+    private Range addSubrange(DebugLocationInfo locationInfo, Range primaryRange, ClassEntry classEntry, EconomicMap<DebugLocationInfo, Range> subRangeIndex, DebugContext debugContext) {
         /*
          * We still insert subranges for the primary method but they don't actually count as inline.
          * we only need a range so that subranges for inline code can refer to the top level line
-         * number
+         * number.
          */
-        boolean isInline = lineInfo.getCaller() != null;
-        assert (isInline || (lineInfo.name().equals(primaryRange.getMethodName()) && TypeEntry.canonicalize(lineInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
+        DebugLocationInfo callerLocationInfo = locationInfo.getCaller();
+        boolean isTopLevel = callerLocationInfo == null;
+        assert (!isTopLevel || (locationInfo.name().equals(primaryRange.getMethodName()) &&
+                        locationInfo.ownerType().toJavaName().equals(primaryRange.getClassName())));
+        Range caller = (isTopLevel ? primaryRange : subRangeIndex.get(callerLocationInfo));
+        // the frame tree is walked topdown so inline ranges should always have a caller range
+        assert caller != null;
 
-        Range caller = recursivelyAddSubRanges(lineInfo.getCaller(), primaryRange, classEntry, debugContext);
-        final String fileName = lineInfo.fileName();
-        final Path filePath = lineInfo.filePath();
-        final ResolvedJavaType ownerType = lineInfo.ownerType();
-        final String methodName = lineInfo.name();
-        final int lo = primaryRange.getLo() + lineInfo.addressLo();
-        final int hi = primaryRange.getLo() + lineInfo.addressHi();
-        final int line = lineInfo.line();
-        ClassEntry subRangeClassEntry = ensureClassEntry(ownerType);
-        MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(lineInfo, this, debugContext);
-        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isInline, caller);
+        final String fileName = locationInfo.fileName();
+        final Path filePath = locationInfo.filePath();
+        final String fullPath = (filePath == null ? "" : filePath.toString() + "/") + fileName;
+        final ResolvedJavaType ownerType = locationInfo.ownerType();
+        final String methodName = locationInfo.name();
+        final int loOff = locationInfo.addressLo();
+        final int hiOff = locationInfo.addressHi() - 1;
+        final int lo = primaryRange.getLo() + locationInfo.addressLo();
+        final int hi = primaryRange.getLo() + locationInfo.addressHi();
+        final int line = locationInfo.line();
+        ClassEntry subRangeClassEntry = lookupClassEntry(ownerType);
+        MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
+        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller);
         classEntry.indexSubRange(subRange);
-        try (DebugContext.Scope s = debugContext.scope("Subranges")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]",
-                            ownerType.toJavaName(), methodName, filePath, fileName, line, lo, hi);
+        subRangeIndex.put(locationInfo, subRange);
+        debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
+                        ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
+        assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
+        DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
+        for (int i = 0; i < localValueInfos.length; i++) {
+            DebugLocalValueInfo localValueInfo = localValueInfos[i];
+            debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo);
         }
+        subRange.setLocalValueInfo(localValueInfos);
         return subRange;
     }
 
-    private ClassEntry ensureClassEntry(ResolvedJavaType type) {
-        /* See if we already have an entry. */
-        ClassEntry classEntry = primaryClassesIndex.get(type);
-        if (classEntry == null) {
-            TypeEntry typeEntry = typesIndex.get(TypeEntry.canonicalize(type.toJavaName()));
-            assert (typeEntry != null && typeEntry.isClass());
-            classEntry = (ClassEntry) typeEntry;
-            primaryClasses.add(classEntry);
-            primaryClassesIndex.put(type, classEntry);
-        }
-        assert (classEntry.getTypeName().equals(TypeEntry.canonicalize(type.toJavaName())));
-        return classEntry;
+    private void indexInstanceClass(ResolvedJavaType idType, ClassEntry classEntry) {
+        instanceClasses.add(classEntry);
+        instanceClassesIndex.put(idType, classEntry);
     }
 
     private FileEntry addFileEntry(String fileName, Path filePath, Path cachePath) {
@@ -453,6 +537,15 @@ public abstract class DebugInfoBase {
         return dirEntry;
     }
 
+    protected LoaderEntry ensureLoaderEntry(String loaderId) {
+        LoaderEntry loaderEntry = loaderIndex.get(loaderId);
+        if (loaderEntry == null) {
+            loaderEntry = new LoaderEntry(uniqueDebugString(loaderId));
+            loaderIndex.put(loaderEntry.getLoaderId(), loaderEntry);
+        }
+        return loaderEntry;
+    }
+
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {
         return byteOrder;
@@ -462,8 +555,8 @@ public abstract class DebugInfoBase {
         return types;
     }
 
-    public List<ClassEntry> getPrimaryClasses() {
-        return primaryClasses;
+    public List<ClassEntry> getInstanceClasses() {
+        return instanceClasses;
     }
 
     @SuppressWarnings("unused")
@@ -474,6 +567,15 @@ public abstract class DebugInfoBase {
     @SuppressWarnings("unused")
     public FileEntry findFile(Path fullFileName) {
         return filesIndex.get(fullFileName);
+    }
+
+    public List<LoaderEntry> getLoaders() {
+        return loaders;
+    }
+
+    @SuppressWarnings("unused")
+    public LoaderEntry findLoader(String id) {
+        return loaderIndex.get(id);
     }
 
     public StringTable getStringTable() {
@@ -545,5 +647,9 @@ public abstract class DebugInfoBase {
             return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
         }
         return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
+    }
+
+    public ClassEntry getHubClassEntry() {
+        return hubClassEntry;
     }
 }

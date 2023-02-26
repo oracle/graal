@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.thread.JavaContinuations;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
@@ -42,10 +41,6 @@ public class InstanceReferenceMapDecoder {
     public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
-
-        if (JavaContinuations.useLoom() && referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
-            return StoredContinuationImpl.walkStoredContinuationFromPointer(baseAddress, visitor, holderObject);
-        }
 
         Pointer position = NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
         int entryCount = TypedMemoryReader.getS4(position);

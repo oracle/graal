@@ -24,27 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
-import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -54,24 +40,11 @@ import com.oracle.svm.core.util.VMError;
  * This visitor is used during GC and so it must be constructed during native image generation.
  */
 public final class GreyToBlackObjectVisitor implements ObjectVisitor {
-    private final DiagnosticReporter diagnosticReporter;
     private final GreyToBlackObjRefVisitor objRefVisitor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GreyToBlackObjectVisitor(GreyToBlackObjRefVisitor greyToBlackObjRefVisitor) {
         this.objRefVisitor = greyToBlackObjRefVisitor;
-        if (DiagnosticReporter.getHistoryLength() > 0) {
-            this.diagnosticReporter = new DiagnosticReporter();
-            DiagnosticThunkRegistry.singleton().register(diagnosticReporter);
-        } else {
-            this.diagnosticReporter = null;
-        }
-    }
-
-    public void reset() {
-        if (diagnosticReporter != null) {
-            diagnosticReporter.reset();
-        }
     }
 
     @Override
@@ -83,108 +56,8 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     @Override
     @AlwaysInline("GC performance")
     public boolean visitObjectInline(Object o) {
-        if (diagnosticReporter != null) {
-            diagnosticReporter.noteObject(o);
-        }
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
         return true;
-    }
-
-    /** A ring buffer of visited objects for diagnostics. */
-    static final class DiagnosticReporter extends DiagnosticThunk {
-
-        static class Options {
-            @Option(help = "Length of GreyToBlackObjectVisitor history for diagnostics. 0 implies no history is kept.") //
-            static final HostedOptionKey<Integer> GreyToBlackObjectVisitorDiagnosticHistory = new HostedOptionKey<>(0);
-        }
-
-        /** The total count of all noted objects, used to compute the current array index. */
-        private long historyCount;
-
-        /** The history of objects. Kept as pointers to avoid holding references. */
-        private final Word[] objectHistory;
-
-        /** The history of the headers of the objects in {@link #objectHistory}. */
-        private final UnsignedWord[] headerHistory;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        DiagnosticReporter() {
-            this.historyCount = 0;
-            this.objectHistory = new Word[getHistoryLength()];
-            this.headerHistory = new UnsignedWord[getHistoryLength()];
-        }
-
-        /** Forget all history. */
-        public void reset() {
-            historyCount = 0;
-            for (int i = 0; i < getHistoryLength(); i += 1) {
-                objectHistory[i] = WordFactory.zero();
-                headerHistory[i] = WordFactory.zero();
-            }
-        }
-
-        /** Note a historical object. */
-        public void noteObject(Object o) {
-            int index = countToIndex(historyCount);
-            objectHistory[index] = Word.objectToUntrackedPointer(o);
-            headerHistory[index] = ObjectHeaderImpl.readHeaderFromObjectCarefully(o);
-            historyCount += 1;
-        }
-
-        @Override
-        public int maxInvocationCount() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (historyCount > 0) {
-                log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
-                                .string("  history / count:  ")
-                                .signed(getHistoryLength()).string(" / ").signed(historyCount)
-                                .indent(true);
-                ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-                /*
-                 * Report the history from the next available slot in the ring buffer. The older
-                 * history is more reliable, since I have already used that to visit objects. The
-                 * most recent history is more suspect, because this is the first use of it.
-                 */
-                for (int count = 0; count < getHistoryLength(); count += 1) {
-                    int index = countToIndex(historyCount + count);
-                    log.string("  index: ").unsigned(index, 3, Log.RIGHT_ALIGN);
-                    Word objectEntry = objectHistory[index];
-                    log.string("  objectEntry: ").zhex(objectEntry);
-                    UnsignedWord headerEntry = headerHistory[index];
-                    Pointer headerHub = (Pointer) ObjectHeaderImpl.clearBits(headerEntry);
-                    UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
-                    log.string("  headerEntry: ").zhex(headerEntry).string(" = ").zhex(headerHub).string(" | ").zhex(headerHeaderBits).string(" / ");
-                    boolean headerInImageHeap = imageHeapInfo.isInReadOnlyReferencePartition(headerHub) ||
-                                    imageHeapInfo.isInReadOnlyRelocatablePartition(headerHub);
-                    if (headerInImageHeap) {
-                        DynamicHub hub = (DynamicHub) headerHub.toObject();
-                        log.string("  class: ").string(hub.getName());
-                        Object entryAsObject = objectEntry.toObject();
-                        if (LayoutEncoding.isArray(entryAsObject)) {
-                            int length = ArrayLengthNode.arrayLength(entryAsObject);
-                            log.string("  length: ").signed(length);
-                        }
-                    } else {
-                        log.string("  header not in image heap");
-                    }
-                    log.newline();
-                }
-                log.string("]").indent(false).flush();
-            }
-        }
-
-        private static int getHistoryLength() {
-            return Options.GreyToBlackObjectVisitorDiagnosticHistory.getValue();
-        }
-
-        private static int countToIndex(long value) {
-            return (int) (value % getHistoryLength());
-        }
     }
 }

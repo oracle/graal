@@ -28,6 +28,7 @@ package com.oracle.objectfile;
 /**
  * A build dependency is a pair of LayoutDecisions (a, b), such that a depends on b.
  */
+@SuppressWarnings("serial")
 public final class BuildDependency implements Comparable<Object> {
 
     private static class DuplicateDependencyException extends Exception {

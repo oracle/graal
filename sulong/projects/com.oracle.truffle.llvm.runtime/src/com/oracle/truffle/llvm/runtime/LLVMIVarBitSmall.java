@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,19 +46,17 @@ public final class LLVMIVarBitSmall extends LLVMIVarBit {
 
     public static final int MAX_SIZE = Long.SIZE;
 
-    private static final long ALL_BITS = -1L;
-
     private final int bits;
     private final long value;
 
-    LLVMIVarBitSmall(int bits, long value) {
+    public LLVMIVarBitSmall(int bits, long value) {
         this.bits = bits;
         this.value = value;
 
         assert bits <= MAX_SIZE;
     }
 
-    LLVMIVarBitSmall(int bits, byte[] arr, int arrBits, boolean signExtend) {
+    public LLVMIVarBitSmall(int bits, byte[] arr, int arrBits, boolean signExtend) {
         this.bits = bits;
 
         long v = 0;
@@ -84,13 +82,9 @@ public final class LLVMIVarBitSmall extends LLVMIVarBit {
     }
 
     private static long getCleanedValue(long value, int bits, boolean signed) {
-        boolean oneExtend = signed && (value & (1 << (bits - 1))) != 0;
-
-        if (oneExtend) {
-            return value | (ALL_BITS << bits);
-        } else {
-            return value & (ALL_BITS >>> (Long.SIZE - bits));
-        }
+        int shl = Long.SIZE - bits;
+        long leftAligned = value << shl;
+        return signed ? leftAligned >> shl : leftAligned >>> shl;
     }
 
     public long getCleanedValue(boolean signed) {

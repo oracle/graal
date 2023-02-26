@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.classinitialization;
 
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
+import java.lang.reflect.Proxy;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -38,9 +39,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState.GuardsStage;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -53,6 +55,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -90,20 +93,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * initialized anyway, the parsing is aborted using a
  * {@link ClassInitializerHasSideEffectsException} as soon as one of the tests fail.
  *
- * To make the analysis inter-procedural, {@link ConfigurableClassInitialization} is used when a
- * not-yet-initialized type is found. This can then lead to a recursive invocation of this early
+ * To make the analysis inter-procedural, {@link ProvenSafeClassInitializationSupport} is used when
+ * a not-yet-initialized type is found. This can then lead to a recursive invocation of this early
  * class initializer analysis. To avoid infinite recursion when class initializers have cyclic
  * dependencies, the analysis bails out when a cycle is detected. As with all analysis done by
- * {@link ConfigurableClassInitialization}, there is no synchronization between threads, so the same
- * class and the same dependencies can be concurrently analyzed by multiple threads.
+ * {@link ProvenSafeClassInitializationSupport}, there is no synchronization between threads, so the
+ * same class and the same dependencies can be concurrently analyzed by multiple threads.
  */
 final class EarlyClassInitializerAnalysis {
 
-    private final ConfigurableClassInitialization classInitializationSupport;
+    private final ProvenSafeClassInitializationSupport classInitializationSupport;
     private final Providers originalProviders;
     private final HighTierContext context;
 
-    EarlyClassInitializerAnalysis(ConfigurableClassInitialization classInitializationSupport) {
+    EarlyClassInitializerAnalysis(ProvenSafeClassInitializationSupport classInitializationSupport) {
         this.classInitializationSupport = classInitializationSupport;
 
         originalProviders = GraalAccess.getOriginalProviders();
@@ -112,6 +115,15 @@ final class EarlyClassInitializerAnalysis {
 
     @SuppressWarnings("try")
     boolean canInitializeWithoutSideEffects(Class<?> clazz, Set<Class<?>> existingAnalyzedClasses) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && Proxy.isProxyClass(clazz)) {
+            /*
+             * The checks below consider proxy class initialization as of JDK 19 to have side
+             * effects because it accesses Class.classLoader and System.allowSecurityManager, but
+             * these are not actual side effects, so we override these checks for proxy classes so
+             * that they can still be initialized at build time. (GR-40009)
+             */
+            return true;
+        }
         ResolvedJavaType type = originalProviders.getMetaAccess().lookupJavaType(clazz);
         assert type.getSuperclass() == null || type.getSuperclass().isInitialized() : "This analysis assumes that the superclass was successfully analyzed and initialized beforehand: " +
                         type.toJavaName(true);
@@ -161,8 +173,12 @@ final class EarlyClassInitializerAnalysis {
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
 
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).build();
-        graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug)
+                        .method(clinit)
+                        .recordInlinedMethods(false)
+                        .build();
+        graph.getGraphState().setGuardsStage(GuardsStage.FIXED_DEOPTS);
+        graph.getGraphState().setAfterStage(StageFlag.GUARD_LOWERING);
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, graphBuilderConfig, context.getOptimisticOptimizations());
 
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(new AbortOnDisallowedNode())) {
@@ -201,7 +217,7 @@ final class EarlyClassInitializerAnalysis {
             if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
             }
-            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
+            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ProvenSafeClassInitializationSupport.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
                 assert type.isInitialized() : "Type must be initialized now";
                 return false;
             }

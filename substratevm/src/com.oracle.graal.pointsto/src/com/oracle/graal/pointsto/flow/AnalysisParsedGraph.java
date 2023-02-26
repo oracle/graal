@@ -44,6 +44,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -96,12 +97,22 @@ public final class AnalysisParsedGraph {
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
 
+            Object result = bb.getHostVM().parseGraph(bb, method);
+            if (result != HostVM.PARSING_UNHANDLED) {
+                if (result instanceof StructuredGraph) {
+                    return optimizeAndEncode(bb, method, (StructuredGraph) result, false);
+                } else {
+                    assert result == HostVM.PARSING_FAILED;
+                    return EMPTY;
+                }
+            }
+
             StructuredGraph graph = method.buildGraph(debug, method, bb.getProviders(), Purpose.ANALYSIS);
             if (graph != null) {
                 return optimizeAndEncode(bb, method, graph, false);
             }
 
-            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
+            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, options);
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
@@ -114,7 +125,10 @@ public final class AnalysisParsedGraph {
                 return EMPTY;
             }
 
-            graph = new StructuredGraph.Builder(options, debug).method(method).build();
+            graph = new StructuredGraph.Builder(options, debug)
+                            .method(method)
+                            .recordInlinedMethods(false)
+                            .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
                 // enable this logging to get log output in compilation passes

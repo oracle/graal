@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -73,8 +74,10 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -1172,7 +1175,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static float getBufferFloatBoundary(ByteBuffer buffer, int index) {
         return buffer.getFloat(index);
     }
@@ -1209,7 +1212,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferFloatBoundary(ByteBuffer buffer, int index, float value) {
         buffer.putFloat(index, value);
     }
@@ -1240,7 +1243,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static double getBufferDoubleBoundary(ByteBuffer buffer, int index) {
         return buffer.getDouble(index);
     }
@@ -1277,7 +1280,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferDoubleBoundary(ByteBuffer buffer, int index, double value) {
         buffer.putDouble(index, value);
     }
@@ -1382,6 +1385,10 @@ final class HostObject implements TruffleObject {
 
         Class<?> c = classProfile.profile(obj).getClass();
         return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
+    }
+
+    private static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float || value instanceof Double;
     }
 
     @ExportMessage
@@ -1706,18 +1713,16 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     boolean hasExceptionCause() {
-        return isException() && ((Throwable) obj).getCause() instanceof com.oracle.truffle.api.TruffleException;
+        return isException() && ((Throwable) obj).getCause() instanceof AbstractTruffleException;
     }
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     Object getExceptionCause() throws UnsupportedMessageException {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (cause instanceof com.oracle.truffle.api.TruffleException) {
+            if (cause instanceof AbstractTruffleException) {
                 return cause;
             }
         }
@@ -1770,27 +1775,57 @@ final class HostObject implements TruffleObject {
     }
 
     @TruffleBoundary
-    static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
+    private static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
         try {
             if (javaObject == null) {
                 return "null";
             } else if (javaObject.getClass().isArray()) {
                 return arrayToString(context, javaObject, level, allowSideEffects);
             } else if (javaObject instanceof Class) {
-                return ((Class<?>) javaObject).getTypeName();
+                return getTypeNameSafe((Class<?>) javaObject);
             } else {
-                if (allowSideEffects) {
-                    return Objects.toString(javaObject);
-                } else {
-                    return javaObject.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(javaObject));
+                if (allowSideEffects && context != null) {
+                    Object hostObject = HostObject.forObject(javaObject, context);
+                    try {
+                        InteropLibrary thisLib = InteropLibrary.getUncached(hostObject);
+                        if (thisLib.isBoolean(hostObject)) {
+                            return Boolean.toString(thisLib.asBoolean(hostObject));
+                        } else if (thisLib.isString(hostObject)) {
+                            return thisLib.asString(hostObject);
+                        } else if (thisLib.isNumber(hostObject)) {
+                            assert isJavaPrimitiveNumber(javaObject) : javaObject;
+                            return javaObject.toString();
+                        } else if (thisLib.isMemberInvocable(hostObject, "toString")) {
+                            Object result = thisLib.invokeMember(hostObject, "toString");
+                            return InteropLibrary.getUncached().asString(result);
+                        }
+                    } catch (InteropException e) {
+                        // ignore exception and fall back to the !allowSideEffects version
+                    }
                 }
+                return getTypeNameSafe(javaObject.getClass());
             }
         } catch (Throwable t) {
             throw context.hostToGuestException(t);
         }
     }
 
+    /**
+     * Safe version of {@link Class#getTypeName()} that strips any hidden class suffix from the
+     * class name.
+     */
+    @TruffleBoundary
+    private static String getTypeNameSafe(Class<?> type) {
+        String typeName = type.getTypeName();
+        int slash = typeName.indexOf('/');
+        if (slash != -1) {
+            return typeName.substring(0, slash);
+        }
+        return typeName;
+    }
+
     private static String arrayToString(HostContext context, Object array, int level, boolean allowSideEffects) {
+        CompilerAsserts.neverPartOfCompilation();
         if (array == null) {
             return "null";
         }
@@ -2194,6 +2229,68 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasMetaParents() {
+        return isClass() && (asClass().getSuperclass() != null || asClass().getInterfaces().length > 0);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (!hasMetaParents()) {
+            throw UnsupportedMessageException.create();
+        }
+        Class<?> superClass = asClass().getSuperclass();
+        Class<?>[] interfaces = asClass().getInterfaces();
+        HostObject[] metaObjects = new HostObject[superClass == null ? interfaces.length : interfaces.length + 1];
+
+        int i = 0;
+        if (superClass != null) {
+            metaObjects[i++] = HostObject.forClass(superClass, context);
+        }
+        for (int j = 0; j < interfaces.length; j++) {
+            metaObjects[i++] = HostObject.forClass(interfaces[j], context);
+        }
+        return new TypesArray(metaObjects);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class TypesArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final HostObject[] types;
+
+        TypesArray(HostObject[] types) {
+            this.types = types;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return types.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < types.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                error.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return types[(int) idx];
+        }
+    }
+
     boolean isStaticClass() {
         return extraInfo instanceof Class<?>;
     }
@@ -2234,7 +2331,7 @@ final class HostObject implements TruffleObject {
     static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doHostObject(HostObject receiver, HostObject other) {
-            return receiver.obj == other.obj ? TriState.TRUE : TriState.FALSE;
+            return TriState.valueOf(receiver.obj == other.obj && receiver.isStaticClass() == other.isStaticClass());
         }
 
         @Fallback
@@ -2252,7 +2349,7 @@ final class HostObject implements TruffleObject {
     public boolean equals(Object o) {
         if (o instanceof HostObject) {
             HostObject other = (HostObject) o;
-            return this.obj == other.obj && this.context == other.context;
+            return this.obj == other.obj && this.extraInfo == other.extraInfo && this.context == other.context;
         }
         return false;
     }

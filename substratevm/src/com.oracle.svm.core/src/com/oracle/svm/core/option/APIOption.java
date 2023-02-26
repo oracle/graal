@@ -74,6 +74,7 @@ public @interface APIOption {
     APIOptionKind kind() default APIOptionKind.Default;
 
     char WHITESPACE_SEPARATOR = ' ';
+    char NO_SEPARATOR = 0;
 
     /**
      * Provide a custom separator that should be used to separate the option name from its option
@@ -123,8 +124,8 @@ public @interface APIOption {
          */
         Negated,
         /**
-         * Denotes that the annotated {@code String} option represents a file system path. If the
-         * option value is not an absolute path, it will be resolved against the current working
+         * Denotes that the annotated {@code String} option represents one or more file system
+         * paths, separated by ','. Relative paths will be resolved against the current working
          * directory in which the native image tool is executed.
          */
         Paths

@@ -47,60 +47,60 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
+
+import sun.misc.Unsafe;
 
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
  * subclass of {@link Node} that is used.
  */
-@SuppressWarnings("deprecation")
 final class NodeClassImpl extends NodeClass {
-    private static final NodeFieldAccessor[] EMPTY_NODE_FIELD_ARRAY = new NodeFieldAccessor[0];
+    private static final NodeFieldData[] EMPTY_NODE_FIELD_ARRAY = new NodeFieldData[0];
 
-    // The comprehensive list of all fields.
-    private final NodeFieldAccessor[] fields;
-    private final NodeFieldAccessor parentField;
-
+    private final NodeFieldData[] fields;
     private final Class<? extends Node> clazz;
+    private final boolean replaceAllowed;
 
     NodeClassImpl(Class<? extends Node> clazz) {
         super(clazz);
         if (!Node.class.isAssignableFrom(clazz)) {
             throw new IllegalArgumentException();
         }
-
-        List<NodeFieldAccessor> fieldsList = new ArrayList<>();
-        NodeFieldAccessor parentFieldTmp = null;
-
-        try {
-            Field field = Node.class.getDeclaredField("parent");
-            assert Node.class.isAssignableFrom(field.getType());
-            parentFieldTmp = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.PARENT, field);
-        } catch (NoSuchFieldException e) {
-            throw new AssertionError("Node field not found", e);
-        }
-
+        List<NodeFieldData> fieldsList = new ArrayList<>();
         collectInstanceFields(clazz, fieldsList);
 
-        Collections.sort(fieldsList, new Comparator<NodeFieldAccessor>() {
-            public int compare(NodeFieldAccessor o1, NodeFieldAccessor o2) {
+        Collections.sort(fieldsList, new Comparator<NodeFieldData>() {
+            public int compare(NodeFieldData o1, NodeFieldData o2) {
                 return Integer.compare(order(o1), order(o2));
             }
 
-            private int order(NodeFieldAccessor nodeField) {
+            private int order(NodeFieldData nodeField) {
                 return isChildField(nodeField) ? 0 : (isChildrenField(nodeField) ? 0 : (isCloneableField(nodeField) ? 1 : 2));
             }
         });
 
+        if (clazz.getAnnotation(DenyReplace.class) != null) {
+            if (!Modifier.isFinal(clazz.getModifiers())) {
+                throw new IllegalStateException("@DenyReplace can only be used for final classes.");
+            }
+            replaceAllowed = false;
+        } else {
+            replaceAllowed = true;
+        }
+
         this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
-        this.parentField = parentFieldTmp;
         this.clazz = clazz;
     }
 
-    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeFieldAccessor> fieldsList) {
+    @Override
+    protected boolean isReplaceAllowed() {
+        return replaceAllowed;
+    }
+
+    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeFieldData> fieldsList) {
         if (clazz.getSuperclass() != null) {
             collectInstanceFields(clazz.getSuperclass(), fieldsList);
         }
@@ -110,24 +110,25 @@ final class NodeClassImpl extends NodeClass {
                 continue;
             }
 
-            NodeFieldAccessor nodeField;
-            if (field.getDeclaringClass() == Node.class && (field.getName().equals("parent") || field.getName().equals("nodeClass"))) {
+            NodeFieldData nodeField;
+            if (field.getDeclaringClass() == Node.class && (field.getName().equals("parent"))) {
                 continue;
-            } else if (field.getAnnotation(Child.class) != null) {
-                checkChildField(field);
-                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.CHILD, field);
-            } else if (field.getAnnotation(Children.class) != null) {
-                checkChildrenField(field);
-                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.CHILDREN, field);
-            } else {
-                nodeField = NodeFieldAccessor.create(NodeFieldAccessor.NodeFieldKind.DATA, field);
             }
+            nodeField = createField(field);
             fieldsList.add(nodeField);
         }
     }
 
-    private static boolean isNodeType(Class<?> clazz) {
-        return Node.class.isAssignableFrom(clazz) || (clazz.isInterface() && NodeInterface.class.isAssignableFrom(clazz));
+    private static NodeFieldData createField(Field field) {
+        if (field.getAnnotation(Child.class) != null) {
+            checkChildField(field);
+            return new NodeFieldData(NodeFieldKind.CHILD, field);
+        } else if (field.getAnnotation(Children.class) != null) {
+            checkChildrenField(field);
+            return new NodeFieldData(NodeFieldKind.CHILDREN, field);
+        } else {
+            return new NodeFieldData(NodeFieldKind.DATA, field);
+        }
     }
 
     private static void checkChildField(Field field) {
@@ -146,8 +147,23 @@ final class NodeClassImpl extends NodeClass {
     }
 
     @Override
-    public NodeFieldAccessor getParentField() {
-        return parentField;
+    Field[] getAccessedFields() {
+        /*
+         * Any field read using unsafe is returned here.
+         */
+        Field[] reflectionFields = new Field[fields.length];
+        for (int i = 0; i < fields.length; i++) {
+            try {
+                reflectionFields[i] = fields[i].declaringClass.getDeclaredField(fields[i].name);
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return reflectionFields;
+    }
+
+    private static boolean isNodeType(Class<?> clazz) {
+        return Node.class.isAssignableFrom(clazz) || (clazz.isInterface() && NodeInterface.class.isAssignableFrom(clazz));
     }
 
     @Override
@@ -176,143 +192,48 @@ final class NodeClassImpl extends NodeClass {
     }
 
     @Override
-    protected Iterable<NodeFieldAccessor> getNodeFields() {
-        return getNodeFields(null);
-    }
-
-    @Override
-    protected NodeFieldAccessor[] getNodeFieldArray() {
+    protected Object[] getNodeFieldArray() {
         return fields;
-    }
-
-    /**
-     * Functional interface equivalent to {@code Predicate<NodeFieldAccessor>}.
-     */
-    private interface NodeFieldFilter {
-        boolean test(NodeFieldAccessor field);
-    }
-
-    private Iterable<NodeFieldAccessor> getNodeFields(final NodeFieldFilter filter) {
-        return new Iterable<NodeFieldAccessor>() {
-            public Iterator<NodeFieldAccessor> iterator() {
-                return new Iterator<NodeFieldAccessor>() {
-                    private int cursor = -1;
-                    {
-                        forward();
-                    }
-
-                    private void forward() {
-                        for (int i = cursor + 1; i < fields.length; i++) {
-                            NodeFieldAccessor field = fields[i];
-                            if (filter == null || filter.test(field)) {
-                                cursor = i;
-                                return;
-                            }
-                        }
-                        cursor = fields.length;
-                    }
-
-                    public boolean hasNext() {
-                        assert cursor >= 0;
-                        return cursor < fields.length;
-                    }
-
-                    public NodeFieldAccessor next() {
-                        if (hasNext()) {
-                            NodeFieldAccessor next = fields[cursor];
-                            forward();
-                            return next;
-                        } else {
-                            throw new NoSuchElementException();
-                        }
-                    }
-
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        };
-    }
-
-    @Override
-    public NodeFieldAccessor[] getFields() {
-        return getNodeFieldArray();
-    }
-
-    @Override
-    public NodeFieldAccessor[] getChildFields() {
-        return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeFieldAccessor field) {
-                return isChildField(field);
-            }
-        }));
-    }
-
-    @Override
-    public NodeFieldAccessor[] getChildrenFields() {
-        return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeFieldAccessor field) {
-                return isChildrenField(field);
-            }
-        }));
-    }
-
-    @Override
-    public NodeFieldAccessor[] getCloneableFields() {
-        return iterableToArray(getNodeFields(new NodeFieldFilter() {
-            public boolean test(NodeFieldAccessor field) {
-                return isCloneableField(field);
-            }
-        }));
-    }
-
-    private static NodeFieldAccessor[] iterableToArray(Iterable<NodeFieldAccessor> fields) {
-        ArrayList<NodeFieldAccessor> fieldList = new ArrayList<>();
-        for (NodeFieldAccessor field : fields) {
-            fieldList.add(field);
-        }
-        return fieldList.toArray(new NodeFieldAccessor[0]);
     }
 
     @Override
     protected void putFieldObject(Object field, Node receiver, Object value) {
-        ((NodeFieldAccessor) field).putObject(receiver, value);
+        ((NodeFieldData) field).putObject(receiver, value);
     }
 
     @Override
     protected Object getFieldObject(Object field, Node receiver) {
-        return ((NodeFieldAccessor) field).getObject(receiver);
+        return ((NodeFieldData) field).getObject(receiver);
     }
 
     @Override
     protected Object getFieldValue(Object field, Node receiver) {
-        return ((NodeFieldAccessor) field).loadValue(receiver);
+        return ((NodeFieldData) field).getObjectOrPrimitive(receiver);
     }
 
     @Override
     protected Class<?> getFieldType(Object field) {
-        return ((NodeFieldAccessor) field).getType();
+        return ((NodeFieldData) field).type;
     }
 
     @Override
     protected String getFieldName(Object field) {
-        return ((NodeFieldAccessor) field).getName();
+        return ((NodeFieldData) field).name;
     }
 
     @Override
     protected boolean isChildField(Object field) {
-        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.CHILD;
+        return ((NodeFieldData) field).kind == NodeFieldKind.CHILD;
     }
 
     @Override
     protected boolean isChildrenField(Object field) {
-        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.CHILDREN;
+        return ((NodeFieldData) field).kind == NodeFieldKind.CHILDREN;
     }
 
     @Override
     protected boolean isCloneableField(Object field) {
-        return ((NodeFieldAccessor) field).getKind() == NodeFieldAccessor.NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(((NodeFieldAccessor) field).getType());
+        return ((NodeFieldData) field).clonable;
     }
 
     @Override
@@ -320,4 +241,114 @@ final class NodeClassImpl extends NodeClass {
         return true;
     }
 
+    enum NodeFieldKind {
+        CHILD,
+        CHILDREN,
+        DATA
+    }
+
+    static final class NodeFieldData {
+
+        final NodeFieldKind kind;
+        final Class<?> type;
+        final String name;
+        final Class<?> declaringClass;
+        final long offset;
+        final boolean clonable;
+
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
+        NodeFieldData(NodeFieldKind kind, Field field) {
+            this.kind = kind;
+            this.type = field.getType();
+            this.name = field.getName();
+            this.declaringClass = field.getDeclaringClass();
+            this.offset = UNSAFE.objectFieldOffset(field);
+            this.clonable = kind == NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(field.getType());
+        }
+
+        long getOffset() {
+            return offset;
+        }
+
+        public void putObject(Node receiver, Object value) {
+            assert validateAccess(receiver, value);
+            UNSAFE.putObject(receiver, getOffset(), value);
+        }
+
+        private boolean validateAccess(Node receiver, Object value) {
+            if (type.isPrimitive() || !type.isInstance(value)) {
+                throw illegalArgumentException(value);
+            }
+            if (kind != NodeFieldKind.CHILD) {
+                Object oldValue = getObject(receiver);
+                if (oldValue == null || value == null) {
+                    if (oldValue != value) {
+                        throw illegalArgumentException(value);
+                    }
+                } else {
+                    if (oldValue.getClass() != value.getClass()) {
+                        assert !(value instanceof Node) || ((Node) value).getNodeClass().isReplaceAllowed() : "type change not allowed if replace not allowed";
+                        assert !(oldValue instanceof Node) || ((Node) oldValue).getNodeClass().isReplaceAllowed() : "type change not allowed if replace not allowed";
+                        throw illegalArgumentException(value);
+                    }
+                }
+            }
+            return true;
+        }
+
+        private IllegalArgumentException illegalArgumentException(Object value) {
+            return new IllegalArgumentException("Cannot set " + type.getName() + " field " + toString() + " to " + (value == null ? "null" : value.getClass().getName()));
+        }
+
+        public Object getObject(Node receiver) {
+            if (!type.isPrimitive()) {
+                return UNSAFE.getObject(receiver, getOffset());
+            } else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        public Object getObjectOrPrimitive(Node node) {
+            if (type == boolean.class) {
+                return UNSAFE.getBoolean(node, getOffset());
+            } else if (type == byte.class) {
+                return UNSAFE.getByte(node, getOffset());
+            } else if (type == short.class) {
+                return UNSAFE.getShort(node, getOffset());
+            } else if (type == char.class) {
+                return UNSAFE.getChar(node, getOffset());
+            } else if (type == int.class) {
+                return UNSAFE.getInt(node, getOffset());
+            } else if (type == long.class) {
+                return UNSAFE.getLong(node, getOffset());
+            } else if (type == float.class) {
+                return UNSAFE.getFloat(node, getOffset());
+            } else if (type == double.class) {
+                return UNSAFE.getDouble(node, getOffset());
+            } else {
+                return getObject(node);
+            }
+        }
+
+        private static final Unsafe UNSAFE = getUnsafe();
+
+        private static Unsafe getUnsafe() {
+            try {
+                return Unsafe.getUnsafe();
+            } catch (SecurityException e) {
+            }
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return declaringClass.getName() + "." + name;
+        }
+    }
 }

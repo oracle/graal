@@ -29,6 +29,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -37,6 +40,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.vm.FrameCookie;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -47,7 +52,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public abstract class EspressoRootNode extends RootNode implements ContextAccess {
 
     // must not be of type EspressoMethodNode as it might be wrapped by instrumentation
-    @Child protected EspressoBaseMethodNode methodNode;
+    @Child protected EspressoInstrumentableRootNode methodNode;
 
     private static final int SLOT_UNUSED = -2;
     private static final int SLOT_UNINITIALIZED = -1;
@@ -64,22 +69,23 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode, boolean usesMonitors) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+    private EspressoRootNode(FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode, boolean usesMonitors) {
+        super(methodNode.getMethodVersion().getMethod().getLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? SLOT_UNINITIALIZED : SLOT_UNUSED;
         this.cookieSlot = SLOT_UNINITIALIZED;
     }
 
-    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
-        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
-        this.methodNode = methodNode;
+    // Splitting constructor
+    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode) {
+        super(methodNode.getMethodVersion().getMethod().getLanguage(), frameDescriptor);
+        this.methodNode = methodNode.split();
         this.monitorSlot = split.monitorSlot;
         this.cookieSlot = split.cookieSlot;
     }
 
     public final Method getMethod() {
-        return getMethodNode().getMethod();
+        return getMethodVersion().getMethod();
     }
 
     public final Method.MethodVersion getMethodVersion() {
@@ -90,12 +96,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public boolean isCloningAllowed() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override
     protected boolean isCloneUninitializedSupported() {
-        return getMethodNode().shouldSplit();
+        return getMethodNode().canSplit();
     }
 
     @Override
@@ -108,14 +114,27 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getContext();
     }
 
+    /*
+     * Needed to prevent svm analysis from including other versions of getMeta.
+     */
+    @Override
+    public Meta getMeta() {
+        return getContext().getMeta();
+    }
+
     @Override
     public final String getName() {
+        return getMethod().getName().toString() + getMethod().getRawSignature();
+    }
+
+    @Override
+    public String getQualifiedName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
     }
 
     @Override
     public final String toString() {
-        return getName();
+        return getQualifiedName();
     }
 
     @Override
@@ -128,17 +147,60 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getEncapsulatingSourceSection();
     }
 
-    public EspressoBaseMethodNode getMethodNode() {
+    public EspressoInstrumentableRootNode getMethodNode() {
         return methodNode;
     }
 
-    public static EspressoRootNode create(FrameDescriptor descriptor, EspressoMethodNode methodNode) {
+    private static EspressoRootNode create(FrameDescriptor descriptor, EspressoInstrumentableRootNode methodNode) {
         FrameDescriptor desc = descriptor != null ? descriptor : new FrameDescriptor();
-        if (methodNode.getMethod().isSynchronized()) {
-            return new Synchronized(desc, methodNode);
+
+        EspressoRootNode result = null;
+        if (methodNode.getMethodVersion().isSynchronized()) {
+            result = new Synchronized(desc, methodNode);
         } else {
-            return new Default(desc, methodNode);
+            result = new Default(desc, methodNode);
         }
+        assert hasExactlyOneRootBodyTag(result.getMethodNode()) : result;
+        return result;
+    }
+
+    public static boolean hasExactlyOneRootBodyTag(EspressoNode body) {
+        return NodeUtil.countNodes(body, node -> node instanceof EspressoInstrumentableNode && ((EspressoInstrumentableNode) node).hasTag(StandardTags.RootBodyTag.class)) == 1;
+    }
+
+    /**
+     * Creates a root node that can execute the Java bytecodes of the given method. The given method
+     * must be a concrete, non-native Java method.
+     */
+    public static EspressoRootNode createForBytecodes(Method.MethodVersion methodVersion) {
+        BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
+        return create(bytecodeNode.getFrameDescriptor(), new MethodWithBytecodeNode(bytecodeNode));
+    }
+
+    /**
+     * Creates a root node that can execute a native Java method.
+     */
+    public static EspressoRootNode createNative(Method.MethodVersion methodVersion, TruffleObject nativeMethod) {
+        return create(null, new NativeMethodNode(nativeMethod, methodVersion));
+    }
+
+    /**
+     * Creates a root node that can execute a native Java method, implemented in Java for Espresso,
+     * without going to native code.
+     *
+     * Used to link native calls implemented in Java that are bound with JNI's
+     * {@code registerNatives} e.g. JVM_IHashCode, JVM_IsNaN, JVM_ArrayCopy.
+     */
+    public static EspressoRootNode createIntrinsifiedNative(Method.MethodVersion methodVersion, CallableFromNative.Factory factory, Object env) {
+        return create(null, new IntrinsifiedNativeMethodNode(methodVersion, factory, env));
+    }
+
+    /**
+     * Creates a root node that can execute a substitution e.g. an implementation of the method in
+     * host Java, instead of the original givenmethod.
+     */
+    public static EspressoRootNode createSubstitution(Method.MethodVersion methodVersion, JavaSubstitution.Factory factory) {
+        return create(null, new IntrinsicSubstitutorNode(methodVersion, factory));
     }
 
     public final int readBCI(Frame frame) {
@@ -189,6 +251,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     final void initMonitorStack(VirtualFrame frame, MonitorStack monitorStack) {
         initMonitorSlot(frame);
+        assert monitorStack != null;
         frame.setAuxiliarySlot(monitorSlot, monitorStack);
     }
 
@@ -219,9 +282,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     protected MonitorStack getMonitorStack(Frame frame) {
         assert monitorSlot >= 0;
-        Object frameResult = frame.getAuxiliarySlot(monitorSlot);
-        assert frameResult instanceof MonitorStack;
-        return (MonitorStack) frameResult;
+        return (MonitorStack) frame.getAuxiliarySlot(monitorSlot);
     }
 
     public final StaticObject[] getMonitorsOnFrame(Frame frame) {
@@ -241,11 +302,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     static final class Synchronized extends EspressoRootNode {
 
-        Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+        Synchronized(FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode) {
             super(frameDescriptor, methodNode, true);
         }
 
-        Synchronized(Synchronized split) {
+        private Synchronized(Synchronized split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 
@@ -258,6 +319,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         public Object execute(VirtualFrame frame) {
             Method method = getMethod();
             assert method.isSynchronized();
+            assert method.getDeclaringKlass().isInitializedOrInitializing() : method.getDeclaringKlass();
             StaticObject monitor = method.isStatic()
                             ? /* class */ method.getDeclaringKlass().mirror()
                             : /* receiver */ (StaticObject) frame.getArguments()[0];
@@ -272,20 +334,20 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         private void enterSynchronized(VirtualFrame frame, StaticObject monitor) {
-            InterpreterToVM.monitorEnter(monitor, getMeta());
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
             initMonitorStack(frame, monitorStack);
+            InterpreterToVM.monitorEnter(monitor, getMeta());
         }
     }
 
     static final class Default extends EspressoRootNode {
 
-        Default(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
-            super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
+        Default(FrameDescriptor frameDescriptor, EspressoInstrumentableRootNode methodNode) {
+            super(frameDescriptor, methodNode, methodNode.getMethodVersion().usesMonitors());
         }
 
-        Default(Default split) {
+        private Default(Default split) {
             super(split, split.getFrameDescriptor(), split.getMethodNode());
         }
 
@@ -296,6 +358,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         @Override
         public Object execute(VirtualFrame frame) {
+            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() || getContext().anyHierarchyChanged() : getMethod().getDeclaringKlass();
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
@@ -368,6 +431,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     protected final boolean isTrivial() {
-        return !methodNode.getMethod().isSynchronized() && methodNode.isTrivial();
+        return !methodNode.getMethodVersion().isSynchronized() && methodNode.isTrivial();
     }
 }

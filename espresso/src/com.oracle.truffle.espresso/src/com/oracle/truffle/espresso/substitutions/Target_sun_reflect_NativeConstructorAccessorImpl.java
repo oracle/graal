@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,44 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.Constructor;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
 public final class Target_sun_reflect_NativeConstructorAccessorImpl {
-    @Substitution
-    public static @JavaType(Object.class) StaticObject newInstance0(@JavaType(Constructor.class) StaticObject constructor, @JavaType(Object[].class) StaticObject args0,
-                    @Inject Meta meta) {
-        Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass();
-        klass.safeInitialize();
-        if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
-            throw meta.throwException(meta.java_lang_InstantiationException);
+
+    @Substitution(methodName = "newInstance0")
+    abstract static class NewInstance0 extends SubstitutionNode {
+        public abstract @JavaType(Object.class) StaticObject execute(
+                        @JavaType(Constructor.class) StaticObject constructor,
+                        @JavaType(Object[].class) StaticObject args0,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta);
+
+        @Specialization()
+        public @JavaType(Object.class) StaticObject newInstance(
+                        @JavaType(Constructor.class) StaticObject constructor,
+                        @JavaType(Object[].class) StaticObject args0,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta,
+                        @Cached ToEspressoNode toEspressoNode) {
+            Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass(meta);
+            klass.safeInitialize();
+            if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
+                throw meta.throwException(meta.java_lang_InstantiationException);
+            }
+            Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor, meta);
+            StaticObject instance = klass.allocateInstance(meta.getContext());
+            StaticObject parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(constructor);
+            Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(language, meta, instance, args0, reflectedMethod, klass, parameterTypes, toEspressoNode);
+            return instance;
         }
-        Method reflectedMethod = Method.getHostReflectiveConstructorRoot(constructor, meta);
-        StaticObject instance = klass.allocateInstance();
-        StaticObject parameterTypes = meta.java_lang_reflect_Constructor_parameterTypes.getObject(constructor);
-        Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(meta, instance, args0, reflectedMethod, klass, parameterTypes);
-        return instance;
     }
 
     public static class SharedNativeConstructorAccessorImpl extends SubstitutionNamesProvider {

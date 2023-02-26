@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,8 @@ import java.util.EnumSet;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.object.Shape.Allocator;
 
 /**
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
@@ -59,17 +57,19 @@ import com.oracle.truffle.api.object.Shape.Allocator;
  *
  * NB: Instances of this class should be created only in static initializers.
  *
- * Planned to be deprecated.
- *
  * @since 0.8 or earlier
  * @deprecated since 21.1. Use {@link Shape.Builder} instead.
  */
-@Deprecated
+@SuppressWarnings("deprecation")
+@Deprecated(since = "21.1")
 public abstract class Layout {
     /** @since 0.8 or earlier */
     public static final String OPTION_PREFIX = "truffle.object.";
 
     private static final LayoutFactory LAYOUT_FACTORY = loadLayoutFactory();
+
+    static final int INT_TO_DOUBLE_FLAG = 1;
+    static final int INT_TO_LONG_FLAG = 2;
 
     /**
      * Constructor for subclasses.
@@ -86,7 +86,7 @@ public abstract class Layout {
      * @deprecated since 21.1. Use {@link Shape.Builder#allowImplicitCastIntToDouble(boolean)} and
      *             {@link Shape.Builder#allowImplicitCastIntToLong(boolean)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public enum ImplicitCast {
         /**
          * Enables values be implicitly cast from int to double.
@@ -102,68 +102,8 @@ public abstract class Layout {
         IntToLong
     }
 
-    /**
-     * Creates a new {@link Builder}.
-     *
-     * @see Layout.Builder
-     * @since 0.8 or earlier
-     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
-     */
-    @Deprecated
-    public static Builder newLayout() {
-        CompilerAsserts.neverPartOfCompilation();
-        return new Builder();
-    }
-
-    /**
-     * Equivalent to {@code Layout.newLayout().build()}.
-     *
-     * @see Layout.Builder#build()
-     * @since 0.8 or earlier
-     * @deprecated since 21.1. Use {@link Shape.Builder} instead.
-     */
-    @Deprecated
-    public static Layout createLayout() {
-        return newLayout().build();
-    }
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link Shape#newInstance()} instead
-     */
-    @Deprecated
-    public abstract DynamicObject newInstance(Shape shape);
-
     /** @since 0.8 or earlier */
     public abstract Class<? extends DynamicObject> getType();
-
-    /**
-     * Create a root shape.
-     *
-     * @param objectType that describes the object instance with this shape.
-     * @since 0.8 or earlier
-     */
-    public abstract Shape createShape(ObjectType objectType);
-
-    /**
-     * Create a root shape.
-     *
-     * @param objectType that describes the object instance with this shape.
-     * @param sharedData for language-specific use
-     * @since 0.8 or earlier
-     */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData);
-
-    /**
-     * Create a root shape.
-     *
-     * @param objectType that describes the object instance with this shape.
-     * @param sharedData for language-specific use
-     * @param flags for language-specific use, must be in the range 0-255.
-     * @return new instance of a shape
-     * @since 0.8 or earlier
-     */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData, int flags);
 
     /**
      * Create a root shape.
@@ -180,7 +120,9 @@ public abstract class Layout {
      *
      * @since 0.8 or earlier
      */
-    public abstract Allocator createAllocator();
+    @Deprecated(since = "21.1")
+    @SuppressWarnings("deprecation")
+    public abstract Shape.Allocator createAllocator();
 
     /** @since 0.8 or earlier */
     protected static LayoutFactory getFactory() {
@@ -226,10 +168,9 @@ public abstract class Layout {
      * @since 0.8 or earlier
      * @deprecated since 21.1. Use {@link Shape.Builder} instead.
      */
-    @Deprecated
+    @Deprecated(since = "21.1")
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
-        private boolean polymorphicUnboxing;
         private Class<? extends DynamicObject> dynamicObjectClass;
 
         /**
@@ -246,6 +187,7 @@ public abstract class Layout {
          *             invalid {@link DynamicObject.DynamicField @DynamicField}-annotated fields.
          * @since 0.8 or earlier
          */
+        @SuppressWarnings("deprecation")
         public Layout build() {
             return Layout.getFactory().createLayout(this);
         }
@@ -273,18 +215,6 @@ public abstract class Layout {
         }
 
         /**
-         * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
-         *
-         * @since 0.8 or earlier
-         * @deprecated unsupported, has no effect
-         */
-        @Deprecated
-        public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
-            this.polymorphicUnboxing = polymorphicUnboxing;
-            return this;
-        }
-
-        /**
          * Set the {@link DynamicObject} layout class to use.
          *
          * Must be {@link DynamicObject} or a subclass thereof.
@@ -303,18 +233,17 @@ public abstract class Layout {
     }
 
     /** @since 0.8 or earlier */
-    protected static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
+    static EnumSet<ImplicitCast> getAllowedImplicitCasts(Builder builder) {
         return builder.allowedImplicitCasts;
     }
 
-    /** @since 0.8 or earlier */
-    protected static boolean getPolymorphicUnboxing(Builder builder) {
-        return builder.polymorphicUnboxing;
+    /** @since 20.2.0 */
+    static Class<? extends DynamicObject> getType(Builder builder) {
+        return builder.dynamicObjectClass;
     }
 
-    /** @since 20.2.0 */
-    protected static Class<? extends DynamicObject> getType(Builder builder) {
-        return builder.dynamicObjectClass;
+    static int implicitCastFlags(EnumSet<ImplicitCast> allowedImplicitCasts) {
+        return (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
     }
 
     /**

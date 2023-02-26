@@ -7,8 +7,8 @@ permalink: /reference-manual/wasm/
 
 # GraalVM Implementation of WebAssembly
 
-GraalVM can run programs compiled to WebAssembly. It can interpret and compile
-WebAssembly code in the binary format or embed it into other programs.
+GraalVM can run programs compiled to WebAssembly.
+It can interpret and compile WebAssembly code in the binary format or embed it into other programs.
 The support for WebAssembly is in the early stages of its development.
 
 ## Installing Wasm

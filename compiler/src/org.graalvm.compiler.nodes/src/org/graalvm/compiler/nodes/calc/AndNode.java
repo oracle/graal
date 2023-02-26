@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,6 +78,73 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         return canonical(this, getOp(forX, forY), forX, forY, view);
     }
 
+    /**
+     * Given a value which is an input to an {@code AndNode} and an IntegerStamp for the other input
+     * determine if the input can be simplified by folding away an {@code AddNode} or an
+     * {@code OrNode}.
+     *
+     * @param usingAndInput the {@code AndNode} {@code ValueNode} input
+     * @param usingAndOtherStamp the stamp of the other input
+     * @return A {@code ValueNode} to use as a replacement input in place of the
+     *         {@code usingAndInput} input, null otherwise
+     */
+    public static ValueNode eliminateRedundantBinaryArithmeticOp(ValueNode usingAndInput, IntegerStamp usingAndOtherStamp) {
+        if (usingAndOtherStamp.isUnrestricted()) {
+            return null;
+        }
+        if (!(usingAndInput instanceof BinaryArithmeticNode<?>)) {
+            return null;
+        }
+        BinaryArithmeticNode<?> opNode = (BinaryArithmeticNode<?>) usingAndInput;
+        ValueNode opX = opNode.getX();
+        ValueNode opY = opNode.getY();
+        IntegerStamp stampX = (IntegerStamp) opX.stamp(NodeView.DEFAULT);
+        IntegerStamp stampY = (IntegerStamp) opY.stamp(NodeView.DEFAULT);
+        if (usingAndInput instanceof OrNode) {
+            // An OrNode strictly adds information to a bit pattern - it cannot remove set bits.
+            // We can fold an operand away when that operand does not contribute any bits to the
+            // masked result - check must be set against masked maybe set bits
+            if (!stampY.isUnrestricted() && (stampY.upMask() & usingAndOtherStamp.upMask()) == 0) {
+                return opX;
+            }
+            if (!stampX.isUnrestricted() && (stampX.upMask() & usingAndOtherStamp.upMask()) == 0) {
+                return opY;
+            }
+        } else if (usingAndInput instanceof AddNode) {
+            // like an OrNode above, an AddNode is adding information in a fixed set of
+            // bit positions, modulo carrying across columns. So if we know:
+            // 1) the operand has ones only where we know zeros must be in the and result
+            // 2) bit carrys can't mess up the pattern (eg bits are packed at the bottom)
+            // then we can simply fold the add away because it adds no information
+            long mightBeOne = usingAndOtherStamp.upMask();
+            // here we check all the bits that might be set are packed and contiguous at the bottom
+            // of the stamp - number of leading zeros + bitCount == number of bits
+            if (Long.numberOfLeadingZeros(mightBeOne) + Long.bitCount(mightBeOne) != 64) {
+                return null;
+            }
+
+            if (mightBeOne != 0) {
+                // check if the operand stamp has any ones in the range of possible ones
+                // if there are no ones we know there is no possibility of a carry and
+                // no information added so we can fold away the operation
+                //
+                // eg given a ((x << 2) + 15) & 3
+                // we know that the bits in the result of the and that might be one are the lowest
+                // two bits
+                //
+                // we know that x << 2 has no bits set in the lowest two bits so we don't need to
+                // add x << 2 to 15 to know what the result of the & 3 is - we can just do 15 & 3
+                if (!stampY.isUnrestricted() && (stampY.upMask() & mightBeOne) == 0) {
+                    return opX;
+                }
+                if (!stampX.isUnrestricted() && (stampX.upMask() & mightBeOne) == 0) {
+                    return opY;
+                }
+            }
+        }
+        return null;
+    }
+
     private static ValueNode canonical(AndNode self, BinaryOp<And> op, ValueNode forX, ValueNode forY, NodeView view) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return forX;
@@ -95,6 +162,14 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
                 return forY;
             } else if (((~yStamp.downMask()) & xStamp.upMask()) == 0) {
                 return forX;
+            }
+            ValueNode newLHS = eliminateRedundantBinaryArithmeticOp(forX, yStamp);
+            if (newLHS != null) {
+                return new AndNode(newLHS, forY);
+            }
+            ValueNode newRHS = eliminateRedundantBinaryArithmeticOp(forY, xStamp);
+            if (newRHS != null) {
+                return new AndNode(forX, newRHS);
             }
         }
 

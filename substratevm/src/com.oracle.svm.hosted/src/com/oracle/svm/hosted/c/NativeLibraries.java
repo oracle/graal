@@ -50,7 +50,6 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
@@ -75,15 +74,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -167,12 +164,12 @@ public final class NativeLibraries {
         public void add(String library, Collection<String> dependencies) {
             UserError.guarantee(library != null, "The library name must be not null and not empty");
 
-            Dependency libraryDependency = putWhenAbsent(library, new Dependency(library, new HashSet<>()));
+            Dependency libraryDependency = putWhenAbsent(library, new Dependency(library, ConcurrentHashMap.newKeySet()));
             Set<Dependency> collectedDependencies = libraryDependency.getDependencies();
 
             for (String dependency : dependencies) {
                 collectedDependencies.add(putWhenAbsent(
-                                dependency, new Dependency(dependency, new HashSet<>())));
+                                dependency, new Dependency(dependency, ConcurrentHashMap.newKeySet())));
             }
         }
 
@@ -270,7 +267,7 @@ public final class NativeLibraries {
 
     private ResolvedJavaType lookupAndRegisterType(Class<?> clazz) {
         AnalysisType type = (AnalysisType) metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
+        type.registerAsReachable("is native library type");
         return type;
     }
 
@@ -286,25 +283,27 @@ public final class NativeLibraries {
         return target;
     }
 
-    private static final String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
-    private static final String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+    private static String getStaticLibraryName(String libraryName) {
+        boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+        String prefix = targetWindows ? "" : "lib";
+        String suffix = targetWindows ? ".lib" : ".a";
+        return prefix + libraryName + suffix;
+    }
 
     private static Path getPlatformDependentJDKStaticLibraryPath() throws IOException {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Path staticLibPath = baseSearchPath.resolve("static");
-            Platform platform = ImageSingletons.lookup(Platform.class);
-            Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
-            if (LibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
-                platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
-                if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
-                    return platformDependentPath;
-                }
-            }
-
-            if (Files.exists(platformDependentPath)) {
+        Path staticLibPath = baseSearchPath.resolve("static");
+        Platform platform = ImageSingletons.lookup(Platform.class);
+        Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
+        if (HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
+            platformDependentPath = platformDependentPath.resolve(HostedLibCBase.singleton().getName());
+            if (HostedLibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                 return platformDependentPath;
             }
+        }
+
+        if (Files.exists(platformDependentPath)) {
+            return platformDependentPath;
         }
         return baseSearchPath;
     }
@@ -320,7 +319,7 @@ public final class NativeLibraries {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
             List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
-            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));
+            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
             } else {
@@ -340,15 +339,15 @@ public final class NativeLibraries {
             libraryPaths.add(staticLibsDir.toString());
         } else {
             if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && !CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue() &&
-                            !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
+                            !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue() && !NativeImageOptions.ReturnAfterAnalysis.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
                 if (Platform.includedIn(Platform.LINUX.class)) {
-                    libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
+                    libCMessage = " (target libc: " + HostedLibCBase.singleton().getName() + ")";
                 }
-                String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);
+                String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse the JDK from %s%n%s",
+                                "Building images for %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 libCMessage,
                                 jdkDownloadURL,
@@ -460,11 +459,12 @@ public final class NativeLibraries {
     }
 
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
-        return allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+        return allStaticLibs.get(Paths.get(getStaticLibraryName(staticLibraryName)));
     }
 
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+        String libSuffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
                 paths.filter(Files::isRegularFile)
@@ -545,7 +545,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,22 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Boolean;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Byte;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Char;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Double;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Float;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Illegal;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Int;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Long;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Object;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_ReturnAddress;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Void;
+
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -38,40 +52,40 @@ import com.oracle.truffle.espresso.jdwp.api.TagConstants;
  */
 public enum JavaKind {
     /** The primitive boolean kind, represented as an int on the stack. */
-    Boolean('Z', 4, "boolean", 1, true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
+    Boolean('Z', JVM_ArrayType_Boolean, "boolean", 1, true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
 
     /** The primitive byte kind, represented as an int on the stack. */
-    Byte('B', 8, "byte", 1, true, java.lang.Byte.TYPE, java.lang.Byte.class),
+    Byte('B', JVM_ArrayType_Byte, "byte", 1, true, java.lang.Byte.TYPE, java.lang.Byte.class),
 
     /** The primitive short kind, represented as an int on the stack. */
-    Short('S', 9, "short", 1, true, java.lang.Short.TYPE, java.lang.Short.class),
+    Short('S', JVM_ArrayType_Short, "short", 1, true, java.lang.Short.TYPE, java.lang.Short.class),
 
     /** The primitive char kind, represented as an int on the stack. */
-    Char('C', 5, "char", 1, true, java.lang.Character.TYPE, java.lang.Character.class),
+    Char('C', JVM_ArrayType_Char, "char", 1, true, java.lang.Character.TYPE, java.lang.Character.class),
 
     /** The primitive int kind, represented as an int on the stack. */
-    Int('I', 10, "int", 1, true, java.lang.Integer.TYPE, java.lang.Integer.class),
+    Int('I', JVM_ArrayType_Int, "int", 1, true, java.lang.Integer.TYPE, java.lang.Integer.class),
 
     /** The primitive float kind. */
-    Float('F', 6, "float", 1, false, java.lang.Float.TYPE, java.lang.Float.class),
+    Float('F', JVM_ArrayType_Float, "float", 1, false, java.lang.Float.TYPE, java.lang.Float.class),
 
     /** The primitive long kind. */
-    Long('J', 11, "long", 2, false, java.lang.Long.TYPE, java.lang.Long.class),
+    Long('J', JVM_ArrayType_Long, "long", 2, false, java.lang.Long.TYPE, java.lang.Long.class),
 
     /** The primitive double kind. */
-    Double('D', 7, "double", 2, false, java.lang.Double.TYPE, java.lang.Double.class),
+    Double('D', JVM_ArrayType_Double, "double", 2, false, java.lang.Double.TYPE, java.lang.Double.class),
 
     /** The Object kind, also used for arrays. */
-    Object('A', 12, "Object", 1, false, null, null),
+    Object('A', JVM_ArrayType_Object, "Object", 1, false, null, null),
 
     /** The void kind. */
-    Void('V', 14, "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
+    Void('V', JVM_ArrayType_Void, "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
 
     /** The return address type. */
-    ReturnAddress('r', 98, "return address", 1, false, null, null),
+    ReturnAddress('r', JVM_ArrayType_ReturnAddress, "return address", 1, false, null, null),
 
     /** The non-type. */
-    Illegal('-', 99, "illegal", 0, false, null, null);
+    Illegal('-', JVM_ArrayType_Illegal, "illegal", 0, false, null, null);
 
     private final char typeChar;
     private final String javaName;
@@ -82,6 +96,9 @@ public enum JavaKind {
     private final int basicType;
     private final Symbol<Type> type;
     private final Symbol<Name> name;
+    private final String unwrapMethodName;
+    private final String unwrapMethodDesc;
+    private final String wrapperValueOfDesc;
 
     JavaKind(char typeChar, int basicType, String javaName, int slotCount, boolean isStackInt, Class<?> primitiveJavaClass, Class<?> boxedJavaClass) {
         this.typeChar = typeChar;
@@ -93,6 +110,9 @@ public enum JavaKind {
         this.basicType = basicType;
         this.type = (primitiveJavaClass != null) ? StaticSymbols.putType("" + typeChar) : null;
         this.name = StaticSymbols.putName(javaName);
+        this.unwrapMethodName = (primitiveJavaClass != null) ? javaName + "Value" : null;
+        this.unwrapMethodDesc = (primitiveJavaClass != null) ? "()" + typeChar : null;
+        this.wrapperValueOfDesc = (primitiveJavaClass != null) ? "(" + typeChar + ")Ljava/lang/" + boxedJavaClass.getSimpleName() + ";" : null;
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 
@@ -257,6 +277,7 @@ public enum JavaKind {
             case 'V':
                 return Void;
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
         }
     }
@@ -425,6 +446,18 @@ public enum JavaKind {
     public Symbol<Name> getPrimitiveBinaryName() {
         EspressoError.guarantee(isPrimitive(), "not a primitive");
         return name;
+    }
+
+    public String getUnwrapMethodName() {
+        return unwrapMethodName;
+    }
+
+    public String getUnwrapMethodDesc() {
+        return unwrapMethodDesc;
+    }
+
+    public String getWrapperValueOfDesc() {
+        return wrapperValueOfDesc;
     }
 
     /**

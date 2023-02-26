@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -56,12 +56,13 @@ macro(setupOptions)
         check_c_compiler_flag("${CLANG_DISABLE_O0_OPTNONE}" HAVE_CLANG_DISABLE_O0_OPTNONE)
     endif()
 
-    set(OUTPUT "${SULONG_CURRENT_VARIANT}.bc")
+    set(OUTPUT "${SULONG_CURRENT_VARIANT}")
+    set(SUFFIX ".bc")
     string(APPEND CMAKE_C_FLAGS " -emit-llvm")
     string(APPEND CMAKE_CXX_FLAGS " -emit-llvm")
 
     # set optimization levels
-    set(OPT_LEVELS "O0;O1;O2;O3")
+    set(OPT_LEVELS "O0;O1;O2;O3;Os")
     set(MISC_OPTS "-functionattrs;-instcombine;-always-inline;-jump-threading;-simplifycfg;-mem2reg")
     set(MEM2REG "-mem2reg")
 
@@ -75,7 +76,7 @@ macro(setupOptions)
         endif()
     elseif(SULONG_CURRENT_OPT_LEVEL)
         # non-empty but not in the known list
-        message(FATAL_ERROR "Unknonw opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
+        message(FATAL_ERROR "Unknown opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
     endif()
 
     # set post-opt
@@ -85,7 +86,7 @@ macro(setupOptions)
         elseif(SULONG_CURRENT_POST_OPT STREQUAL "MEM2REG")
             set(TARGET_OPT_FLAGS ${MEM2REG})
         else()
-            message(FATAL_ERROR "Unknonw opt sub-variant ${SULONG_CURRENT_POST_OPT}")
+            message(FATAL_ERROR "Unknown opt sub-variant ${SULONG_CURRENT_POST_OPT}")
         endif()
 
         requireVariable(LLVM_OPT)

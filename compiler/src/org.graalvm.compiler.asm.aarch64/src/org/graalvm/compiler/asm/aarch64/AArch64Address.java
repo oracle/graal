@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -353,13 +353,17 @@ public final class AArch64Address extends AbstractAddress {
             case LD1_MULTIPLE_1R:
                 return regByteSize;
             case ST1_MULTIPLE_2R:
+            case ST2_MULTIPLE_2R:
             case LD1_MULTIPLE_2R:
+            case LD2_MULTIPLE_2R:
                 return regByteSize * 2;
             case ST1_MULTIPLE_3R:
             case LD1_MULTIPLE_3R:
                 return regByteSize * 3;
             case ST1_MULTIPLE_4R:
+            case ST4_MULTIPLE_4R:
             case LD1_MULTIPLE_4R:
+            case LD4_MULTIPLE_4R:
                 return regByteSize * 4;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -397,7 +401,7 @@ public final class AArch64Address extends AbstractAddress {
 
     private boolean verify() {
         assert bitMemoryTransferSize == ANY_SIZE || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 ||
-                        bitMemoryTransferSize == 128;
+                        bitMemoryTransferSize == 128 : bitMemoryTransferSize;
         assert addressingMode != null;
         assert base.getRegisterCategory().equals(AArch64.CPU);
         assert offset.getRegisterCategory().equals(AArch64.CPU);

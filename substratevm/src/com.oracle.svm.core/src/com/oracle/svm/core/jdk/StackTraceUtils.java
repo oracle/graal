@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,35 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+
+import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.hub.DynamicHub;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.util.DirectAnnotationAccess;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.LoomSupport;
+import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VirtualThreads;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -48,28 +64,45 @@ public class StackTraceUtils {
     private static final StackTraceElement[] NO_ELEMENTS = new StackTraceElement[0];
 
     /**
-     * Captures the stack trace of the current thread. Used by {@link Throwable#fillInStackTrace()},
-     * {@link Thread#getStackTrace()}, and {@link Thread#getAllStackTraces()}.
+     * Captures the stack trace of the current thread. In almost any context, calling
+     * {@link JavaThreads#getStackTrace} for {@link Thread#currentThread()} is preferable.
      *
      * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
      * depth > 0, or all if max depth <= 0.
      */
-    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP) {
+    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        JavaStackWalker.walkCurrentThread(startSP, visitor);
+        JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
     /**
-     * Captures the stack trace of another thread. Used by {@link Thread#getStackTrace()} and
-     * {@link Thread#getAllStackTraces()}.
+     * Captures the stack trace of a thread (potentially the current thread) while stopped at a
+     * safepoint. Used by {@link Thread#getStackTrace()} and {@link Thread#getAllStackTraces()}.
      *
      * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
      * depth > 0, or all if max depth <= 0.
      */
-    public static StackTraceElement[] getStackTrace(boolean filterExceptions, IsolateThread thread) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        JavaStackWalker.walkThread(thread, visitor);
+    @NeverInline("Potentially starting a stack walk in the caller frame")
+    public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
+        assert VMOperation.isInProgressAtSafepoint();
+        if (VirtualThreads.isSupported()) { // NOTE: also for platform threads!
+            return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTraceAtSafepoint(thread, readCallerStackPointer());
+        }
+        return PlatformThreads.getStackTraceAtSafepoint(thread, readCallerStackPointer());
+    }
+
+    public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
+        assert VMOperation.isInProgressAtSafepoint();
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
+        return visitor.trace.toArray(NO_ELEMENTS);
+    }
+
+    public static StackTraceElement[] getThreadStackTraceAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP) {
+        assert VMOperation.isInProgressAtSafepoint();
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        JavaStackWalker.walkThreadAtSafepoint(startSP, endSP, startIP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
@@ -113,11 +146,11 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+        if (DynamicHub.fromClass(clazz).isVMInternal()) {
             return false;
         }
 
-        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+        if (!showLambdaFrames && DynamicHub.fromClass(clazz).isLambdaFormHidden()) {
             return false;
         }
 
@@ -132,11 +165,9 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (JavaContinuations.useLoom() && clazz == Target_java_lang_Continuation.class) {
-            // Skip intrinsics in JDK
-            if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
-                return false;
-            } else if ("doYield".equals(frameInfo.getSourceMethodName())) {
+        if (LoomSupport.isEnabled() && clazz == Target_jdk_internal_vm_Continuation.class) {
+            String name = frameInfo.getSourceMethodName();
+            if ("enter0".equals(name) || "enterSpecial".equals(name)) {
                 return false;
             }
         }
@@ -154,11 +185,11 @@ public class StackTraceUtils {
         }
 
         ResolvedJavaType clazz = method.getDeclaringClass();
-        if (DirectAnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
+        if (AnnotationAccess.isAnnotationPresent(clazz, InternalVMMethod.class)) {
             return false;
         }
 
-        if (!showLambdaFrames && DirectAnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
+        if (!showLambdaFrames && AnnotationAccess.isAnnotationPresent(clazz, LambdaFormHiddenMethod.class)) {
             return false;
         }
 
@@ -179,6 +210,31 @@ public class StackTraceUtils {
         GetLatestUserDefinedClassLoaderVisitor visitor = new GetLatestUserDefinedClassLoaderVisitor();
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
+    }
+
+    public static StackTraceElement[] asyncGetStackTrace(Thread thread) {
+        GetStackTraceOperation vmOp = new GetStackTraceOperation(thread);
+        vmOp.enqueue();
+        return vmOp.result;
+    }
+
+    private static class GetStackTraceOperation extends JavaVMOperation {
+        private final Thread thread;
+        StackTraceElement[] result;
+
+        GetStackTraceOperation(Thread thread) {
+            super(VMOperationInfos.get(GetStackTraceOperation.class, "Get stack trace", SystemEffect.SAFEPOINT));
+            this.thread = thread;
+        }
+
+        @Override
+        protected void operate() {
+            if (thread.isAlive()) {
+                result = getStackTraceAtSafepoint(thread);
+            } else {
+                result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
+            }
+        }
     }
 }
 
@@ -310,11 +366,68 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
     }
 
     private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
+        return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
+    }
+}
+
+/* Reimplementation of JVM_GetStackAccessControlContext from JDK15 */
+class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
+    final ArrayList<ProtectionDomain> localArray;
+    boolean isPrivileged;
+    ProtectionDomain previousProtectionDomain;
+    AccessControlContext privilegedContext;
+
+    StackAccessControlContextVisitor() {
+        localArray = new ArrayList<>();
+        isPrivileged = false;
+        privilegedContext = null;
+    }
+
+    @Override
+    public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
+            return true;
         }
 
-        // We neither use sun.misc.Launcher nor ExtClassLoader in Native Image.
-        return false;
+        Class<?> clazz = frameInfo.getSourceClass();
+        String method = frameInfo.getSourceMethodName();
+
+        ProtectionDomain protectionDomain;
+        if (PrivilegedStack.length() > 0 && clazz.equals(AccessController.class) && method.equals("doPrivileged")) {
+            isPrivileged = true;
+            privilegedContext = PrivilegedStack.peekContext();
+            protectionDomain = PrivilegedStack.peekCaller().getProtectionDomain();
+        } else {
+            protectionDomain = clazz.getProtectionDomain();
+        }
+
+        if ((protectionDomain != null) && (previousProtectionDomain == null || !previousProtectionDomain.equals(protectionDomain))) {
+            localArray.add(protectionDomain);
+            previousProtectionDomain = protectionDomain;
+        }
+
+        return !isPrivileged;
+    }
+
+    @NeverInline("Starting a stack walk in the caller frame")
+    @SuppressWarnings({"deprecation"}) // deprecated starting JDK 17
+    public static AccessControlContext getFromStack() {
+        StackAccessControlContextVisitor visitor = new StackAccessControlContextVisitor();
+        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), visitor);
+        Target_java_security_AccessControlContext wrapper;
+
+        if (visitor.localArray.isEmpty()) {
+            if (visitor.isPrivileged && visitor.privilegedContext == null) {
+                return null;
+            }
+            wrapper = new Target_java_security_AccessControlContext(null, visitor.privilegedContext);
+        } else {
+            ProtectionDomain[] context = visitor.localArray.toArray(new ProtectionDomain[visitor.localArray.size()]);
+            wrapper = new Target_java_security_AccessControlContext(context, visitor.privilegedContext);
+        }
+
+        wrapper.isPrivileged = visitor.isPrivileged;
+        wrapper.isAuthorized = true;
+        return SubstrateUtil.cast(wrapper, AccessControlContext.class);
     }
 }

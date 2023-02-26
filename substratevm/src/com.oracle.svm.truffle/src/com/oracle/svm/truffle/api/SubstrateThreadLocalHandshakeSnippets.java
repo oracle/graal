@@ -64,9 +64,15 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object location);
 
+    private final SnippetInfo pollSnippet;
+
     public SubstrateThreadLocalHandshakeSnippets(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+        this.pollSnippet = snippet(providers,
+                        SubstrateThreadLocalHandshakeSnippets.class,
+                        "pollSnippet",
+                        getPollKilledLocations());
         lowerings.put(TruffleSafepointNode.class, new SafepointLowering());
     }
 
@@ -78,17 +84,14 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     }
 
     class SafepointLowering implements NodeLoweringProvider<TruffleSafepointNode> {
-        private final SnippetInfo pollSnippet = snippet(SubstrateThreadLocalHandshakeSnippets.class, "pollSnippet",
-                        getPollKilledLocations());
-
         @Override
         public void lower(TruffleSafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 StructuredGraph graph = node.graph();
                 Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("node", node.location());
-                SnippetTemplate template = template(node, args);
-                template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
+                SnippetTemplate template = template(tool, node, args);
+                template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
         }
     }

@@ -31,7 +31,7 @@ final class Target_com_oracle_truffle_espresso_hotswap_HotSwapHandler {
     @Substitution
     static boolean registerHandler(@JavaType(Object.class) StaticObject handler, @Inject Meta meta) {
         assert handler != null;
-        if (meta.getContext().JDWPOptions == null) {
+        if (meta.getContext().getEspressoEnv().JDWPOptions == null) {
             // only allow HotSwap handler registration when running in debug mode
             return false;
         }

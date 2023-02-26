@@ -35,11 +35,13 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.graal.isolated.IsolateAwareCodeCacheProvider;
@@ -53,17 +55,16 @@ import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
 
     private final AnalysisUniverse aUniverse;
     private final ConstantReflectionProvider originalReflectionProvider;
 
-    public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
+    public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
                     ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
-        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport, loopsDataProvider);
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider, SubstratePlatformConfigurationProvider platformConfig) {
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport, loopsDataProvider, platformConfig);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,12 +28,18 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(__APPLE__) && defined(__aarch64__)
+/* lto gets tripped up on darwin-aarch64. Not exactly sure why this isn't
+ * necessary for x86_64 too, but it looks like some of those builtins are
+ * organized differently when looking at libSystem.tbd */
+#else
 void __clear_cache(__attribute__((unused)) void *begin, __attribute__((unused)) void *end) {
     /*
    * Old llvm/gcc+dragonegg versions do not intrinsify __builtin___clear_cache but replace it with a call to
    * __clear_cache from libgcc. Lets make sure the target exist even if not linked against libgcc.
    */
 }
+#endif
 
 int main() {
     char a[100];

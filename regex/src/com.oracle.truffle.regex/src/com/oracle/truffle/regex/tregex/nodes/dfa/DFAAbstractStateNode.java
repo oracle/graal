@@ -41,11 +41,10 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 
-public abstract class DFAAbstractStateNode extends Node implements JsonConvertible {
+public abstract class DFAAbstractStateNode implements JsonConvertible {
 
     private final short id;
     @CompilationFinal(dimensions = 1) protected final short[] successors;

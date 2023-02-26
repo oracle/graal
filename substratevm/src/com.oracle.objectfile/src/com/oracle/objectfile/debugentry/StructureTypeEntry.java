@@ -27,6 +27,7 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.lang.reflect.Modifier;
@@ -60,19 +61,20 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
-        String valueTypeName = TypeEntry.canonicalize(debugFieldInfo.valueType());
+        ResolvedJavaType valueType = debugFieldInfo.valueType();
+        String valueTypeName = valueType.toJavaName();
         int fieldSize = debugFieldInfo.size();
         int fieldoffset = debugFieldInfo.offset();
         int fieldModifiers = debugFieldInfo.modifiers();
-        debugContext.log("typename %s adding %s field %s type %s size %s at offset %d\n",
+        debugContext.log("typename %s adding %s field %s type %s size %s at offset 0x%x\n",
                         typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, fieldSize, fieldoffset);
-        TypeEntry valueType = debugInfoBase.lookupTypeEntry(valueTypeName);
+        TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
         /*
          * n.b. the field file may differ from the owning class file when the field is a
          * substitution
          */
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(debugFieldInfo);
-        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers);
+        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldModifiers);
         fields.add(fieldEntry);
         return fieldEntry;
     }

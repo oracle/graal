@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,7 +136,7 @@ public class GeneratorUtils {
     }
 
     public static void addBoundaryOrTransferToInterpreter(CodeExecutableElement method, CodeTreeBuilder builder) {
-        if (method != builder.findMethod()) {
+        if (builder != null && method != builder.findMethod()) {
             throw new AssertionError("Expected " + method + " but was " + builder.findMethod());
         }
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
@@ -146,13 +146,15 @@ public class GeneratorUtils {
         }
         boolean hasFrame = false;
         for (VariableElement var : method.getParameters()) {
-            if (ElementUtils.typeEquals(var.asType(), types.VirtualFrame)) {
+            if (ElementUtils.typeEquals(var.asType(), types.VirtualFrame) || ElementUtils.typeEquals(var.asType(), types.Frame)) {
                 hasFrame = true;
                 break;
             }
         }
         if (hasFrame) {
-            builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            if (builder != null) {
+                builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            }
         } else {
             method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }

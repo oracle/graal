@@ -24,35 +24,77 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public class SourceTypeFlow extends SourceTypeFlowBase {
+/**
+ * Models a flow that *conditionally* introduces a type in the type flow graph only if it is marked
+ * as instantiated, e.g., by scanning a constant of that type or parsing an allocation bytecode.
+ * This flow is used for nodes that produce an object but don't register its type as instantiated
+ * themselves, e.g., like {@link JavaReadNode} or {@link BytecodeExceptionNode}. Also LoadHubNode,
+ * GetClassNode, LoadVMThreadLocalNode.
+ * 
+ * The type state of this source is "empty" or "null" until the declared type is marked as
+ * instantiated, depending on the null state of the node stamp. When this flow is initialized it
+ * registers a callback with its declared type such that when the type is marked as instantiated it
+ * propagates the source state. If the declared type is already instantiated when the source flow is
+ * initialized then the callback is immediately triggered.
+ * 
+ * If the type is really never instantiated, i.e., {@link AnalysisType#isInstantiated()} is still
+ * false at the end of the static analysis, then the callback is never triggered. That is correct,
+ * because in this case that type can never be produced by this flow (and the only possible value is
+ * {@code null}, if the stamp can be null, or empty).
+ */
+public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
 
-    /**
-     * Source flow has an immutable type state.
-     */
-    public SourceTypeFlow(ValueNode node, TypeState state) {
-        super(node, state);
+    public SourceTypeFlow(BytecodePosition position, AnalysisType type, boolean canBeNull) {
+        super(position, type, canBeNull);
     }
 
-    public SourceTypeFlow(PointsToAnalysis bb, SourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(bb, original, methodFlows);
+    public SourceTypeFlow(SourceTypeFlow original, MethodFlowsGraph methodFlows) {
+        super(original, methodFlows, original.getState().canBeNull() ? TypeState.forNull() : TypeState.forEmpty());
     }
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new SourceTypeFlow(bb, this, methodFlows);
+        return new SourceTypeFlow(this, methodFlows);
+    }
+
+    @Override
+    public void initFlow(PointsToAnalysis bb) {
+        /* Propagate the source state when the type is marked as instantiated. */
+        declaredType.registerInstantiatedCallback(a -> addState(bb, TypeState.forExactType(bb, declaredType, false)));
+    }
+
+    @Override
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onSaturated(PointsToAnalysis bb) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    public boolean canSaturate() {
+        return false;
     }
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("SourceFlow<").append(getState()).append(">");
-        return str.toString();
+        return "SourceFlow<" + getState() + ">";
     }
 }

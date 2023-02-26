@@ -24,19 +24,21 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
-
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
 
+import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
+
 /**
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
  * on it.
  */
-public enum InitKind {
+enum InitKind {
     /** Class is initialized during image building, so it is already initialized at runtime. */
     BUILD_TIME,
     /** Class is initialized both at runtime and during image building. */
@@ -62,28 +64,32 @@ public enum InitKind {
         return SEPARATOR + name().toLowerCase();
     }
 
-    Consumer<String> stringConsumer(ClassInitializationSupport support, String origin) {
+    Consumer<String> stringConsumer(ClassInitializationSupport support, OptionOrigin origin) {
         if (this == RUN_TIME) {
             return name -> support.initializeAtRunTime(name, reason(origin, name));
         } else if (this == RERUN) {
             return name -> support.rerunInitialization(name, reason(origin, name));
         } else {
             return name -> {
-                if (name.equals("") && !DiagnosticsMode.getValue()) {
-                    System.err.println(
-                                    "--initialize-at-build-time without arguments has been deprecated when not using --diagnostics-mode. With GraalVM 22.0.0" +
-                                                    " --initialize-at-build-time will only work with --diagnostics-mode for debugging purposes.\n" +
-                                                    "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time;" +
-                                                    " that assumption is often incorrect.");
+                if (name.equals("") && !origin.commandLineLike()) {
+                    String msg = "--initialize-at-build-time without arguments is not allowed." + System.lineSeparator() +
+                                    "Origin of the option: " + origin + System.lineSeparator() +
+                                    "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time;" +
+                                    " that assumption is often incorrect.";
+                    if (ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime.getValue()) {
+                        System.out.println("Warning: " + msg);
+                    } else {
+                        throw UserError.abort("%s%nAs a workaround, %s allows turning this error into a warning. Note that this option is deprecated and will be removed in a future version.", msg,
+                                        SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime, "+"));
+                    }
                 }
                 support.initializeAtBuildTime(name, reason(origin, name));
             };
         }
     }
 
-    private static String reason(String origin, String name) {
-        String prefix = "from ";
-        return (origin == null ? prefix + "the command line" : prefix + origin) + " with '" + name + "'";
+    private static String reason(OptionOrigin origin, String name) {
+        return "from " + origin + " with '" + name + "'";
     }
 
     static Pair<String, InitKind> strip(String input) {

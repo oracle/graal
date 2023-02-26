@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,8 +113,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.computeAccessPermissions(config);
             // file systems are patched after preinitialization internally using a delegate field
-            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystem);
-            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.internalFileSystem);
+            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.fileSystem);
+            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.internalFileSystem);
             this.operationLock = new ReentrantLock();
         }
 
@@ -218,7 +218,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private volatile boolean created;
     private volatile boolean initialized;
     volatile boolean finalized;
-    volatile boolean exited;
+    volatile TruffleLanguage.ExitMode exited;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
     @CompilationFinal volatile Env env; // effectively final
@@ -377,8 +377,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return localEnv;
     }
 
-    @SuppressWarnings("deprecation")
     boolean finalizeContext(boolean cancelOrExitOperation, boolean notifyInstruments) {
+        boolean performFinalize = false;
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
         try {
@@ -387,121 +387,143 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
             if (!finalized) {
                 finalized = true;
-                try {
-                    LANGUAGE.finalizeContext(env);
-                } catch (Throwable t) {
-                    if (cancelOrExitOperation) {
-                        /*
-                         * finalizeContext can run guest code, and so truffle and cancel exceptions
-                         * are expected. However, they must not fail the cancel operation, and so we
-                         * just log them.
-                         */
-                        assert context.state.isClosing();
-                        assert context.state.isInvalidOrClosed();
-                        if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
-                            context.engine.getEngineLogger().log(Level.FINE,
-                                            "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting.",
-                                            t);
-                        } else {
-                            throw t;
-                        }
-                    } else {
-                        throw t;
-                    }
-                }
-                if (eventsEnabled && notifyInstruments) {
-                    EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
-                }
-                return true;
+                performFinalize = true;
             }
         } finally {
             lock.unlock();
         }
+
+        if (performFinalize) {
+            /*
+             * The finalize notification operation is not needed to be under the operationLock. We
+             * know the language context is already initialized and parallel execution with the exit
+             * operation is prevented by other means. Parallel execution of two or more finalize
+             * notification operations is prevented by setting finalized under the operationLock.
+             */
+            try {
+                LANGUAGE.finalizeContext(env);
+            } catch (Throwable t) {
+                if (!cancelOrExitOperation || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotEngineImpl.CancelExecution) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                    throw t;
+                } else {
+                    /*
+                     * finalizeContext can run guest code, and so truffle and cancel exceptions are
+                     * expected. However, they must not fail the cancel operation, and so we just
+                     * log them.
+                     */
+                    assert context.state.isClosing();
+                    assert context.state.isInvalidOrClosed();
+                    context.engine.getEngineLogger().log(Level.FINE,
+                                    "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting.",
+                                    t);
+                }
+            }
+            if (eventsEnabled && notifyInstruments) {
+                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
+            }
+            return true;
+        }
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     boolean exitContext(TruffleLanguage.ExitMode exitMode, int exitCode) {
+        boolean performExit = false;
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
         try {
             if (!initialized) {
                 return false;
             }
-            if (!exited) {
-                exited = true;
-                try {
-                    LANGUAGE.exitContext(env, exitMode, exitCode);
-                } catch (Throwable t) {
-                    if (exitMode == TruffleLanguage.ExitMode.HARD) {
-                        if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotContextImpl.ExitException) {
-                            if (t instanceof com.oracle.truffle.api.TruffleException && !context.state.isCancelling()) {
-                                context.engine.getEngineLogger().log(Level.WARNING, "TruffleException thrown during exit notification! Languages are supposed to handle this kind of exceptions.", t);
-                            } else {
-                                context.engine.getEngineLogger().log(Level.FINE, "Exception thrown during exit notification!", t);
-                            }
-                        } else {
-                            throw t;
-                        }
-                    } else {
-                        throw t;
-                    }
-                }
-                return true;
+            if (exited == null || exitMode.ordinal() > exited.ordinal()) {
+                exited = exitMode;
+                performExit = true;
             }
         } finally {
             lock.unlock();
         }
-        return false;
-    }
 
-    @SuppressWarnings("deprecation")
-    boolean dispose() {
-        assert Thread.holdsLock(context);
-        Env localEnv = this.env;
-        if (localEnv != null) {
-            if (!lazy.activePolyglotThreads.isEmpty()) {
-                // this should show up as internal error so it does not use PolyglotEngineException
-                throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
-            }
+        if (performExit) {
+            /*
+             * The exit notification operation is not needed to be under the operationLock. We know
+             * the language context is already initialized and parallel execution with the finalize
+             * operation is prevented by other means. Moreover, we need to make it possible for the
+             * natural and the hard exit notifications to be executed in parallel in case the hard
+             * exit is triggered while the natural exit notifications are already in progress.
+             * Parallel execution of two or more exit notification operations of the same type is
+             * prevented by setting exited under the operationLock.
+             */
             try {
-                for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                    assert threadInfo != PolyglotThreadInfo.NULL;
-                    final Thread thread = threadInfo.getThread();
-                    if (thread == null) {
-                        continue;
-                    }
-                    assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
-                                    " is still active.";
-                    if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
-                        /*
-                         * No other thread than the current thread should be active here. However,
-                         * we do this check only for non-invalid contexts for the following reasons.
-                         * enteredCount for a thread can be incremented on the fast-path even though
-                         * the thread is not allowed to enter in the end because the context is
-                         * invalid and so the enter falls back to the slow path which checks the
-                         * invalid flag. threadInfo.isActive() returns true in this case and we
-                         * cannot tell whether it is because the thread is before the fallback to
-                         * the slow path or it is already fully entered (which would be an error)
-                         * without adding further checks to the fast path, and so we don't perform
-                         * the check for invalid contexts. Non-invalid context can have the same
-                         * problem with the enteredCount of one of its threads, but closing
-                         * non-invalid context in that state is an user error.
-                         */
-                        throw PolyglotEngineException.illegalState("Another main thread was started while closing a polyglot context!");
-                    }
-                    LANGUAGE.disposeThread(localEnv, thread);
-                }
-                LANGUAGE.dispose(localEnv);
+                LANGUAGE.exitContext(env, exitMode, exitCode);
             } catch (Throwable t) {
-                if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
-                    throw new IllegalStateException("Guest language code was run during language disposal!", t);
+                if (exitMode == TruffleLanguage.ExitMode.NATURAL || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                    throw t;
+                } else {
+                    if (t instanceof AbstractTruffleException && !context.state.isCancelling()) {
+                        context.engine.getEngineLogger().log(Level.WARNING, "TruffleException thrown during exit notification! Languages are supposed to handle this kind of exceptions.", t);
+                    } else {
+                        context.engine.getEngineLogger().log(Level.FINE, "Exception thrown during exit notification!", t);
+                    }
                 }
-                throw t;
             }
             return true;
         }
         return false;
+    }
+
+    boolean dispose() {
+        try {
+            Env localEnv;
+            synchronized (context) {
+                localEnv = this.env;
+                if (localEnv != null) {
+                    if (!lazy.activePolyglotThreads.isEmpty()) {
+                        // this should show up as internal error so it does not use
+                        // PolyglotEngineException
+                        throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
+                    }
+                    for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                        assert threadInfo != PolyglotThreadInfo.NULL;
+                        final Thread thread = threadInfo.getThread();
+                        if (thread == null) {
+                            continue;
+                        }
+                        assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                                        " is still active.";
+                        if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
+                            /*
+                             * No other thread than the current thread should be active here.
+                             * However, we do this check only for non-invalid contexts for the
+                             * following reasons. enteredCount for a thread can be incremented on
+                             * the fast-path even though the thread is not allowed to enter in the
+                             * end because the context is invalid and so the enter falls back to the
+                             * slow path which checks the invalid flag. threadInfo.isActive()
+                             * returns true in this case and we cannot tell whether it is because
+                             * the thread is before the fallback to the slow path or it is already
+                             * fully entered (which would be an error) without adding further checks
+                             * to the fast path, and so we don't perform the check for invalid
+                             * contexts. Non-invalid context can have the same problem with the
+                             * enteredCount of one of its threads, but closing non-invalid context
+                             * in that state is an user error.
+                             */
+                            throw PolyglotEngineException.illegalState("Another main thread was started while closing a polyglot context!");
+                        }
+                        LANGUAGE.disposeThread(localEnv, thread);
+                    }
+                }
+            }
+            // Call TruffleLanguage#disposeContext without holding the context lock.
+            if (localEnv != null) {
+                LANGUAGE.dispose(localEnv);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (Throwable t) {
+            if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
+                throw new IllegalStateException("Guest language code was run during language disposal!", t);
+            }
+            throw t;
+        }
     }
 
     void notifyDisposed(boolean notifyInstruments) {
@@ -514,7 +536,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
-            Object[] prev = context.engine.enter(context);
+            Object[] prev = context.enterThreadChanged(true, false, true, false, true);
             lazy.activePolyglotThreads.add(thread);
             return prev;
         }
@@ -523,11 +545,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     void leaveAndDisposePolyglotThread(Object[] prev, PolyglotThread thread) {
         assert isInitialized();
         synchronized (context) {
-            context.leaveAndDisposeThread(prev, thread);
+            context.leaveThreadChanged(prev, true, true, true);
             boolean removed = lazy.activePolyglotThreads.remove(thread);
             assert removed : "thread was not removed";
         }
-        EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.creatorTruffleContext, thread);
     }
 
     boolean isCreated() {
@@ -543,14 +564,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (!created) {
             checkAccess(accessingLanguage);
 
-            Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
+            Map<String, Object> creatorConfig = context.creator == language ? context.config.creatorArguments : Collections.emptyMap();
             PolyglotContextConfig contextConfig = context.config;
 
             PolyglotLanguageInstance languageInstance;
             PolyglotSharingLayer layer = context.layer;
             synchronized (context.engine.lock) {
                 if (language.isHost()) {
-                    languageInstance = layer.allocateHostLanguage(language);
+                    if (layer.isClaimed() && layer.hostLanguage == null) {
+                        // Patching layer created by context pre-initialization.
+                        languageInstance = layer.patchHostLanguage(language);
+                    } else {
+                        languageInstance = layer.allocateHostLanguage(language);
+                    }
                 } else {
                     context.claimSharingLayer(language);
                     languageInstance = layer.allocateInstance(context, language);
@@ -740,10 +766,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
         // Always check context first, as it might be invalidated.
-        context.checkClosed();
-        if (context.disposing) {
-            throw PolyglotEngineException.illegalState("The Context is already closed.");
-        }
+        context.checkClosedOrDisposing();
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
@@ -898,17 +921,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
-            Env currentEnv = env;
-            if (currentEnv != null && !(e instanceof ThreadDeath)) {
-                try {
-                    e.printStackTrace(new PrintStream(currentEnv.err()));
-                } catch (Throwable exc) {
-                    // Still show the original error if printing on Env.err() fails for some
-                    // reason
+            if (!(e instanceof ThreadDeath)) {
+                Env currentEnv = env;
+                if (currentEnv != null) {
+                    try {
+                        e.printStackTrace(new PrintStream(currentEnv.err()));
+                    } catch (Throwable exc) {
+                        // Still show the original error if printing on Env.err() fails for some
+                        // reason
+                        e.printStackTrace();
+                    }
+                } else {
                     e.printStackTrace();
                 }
-            } else {
-                e.printStackTrace();
             }
         }
     }

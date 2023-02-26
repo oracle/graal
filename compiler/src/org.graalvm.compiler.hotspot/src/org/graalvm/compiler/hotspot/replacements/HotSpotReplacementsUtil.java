@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 
@@ -43,7 +42,6 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
@@ -53,7 +51,6 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -61,9 +58,9 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -138,16 +135,9 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    @Fold
-    public static ResolvedJavaType methodHolderClass(@InjectedParameter IntrinsicContext context) {
-        return context.getOriginalMethod().getDeclaringClass();
-    }
-
-    @Fold
-    public static ResolvedJavaType getType(@Fold.InjectedParameter IntrinsicContext context, String typeName) {
+    public static ResolvedJavaType getType(ResolvedJavaType accessingClass, String typeName) {
         try {
-            UnresolvedJavaType unresolved = UnresolvedJavaType.create(typeName);
-            return unresolved.resolve(methodHolderClass(context));
+            return UnresolvedJavaType.create(typeName).resolve(accessingClass);
         } catch (LinkageError e) {
             throw new GraalError(e);
         }
@@ -297,13 +287,19 @@ public class HotSpotReplacementsUtil {
         return thread.readObject(threadPendingExceptionOffset(INJECTED_VMCONFIG), PENDING_EXCEPTION_LOCATION);
     }
 
-    /*
-     * As far as Java code is concerned this can be considered immutable: it is set just after the
-     * JavaThread is created, before it is published. After that, it is never changed.
+    /**
+     * The location identity for the {@code JavaThread} field containing the reference to the
+     * current thread. As far as Java code without virtual threads is concerned this can be
+     * considered immutable: it is set just after the JavaThread is created, before it is published.
+     * After that, it is never changed. In the presence of virtual threads from JDK 19 onwards, this
+     * value can change when a virtual thread is unmounted and then mounted again.
      */
-    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.immutable("JavaThread::_threadObj");
+    public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
+                    : NamedLocationIdentity.mutable("JavaThread::_vthread");
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
+
+    public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
 
     @Fold
     public static JavaKind getWordKind() {
@@ -425,7 +421,7 @@ public class HotSpotReplacementsUtil {
          */
         final int layoutHelper = readLayoutHelper(klassNonNull);
         final int layoutHelperNeutralValue = klassLayoutHelperNeutralValue(INJECTED_VMCONFIG);
-        return (layoutHelper < layoutHelperNeutralValue);
+        return layoutHelper < layoutHelperNeutralValue;
     }
 
     public static final LocationIdentity ARRAY_KLASS_COMPONENT_MIRROR = NamedLocationIdentity.immutable("ArrayKlass::_component_mirror");
@@ -564,10 +560,6 @@ public class HotSpotReplacementsUtil {
         return config.arrayOopDescLengthOffset();
     }
 
-    public static Word arrayStart(int[] a) {
-        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
-    }
-
     @Fold
     public static boolean verifyBeforeOrAfterGC(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.verifyBeforeGC || config.verifyAfterGC;
@@ -677,6 +669,36 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useBiasedLocking;
+    }
+
+    @Fold
+    static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadHeldMonitorCountOffset;
+    }
+
+    @Fold
+    static boolean heldMonitorCountIsWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadHeldMonitorCountIsWord;
+    }
+
+    @Fold
+    static boolean updateHeldMonitorCount(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.updateHeldMonitorCount;
+    }
+
+    @Fold
+    public static boolean diagnoseSyncOnValueBasedClasses(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.diagnoseSyncOnValueBasedClasses != 0 && config.jvmAccIsValueBasedClass != 0;
+    }
+
+    @Fold
+    public static int jvmAccIsValueBasedClass(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.jvmAccIsValueBasedClass;
+    }
+
+    @Fold
+    public static long defaultPrototypeMarkWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.defaultPrototypeMarkWord();
     }
 
     @Fold
@@ -841,6 +863,13 @@ public class HotSpotReplacementsUtil {
      * This represents the contents of OopHandles used for some internal fields.
      */
     public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = NamedLocationIdentity.immutable("OopHandle contents");
+
+    /**
+     * This represents the contents of the OopHandle used to store the current thread. Virtual
+     * thread support makes this mutable.
+     */
+    public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
+                    : NamedLocationIdentity.mutable("_vthread OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

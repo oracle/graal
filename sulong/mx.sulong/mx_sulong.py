@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -56,6 +56,7 @@ from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pyli
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import DocumentationProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import HeaderProject #pylint: disable=unused-import
+from mx_sulong_suite_constituents import CopiedNativeProject #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -72,6 +73,12 @@ _testDir = join(_suite.dir, "tests")
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
+# TODO: [GR-41902] use mx.add_lib_suffix
+def _lib_suffix(name):
+    if mx.is_windows():
+        return name + ".dll"
+    else:
+        return name + ".so"
 
 def _lib_versioned(arg):
     name, version = arg.split('.')
@@ -106,7 +113,7 @@ def runLLVMUnittests(unittest_runner):
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
-    return os.path.join(dep.get_output(), 'bin', llvm_program)
+    return os.path.join(dep.get_output(), 'bin', mx.exe_suffix(llvm_program))
 
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
@@ -233,14 +240,23 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
+@mx.command(_suite.name, "lli-mul")
+def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
+    """run multi-context java launcher"""
+    vmArgs, sulongArgs = truffle_extract_VM_args(args)
+    dists = []
+    if "tools" in (s.name for s in mx.suites()):
+        dists.append('CHROMEINSPECTOR')
+    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+
 @mx.command(_suite.name, "lli")
-def lli(args=None, out=None):
+def lli(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True):
     """run lli via the current GraalVM"""
     debug_args = mx.java_debug_args()
     if debug_args and not mx.is_debug_disabled():
         args = ['--vm.' + arg.lstrip('-') for arg in debug_args] + args
     # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
-    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, out=out)
+    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
 @mx.command(_suite.name, "extract-bitcode")
@@ -322,7 +338,7 @@ def _get_toolchain(toolchain_name):
 
 
 def _get_toolchain_tool(name_tool):
-    name, tool = name_tool.split(",", 2)
+    name, tool = name_tool.split(",", 1)
     return _get_toolchain(name).get_toolchain_tool(tool)
 
 
@@ -347,6 +363,11 @@ def create_toolchain_root_provider(name, dist):
 def _exe_sub(program):
     return mx_subst.path_substitutions.substitute("<exe:{}>".format(program))
 
+def _cmd_sub(program):
+    return mx_subst.path_substitutions.substitute("<cmd:{}>".format(program))
+
+def _lib_sub(program):
+    return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
@@ -354,7 +375,8 @@ class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
-        "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "ld64"],
+        "CL": ["graalvm-{name}-clang-cl", "graalvm-clang-cl", "clang-cl", "cl"],
+        "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "lld-link", "ld64"],
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
@@ -362,11 +384,13 @@ class ToolchainConfig(object):
         self.name = name
         self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
+        self.bootstrap_dist = bootstrap_dist
         self.tools = tools
+        self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
         self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
-        self.exe_map = {_exe_sub(exe): tool for tool, aliases in self.tool_map.items() for exe in aliases}
+        self.path_map = {_exe_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
         # register mx command
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
@@ -381,20 +405,23 @@ class ToolchainConfig(object):
         parser = ArgumentParser(prog='mx ' + self.mx_command, description='launch toolchain commands',
                                 epilog='Additional arguments are forwarded to the LLVM image command.', add_help=False)
         parser.add_argument('command', help='toolchain command', metavar='<command>',
-                            choices=self._supported_exes())
+                            choices=self._supported_tool_names())
         parsed_args, tool_args = parser.parse_known_args(args)
-        main = self._tool_to_main(self.exe_map[parsed_args.command])
+        main = self._tool_to_main(self.path_map[parsed_args.command])
         if "JACOCO" in os.environ:
             mx_gate._jacoco = os.environ["JACOCO"]
         return mx.run_java(mx.get_runtime_jvm_args([mx.splitqualname(d)[1] for d in self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
 
-    def _supported_exes(self):
-        return [exe for tool in self._supported_tools() for exe in self._tool_to_aliases(tool)]
+    def _supported_tool_names(self):
+        return [path for tool in self._supported_tools() for path in self._tool_to_aliases(tool)]
 
     def _supported_tools(self):
         return self.tools.keys()
 
-    def _tool_to_exe(self, tool):
+    def _tool_to_bin(self, tool):
+        """
+        Return the binary name including any required suffixes (e.g. .cmd / .exe)
+        """
         return self._tool_to_aliases(tool)[0]
 
     def _tool_to_aliases(self, tool):
@@ -410,7 +437,16 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
+        if tool in self._supported_tools():
+            ret = os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
+            if mx.is_windows() and ret.endswith('.exe') and not os.path.exists(ret):
+                # this might be a bootstrap toolchain without native-image, so we have to replace .exe with .cmd
+                ret = ret[:-4] + '.cmd'
+            return ret
+        elif tool in self.llvm_binutil_tools:
+            return os.path.join(self.bootstrap_provider(), 'bin', _cmd_sub(tool.lower()))
+        else:
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_subdir(self):
         return self.name
@@ -418,11 +454,13 @@ class ToolchainConfig(object):
     def get_launcher_configs(self):
         return [
             mx_sdk_vm.LauncherConfig(
-                destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
+                destination=os.path.join(self.name, 'bin', self._tool_to_bin(tool)),
                 jar_distributions=self._get_jar_dists(),
                 main_class=self._tool_to_main(tool),
                 build_args=[
+                    '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                    '--gc=epsilon',
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
@@ -434,12 +472,13 @@ class ToolchainConfig(object):
         return [d if ":" in d else self.suite.name + ":" + d for d in self.dist]
 
 
-_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
+_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
                                    # registration runs before the suite is properly initialized
                                    tools={
                                        "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
                                        "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
+                                       "CL": "com.oracle.truffle.llvm.toolchain.launchers.ClangCL",
                                        "LD": "com.oracle.truffle.llvm.toolchain.launchers.Linker",
                                        "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
@@ -451,15 +490,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Core',
     short_name='llrc',
     dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API'],
+    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
+    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
+        'sulong:SULONG_GRAALVM_LICENSES',
     ],
-    installable=False,
+    installable=True,
+    stability='experimental' if mx.get_os() == 'windows' else 'supported',
+    priority=0,  # this is the main component of the llvm installable
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -469,13 +511,15 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle NFI', 'LLVM Runtime Core'],
+    dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
     truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
+        'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
-    installable=False,
+    installable=True,
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -488,14 +532,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=[],
     truffle_jars=[],
     support_distributions=[],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:lli>',
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=['bin/<exe:lli>'],
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=[],
+            build_args_enterprise=[
+                '-H:+AuxiliaryEngineCache',
+                '-H:ReservedAuxiliaryImageBytes=2145482548',
+            ] if not mx.is_windows() else [],
             language='llvm',
         ),
     ],
-    installable=False,
+    installable=True,
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))

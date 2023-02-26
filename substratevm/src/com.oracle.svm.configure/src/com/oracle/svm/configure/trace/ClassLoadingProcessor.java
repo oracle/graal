@@ -26,23 +26,15 @@
 package com.oracle.svm.configure.trace;
 
 import java.util.List;
-import java.util.Map;
 
-import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.svm.configure.config.ConfigurationSet;
 
 public class ClassLoadingProcessor extends AbstractProcessor {
-    private final PredefinedClassesConfiguration configuration;
-
-    public ClassLoadingProcessor(PredefinedClassesConfiguration configuration) {
-        this.configuration = configuration;
-    }
-
-    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
-        return configuration;
-    }
 
     @Override
-    void processEntry(Map<String, ?> entry) {
+    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -54,7 +46,7 @@ public class ClassLoadingProcessor extends AbstractProcessor {
             expectSize(args, 2);
             String nameInfo = (String) args.get(0);
             byte[] classData = asBinary(args.get(1));
-            configuration.add(nameInfo, classData);
+            configurationSet.getPredefinedClassesConfiguration().add(nameInfo, classData);
         }
     }
 }

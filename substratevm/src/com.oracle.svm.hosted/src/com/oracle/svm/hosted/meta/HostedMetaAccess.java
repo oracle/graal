@@ -54,6 +54,11 @@ public class HostedMetaAccess extends UniverseMetaAccess {
         return (HostedType) super.lookupJavaType(clazz);
     }
 
+    @Override
+    public HostedType lookupJavaType(JavaConstant constant) {
+        return (HostedType) super.lookupJavaType(constant);
+    }
+
     public Optional<HostedType> optionalLookupJavaType(Class<?> clazz) {
         HostedType result = (HostedType) getTypeCacheEntry(clazz);
         if (result != null) {
@@ -63,7 +68,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
         if (!analysisType.isPresent()) {
             return Optional.empty();
         }
-        result = ((HostedUniverse) getUniverse()).optionalLookup(analysisType.get());
+        result = getUniverse().optionalLookup(analysisType.get());
         return Optional.ofNullable(result);
     }
 
@@ -80,7 +85,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     }
 
     public HostedMethod optionalLookupJavaMethod(Executable reflectionMethod) {
-        return ((HostedUniverse) getUniverse()).optionalLookup(getWrapped().lookupJavaMethod(reflectionMethod));
+        return getUniverse().optionalLookup(getWrapped().lookupJavaMethod(reflectionMethod));
     }
 
     @Override
@@ -89,7 +94,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     }
 
     public HostedField optionalLookupJavaField(Field reflectionField) {
-        return ((HostedUniverse) getUniverse()).optionalLookup(getWrapped().lookupJavaField(reflectionField));
+        return getUniverse().optionalLookup(getWrapped().lookupJavaField(reflectionField));
     }
 
     @Override
@@ -120,5 +125,10 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
         return getObjectLayout().getArrayIndexScale(elementKind);
+    }
+
+    @Override
+    public HostedUniverse getUniverse() {
+        return (HostedUniverse) universe;
     }
 }

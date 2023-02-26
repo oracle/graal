@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
+import org.graalvm.polyglot.io.IOAccess;
 
 /**
  * This class simulates a host to guest remote boundary. All parameters are designed to be easily
@@ -84,7 +85,7 @@ final class HostEntryPoint {
     public long remoteCreateEngine() {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(new String[0], null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false);
+        Object engine = guestPolyglot.buildEngine(new String[0], null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false, false, null);
         return guestToHost(engine);
     }
 
@@ -119,9 +120,9 @@ final class HostEntryPoint {
         Engine engine = unmarshall(Engine.class, engineId);
         Object receiver = api.getReceiver(engine);
         AbstractEngineDispatch dispatch = api.getDispatch(engine);
-        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE,
-                        false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
-                        new String[0], null, null,
+        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE, false,
+                        false, false, false, false, null, new HashMap<>(), new HashMap<>(),
+                        new String[0], IOAccess.NONE, null,
                         false, null, EnvironmentAccess.NONE,
                         null, null, null, null, null, true, false);
         return guestToHost(remoteContext);
@@ -150,7 +151,6 @@ final class HostEntryPoint {
             try {
                 result = lib.send(receiver, message, localValues);
             } catch (Exception e) {
-                // probably needs to support TruffleException too, but this is just a sketch
                 if (e instanceof AbstractTruffleException) {
                     // also send over stack traces and messages
                     return new GuestExceptionPointer(guestToHost(e), e.getMessage());
@@ -215,6 +215,13 @@ final class HostEntryPoint {
 
     public Object unmarshallHost(Class<?> type, long id) {
         return guestEntry.unmarshall(type, id);
+    }
+
+    public void shutdown(long engineId) {
+        Engine engine = unmarshall(Engine.class, engineId);
+        Object receiver = api.getReceiver(engine);
+        AbstractEngineDispatch dispatch = api.getDispatch(engine);
+        dispatch.shutdown(receiver);
     }
 
 }

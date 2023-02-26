@@ -24,22 +24,20 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import java.util.Collection;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     protected AbstractSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     protected AbstractSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractSpecialInvokeTypeFlow original) {
@@ -56,30 +54,14 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
         throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
     }
 
-    /**
-     * Initialize the callee lazily so that if the invoke flow is not reached in this context, i.e.
-     * for this clone, there is no callee linked.
-     */
-    protected void initCallee() {
-        if (callee == null) {
-            callee = targetMethod.getTypeFlow();
-            // set the callee in the original invoke too
-            ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
-        }
-    }
-
     @Override
     public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         /* When the receiver flow saturates start observing the flow of the receiver type. */
         replaceObservedWith(bb, receiverType);
     }
-
-    @Override
-    public abstract Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb);
 
     @Override
     public String toString() {

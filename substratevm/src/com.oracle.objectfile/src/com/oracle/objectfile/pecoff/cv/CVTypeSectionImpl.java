@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -49,9 +51,17 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     private int sequenceCounter = 0x1000;
 
     /* A sequential map of type records, starting at 1000 */
-    private Map<CVTypeRecord, CVTypeRecord> typeMap = new LinkedHashMap<>(CV_RECORD_INITIAL_CAPACITY);
+    /* This map is used to implement deduplication. */
+    private final Map<CVTypeRecord, CVTypeRecord> typeMap = new LinkedHashMap<>(CV_RECORD_INITIAL_CAPACITY);
 
-    CVTypeSectionImpl() {
+    private final CVTypeSectionBuilder builder;
+
+    CVTypeSectionImpl(CVDebugInfo cvDebugInfo) {
+        /*
+         * At this point, there is no debugContext in debugInfo, so no logging should be attempted.
+         */
+        super(cvDebugInfo);
+        builder = new CVTypeSectionBuilder(this);
     }
 
     @Override
@@ -63,39 +73,31 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
     public void createContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVTypeSectionImpl.createContent() adding records");
-        addRecords();
-        log(debugContext, "CVTypeSectionImpl.createContent() start");
+        log("CVTypeSectionImpl.createContent() verifying that all types have been defined");
+        builder.verifyAllClassesDefined();
+        log("CVTypeSectionImpl.createContent() start");
         pos = CVUtil.putInt(CV_SIGNATURE_C13, null, pos);
         for (CVTypeRecord record : typeMap.values()) {
             pos = record.computeFullSize(pos);
         }
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
-        log(debugContext, "CVTypeSectionImpl.createContent() end");
+        log("CVTypeSectionImpl.createContent() end");
     }
 
     @Override
     public void writeContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVTypeSectionImpl.writeContent() start");
+        log("CVTypeSectionImpl.writeContent() start");
         byte[] buffer = getContent();
-        verboseLog(debugContext, "  [0x%08x] CV_SIGNATURE_C13", pos);
+        verboseLog("  [0x%08x] CV_SIGNATURE_C13", pos);
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         for (CVTypeRecord record : typeMap.values()) {
-            verboseLog(debugContext, "  [0x%08x] 0x%06x %s", pos, record.getSequenceNumber(), record.toString());
+            verboseLog("  [0x%08x] 0x%06x %s", pos, record.getSequenceNumber(), record.toString());
             pos = record.computeFullContents(buffer, pos);
         }
-        verboseLog(debugContext, "CVTypeSectionImpl.writeContent() end");
-    }
-
-    /**
-     * Add all relevant type records to the type section.
-     */
-    private void addRecords() {
-        /* if an external PDB file is generated, add CVTypeServer2Record */
-        /* for each class, add all members, types, etc */
+        verboseLog("CVTypeSectionImpl.writeContent() end");
     }
 
     /**
@@ -107,7 +109,7 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
      * @return the record (if previously unseen) or old record
      */
     @SuppressWarnings("unchecked")
-    public <T extends CVTypeRecord> T addOrReference(T newRecord) {
+    <T extends CVTypeRecord> T addOrReference(T newRecord) {
         final T record;
         if (typeMap.containsKey(newRecord)) {
             record = (T) typeMap.get(newRecord);
@@ -128,5 +130,35 @@ public final class CVTypeSectionImpl extends CVSectionImpl {
         deps.add(BuildDependency.createOrGet(ourContent, decisions.get(targetSection).getDecision(LayoutDecision.Kind.CONTENT)));
 
         return deps;
+    }
+
+    /* API for builders to use */
+
+    /**
+     * Call builder to build all type records for function.
+     *
+     * @param entry primaryEntry containing entities whose type records must be added
+     * @return type index of function type
+     */
+    CVTypeRecord addTypeRecords(CompiledMethodEntry entry) {
+        return builder.buildFunction(entry);
+    }
+
+    /**
+     * Call builder to build all type records and types referenced by that type.
+     *
+     * @param entry primaryEntry containing entities whose type records must be added
+     */
+    CVTypeRecord addTypeRecords(TypeEntry entry) {
+        return builder.buildType(entry);
+    }
+
+    CVTypeRecord.CVTypeStringIdRecord getStringId(String string) {
+        CVTypeRecord.CVTypeStringIdRecord r = new CVTypeRecord.CVTypeStringIdRecord(string);
+        return addOrReference(r);
+    }
+
+    int getIndexForPointer(TypeEntry typeEntry) {
+        return builder.getIndexForPointerOrPrimitive(typeEntry);
     }
 }

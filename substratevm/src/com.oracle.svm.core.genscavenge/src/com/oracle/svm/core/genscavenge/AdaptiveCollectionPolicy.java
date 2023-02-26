@@ -29,7 +29,7 @@ import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoun
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -42,7 +42,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * its base class {@code AdaptiveSizePolicy}. Method and variable names have been kept mostly the
  * same for comparability.
  */
-final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
+class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     /*
      * Constants that can be made options if desirable. These are -XX options in HotSpot, refer to
@@ -237,7 +237,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
     }
 
-    private void computeEdenSpaceSize() {
+    protected void computeEdenSpaceSize(@SuppressWarnings("unused") boolean completeCollection, @SuppressWarnings("unused") GCCause cause) {
         boolean expansionReducesCost = true; // general assumption
         if (shouldUseEstimator(youngGenChangeForMinorThroughput, minorGcCost())) {
             expansionReducesCost = expansionSignificantlyReducesCost(minorCostEstimator, edenSize);
@@ -441,7 +441,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             computeSurvivorSpaceSizeAndThreshold(survivorOverflow, sizes.maxSurvivorSize());
         }
         if (shouldUpdateStats(cause)) {
-            computeEdenSpaceSize();
+            computeEdenSpaceSize(completeCollection, cause);
             if (completeCollection) {
                 computeOldGenSpaceSize(oldLive);
             }
@@ -536,11 +536,11 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
     }
 
-    private static boolean shouldUpdateStats(GCCause cause) { // should_update_{eden,promo}_stats
+    protected boolean shouldUpdateStats(GCCause cause) { // should_update_{eden,promo}_stats
         return cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC;
     }
 
-    private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
+    private void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
                     AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos, UnsignedWord sizeBytes) {
         if (shouldUpdateStats(cause)) {
             double cost = 0;

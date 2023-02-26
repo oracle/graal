@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,7 @@ package org.graalvm.wasm.test.suites.arithmetic;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Properties;
 
-import org.graalvm.wasm.test.WasmTestProperties;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.graalvm.wasm.utils.cases.WasmStringCase;
 import org.junit.Test;
@@ -53,9 +51,7 @@ import org.junit.Test;
 import org.graalvm.wasm.test.WasmFileSuite;
 
 public class Integer32Suite extends WasmFileSuite {
-    private final Properties saturatingFloatToIntProperties = WasmTestProperties.create("wasm.saturating-float-to-int");
-
-    private WasmStringCase[] testCases = {
+    private final WasmStringCase[] testCases = {
                     WasmCase.create("CONST_SMALL", WasmCase.expected(42),
                                     "(module (func (export \"_main\") (result i32) i32.const 42))"),
                     WasmCase.create("CONST_LARGE", WasmCase.expected(1_895_633),
@@ -181,57 +177,65 @@ public class Integer32Suite extends WasmFileSuite {
                     WasmCase.create("WRAP_I64", WasmCase.expected(-1794634296),
                                     "(module (func (export \"_main\") (result i32) i64.const 2500333000 i32.wrap_i64))"),
                     WasmCase.create("TRUNC_SAT_F32_S_NAN", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f32.const nan i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const nan i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_S_INF", WasmCase.expected(Integer.MAX_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f32.const inf i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const inf i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_S_NEG_INF", WasmCase.expected(Integer.MIN_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f32.const inf f32.neg i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const inf f32.neg i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_S_OVERFLOW", WasmCase.expected(Integer.MAX_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f32.const 3.4028235E38 i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const 3.4028235E38 i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_S_UNDERFLOW", WasmCase.expected(Integer.MIN_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f32.const -3.4028235E38 i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const -3.4028235E38 i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_S_VALID", WasmCase.expected(1),
-                                    "(module (func (export \"_main\") (result i32) f32.const 1.532 i32.trunc_sat_f32_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const 1.532 i32.trunc_sat_f32_s))"),
                     WasmCase.create("TRUNC_SAT_F32_U_NAN", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f32.const nan i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const nan i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_INF", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f32.const inf i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const inf i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_NEG_INF", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f32.const inf f32.neg i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const inf f32.neg i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_OVERFLOW", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f32.const 3.4028235E38 i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const 3.4028235E38 i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_INT_OVERFLOW", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f32.const 4.294967296E9 i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const 4.294967296E9 i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_NEG", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f32.const -1.235 i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const -1.235 i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F32_U_VALID", WasmCase.expected(1),
-                                    "(module (func (export \"_main\") (result i32) f32.const 1.532 i32.trunc_sat_f32_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f32.const 1.532 i32.trunc_sat_f32_u))"),
                     WasmCase.create("TRUNC_SAT_F64_S_NAN", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f64.const nan i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const nan i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_S_INF", WasmCase.expected(Integer.MAX_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f64.const inf i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const inf i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_S_NEG_INF", WasmCase.expected(Integer.MIN_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f64.const inf f64.neg i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const inf f64.neg i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_S_OVERFLOW", WasmCase.expected(Integer.MAX_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f64.const 1.79769E308 i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const 1.79769E308 i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_S_UNDERFLOW", WasmCase.expected(Integer.MIN_VALUE),
-                                    "(module (func (export \"_main\") (result i32) f64.const -1.79769E308 i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const -1.79769E308 i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_S_VALID", WasmCase.expected(1),
-                                    "(module (func (export \"_main\") (result i32) f64.const 1.532 i32.trunc_sat_f64_s))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const 1.532 i32.trunc_sat_f64_s))"),
                     WasmCase.create("TRUNC_SAT_F64_U_NAN", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f64.const nan i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const nan i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_INF", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f64.const inf i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const inf i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_NEG_INF", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f64.const inf f64.neg i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const inf f64.neg i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_OVERFLOW", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f64.const 1.7976931348623157E308 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const 1.7976931348623157E308 i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_INT_OVERFLOW", WasmCase.expected(0xffff_ffff),
-                                    "(module (func (export \"_main\") (result i32) f64.const 4.294967296E9 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const 4.294967296E9 i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_NEG", WasmCase.expected(0),
-                                    "(module (func (export \"_main\") (result i32) f64.const -1.235 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const -1.235 i32.trunc_sat_f64_u))"),
                     WasmCase.create("TRUNC_SAT_F64_U_VALID", WasmCase.expected(1),
-                                    "(module (func (export \"_main\") (result i32) f64.const 1.532 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                                    "(module (func (export \"_main\") (result i32) f64.const 1.532 i32.trunc_sat_f64_u))"),
+                    WasmCase.create("EXTEND_8_LEADING_0", WasmCase.expected(0x0000_0001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0xFFFF_FF01 i32.extend8_s))"),
+                    WasmCase.create("EXTEND_8_LEADING_1", WasmCase.expected(0xFFFF_FF81),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0x0000_0081 i32.extend8_s))"),
+                    WasmCase.create("EXTEND_16_LEADING_0", WasmCase.expected(0x0000_0001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0xFFFF_0001 i32.extend16_s))"),
+                    WasmCase.create("EXTEND_16_LEADING_1", WasmCase.expected(0xFFFF_8001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0x0000_8001 i32.extend16_s))")
     };
 
     @Override

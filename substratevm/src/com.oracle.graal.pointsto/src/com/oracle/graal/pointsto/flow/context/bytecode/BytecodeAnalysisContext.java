@@ -27,25 +27,26 @@ package com.oracle.graal.pointsto.flow.context.bytecode;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * It effectively contains a context chain, i.e. a list of {@linkplain BytecodeLocation}
+ * It effectively contains a context chain, i.e. a list of {@linkplain BytecodePosition}
  * representing allocation sites. The context chain has a maximum depth of {@linkplain #getLength()}
  * which is fixed upon creation.
  */
 public final class BytecodeAnalysisContext extends AnalysisContext {
 
-    public static final BytecodeLocation[] emptyLabelList = new BytecodeLocation[0];
+    public static final BytecodePosition[] emptyLabelList = new BytecodePosition[0];
 
     /**
-     * The chain of {@link BytecodeLocation} objects representing allocation sites.
+     * The chain of {@link BytecodePosition} objects representing allocation sites.
      * <p>
      * Note: the size of {@code labels} is the {@code depth} of the context space.
      */
-    protected final BytecodeLocation[] labels;
+    protected final BytecodePosition[] labels;
 
-    protected BytecodeAnalysisContext(BytecodeLocation[] labelList) {
+    protected BytecodeAnalysisContext(BytecodePosition[] labelList) {
         this.labels = labelList;
     }
 
@@ -53,7 +54,7 @@ public final class BytecodeAnalysisContext extends AnalysisContext {
         return labels.length;
     }
 
-    public BytecodeLocation[] labels() {
+    public BytecodePosition[] labels() {
         return labels;
     }
 
@@ -69,7 +70,7 @@ public final class BytecodeAnalysisContext extends AnalysisContext {
     @Override
     protected int valueHashCode() {
         int result = 42;
-        for (BytecodeLocation l : labels) {
+        for (BytecodePosition l : labels) {
             result = result ^ l.hashCode();
         }
         return result;
@@ -79,7 +80,7 @@ public final class BytecodeAnalysisContext extends AnalysisContext {
     public String toString() {
         StringBuilder result = new StringBuilder();
         String separator = " ";
-        for (BytecodeLocation bytecode : labels) {
+        for (BytecodePosition bytecode : labels) {
             result.append(separator).append(bytecode);
             separator = "\t";
         }

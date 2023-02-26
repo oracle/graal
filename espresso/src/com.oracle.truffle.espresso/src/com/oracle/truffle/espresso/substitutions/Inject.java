@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -35,10 +36,11 @@ import java.lang.annotation.Target;
  * Hints that a parameter will be injected and is not part of the the Java method signature.
  *
  * <p>
- * Supported parameter types: {@link Meta}, {@link EspressoContext} and
+ * Supported parameter types: {@link EspressoLanguage}, {@link Meta}, {@link EspressoContext} and
  * {@link SubstitutionProfiler}.
  *
  * <pre>
+ * {@code @Inject EspressoLanguage language}
  * {@code @Inject Meta meta}
  * {@code @Inject SubstitutionProfiler profiler}
  * {@code @Inject EspressoContext context}

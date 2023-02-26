@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -114,7 +115,6 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.phases.BasePhase.dumpAfter",
                     "org.graalvm.compiler.phases.BasePhase.dumpBefore",
                     "org.graalvm.compiler.core.GraalCompiler.emitFrontEnd",
-                    "org.graalvm.compiler.truffle.compiler.PartialEvaluator.inliningGraphPE",
                     "org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler.reportPerformanceWarnings",
                     "org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.compilePEGraph",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$ValidDumpUsagePhase.run",
@@ -147,8 +147,16 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
 
         ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
         if (verifiedCallee.getName().equals("dump")) {
-            int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
-            verifyDumpObjectParameter(callerGraph, debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
+            /*
+             * The optimization log dumps at a parametrized level, but it must be at least
+             * OptimizationLog.MINIMUM_LOG_LEVEL.
+             */
+            String optimizationEntryClassName = OptimizationLogImpl.OptimizationEntryImpl.class.getName();
+            String callerClassName = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci()).getClassName();
+            if (!optimizationEntryClassName.equals(callerClassName)) {
+                int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
+                verifyDumpObjectParameter(callerGraph, debugCallTarget, args.get(2), verifiedCallee, dumpLevel);
+            }
         }
     }
 

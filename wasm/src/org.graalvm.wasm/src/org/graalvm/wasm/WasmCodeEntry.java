@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import org.graalvm.wasm.collection.IntArrayList;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
@@ -51,19 +48,22 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    @CompilationFinal(dimensions = 1) private int[] intConstants;
-    @CompilationFinal(dimensions = 2) private int[][] branchTables;
-    @CompilationFinal(dimensions = 1) private int[] profileCounters;
     private final int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
+    @CompilationFinal(dimensions = 1) private final int[] extraData;
+    @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
+    private final int numLocals;
+    private final int resultCount;
 
-    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize) {
+    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, byte[] resultTypes, int maxStackSize, int[] extraData) {
         this.function = function;
         this.data = data;
         this.localTypes = localTypes;
         this.maxStackSize = maxStackSize;
-        this.intConstants = null;
-        this.profileCounters = null;
+        this.extraData = extraData;
+        this.numLocals = localTypes.length;
+        this.resultTypes = resultTypes;
+        this.resultCount = resultTypes.length;
     }
 
     public WasmFunction function() {
@@ -82,104 +82,24 @@ public final class WasmCodeEntry {
         return localTypes[index];
     }
 
-    @SuppressWarnings("unused")
-    public int intConstant(int index) {
-        return intConstants[index];
-    }
-
-    public void setIntConstants(int[] intConstants) {
-        this.intConstants = intConstants;
-    }
-
-    public int[] intConstants() {
-        return intConstants;
-    }
-
-    public int[] branchTable(int index) {
-        return branchTables[index];
-    }
-
-    public void setBranchTables(int[][] branchTables) {
-        this.branchTables = branchTables;
-    }
-
-    public void setProfileCount(int size) {
-        if (size > 0) {
-            this.profileCounters = new int[size];
-        } else {
-            this.profileCounters = IntArrayList.EMPTY_INT_ARRAY;
-        }
-    }
-
-    public int[] profileCounters() {
-        return profileCounters;
-    }
-
     public int numLocals() {
-        return localTypes.length;
+        return numLocals;
     }
 
     public int functionIndex() {
         return function.index();
     }
 
-    /**
-     * A constant holding the maximum value an {@code int} can have, 2<sup>15</sup>-1. The sum of
-     * the true and false count must not overflow. This constant is used to check whether one of the
-     * counts does not exceed the required maximum value.
-     */
-    public static final int CONDITION_COUNT_MAX_VALUE = 0x3fff;
+    public int[] extraData() {
+        return extraData;
+    }
 
-    /**
-     * Same logic as in {@link com.oracle.truffle.api.profiles.ConditionProfile#profile}.
-     *
-     * @param index Condition index
-     * @param condition Condition value
-     * @return {@code condition}
-     */
-    public static boolean profileCondition(int[] counters, int index, boolean condition) {
-        // locals required to guarantee no overflow in multi-threaded environments
-        int tf = counters[index];
-        int t = tf >>> 16;
-        int f = tf & 0xffff;
-        boolean val = condition;
-        if (val) {
-            if (!CompilerDirectives.inInterpreter()) {
-                if (t == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (f == 0) {
-                    // Make this branch fold during PE
-                    val = true;
-                }
-            } else {
-                if (t < CONDITION_COUNT_MAX_VALUE) {
-                    counters[index] = ((t + 1) << 16) | f;
-                }
-            }
-        } else {
-            if (!CompilerDirectives.inInterpreter()) {
-                if (f == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (t == 0) {
-                    // Make this branch fold during PE
-                    val = false;
-                }
-            } else {
-                if (f < CONDITION_COUNT_MAX_VALUE) {
-                    counters[index] = (t << 16) | (f + 1);
-                }
-            }
-        }
+    public int resultCount() {
+        return resultCount;
+    }
 
-        if (CompilerDirectives.inInterpreter()) {
-            // no branch probability calculation in the interpreter
-            return val;
-        } else {
-            int sum = t + f;
-            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-        }
+    public byte resultType(int index) {
+        return resultTypes[index];
     }
 
     public void errorBranch() {

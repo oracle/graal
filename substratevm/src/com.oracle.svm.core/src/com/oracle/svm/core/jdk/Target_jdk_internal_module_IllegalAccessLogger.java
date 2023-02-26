@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  *
  * The logging code is only present in JDK 11, all logging was removed for JDK 17.
  */
-@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = {JDK11OrEarlier.class, JDK11OrLater.class})
+@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_module_IllegalAccessLogger {
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //

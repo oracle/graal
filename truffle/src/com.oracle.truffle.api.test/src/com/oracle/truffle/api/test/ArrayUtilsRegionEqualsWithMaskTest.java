@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ public class ArrayUtilsRegionEqualsWithMaskTest {
     private static final String strWith7F = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam \u007f nonumy ";
 
     @Parameters(name = "{index}: fromIndex1 {1} fromIndex2 {3} length {5} mask {4} expected {6}")
-    public static Iterable<Object[]> data() {
+    public static ArrayList<Object[]> data() {
         ArrayList<Object[]> ret = data(false);
         ret.addAll(data(true));
         return ret;

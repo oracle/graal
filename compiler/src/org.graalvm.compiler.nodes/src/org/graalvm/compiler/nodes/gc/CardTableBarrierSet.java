@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -129,7 +129,7 @@ public class CardTableBarrierSet implements BarrierSet {
             AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
             return needsWriteBarrier(cmpSwap, cmpSwap.getNewValue());
         } else if (n instanceof ArrayRangeWrite) {
-            return needsWriteBarrier((ArrayRangeWrite) n);
+            return arrayRangeWriteRequiresBarrier((ArrayRangeWrite) n);
         } else {
             GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
             return false;
@@ -169,7 +169,7 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     public void addArrayRangeBarriers(ArrayRangeWrite write) {
-        if (needsWriteBarrier(write)) {
+        if (arrayRangeWriteRequiresBarrier(write)) {
             StructuredGraph graph = write.asNode().graph();
             SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
             graph.addAfterFixed(write.postBarrierInsertionPosition(), serialArrayRangeWriteBarrier);
@@ -203,7 +203,7 @@ public class CardTableBarrierSet implements BarrierSet {
         return isNonNullObjectValue(writtenValue);
     }
 
-    public static boolean needsWriteBarrier(ArrayRangeWrite write) {
+    protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
         return write.writesObjectArray();
     }
 

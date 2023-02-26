@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,8 +35,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -74,7 +74,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame, LLVMContext context, DataLayout dataLayout) {
+    private static LLVMDebuggerScopeEntries getIRLevelEntries(MaterializedFrame frame, LLVMContext context, DataLayout dataLayout) {
         FrameDescriptor desc = frame.getFrameDescriptor();
         if (frame == null || desc.getNumberOfSlots() == 0) {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
@@ -137,7 +137,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Object createIRLevelScope(Node node, Frame frame, LLVMContext context) {
+    public static Object createIRLevelScope(Node node, MaterializedFrame frame, LLVMContext context) {
         DataLayout dataLayout = LLVMNode.findDataLayout(node);
         final LLVMDebuggerScopeEntries localScope = getIRLevelEntries(frame, context, dataLayout);
         final LLVMDebuggerScopeEntries globalScope = getIRLevelEntries(node, context, dataLayout);
@@ -146,7 +146,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Object createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
+    public static Object createSourceLevelScope(Node node, MaterializedFrame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
         LLVMSourceLocation scope = findSourceLocation(node);
@@ -308,13 +308,12 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    private LLVMDebuggerScopeEntries getVariables(Frame frame) {
+    private LLVMDebuggerScopeEntries getVariables(MaterializedFrame frame) {
         if (symbols.isEmpty()) {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
         }
 
-        final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries();
-        vars.setScopeName(getName());
+        final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries(getName());
 
         LLVMDispatchBasicBlockNode dispatchBlock = LLVMNode.getParent(node, LLVMDispatchBasicBlockNode.class);
 

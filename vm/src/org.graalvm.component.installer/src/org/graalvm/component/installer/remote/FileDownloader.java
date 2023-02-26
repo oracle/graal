@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,10 +48,12 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.URLConnectionFactory;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Downloads file to local, optionally checks its integrity using digest.
- * 
+ *
  * @author sdedic
  */
 public final class FileDownloader {
@@ -74,6 +76,37 @@ public final class FileDownloader {
     private Consumer<SeekableByteChannel> dataInterceptor;
     private URLConnectionFactory connectionFactory;
     private boolean simpleOutput;
+
+    private Map<String, List<String>> responseHeader = Collections.emptyMap();
+    private DownloadExceptionInterceptor downloadExceptionInterceptor = (ex, fd) -> ex;
+
+    public interface DownloadExceptionInterceptor {
+        /**
+         * When null is returned another connection will be attempted. Otherwise the returned
+         * Exception is thrown.
+         */
+        IOException interceptDownloadException(IOException downloadException, FileDownloader fileDownloader);
+    }
+
+    public Map<String, List<String>> getResponseHeader() {
+        return responseHeader;
+    }
+
+    public Map<String, String> getRequestHeaders() {
+        return Collections.unmodifiableMap(requestHeaders);
+    }
+
+    /**
+     * Will intercept possible connection problem, if null is returned the downloader will do
+     * another attempt to download otherwise the returned Exception is thrown.
+     *
+     * @param downloadExceptionInterceptor
+     */
+    public void setDownloadExceptionInterceptor(DownloadExceptionInterceptor downloadExceptionInterceptor) {
+        if (downloadExceptionInterceptor != null) {
+            this.downloadExceptionInterceptor = downloadExceptionInterceptor;
+        }
+    }
 
     /**
      * Algorithm to compute file digest. By default SHA-256 is used.
@@ -289,6 +322,12 @@ public final class FileDownloader {
         localFile = to.toFile();
     }
 
+    private int attempt;
+
+    public int getAttemptNr() {
+        return attempt;
+    }
+
     public void download() throws IOException {
         Path localCache = feedback.getLocalCache(sourceURL);
         if (localCache != null) {
@@ -324,7 +363,19 @@ public final class FileDownloader {
             }
         }
 
-        URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
+        URLConnectionFactory urlFactory = getConnectionFactory();
+        URLConnection conn = null;
+        attempt = 0;
+        do {
+            try {
+                attempt++;
+                conn = urlFactory.createConnection(sourceURL, this::configureHeaders);
+            } catch (IOException ex) {
+                if ((ex = downloadExceptionInterceptor.interceptDownloadException(ex, this)) != null) {
+                    throw ex;
+                }
+            }
+        } while (conn == null);
 
         size = conn.getContentLengthLong();
         if (simpleOutput) {
@@ -376,6 +427,7 @@ public final class FileDownloader {
             stopProgress(success);
         }
         verifyDigest();
+        responseHeader = conn.getHeaderFields();
         feedback.addLocalFileCache(sourceURL, localFile.toPath());
     }
 

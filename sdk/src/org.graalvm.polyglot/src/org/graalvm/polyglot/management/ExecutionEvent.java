@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
 
 /**
  * An execution event object passed to an execution listener consumer. Execution event instances
@@ -58,10 +58,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch
  */
 public final class ExecutionEvent {
 
-    final AbstractManagementDispatch dispatch;
+    final AbstractExecutionEventDispatch dispatch;
     final Object receiver;
 
-    ExecutionEvent(AbstractManagementDispatch dispatch, Object receiver) {
+    ExecutionEvent(AbstractExecutionEventDispatch dispatch, Object receiver) {
         this.dispatch = dispatch;
         this.receiver = receiver;
     }

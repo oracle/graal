@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.amd64;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -31,13 +33,24 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
+    @Platforms(Platform.AMD64.class)
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
 
+    @Platforms(Platform.AMD64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeatures(CCharPointer buildtimeCPUFeatureMask);
+
+    @Platforms(Platform.AMD64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeaturesOrExit(CCharPointer buildtimeCPUFeatureMask, CCharPointer errorMessage);
+
+    // Checkstyle: stop
     @CStruct
     @CContext(AMD64LibCHelperDirectives.class)
     public interface CPUFeatures extends PointerBase {
@@ -64,7 +77,7 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAMD3DNOWPREFETCH();
+        boolean fAMD_3DNOW_PREFETCH();
 
         @AllowNarrowingCast
         @CField
@@ -88,11 +101,11 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField()
-        boolean fSSE41();
+        boolean fSSE4_1();
 
         @AllowNarrowingCast
         @CField
-        boolean fSSE42();
+        boolean fSSE4_2();
 
         @AllowNarrowingCast
         @CField
@@ -112,7 +125,7 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fTSCINVBIT();
+        boolean fTSCINV_BIT();
 
         @AllowNarrowingCast
         @CField
@@ -192,19 +205,19 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VPOPCNTDQ();
+        boolean fAVX512_VPOPCNTDQ();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VPCLMULQDQ();
+        boolean fAVX512_VPCLMULQDQ();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VAES();
+        boolean fAVX512_VAES();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VNNI();
+        boolean fAVX512_VNNI();
 
         @AllowNarrowingCast
         @CField
@@ -220,15 +233,55 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VBMI2();
+        boolean fAVX512_VBMI2();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VBMI();
+        boolean fAVX512_VBMI();
 
         @AllowNarrowingCast
         @CField
         boolean fHV();
-    }
 
+        @AllowNarrowingCast
+        @CField
+        boolean fSERIALIZE();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fRDTSCP();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fRDPID();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fFSRM();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fGFNI();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512_BITALG();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fPKU();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fOSPKE();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fCET_IBT();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fCET_SS();
+    }
+    // Checkstyle: resume
 }
