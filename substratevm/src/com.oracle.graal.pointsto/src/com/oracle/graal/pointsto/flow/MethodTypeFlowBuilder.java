@@ -67,7 +67,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
@@ -558,21 +557,6 @@ public class MethodTypeFlowBuilder {
 
         /* Prune the method graph. Eliminate nodes with no uses. Collect flows that need init. */
         postInitFlows = typeFlowGraphBuilder.build();
-
-        /*
-         * Make sure that all existing InstanceOfNodes are registered even when only used as an
-         * input of a conditional.
-         */
-        for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode instanceOf = (InstanceOfNode) n;
-                markFieldsUsedInComparison(instanceOf.getValue());
-            } else if (n instanceof ObjectEqualsNode) {
-                ObjectEqualsNode compareNode = (ObjectEqualsNode) n;
-                markFieldsUsedInComparison(compareNode.getX());
-                markFieldsUsedInComparison(compareNode.getY());
-            }
-        }
     }
 
     protected void apply(boolean forceReparse, Object reason) {
@@ -612,22 +596,6 @@ public class MethodTypeFlowBuilder {
          */
         if (bb.strengthenGraalGraphs()) {
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, flowsGraph.getNodeFlows().getKeys()));
-        }
-    }
-
-    /**
-     * If the node corresponding to the compared value is an instance field load then mark that
-     * field as being used in a comparison.
-     *
-     * @param comparedValue the node corresponding to the compared value
-     */
-    private static void markFieldsUsedInComparison(ValueNode comparedValue) {
-        if (comparedValue instanceof LoadFieldNode) {
-            LoadFieldNode load = (LoadFieldNode) comparedValue;
-            AnalysisField field = (AnalysisField) load.field();
-            if (!field.isStatic()) {
-                field.markAsUsedInComparison();
-            }
         }
     }
 

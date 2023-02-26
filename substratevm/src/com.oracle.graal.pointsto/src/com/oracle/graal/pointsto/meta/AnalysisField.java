@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isFolded;
 
     private boolean isJNIAccessed;
-    private boolean isUsedInComparison;
+
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
     @SuppressWarnings("unused") private volatile int unsafeFrozenTypeState;
     @SuppressWarnings("unused") private volatile Object observers;
@@ -134,8 +134,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
-
-        isUsedInComparison = false;
 
         if (this.isStatic()) {
             this.canBeNull = false;
@@ -485,14 +483,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     public String toString() {
         return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
                         ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
-    }
-
-    public void markAsUsedInComparison() {
-        isUsedInComparison = true;
-    }
-
-    public boolean isUsedInComparison() {
-        return isUsedInComparison;
     }
 
     @Override
