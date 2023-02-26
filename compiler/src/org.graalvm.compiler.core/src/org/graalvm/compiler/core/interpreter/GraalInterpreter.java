@@ -143,6 +143,9 @@ public class GraalInterpreter {
             return null;
         }
         Object returnObject = returnValue.asObject();
+        // integer results smaller than int must be coerced up to int.
+        returnObject = InterpreterValue.coerceUpToInt(returnObject);
+
         if (returnValue.isUnwindException()) {
             GraalError.guarantee(returnObject instanceof Exception, "isException returned true but underlying interpreter value is not an Exception object");
             throw new InvocationTargetException((Exception) returnValue.asObject());
@@ -435,9 +438,6 @@ public class GraalInterpreter {
             }
             ResolvedJavaType resolvedType = context.getMetaAccess().lookupJavaType(value.getClass());
             InterpreterValueObject createdObject = createObject(resolvedType, value);
-            // for (ResolvedJavaField field : resolvedType.getInstanceFields(true)) {
-                // TODO: how to get this field out of object and stick into createdObject
-            // }
             return createdObject;
         }
     }

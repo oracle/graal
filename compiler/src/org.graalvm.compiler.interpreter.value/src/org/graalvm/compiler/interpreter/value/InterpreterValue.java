@@ -162,4 +162,21 @@ public abstract class InterpreterValue {
             return Class.forName(type.toJavaName(), true, jvmContext.getClassLoader());
         }
     }
+
+    /**
+     * Coerce any small integer objects up to Integer.
+     *
+     * @param obj
+     * @return the same value as obj, but at least Integer size.
+     */
+    public static Object coerceUpToInt(Object obj) {
+        if (obj instanceof Byte) {
+            obj = Integer.valueOf(((Byte) obj).intValue());
+        } else if (obj instanceof Short) {
+            obj = Integer.valueOf(((Short) obj).intValue());
+        } else if (obj instanceof Character) {
+            obj = Integer.valueOf(((Character) obj).charValue());
+        }
+        return obj;
+    }
 }

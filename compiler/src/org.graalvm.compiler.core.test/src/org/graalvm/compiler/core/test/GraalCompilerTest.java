@@ -933,8 +933,17 @@ public abstract class GraalCompilerTest extends GraalTest {
             try {
                 Object resultValue = interpreter.executeGraph(methodGraph, args);
                 JavaKind resultKind = method.getSignature().getReturnKind();
-                if (resultKind == JavaKind.Boolean && resultValue instanceof Integer) {
-                    resultValue = (resultValue == Integer.valueOf(0)) ? Boolean.FALSE : Boolean.TRUE;
+                // we coerce Integer results to Boolean / Byte / Short / Char if needed.
+                if (resultValue instanceof Integer) {
+                    if (resultKind == JavaKind.Boolean) {
+                        resultValue = (resultValue == Integer.valueOf(0)) ? Boolean.FALSE : Boolean.TRUE;
+                    } else if (resultKind == JavaKind.Byte) {
+                        resultValue = Byte.valueOf(((Integer) resultValue).byteValue());
+                    } else if (resultKind == JavaKind.Short) {
+                        resultValue = Short.valueOf(((Integer) resultValue).shortValue());
+                    } else if (resultKind == JavaKind.Char) {
+                        resultValue = Character.valueOf((char) ((Integer) resultValue).intValue());
+                    }
                 }
                 interpreterResult = new Result(resultValue, null);
             } catch (InvocationTargetException e) {

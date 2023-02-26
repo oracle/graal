@@ -78,6 +78,9 @@ public class InterpreterValueMutableObject extends InterpreterValueObject {
         this.fieldCache = new HashMap<>();
         this.jvmContext = jvmContext;
         this.valueFactory = valueFactory;
+        if (type.isPrimitive()) {
+            obj = coerceUpToInt(obj);
+        }
         this.nativeObject = obj;
     }
 
