@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -601,11 +601,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             boolean nonNull = useLinearPointerCompression() || isNonNull;
             append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
-        }
-
-        @Override
-        public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args) {
-            throw unimplemented();
         }
 
         @Override
