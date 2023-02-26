@@ -33,21 +33,18 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.sampler.SamplerBuffer;
+import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -61,18 +58,29 @@ import com.oracle.svm.core.util.VMError;
  * </ul>
  *
  * It is necessary to have separate buffers as a native JFR event (e.g., a GC or an allocation)
- * could otherwise destroy an Java-level JFR event. All methods that access a {@link JfrBuffer} must
+ * could otherwise destroy a Java-level JFR event. All methods that access a {@link JfrBuffer} must
  * be uninterruptible to avoid races with JFR code that is executed at a safepoint (such code may
- * modify the buffers of other threads).
+ * access and modify the buffers of other threads).
+ *
+ * Additionally, each thread may store stack trace data in a {@link SamplerBuffer}. This buffer is
+ * used for both JFR stack traces and JFR sampling. All methods that access a {@link SamplerBuffer}
+ * must be uninterruptible to avoid races with JFR code that is executed at a safepoint (such code
+ * may access and modify the buffers of other threads). Sometimes, it is additionally necessary to
+ * disable sampling temporarily to avoid that the sampler modifies the buffer unexpectedly.
  */
 public class JfrThreadLocal implements ThreadListener {
+    /* Event-related thread-locals. */
     private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class,
                     "JfrThreadLocal.javaEventWriter");
     private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
     private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
-    private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
-    private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
+
+    /* Stacktrace-related thread-locals. */
+    private static final FastThreadLocalWord<SamplerBuffer> samplerBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerBuffer");
+    private static final FastThreadLocalLong missedSamples = FastThreadLocalFactory.createLong("JfrThreadLocal.missedSamples");
+    private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("JfrThreadLocal.unparseableStacks");
+    private static final FastThreadLocalWord<SamplerSampleWriterData> samplerWriterData = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerWriterData");
 
     private long threadLocalBufferSize;
 
@@ -84,47 +92,38 @@ public class JfrThreadLocal implements ThreadListener {
         this.threadLocalBufferSize = bufferSize;
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
-    public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
-        // We copy the thread id to a thread-local in the IsolateThread. This is necessary so that
-        // we are always able to access that value without having to go through a heap-allocated
-        // Java object.
-        Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
-        threadId.set(isolateThread, t.getId());
-        parentThreadId.set(isolateThread, JavaThreads.getParentThreadId(javaThread));
-
-        SubstrateJVM.getThreadRepo().registerThread(javaThread);
-
-        // Emit ThreadStart event before thread.run().
-        ThreadStartEvent.emit(isolateThread);
-
-        // Register ExecutionSampleEvent after ThreadStart event and before thread.run().
-        ExecutionSampleEvent.tryToRegisterExecutionSampleEventCallback();
+    public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
+        if (SubstrateJVM.get().isRecording()) {
+            SubstrateJVM.getThreadRepo().registerThread(javaThread);
+            ThreadStartEvent.emit(javaThread);
+        }
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-        // Emit ThreadEnd event after thread.run() finishes.
-        ThreadEndEvent.emit(isolateThread);
+        if (SubstrateJVM.get().isRecording()) {
+            ThreadEndEvent.emit(javaThread);
+            stopRecording(isolateThread);
+        }
+    }
 
-        // Flush all buffers if necessary.
-        if (SubstrateJVM.isRecording()) {
-            JfrBuffer jb = javaBuffer.get(isolateThread);
-            if (jb.isNonNull()) {
-                flush(jb, WordFactory.unsigned(0), 0);
-            }
-
-            JfrBuffer nb = nativeBuffer.get(isolateThread);
-            if (nb.isNonNull()) {
-                flush(nb, WordFactory.unsigned(0), 0);
-            }
+    @Uninterruptible(reason = "Accesses various JFR buffers.")
+    public static void stopRecording(IsolateThread isolateThread) {
+        /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
+        JfrBuffer jb = javaBuffer.get(isolateThread);
+        if (jb.isNonNull()) {
+            flush(jb, WordFactory.unsigned(0), 0);
         }
 
-        // Free and reset all data.
-        threadId.set(isolateThread, 0);
-        parentThreadId.set(isolateThread, 0);
+        JfrBuffer nb = nativeBuffer.get(isolateThread);
+        if (nb.isNonNull()) {
+            flush(nb, WordFactory.unsigned(0), 0);
+        }
+
+        /* Clear event-related thread-locals. */
         dataLost.set(isolateThread, WordFactory.unsigned(0));
         javaEventWriter.set(isolateThread, null);
 
@@ -133,16 +132,17 @@ public class JfrThreadLocal implements ThreadListener {
 
         freeBuffer(nativeBuffer.get(isolateThread));
         nativeBuffer.set(isolateThread, WordFactory.nullPointer());
-    }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getTraceId(IsolateThread isolateThread) {
-        return threadId.get(isolateThread);
-    }
+        /* Clear stacktrace-related thread-locals. */
+        missedSamples.set(isolateThread, 0);
+        unparseableStacks.set(isolateThread, 0);
+        assert samplerWriterData.get(isolateThread).isNull();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getParentThreadId(IsolateThread isolateThread) {
-        return parentThreadId.get(isolateThread);
+        SamplerBuffer buffer = samplerBuffer.get(isolateThread);
+        if (buffer.isNonNull()) {
+            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
+            samplerBuffer.set(isolateThread, WordFactory.nullPointer());
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -154,9 +154,11 @@ public class JfrThreadLocal implements ThreadListener {
         return javaEventWriter.get();
     }
 
-    // If a safepoint happens in this method, the state that another thread can see is always
-    // sufficiently consistent as the JFR buffer is still empty. So, this method does not need to be
-    // uninterruptible.
+    /**
+     * If a safepoint happens in this method, the state that another thread can see is always
+     * sufficiently consistent as the JFR buffer is still empty. So, this method does not need to be
+     * uninterruptible.
+     */
     public Target_jdk_jfr_internal_EventWriter newEventWriter() {
         assert javaEventWriter.get() == null;
         assert javaBuffer.get().isNull();
@@ -170,7 +172,7 @@ public class JfrThreadLocal implements ThreadListener {
         long startPos = buffer.getPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
         long addressOfPos = JfrBufferAccess.getAddressOfPos(buffer).rawValue();
-        long jfrThreadId = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+        long jfrThreadId = SubstrateJVM.getCurrentThreadId();
         Target_jdk_jfr_internal_EventWriter result;
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             result = new Target_jdk_jfr_internal_EventWriter(startPos, maxPos, addressOfPos, jfrThreadId, true, false);
@@ -184,7 +186,6 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
-        VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
         JfrBuffer result = javaBuffer.get();
         if (result.isNull()) {
             result = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
@@ -195,7 +196,6 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public JfrBuffer getNativeBuffer() {
-        VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
         JfrBuffer result = nativeBuffer.get();
         if (result.isNull()) {
             result = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
@@ -206,13 +206,13 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public static JfrBuffer getJavaBuffer(IsolateThread thread) {
-        assert (VMOperation.isInProgressAtSafepoint());
+        assert VMOperation.isInProgressAtSafepoint();
         return javaBuffer.get(thread);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public static JfrBuffer getNativeBuffer(IsolateThread thread) {
-        assert (VMOperation.isInProgressAtSafepoint());
+        assert VMOperation.isInProgressAtSafepoint();
         return nativeBuffer.get(thread);
     }
 
@@ -238,7 +238,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         if (uncommitted.aboveThan(0)) {
-            // Copy all uncommitted memory to the start of the thread local buffer.
+            /* Copy all uncommitted memory to the start of the thread local buffer. */
             assert JfrBufferAccess.getDataStart(threadLocalBuffer).add(uncommitted).belowOrEqual(JfrBufferAccess.getDataEnd(threadLocalBuffer));
             UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
         }
@@ -255,7 +255,7 @@ public class JfrThreadLocal implements ThreadListener {
         assert buffer.isNonNull();
         assert unflushedSize.aboveThan(0);
         UnsignedWord totalDataLoss = increaseDataLost(unflushedSize);
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.DataLoss)) {
+        if (JfrEvent.DataLoss.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, buffer);
 
@@ -277,5 +277,52 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void freeBuffer(JfrBuffer buffer) {
         JfrBufferAccess.free(buffer);
+    }
+
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
+    public static SamplerBuffer getSamplerBuffer() {
+        return getSamplerBuffer(CurrentIsolate.getCurrentThread());
+    }
+
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
+    public static SamplerBuffer getSamplerBuffer(IsolateThread thread) {
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
+        return samplerBuffer.get(thread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setSamplerBuffer(SamplerBuffer buffer) {
+        samplerBuffer.set(buffer);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void increaseMissedSamples() {
+        missedSamples.set(getMissedSamples() + 1);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getMissedSamples() {
+        return missedSamples.get();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void increaseUnparseableStacks() {
+        unparseableStacks.set(getUnparseableStacks() + 1);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getUnparseableStacks() {
+        return unparseableStacks.get();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setSamplerWriterData(SamplerSampleWriterData data) {
+        assert samplerWriterData.get().isNull() || data.isNull();
+        samplerWriterData.set(data);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static SamplerSampleWriterData getSamplerWriterData() {
+        return samplerWriterData.get();
     }
 }

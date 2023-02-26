@@ -82,7 +82,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      * The set of GCs known at the time of writing of this test. The number of expected barrier
      * might need to be adjusted for new GCs implementations.
      */
-    private static EnumSet<HotSpotGC> knownSupport = EnumSet.of(HotSpotGC.G1, HotSpotGC.CMS, HotSpotGC.Parallel, HotSpotGC.Serial);
+    private static EnumSet<HotSpotGC> knownSupport = EnumSet.of(HotSpotGC.G1, HotSpotGC.Parallel, HotSpotGC.Serial);
 
     private final GraalHotSpotVMConfig config = runtime().getVMConfig();
 

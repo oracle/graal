@@ -41,7 +41,6 @@ public class ExactInlineInfo extends AbstractInlineInfo {
 
     protected final ResolvedJavaMethod concrete;
     private Inlineable inlineableElement;
-    private boolean suppressNullCheck;
 
     public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
         super(invoke);
@@ -49,13 +48,9 @@ public class ExactInlineInfo extends AbstractInlineInfo {
         assert concrete != null;
     }
 
-    public void suppressNullCheck() {
-        suppressNullCheck = true;
-    }
-
     @Override
     public EconomicSet<Node> inline(CoreProviders providers, String reason) {
-        return inline(invoke, concrete, inlineableElement, !suppressNullCheck, reason);
+        return inline(invoke, concrete, inlineableElement, true, reason);
     }
 
     @Override

@@ -101,6 +101,11 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          */
         ARRAY_STORE(1, ArrayStoreException.class),
 
+        /**
+         * Represents a {@link IncompatibleClassChangeError}. No arguments are allowed.
+         */
+        INCOMPATIBLE_CLASS_CHANGE(0, IncompatibleClassChangeError.class),
+
         /** Represents a {@link AssertionError} without arguments. */
         ASSERTION_ERROR_NULLARY(0, AssertionError.class),
 

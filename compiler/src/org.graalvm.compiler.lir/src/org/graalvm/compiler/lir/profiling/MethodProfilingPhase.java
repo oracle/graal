@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.profiling;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
@@ -69,7 +69,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
         public void run() {
             // insert counter at method entry
             doBlock(lir.getControlFlowGraph().getStartBlock(), INVOCATION_GROUP);
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
                 if (block.isLoopHeader()) {
                     // insert counter at loop header
                     doBlock(block, ITERATION_GROUP);
@@ -77,7 +77,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
             }
         }
 
-        public void doBlock(AbstractBlockBase<?> block, String group) {
+        public void doBlock(BasicBlock<?> block, String group) {
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.size() >= 2 : "Malformed block: " + block + ", " + instructions;
             assert instructions.get(instructions.size() - 1) instanceof BlockEndOp : "Not a BlockEndOp: " + instructions.get(instructions.size() - 1);

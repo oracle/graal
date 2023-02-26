@@ -68,6 +68,10 @@ public abstract class OptionOrigin {
     }
 
     public static OptionOrigin from(String origin) {
+        return from(origin, true);
+    }
+
+    public static OptionOrigin from(String origin, boolean strict) {
 
         if (origin == null || origin.startsWith(argFilePrefix)) {
             return commandLineOptionOriginSingleton;
@@ -79,19 +83,25 @@ public abstract class OptionOrigin {
             if (macroOption != null) {
                 return macroOption;
             }
-            throw VMError.shouldNotReachHere("Unsupported OptionOrigin: " + origin);
+            if (strict) {
+                throw VMError.shouldNotReachHere("Unsupported OptionOrigin: " + origin);
+            }
+            return null;
         }
         switch (originURI.getScheme()) {
             case "jar":
                 return new JarOptionOrigin(originURI);
             case "file":
                 Path originPath = Path.of(originURI);
-                if (!Files.isReadable(originPath)) {
+                if (!Files.isReadable(originPath) && strict) {
                     VMError.shouldNotReachHere("Directory origin with path that cannot be read: " + originPath);
                 }
                 return new DirectoryOptionOrigin(originPath);
             default:
-                throw VMError.shouldNotReachHere("OptionOrigin of unsupported scheme: " + originURI);
+                if (strict) {
+                    throw VMError.shouldNotReachHere("OptionOrigin of unsupported scheme: " + originURI);
+                }
+                return null;
         }
     }
 

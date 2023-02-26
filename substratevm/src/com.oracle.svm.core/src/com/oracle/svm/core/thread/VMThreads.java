@@ -153,6 +153,11 @@ public abstract class VMThreads {
      * used for the stack overflow check.
      */
     public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord("VMThreads.StackEnd");
+    /**
+     * Tracks whether this thread was started by the current isolate or if it was an externally
+     * started thread which was attached to the isolate. This distinction determines the teardown
+     * process for the thread.
+     */
     private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
 
     private static final int STATE_UNINITIALIZED = 1;
@@ -338,7 +343,7 @@ public abstract class VMThreads {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
-        exit(thread);
+        threadExit(thread);
         /* Only uninterruptible code may be executed from now on. */
         PlatformThreads.afterThreadExit(thread);
 
@@ -448,12 +453,20 @@ public abstract class VMThreads {
         }
     }
 
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     public void tearDown() {
         ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+
+        IsolateThread curThread = CurrentIsolate.getCurrentThread();
+        VMThreads.threadExit(curThread);
+        /* Only uninterruptible code may be executed from now on. */
+        PlatformThreads.afterThreadExit(curThread);
+
         if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
-        // At this point, it is guaranteed that all other threads were detached.
+
+        /* At this point, it is guaranteed that all other threads were detached. */
         IsolateListenerSupport.singleton().onIsolateTeardown();
         waitUntilLastOsThreadExited();
     }
@@ -469,8 +482,12 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
-    private static void exit(IsolateThread thread) {
-        PlatformThreads.threadExit(thread);
+    private static void threadExit(IsolateThread thread) {
+        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
+        Thread javaThread = PlatformThreads.currentThread.get(thread);
+        if (javaThread != null) {
+            PlatformThreads.exit(javaThread);
+        }
     }
 
     /**
@@ -482,7 +499,7 @@ public abstract class VMThreads {
      * following tear-down.
      */
     public static void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
-        DetachAllThreadsExceptCurrentOperation vmOp = new DetachAllThreadsExceptCurrentOperation();
+        DetachAllExternallyStartedThreadsExceptCurrentOperation vmOp = new DetachAllExternallyStartedThreadsExceptCurrentOperation();
         vmOp.enqueue();
     }
 
@@ -618,9 +635,9 @@ public abstract class VMThreads {
         return false;
     }
 
-    private static class DetachAllThreadsExceptCurrentOperation extends JavaVMOperation {
-        DetachAllThreadsExceptCurrentOperation() {
-            super(VMOperationInfos.get(DetachAllThreadsExceptCurrentOperation.class, "Detach all threads except current", SystemEffect.SAFEPOINT));
+    private static class DetachAllExternallyStartedThreadsExceptCurrentOperation extends JavaVMOperation {
+        DetachAllExternallyStartedThreadsExceptCurrentOperation() {
+            super(VMOperationInfos.get(DetachAllExternallyStartedThreadsExceptCurrentOperation.class, "Detach all externally started threads except current", SystemEffect.SAFEPOINT));
         }
 
         @Override

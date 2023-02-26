@@ -30,13 +30,11 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo
-public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Binary<ValueNode> {
+public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements Canonicalizable.Binary<ValueNode> {
 
     public static final NodeClass<BinaryOpLogicNode> TYPE = NodeClass.create(BinaryOpLogicNode.class);
     @Input protected ValueNode x;
@@ -74,10 +72,6 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @Override
     public boolean verify() {
         return super.verify();
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
     }
 
     /**

@@ -32,5 +32,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public interface CallStackFrameMethodData {
 
+    /* Returns a unique id for the given method. The returned id is always greater than 0. */
     int getMethodId(ResolvedJavaMethod method);
 }

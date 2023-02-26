@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.8.0",
+  "mxversion": "6.15.3",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.0.0",
@@ -90,8 +90,8 @@ suite = {
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "checkstyleVersion" : "8.8",
-      "javaCompliance" : "11+",
+      "checkstyleVersion" : "10.7.0",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
@@ -104,7 +104,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "license" : "UPL",
     },
 
@@ -116,7 +116,7 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -133,7 +133,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "BSD-new",
@@ -159,7 +159,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
@@ -185,7 +185,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "org.graalvm.wasm",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "workingSets" : "WebAssembly",
       "testProject" : True,
@@ -200,7 +200,7 @@ suite = {
         "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
     },
@@ -212,7 +212,8 @@ suite = {
         "org.graalvm.wasm",
         "JOL",
       ],
-      "javaCompliance": "11+",
+      "workingSets": "WebAssembly",
+      "javaCompliance" : "17+",
       "defaultBuild": False,
     }
   },

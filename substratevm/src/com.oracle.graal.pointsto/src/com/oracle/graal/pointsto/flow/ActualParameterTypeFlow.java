@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
  */
 public class ActualParameterTypeFlow extends TypeFlow<ValueNode> {
     public ActualParameterTypeFlow(AnalysisType declaredType) {
-        super(null, declaredType);
+        super(null, filterUncheckedInterface(declaredType));
     }
 
     @Override

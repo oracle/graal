@@ -30,7 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.Value;
 final class RegisterVerifier {
 
     LinearScan allocator;
-    ArrayList<AbstractBlockBase<?>> workList; // all blocks that must be processed
+    ArrayList<BasicBlock<?>> workList; // all blocks that must be processed
     BlockMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
@@ -62,15 +62,15 @@ final class RegisterVerifier {
     }
 
     // accessors
-    Interval[] stateForBlock(AbstractBlockBase<?> block) {
+    Interval[] stateForBlock(BasicBlock<?> block) {
         return savedStates.get(block);
     }
 
-    void setStateForBlock(AbstractBlockBase<?> block, Interval[] savedState) {
+    void setStateForBlock(BasicBlock<?> block, Interval[] savedState) {
         savedStates.put(block, savedState);
     }
 
-    void addToWorkList(AbstractBlockBase<?> block) {
+    void addToWorkList(BasicBlock<?> block) {
         if (!workList.contains(block)) {
             workList.add(block);
         }
@@ -84,7 +84,7 @@ final class RegisterVerifier {
     }
 
     @SuppressWarnings("try")
-    void verify(AbstractBlockBase<?> start) {
+    void verify(BasicBlock<?> start) {
         DebugContext debug = allocator.getDebug();
         try (DebugContext.Scope s = debug.scope("RegisterVerifier")) {
             // setup input registers (method arguments) for first block
@@ -94,7 +94,7 @@ final class RegisterVerifier {
 
             // main loop for verification
             do {
-                AbstractBlockBase<?> block = workList.get(0);
+                BasicBlock<?> block = workList.get(0);
                 workList.remove(0);
 
                 processBlock(block);
@@ -103,7 +103,7 @@ final class RegisterVerifier {
     }
 
     @SuppressWarnings("try")
-    private void processBlock(AbstractBlockBase<?> block) {
+    private void processBlock(BasicBlock<?> block) {
         DebugContext debug = allocator.getDebug();
         try (Indent indent = debug.logAndIndent("processBlock B%d", block.getId())) {
             // must copy state because it is modified
@@ -121,7 +121,8 @@ final class RegisterVerifier {
             }
 
             // iterate all successors
-            for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                BasicBlock<?> succ = block.getSuccessorAt(i);
                 processSuccessor(succ, inputState);
             }
         }
@@ -140,7 +141,7 @@ final class RegisterVerifier {
         }
     }
 
-    private void processSuccessor(AbstractBlockBase<?> block, Interval[] inputState) {
+    private void processSuccessor(BasicBlock<?> block, Interval[] inputState) {
         DebugContext debug = allocator.getDebug();
         Interval[] savedState = stateForBlock(block);
 
@@ -201,7 +202,7 @@ final class RegisterVerifier {
         }
     }
 
-    static boolean checkState(AbstractBlockBase<?> block, LIRInstruction op, Interval[] inputState, Value operand, Value reg, Interval interval) {
+    static boolean checkState(BasicBlock<?> block, LIRInstruction op, Interval[] inputState, Value operand, Value reg, Interval interval) {
         if (reg != null && isRegister(reg)) {
             if (inputState[asRegister(reg).number] != interval) {
                 throw new GraalError(
@@ -212,7 +213,7 @@ final class RegisterVerifier {
         return true;
     }
 
-    void processOperations(AbstractBlockBase<?> block, final Interval[] inputState) {
+    void processOperations(BasicBlock<?> block, final Interval[] inputState) {
         ArrayList<LIRInstruction> ops = allocator.getLIR().getLIRforBlock(block);
         DebugContext debug = allocator.getDebug();
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {

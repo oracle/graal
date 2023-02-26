@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -36,7 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
  */
 public interface SVMParsingSupport {
 
-    Object parseGraph(BigBang bb, AnalysisMethod method);
+    Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
 
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 

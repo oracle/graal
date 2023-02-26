@@ -124,14 +124,14 @@ public final class ManagementSupport implements ThreadListener {
     MBeanServer platformMBeanServer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ManagementSupport() {
+    ManagementSupport(SubstrateThreadMXBean threadMXBean) {
         platformManagedObjectsMap = new HashMap<>();
         platformManagedObjectsSet = Collections.newSetFromMap(new IdentityHashMap<>());
 
         classLoadingMXBean = new SubstrateClassLoadingMXBean();
         compilationMXBean = new SubstrateCompilationMXBean();
         runtimeMXBean = new SubstrateRuntimeMXBean();
-        threadMXBean = new SubstrateThreadMXBean();
+        this.threadMXBean = threadMXBean;
 
         /*
          * Register the platform objects defined in this package. Note that more platform objects
@@ -265,13 +265,13 @@ public final class ManagementSupport implements ThreadListener {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
-    public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
+    public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         threadMXBean.noteThreadStart(javaThread);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         threadMXBean.noteThreadFinish(javaThread);

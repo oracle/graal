@@ -26,7 +26,7 @@ package org.graalvm.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.test.MatchRuleTest;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -66,7 +66,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("test1Snippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof MemoryConstOp && ((MemoryConstOp) ins).getOpcode().toString().equals("CMP")) {
                 assertFalse("MemoryConstOp expected only once in first block", found);
                 found = true;
@@ -101,7 +101,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testVolatileExtensionSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Unary.MemoryOp) {
                 ins.visitEachOutput((value, mode, flags) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
                 assertFalse("MemoryOp expected only once in first block", found);
@@ -131,7 +131,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testLoadTestNoMatchSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof ConstOp && ((ConstOp) ins).getOpcode().toString().equals("CMP")) {
                 assertFalse("CMP expected only once in first block", found);
                 found = true;
@@ -158,7 +158,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Binary.MemoryTwoOp && ((AMD64Binary.MemoryTwoOp) ins).getOpcode().toString().equals("ADD")) {
                 assertFalse("MemoryTwoOp expected only once in first block", found);
                 found = true;
@@ -181,7 +181,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadNoMatchSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Binary.CommutativeTwoOp && ((AMD64Binary.CommutativeTwoOp) ins).getOpcode().toString().equals("ADD")) {
                 assertFalse("CommutativeTwoOp expected only once in first block", found);
                 found = true;
@@ -207,7 +207,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testVolatileExtensionDifferentBlocksSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Unary.MemoryOp) {
                 ins.visitEachOutput((value, mode, flags) -> assertTrue(value.getPlatformKind().toString(), value.getPlatformKind().equals(AMD64Kind.QWORD)));
                 assertFalse("MemoryOp expected only once in first block", found);
@@ -234,7 +234,8 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadDifferentBlocksNoMatchSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            BasicBlock<?> b = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(b)) {
                 if (ins instanceof AMD64Binary.CommutativeTwoOp && ((AMD64Binary.CommutativeTwoOp) ins).getOpcode().toString().equals("ADD")) {
                     assertFalse("CommutativeTwoOp expected only once in first block", found);
@@ -262,7 +263,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadDifferentBlocksSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (ins instanceof AMD64Binary.MemoryTwoOp && ((AMD64Binary.MemoryTwoOp) ins).getOpcode().toString().equals("ADD")) {
                 assertFalse("MemoryTwoOp expected only once in first block", found);
                 found = true;

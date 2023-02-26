@@ -42,7 +42,7 @@ public interface EspressoLock {
     /**
      * Creates a new {@code EspressoLock} instance.
      */
-    @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
+    @TruffleBoundary // ReentrantLock.<init> blocklisted by SVM
     static EspressoLock create(BlockingSupport<?> blockingSupport) {
         return new EspressoLockImpl(blockingSupport);
     }
@@ -256,6 +256,7 @@ public interface EspressoLock {
 /**
  * {@link EspressoLock} is not a final class to hide the {@link ReentrantLock} implementation.
  */
+@SuppressWarnings("serial")
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final Node dummy = new Node() {
@@ -264,7 +265,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             return false;
         }
     };
-    private static final long serialVersionUID = -2776792497346642438L;
 
     EspressoLockImpl(BlockingSupport<?> blockingSupport) {
         assert blockingSupport != null;
@@ -296,7 +296,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
-    @TruffleBoundary // ReetrantLock.unlock() blacklisted by SVM
+    @TruffleBoundary // ReetrantLock.unlock() blocklisted by SVM
     public void unlock() {
         super.unlock();
     }

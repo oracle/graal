@@ -24,23 +24,26 @@
  */
 package com.oracle.svm.hosted.jfr;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
-import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -50,31 +53,33 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * This class triggers the class redefinition (see {@link JVM#retransformClasses}) for all
- * {@link Event} classes that are visited during static analysis.
+ * This class triggers the class redefinition (see {@link JVM#retransformClasses}) for all event
+ * classes that are visited during static analysis.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 
-    private final ResolvedJavaType jdkJfrEvent;
+    private final ResolvedJavaType baseEventType;
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
+    private final EconomicMap<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
-        jdkJfrEvent = metaAccess.lookupJavaType(Event.class);
+        baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(JfrEventWriterAccess.getEventWriterClass());
         changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
+        mirrorEventMapping = createMirrorEventsMapping();
     }
 
     @Override
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         ResolvedJavaType type = field.getDeclaringClass();
         if (needsClassRedefinition(type)) {
-            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
+            typeSubstitution.computeIfAbsent(type, this::initEventClass);
             return fieldSubstitutions.computeIfAbsent(field, JfrEventSubstitution::initEventField);
         }
         return field;
@@ -84,7 +89,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaType type = method.getDeclaringClass();
         if (needsClassRedefinition(type)) {
-            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
+            typeSubstitution.computeIfAbsent(type, this::initEventClass);
             return methodSubstitutions.computeIfAbsent(method, JfrEventSubstitution::initEventMethod);
         }
         return method;
@@ -93,7 +98,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     @Override
     public ResolvedJavaType lookup(ResolvedJavaType type) {
         if (needsClassRedefinition(type)) {
-            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
+            typeSubstitution.computeIfAbsent(type, this::initEventClass);
         }
         return type;
     }
@@ -139,14 +144,22 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         throw VMError.shouldNotReachHere("Could not re-resolve method: " + oldMethod);
     }
 
-    private static Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
+    private Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
         try {
-            Class<? extends Event> newEventClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), eventType).asSubclass(Event.class);
+            Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
+
+            // It is crucial that mirror events are registered before the actual events.
+            Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
+            if (mirrorEventClass != null) {
+                SecuritySupport.registerMirror(mirrorEventClass);
+            }
+
             SecuritySupport.registerEvent(newEventClass);
+
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
-            // duringAnalysis callback so it does not not race/interfere with other retransforms
+            // duringAnalysis callback so it does not race/interfere with other retransforms
             JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
             return Boolean.TRUE;
         } catch (Throwable ex) {
@@ -155,7 +168,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     }
 
     private boolean needsClassRedefinition(ResolvedJavaType type) {
-        return !type.isAbstract() && jdkJfrEvent.isAssignableFrom(type) && !jdkJfrEvent.equals(type);
+        return !type.isAbstract() && baseEventType.isAssignableFrom(type) && !baseEventType.equals(type);
     }
 
     /**
@@ -204,5 +217,32 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
                 return method.getDeclaredMethod("getMetaspacePointer");
             }
         }
+    }
+
+    /*
+     * Mirror events contain the JFR-specific annotations. The mirrored event does not have any
+     * dependency on JFR-specific classes. If the mirrored event is used, we must ensure that the
+     * mirror event is registered as well. Otherwise, incorrect JFR metadata would be emitted.
+     */
+    @SuppressWarnings("unchecked")
+    private static EconomicMap<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
+        EconomicMap<String, Class<? extends jdk.jfr.Event>> result = EconomicMap.create();
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            Class<? extends Annotation> mirrorEventAnnotationClass = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.jfr.internal.MirrorEvent");
+            Class<?> jdkEventsClass = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.instrument.JDKEvents");
+            Class<?>[] mirrorEventClasses = ReflectionUtil.readStaticField(jdkEventsClass, "mirrorEventClasses");
+            for (int i = 0; i < mirrorEventClasses.length; i++) {
+                Class<? extends jdk.jfr.Event> mirrorEventClass = (Class<? extends jdk.jfr.Event>) mirrorEventClasses[i];
+                Annotation mirrorEvent = AnnotationAccess.getAnnotation(mirrorEventClass, mirrorEventAnnotationClass);
+                Method m = ReflectionUtil.lookupMethod(mirrorEventAnnotationClass, "className");
+                try {
+                    String className = (String) m.invoke(mirrorEvent);
+                    result.put(className, mirrorEventClass);
+                } catch (Exception e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+            }
+        }
+        return result;
     }
 }

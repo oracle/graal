@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,15 +127,6 @@ public class StaticAnalysisResults implements ProfilingInfo {
             }
         }
         return null;
-    }
-
-    /**
-     * Returns the type profile for values returned by the invocation bytecode with the given bci,
-     * or {@code null} if no type profile is available.
-     */
-    public JavaTypeProfile getInvokeResultTypeProfile(int bci) {
-        BytecodeEntry entry = lookup(bci);
-        return entry == null ? null : entry.invokeResultTypeProfile;
     }
 
     @Override

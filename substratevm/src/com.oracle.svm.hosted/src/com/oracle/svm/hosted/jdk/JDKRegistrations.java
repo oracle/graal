@@ -24,12 +24,20 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.io.IOException;
+import java.lang.module.ModuleReader;
+import java.lang.module.ResolvedModule;
+import java.util.Optional;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
@@ -80,5 +88,35 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
 
         /* Trigger initialization of java.net.URLConnection.fileNameMap. */
         java.net.URLConnection.getFileNameMap();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        registerInfoCmpResources(access);
+
+    }
+
+    private static void registerInfoCmpResources(BeforeAnalysisAccess access) {
+        /*
+         * GR-43733: Replace reflective class lookup with class literal when removing JDK 17
+         * support.
+         */
+        Class<?> infoCmpClazz = ReflectionUtil.lookupClass(true, "jdk.internal.org.jline.utils.InfoCmp");
+
+        if (infoCmpClazz != null) {
+            access.registerReachabilityHandler((a) -> {
+                Module module = infoCmpClazz.getModule();
+                Optional<ResolvedModule> resolvedModule = ModuleLayer.boot().configuration().findModule(module.getName());
+                VMError.guarantee(resolvedModule.isPresent());
+
+                try (ModuleReader reader = resolvedModule.get().reference().open()) {
+                    reader.list().filter(entry -> entry.endsWith(".caps") || entry.endsWith("capabilities.txt"))
+                                    .forEach(entry -> RuntimeResourceAccess.addResource(module, entry));
+                } catch (IOException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+
+            }, infoCmpClazz);
+        }
     }
 }

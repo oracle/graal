@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,6 +143,23 @@ public interface Platform {
          */
         default String getArchitecture() {
             return "aarch64";
+        }
+    }
+
+    /**
+     * Supported architecture: RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    interface RISCV64 extends Platform {
+
+        /**
+         * Returns string representing RISCV64 architecture.
+         *
+         * @since 22.2
+         */
+        default String getArchitecture() {
+            return "riscv64";
         }
     }
 
@@ -307,6 +324,23 @@ public interface Platform {
          * @since 19.0
          */
         public LINUX_AARCH64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Linux on RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    final class LINUX_RISCV64 implements LINUX, RISCV64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 22.2
+         */
+        public LINUX_RISCV64() {
         }
 
     }

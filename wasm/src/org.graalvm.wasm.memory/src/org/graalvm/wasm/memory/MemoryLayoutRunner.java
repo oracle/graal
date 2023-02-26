@@ -98,7 +98,7 @@ public class MemoryLayoutRunner {
         }
         contextBuilder.option("wasm.MemoryOverheadMode", "true");
 
-        final Source source = Source.newBuilder(WasmLanguage.ID, new File(filePath)).build();
+        final Source source = Source.newBuilder(WasmLanguage.ID, new File(filePath)).cached(false).build();
 
         System.out.println("...::: Creating memory layout for " + Paths.get(filePath).getFileName() + " :::...");
 
@@ -156,10 +156,9 @@ public class MemoryLayoutRunner {
 
             @Override
             public void visit(GraphPathRecord graphPathRecord) {
-                if (WasmContext.class.getCanonicalName().equals(graphPathRecord.klass().getCanonicalName())) {
+                if (contextPath == null && WasmContext.class.getCanonicalName().equals(graphPathRecord.klass().getCanonicalName())) {
                     contextPath = graphPathRecord.path();
                 }
-                // System.out.println(graphPathRecord.path());
                 if (contextPath != null && graphPathRecord.path().contains(contextPath + ".")) {
                     PathParser.parse(graphPathRecord.path().substring(contextPath.length()).toCharArray(), memoryRoot, graphPathRecord);
                 }

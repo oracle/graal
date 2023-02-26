@@ -69,7 +69,7 @@ typedef uint64_t julong;
 /* Usage of the JavaVM reserved fields:
  * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * ----------+----------------+---------------------+----------------+
- * reserved0 | NULL           | LibJavaVMIsolate* | context handle |
+ * reserved0 | NULL           | LibJavaVMIsolate*   | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
@@ -348,10 +348,23 @@ typedef uint64_t julong;
     V(JVM_CurrentCarrierThread) \
     V(JVM_SetCurrentThread) \
     V(JVM_GetStackTrace) \
-    V(JVM_ExtentLocalCache) \
-    V(JVM_SetExtentLocalCache) \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
     V(JVM_GetNextThreadIdOffset) \
-    V(JVM_RegisterContinuationMethods)
+    V(JVM_RegisterContinuationMethods) \
+    /* V(JVM_DumpClassListToFile) */ \
+    /* V(JVM_DumpDynamicArchive) */ \
+    /* V(JVM_VirtualThreadMountBegin) */ \
+    /* V(JVM_VirtualThreadMountEnd) */ \
+    /* V(JVM_VirtualThreadUnmountBegin) */ \
+    /* V(JVM_VirtualThreadUnmountEnd) */ \
+    /* Java 20 VM methods */ \
+    /* V(JVM_VirtualThreadHideFrames) */ \
+    /* V(JVM_GetClassFileVersion) */ \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
 
 #ifdef __cplusplus
 extern "C" {
@@ -949,6 +962,12 @@ jobject (*JVM_GetStackTrace)(JNIEnv *env, jobject thread);
 jobject (*JVM_ExtentLocalCache)(JNIEnv *env, jclass threadClass);
 
 void (*JVM_SetExtentLocalCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_ScopedValueCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetScopedValueCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_FindScopedValueBindings)(JNIEnv *env, jclass threadClass);
 
 jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
 

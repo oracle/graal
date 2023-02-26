@@ -367,10 +367,10 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("No message 'invalidMessageName' found for library ExportSubclassLibrary1.")
     static class MissingExportWithBaseTypeInvalidMessageError extends ExportRedirectionBase {
 
         @ExportMessage
+        @ExpectError("No message 'invalidMessageName' found for library ExportSubclassLibrary1.")
         String invalidMessageName() {
             return "";
         }

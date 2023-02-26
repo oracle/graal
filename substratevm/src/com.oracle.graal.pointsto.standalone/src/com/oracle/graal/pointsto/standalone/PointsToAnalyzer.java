@@ -31,6 +31,8 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
@@ -57,6 +59,7 @@ import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
@@ -102,7 +105,9 @@ public final class PointsToAnalyzer {
     private final ClassLoader analysisClassLoader;
     private final DebugContext debugContext;
     private StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl onAnalysisExitAccess;
-    private final String analysisTargetMainClass;
+    private final String analysisName;
+    private boolean entrypointsAreSet;
+    private boolean mainEntryIsSet;
 
     @SuppressWarnings("try")
     private PointsToAnalyzer(String mainEntryClass, OptionValues options) {
@@ -135,8 +140,8 @@ public final class PointsToAnalyzer {
 
         JavaKind wordKind = JavaKind.fromWordSize(wordSize);
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
-                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, snippetReflection, new PointsToAnalysisFactory());
-        AnalysisMetaAccess aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
+                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
+        AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
@@ -144,11 +149,11 @@ public final class PointsToAnalyzer {
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
-        analysisTargetMainClass = mainEntryClass;
+        analysisName = getAnalysisName(mainEntryClass, options);
         bigbang = new StandalonePointsToAnalysis(options, aUniverse, aProviders, standaloneHost, executor, () -> {
             /* do nothing */
         }, new TimerCollection());
-        standaloneHost.setImageName(analysisTargetMainClass);
+        standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
@@ -160,7 +165,7 @@ public final class PointsToAnalyzer {
         aUniverse.getTypes().forEach(t -> {
             t.registerAsAssignable(bigbang);
             if (t.isReachable()) {
-                bigbang.onTypeInitialized(t);
+                bigbang.onTypeReachable(t);
             }
         });
         /*
@@ -192,6 +197,28 @@ public final class PointsToAnalyzer {
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
             plugins.setClassInitializationPlugin(classInitializationPlugin);
             aProviders.setGraphBuilderPlugins(plugins);
+        }
+    }
+
+    private String getAnalysisName(String entryClass, OptionValues options) {
+        String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
+        String entryPointsFileOptionName = StandaloneOptions.AnalysisEntryPointsFile.getName();
+        mainEntryIsSet = entryClass != null && !entryClass.isBlank();
+        entrypointsAreSet = entryPointsFile != null && entryPointsFile.length() != 0;
+        if (!mainEntryIsSet && !entrypointsAreSet) {
+            AnalysisError.shouldNotReachHere(
+                            "No analysis entry are specified. Must set entry class or -H:" + entryPointsFileOptionName + " to specify the analysis entries.");
+        }
+        if (mainEntryIsSet) {
+            return entryClass;
+        } else {
+            Path entryFilePath = Paths.get(entryPointsFile);
+            Path fileName = entryFilePath.getFileName();
+            if (fileName == null) {
+                return "Null";
+            } else {
+                return fileName.toString();
+            }
         }
     }
 
@@ -235,12 +262,12 @@ public final class PointsToAnalyzer {
 
     @SuppressWarnings("try")
     public int run() {
-        registerEntryMethod();
+        registerEntryMethods();
         registerFeatures();
         int exitCode = 0;
         Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang, debugContext);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
-        try (Timer t = new Timer("analysis", "standalone pointsto analysis")) {
+        try (Timer t = new Timer("analysis", analysisName)) {
             StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang,
                             debugContext);
             bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
@@ -278,20 +305,37 @@ public final class PointsToAnalyzer {
         standaloneAnalysisFeatureManager.registerFeaturesFromOptions();
     }
 
-    private void registerEntryMethod() {
-        if (analysisTargetMainClass == null) {
-            throw new RuntimeException("No analysis entry main class is specified.");
-        } else {
+    /**
+     * Register analysis entry points.
+     */
+    public void registerEntryMethods() {
+        OptionValues options = bigbang.getOptions();
+        if (mainEntryIsSet) {
+            String entryClass = analysisName;
             try {
-                Class<?> analysisMainClass = Class.forName(analysisTargetMainClass, false, analysisClassLoader);
+                Class<?> analysisMainClass = Class.forName(entryClass, false, analysisClassLoader);
                 Method main = analysisMainClass.getDeclaredMethod("main", String[].class);
                 // main method is static, whatever the invokeSpecial is it is ignored.
                 bigbang.addRootMethod(main, true);
             } catch (ClassNotFoundException e) {
-                throw new RuntimeException("Can't find the specified analysis main class " + analysisTargetMainClass, e);
+                throw new RuntimeException("Can't find the specified analysis main class " + entryClass, e);
             } catch (NoSuchMethodException e) {
-                throw new RuntimeException("Can't find the main method in the analysis main class " + analysisTargetMainClass, e);
+                throw new RuntimeException("Can't find the main method in the analysis main class " + analysisName, e);
             }
+        }
+
+        if (entrypointsAreSet) {
+            String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
+            MethodConfigReader.readMethodFromFile(entryPointsFile, bigbang, analysisClassLoader, m -> {
+                // We need to start analyzing from any method given by user, even it is a virtual
+                // method.
+                boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
+                AnalysisType t = m.getDeclaringClass();
+                if (!t.isAbstract()) {
+                    t.registerAsInHeap("Root class.");
+                }
+                bigbang.addRootMethod(m, isInvokeSpecial);
+            });
         }
     }
 

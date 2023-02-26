@@ -495,6 +495,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return FileSystems.isInternal(getRootImpl(), fileSystem);
+    }
+
+    @Override
     public ThreadScope createThreadScope() {
         return null;
     }
@@ -621,7 +626,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             synchronized (this) {
                 res = defaultFileSystemContext;
                 if (res == null) {
-                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
+                    EmbedderFileSystemContext context = new EmbedderFileSystemContext(this);
                     res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
                     defaultFileSystemContext = res;
                 }
@@ -631,6 +636,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static final class EmbedderFileSystemContext {
+
+        private final PolyglotImpl impl;
+
+        EmbedderFileSystemContext(PolyglotImpl impl) {
+            this.impl = Objects.requireNonNull(impl);
+        }
+
+        PolyglotImpl getImpl() {
+            return impl;
+        }
 
         final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
         final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();

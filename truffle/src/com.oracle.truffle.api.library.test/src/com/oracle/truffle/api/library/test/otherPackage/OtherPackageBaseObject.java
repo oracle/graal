@@ -62,7 +62,7 @@ public class OtherPackageBaseObject implements TruffleObject {
     }
 
     @ExportMessage
-    public String m1(@Cached("this.value") int cachedValue) {
+    public String m1(@Cached(value = "this.value", neverDefault = false) int cachedValue) {
         return "m1_base";
     }
 
@@ -76,7 +76,7 @@ public class OtherPackageBaseObject implements TruffleObject {
 
     @ExportMessage
     public static class M3 {
-        @Specialization(guards = "receiver.value == value")
+        @Specialization(guards = "receiver.value == value", limit = "3")
         public static String doDefault(OtherPackageBaseObject receiver, @Cached("receiver.value") int value) {
             return "m3_base";
         }

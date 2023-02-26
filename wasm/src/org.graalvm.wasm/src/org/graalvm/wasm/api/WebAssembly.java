@@ -63,7 +63,6 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -73,9 +72,8 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.ExportedWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.memory.ByteArrayWasmMemory;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryFactory;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
@@ -397,8 +395,9 @@ public class WebAssembly extends Dictionary {
         }
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
-            if (section.getName().equals(name)) {
-                sections.add(new ByteArrayBuffer(module.data(), section.getOffset(), section.getLength()));
+            if (section.name().equals(name)) {
+                final byte[] sectionData = section.data();
+                sections.add(new ByteArrayBuffer(sectionData, 0, sectionData.length));
             }
         }
         return new Sequence<>(sections);
@@ -661,15 +660,12 @@ public class WebAssembly extends Dictionary {
     public static WasmMemory memAlloc(int initial, int maximum) {
         if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
-        } else if (compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+        } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
-        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
-        if (WasmContext.get(null).environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize);
-        } else {
-            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
-        }
+        final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
+        final WasmContext context = WasmContext.get(null);
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {

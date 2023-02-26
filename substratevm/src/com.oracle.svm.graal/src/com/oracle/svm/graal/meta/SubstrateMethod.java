@@ -32,6 +32,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -184,6 +185,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getDeoptOffsetInImage() {
         return deoptOffsetInImage;
     }

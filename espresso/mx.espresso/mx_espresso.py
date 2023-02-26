@@ -183,7 +183,7 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     ],
 )
 
-if mx_sdk_vm.base_jdk_version() not in (11, 17):
+if mx_sdk_vm.base_jdk_version() not in (17,):
     _espresso_stability = "experimental"
 elif mx.get_os() != "linux" or mx.get_arch() != "amd64":
     _espresso_stability = "experimental"

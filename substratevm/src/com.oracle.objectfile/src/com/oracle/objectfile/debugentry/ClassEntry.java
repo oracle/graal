@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,11 +26,13 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
@@ -56,7 +58,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of this class's interfaces.
      */
-    protected List<InterfaceClassEntry> interfaces;
+    protected final List<InterfaceClassEntry> interfaces = new ArrayList<>();
     /**
      * Details of the associated file.
      */
@@ -68,17 +70,17 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of methods located in this instance.
      */
-    protected List<MethodEntry> methods;
+    protected final List<MethodEntry> methods = new ArrayList<>();
     /**
      * An index of all currently known methods keyed by the unique, associated, identifying
      * ResolvedJavaMethod.
      */
-    private EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex;
+    private final EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex = EconomicMap.create();
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private List<CompiledMethodEntry> normalCompiledEntries;
+    private final List<CompiledMethodEntry> normalCompiledEntries = new ArrayList<>();
     /**
      * A list recording details of all deopt fallback compiled methods included in this class sorted
      * by ascending address range. Note that the associated address ranges are disjoint, contiguous
@@ -89,39 +91,30 @@ public class ClassEntry extends StructureTypeEntry {
      * An index identifying ranges for compiled method which have already been encountered, whether
      * normal or deopt fallback methods.
      */
-    private EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex;
+    private final EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
-    private EconomicMap<FileEntry, Integer> localFilesIndex;
+    private final EconomicMap<FileEntry, Integer> localFilesIndex = EconomicMap.create();
     /**
      * A list of the same files.
      */
-    private List<FileEntry> localFiles;
+    private final List<FileEntry> localFiles = new ArrayList<>();
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
-    private EconomicMap<DirEntry, Integer> localDirsIndex;
+    private final EconomicMap<DirEntry, Integer> localDirsIndex = EconomicMap.create();
     /**
      * A list of the same dirs.
      */
-    private List<DirEntry> localDirs;
+    private final List<DirEntry> localDirs = new ArrayList<>();
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
-        this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
         this.loader = null;
-        this.methods = new ArrayList<>();
-        this.methodsIndex = EconomicMap.create();
-        this.normalCompiledEntries = new ArrayList<>();
         // deopt methods list is created on demand
         this.deoptCompiledEntries = null;
-        this.compiledMethodIndex = EconomicMap.create();
-        this.localFiles = new ArrayList<>();
-        this.localFilesIndex = EconomicMap.create();
-        this.localDirs = new ArrayList<>();
-        this.localDirsIndex = EconomicMap.create();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
             localFilesIndex.put(fileEntry, localFiles.size());
@@ -151,7 +144,7 @@ public class ClassEntry extends StructureTypeEntry {
         } else {
             superName = "";
         }
-        debugContext.log("typename %s adding super %s\n", typeName, superName);
+        debugContext.log("typename %s adding super %s%n", typeName, superName);
         if (superType != null) {
             this.superClass = debugInfoBase.lookupClassEntry(superType);
         }
@@ -166,7 +159,7 @@ public class ClassEntry extends StructureTypeEntry {
         debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.processMethod(debugMethodInfo, debugInfoBase, debugContext));
     }
 
-    public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public void indexPrimary(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (compiledMethodIndex.get(primary) == null) {
             CompiledMethodEntry compiledEntry = new CompiledMethodEntry(primary, frameSizeInfos, frameSize, this);
             compiledMethodIndex.put(primary, compiledEntry);
@@ -187,7 +180,7 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
-    public void indexSubRange(Range subrange) {
+    public void indexSubRange(SubRange subrange) {
         Range primary = subrange.getPrimary();
         /* The subrange should belong to a primary range. */
         assert primary != null;
@@ -272,7 +265,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve a stream of all compiled method entries for this class, including both normal and
      * deopt fallback compiled methods.
-     * 
+     *
      * @return a stream of all compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> compiledEntries() {
@@ -286,7 +279,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve a stream of all normal compiled method entries for this class, excluding deopt
      * fallback compiled methods.
-     * 
+     *
      * @return a stream of all normal compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> normalCompiledEntries() {
@@ -295,7 +288,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     /**
      * Retrieve a stream of all deopt fallback compiled method entries for this class.
-     * 
+     *
      * @return a stream of all deopt fallback compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> deoptCompiledEntries() {
@@ -318,19 +311,9 @@ public class ClassEntry extends StructureTypeEntry {
         return deoptCompiledEntries != null;
     }
 
-    public String getCachePath() {
-        if (fileEntry != null) {
-            Path cachePath = fileEntry.getCachePath();
-            if (cachePath != null) {
-                return cachePath.toString();
-            }
-        }
-        return "";
-    }
-
     private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String interfaceName = interfaceType.toJavaName();
-        debugContext.log("typename %s adding interface %s\n", typeName, interfaceName);
+        debugContext.log("typename %s adding interface %s%n", typeName, interfaceName);
         ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
         assert entry instanceof InterfaceClassEntry;
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
@@ -347,7 +330,7 @@ public class ClassEntry extends StructureTypeEntry {
         DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
-        debugContext.log("typename %s adding %s method %s %s(%s)\n",
+        debugContext.log("typename %s adding %s method %s %s(%s)%n",
                         typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
@@ -429,7 +412,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve the lowest code section offset for compiled method code belonging to this class. It
      * is an error to call this for a class entry which has no compiled methods.
-     * 
+     *
      * @return the lowest code section offset for compiled method code belonging to this class
      */
     public int lowpc() {
@@ -441,7 +424,7 @@ public class ClassEntry extends StructureTypeEntry {
      * Retrieve the lowest code section offset for compiled method code belonging to this class that
      * belongs to a deoptimization fallback compiled method. It is an error to call this for a class
      * entry which has no deoptimization fallback compiled methods.
-     * 
+     *
      * @return the lowest code section offset for a deoptimization fallback compiled method
      *         belonging to this class.
      */
@@ -456,7 +439,7 @@ public class ClassEntry extends StructureTypeEntry {
      * that does not belong to a deoptimization fallback compiled method. The returned value is the
      * offset of the first byte that succeeds the code for that method. It is an error to call this
      * for a class entry which has no compiled methods.
-     * 
+     *
      * @return the highest code section offset for compiled method code belonging to this class
      */
     public int hipc() {
@@ -468,7 +451,7 @@ public class ClassEntry extends StructureTypeEntry {
      * Retrieve the highest code section offset for compiled method code belonging to this class
      * that belongs to a deoptimization fallback compiled method. It is an error to call this for a
      * class entry which has no deoptimization fallback compiled methods.
-     * 
+     *
      * @return the highest code section offset for a deoptimization fallback compiled method
      *         belonging to this class.
      */

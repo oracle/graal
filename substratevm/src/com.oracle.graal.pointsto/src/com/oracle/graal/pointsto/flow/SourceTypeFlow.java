@@ -74,6 +74,11 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }

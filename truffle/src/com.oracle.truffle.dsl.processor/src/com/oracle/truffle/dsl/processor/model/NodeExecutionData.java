@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -52,10 +49,9 @@ import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
 public class NodeExecutionData {
 
     private final NodeChildData child;
-    private final String name;
+    private String name;
     private final int index;
     private final int childArrayIndex;
-    private final List<TypeMirror> typeRestrictions = new ArrayList<>();
 
     public NodeExecutionData(NodeChildData child, int index, int childArrayIndex) {
         this.child = child;
@@ -68,12 +64,12 @@ public class NodeExecutionData {
         return child != null ? createName(child.getName(), childArrayIndex) : ("arg" + index);
     }
 
-    public int getIndex() {
-        return index;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public List<TypeMirror> getTypeRestrictions() {
-        return typeRestrictions;
+    public int getIndex() {
+        return index;
     }
 
     public TypeMirror getNodeType() {

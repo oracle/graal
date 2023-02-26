@@ -50,8 +50,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.jfr.Event;
+import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -76,6 +77,7 @@ public class JfrEventFeature implements InternalFeature {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "jdk.jfr", "jdk.jfr.events");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrFeature.class, false, "jdk.jfr", "jdk.jfr.events");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventSubstitution.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.hotspot");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "java.base", "jdk.internal.event");
     }
 
     @Override
@@ -92,10 +94,8 @@ public class JfrEventFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
         if (JavaVersionUtil.JAVA_SPEC < 19) {
-            Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-            if (eventClass != null) {
-                access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, eventClass);
-            }
+            /* In JDK 19+, events don't have an eventHandler field anymore. */
+            access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, Event.class);
         }
     }
 
@@ -115,12 +115,13 @@ public class JfrEventFeature implements InternalFeature {
             // Off-set by one for error-catcher
             JfrTraceId.assign(clazz, hub.getTypeID() + 1);
         }
+
+        /* Store the event configuration in the dynamic hub companion. */
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             try {
                 FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
                 Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
                 for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
-                    /* Store the event configuration in the companion. */
                     Object ec = getConfiguration.invoke(JVM.getJVM(), newEventClass);
                     DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
                     dynamicHub.setJrfEventConfiguration(ec);
@@ -132,23 +133,16 @@ public class JfrEventFeature implements InternalFeature {
     }
 
     private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        if (c.getCanonicalName().equals("jdk.jfr.Event") ||
-                        c.getCanonicalName().equals("jdk.internal.event.Event") ||
-                        c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
-                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent") ||
-                        Modifier.isAbstract(c.getModifiers())) {
+        if (Modifier.isAbstract(c.getModifiers())) {
             return;
         }
-        try {
-            Field f = c.getDeclaredField("eventHandler");
-            RuntimeReflection.register(f);
-            access.rescanRoot(f);
-            if (!access.concurrentReachabilityHandlers()) {
-                access.requireAnalysisIteration();
-            }
-        } catch (Exception e) {
-            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
+
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        Field f = ReflectionUtil.lookupField(c, "eventHandler");
+        RuntimeReflection.register(f);
+        access.rescanRoot(f);
+        if (!access.concurrentReachabilityHandlers()) {
+            access.requireAnalysisIteration();
         }
     }
 }

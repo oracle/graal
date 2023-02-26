@@ -170,7 +170,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         }
 
         assert !stamp.isCompatible(input.stamp(NodeView.DEFAULT));
-        if (input.isConstant()) {
+        if (input.isJavaConstant()) {
             /* Null pointers are uncritical for GC, so they can be constant folded. */
             if (input.asJavaConstant().isNull()) {
                 return ConstantNode.forIntegerStamp(stamp, 0);

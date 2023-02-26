@@ -319,7 +319,7 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
 
         @Specialization
         @ExplodeLoop
-        long execute(LLVMManagedPointer source, int unitSize) {
+        long doDefault(LLVMManagedPointer source, int unitSize) {
             int shift = 0;
             long ret = 0;
             for (int i = 0; i < unitSize; i++) {

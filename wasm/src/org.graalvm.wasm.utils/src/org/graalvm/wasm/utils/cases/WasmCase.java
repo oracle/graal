@@ -91,6 +91,7 @@ public abstract class WasmCase {
         ArrayList<Source> sources = new ArrayList<>();
         for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(entry.getValue()), entry.getKey());
+            sourceBuilder.cached(false);
             Source source = sourceBuilder.build();
             sources.add(source);
         }

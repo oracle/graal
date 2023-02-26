@@ -52,7 +52,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -61,7 +60,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,7 +84,7 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
+public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     private static final Constructor<ClassCastException> CLASS_CAST_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(ClassCastException.class);
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
@@ -121,7 +120,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     private final Signature targetSignature;
 
     protected JNIJavaCallWrapperMethod(SimpleSignature targetSignature, MetaAccessProvider metaAccess, WordTypes wordTypes) {
-        super("invoke_" + targetSignature.getIdentifier(), metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
+        super("invoke_" + targetSignature.getIdentifier(), true, metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
                         createSignature(targetSignature, metaAccess, wordTypes), JNIJavaCallWrapperHolder.getConstantPool(metaAccess));
         this.targetSignature = targetSignature;
     }
@@ -163,13 +162,13 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
 
         AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
-        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, aMetaAccess.getUniverse().lookup(getDeclaringClass()));
+        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, getDeclaringClass());
         if (metaAccess instanceof HostedMetaAccess) {
             // signature might not exist in the hosted universe because it does not match any method
-            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, (WrappedJavaType) method.getDeclaringClass());
+            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, getDeclaringClass());
         }
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();

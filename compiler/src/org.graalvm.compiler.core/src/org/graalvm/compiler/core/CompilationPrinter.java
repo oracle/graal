@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
@@ -53,8 +54,7 @@ public final class CompilationPrinter {
      * Gets an object that will report statistics for a compilation if
      * {@link GraalCompilerOptions#PrintCompilation} is enabled and {@link TTY} is not suppressed.
      * This method should be called just before a compilation starts as it captures pre-compilation
-     * data for the purpose of {@linkplain #finish(CompilationResult) printing} the post-compilation
-     * statistics.
+     * data for the purpose of {@linkplain #finish printing} the post-compilation statistics.
      *
      * @param options used to get the value of {@link GraalCompilerOptions#PrintCompilation}
      * @param id the identifier for the compilation
@@ -108,20 +108,26 @@ public final class CompilationPrinter {
     /**
      * Notifies this object that the compilation finished and the informational line should be
      * printed to {@link TTY}.
+     *
+     * @param installedCode
      */
-    public void finish(CompilationResult result) {
+    public void finish(CompilationResult result, InstalledCode installedCode) {
         if (id != null) {
             final long stop = System.nanoTime();
             final long duration = (stop - start) / 1000;
             final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
             final int bytecodeSize = result != null ? result.getBytecodeSize() : 0;
-            if (allocatedBytesBefore == -1) {
-                TTY.println(getMethodDescription() + String.format(" | %4dus %5dB bytecodes %5dB codesize", duration, bytecodeSize, targetCodeSize));
-            } else {
+            String allocated = "";
+            String installed = "";
+            if (allocatedBytesBefore != -1) {
                 final long allocatedBytesAfter = getCurrentThreadAllocatedBytes();
                 final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
-                TTY.println(getMethodDescription() + String.format(" | %4dus %5dB bytecodes %5dB codesize %5dkB allocated", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
+                allocated = String.format(" %5dkB allocated", allocatedKBytes);
             }
+            if (installedCode != null) {
+                installed = String.format(" start=0x%016x", installedCode.getStart());
+            }
+            TTY.println(getMethodDescription() + String.format(" | %4dus %5dB bytecodes %5dB codesize%s%s", duration, bytecodeSize, targetCodeSize, allocated, installed));
         }
     }
 }

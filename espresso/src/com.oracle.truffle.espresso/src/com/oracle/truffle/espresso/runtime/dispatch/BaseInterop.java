@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,27 +162,6 @@ public class BaseInterop {
     }
 
     // endregion ### Identity/hashCode
-
-    // region ### Exceptions
-
-    @ExportMessage
-    public static boolean isException(StaticObject object) {
-        object.checkNotForeign();
-        return !isNull(object) && instanceOf(object, object.getKlass().getMeta().java_lang_Throwable);
-    }
-
-    @ExportMessage
-    public static RuntimeException throwException(StaticObject object,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        object.checkNotForeign();
-        if (isException(object)) {
-            throw object.getKlass().getMeta().throwException(object);
-        }
-        error.enter();
-        throw UnsupportedMessageException.create();
-    }
-
-    // endregion ### Exceptions
 
     // region ### Language/DisplayString
 

@@ -54,7 +54,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
     protected boolean yNegated;
     protected BranchProbabilityData shortCircuitProbability;
 
-    public ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
+    protected ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
         super(TYPE);
         this.x = x;
         this.xNegated = xNegated;
@@ -64,6 +64,10 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
     }
 
     public static LogicNode create(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
+        LogicNode canonical = canonicalize(null, null, shortCircuitProbability, x, xNegated, y, yNegated);
+        if (canonical != null) {
+            return canonical;
+        }
         return new ShortCircuitOrNode(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 
@@ -93,7 +97,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         return shortCircuitProbability;
     }
 
-    protected ShortCircuitOrNode canonicalizeNegation(LogicNode forX, LogicNode forY) {
+    protected static ShortCircuitOrNode canonicalizeNegation(LogicNode forX, boolean xNegated, LogicNode forY, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
         LogicNode xCond = forX;
         boolean xNeg = xNegated;
         while (xCond instanceof LogicNegationNode) {
@@ -111,18 +115,26 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         if (xCond != forX || yCond != forY) {
             return new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, shortCircuitProbability);
         } else {
-            return this;
+            return null;
         }
     }
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool, LogicNode forX, LogicNode forY) {
-        ShortCircuitOrNode ret = canonicalizeNegation(forX, forY);
-        if (ret != this) {
+        LogicNode canonical = canonicalize(this, tool, shortCircuitProbability, forX, xNegated, forY, yNegated);
+        if (canonical != this) {
+            return canonical;
+        }
+        return this;
+    }
+
+    private static LogicNode canonicalize(ShortCircuitOrNode self, CanonicalizerTool tool, BranchProbabilityData shortCircuitProbability, LogicNode forX, boolean xNegated, LogicNode forY,
+                    boolean yNegated) {
+        ShortCircuitOrNode ret = canonicalizeNegation(forX, xNegated, forY, yNegated, shortCircuitProbability);
+        if (ret != self && ret != null) {
             return ret;
         }
-        NodeView view = NodeView.from(tool);
-
+        NodeView view = tool == null ? NodeView.DEFAULT : NodeView.from(tool);
         if (forX == forY) {
             // @formatter:off
             //  a ||  a = a
@@ -130,8 +142,8 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             // !a ||  a = true
             // !a || !a = !a
             // @formatter:on
-            if (isXNegated()) {
-                if (isYNegated()) {
+            if (xNegated) {
+                if (yNegated) {
                     // !a || !a = !a
                     return LogicNegationNode.create(forX);
                 } else {
@@ -139,7 +151,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                     return LogicConstantNode.tautology();
                 }
             } else {
-                if (isYNegated()) {
+                if (yNegated) {
                     // a || !a = true
                     return LogicConstantNode.tautology();
                 } else {
@@ -149,22 +161,22 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             }
         }
         if (forX instanceof LogicConstantNode) {
-            if (((LogicConstantNode) forX).getValue() ^ isXNegated()) {
+            if (((LogicConstantNode) forX).getValue() ^ xNegated) {
                 return LogicConstantNode.tautology();
             } else {
-                if (isYNegated()) {
-                    return new LogicNegationNode(forY);
+                if (yNegated) {
+                    return LogicNegationNode.create(forY);
                 } else {
                     return forY;
                 }
             }
         }
         if (forY instanceof LogicConstantNode) {
-            if (((LogicConstantNode) forY).getValue() ^ isYNegated()) {
+            if (((LogicConstantNode) forY).getValue() ^ yNegated) {
                 return LogicConstantNode.tautology();
             } else {
-                if (isXNegated()) {
-                    return new LogicNegationNode(forX);
+                if (xNegated) {
+                    return LogicNegationNode.create(forX);
                 } else {
                     return forX;
                 }
@@ -174,35 +186,31 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         if (forX instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode inner = (ShortCircuitOrNode) forX;
             if (forY == inner.getX()) {
-                return optimizeShortCircuit(inner, this.xNegated, this.yNegated, true);
+                return optimizeShortCircuit(inner, xNegated, yNegated, true);
             } else if (forY == inner.getY()) {
-                return optimizeShortCircuit(inner, this.xNegated, this.yNegated, false);
+                return optimizeShortCircuit(inner, xNegated, yNegated, false);
             }
         }
 
         if (forY instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode inner = (ShortCircuitOrNode) forY;
             if (inner.getX() == forX) {
-                return optimizeShortCircuit(inner, this.yNegated, this.xNegated, true);
+                return optimizeShortCircuit(inner, yNegated, xNegated, true);
             } else if (inner.getY() == forX) {
-                return optimizeShortCircuit(inner, this.yNegated, this.xNegated, false);
+                return optimizeShortCircuit(inner, yNegated, xNegated, false);
             }
         }
 
         // !X => Y constant
-        TriState impliedForY = forX.implies(!isXNegated(), forY);
+        TriState impliedForY = forX.implies(!xNegated, forY);
         if (impliedForY.isKnown()) {
-            boolean yResult = impliedForY.toBoolean() ^ isYNegated();
-            return yResult
-                            ? LogicConstantNode.tautology()
-                            : (isXNegated()
-                                            ? LogicNegationNode.create(forX)
-                                            : forX);
+            boolean yResult = impliedForY.toBoolean() ^ yNegated;
+            return yResult ? LogicConstantNode.tautology() : (xNegated ? LogicNegationNode.create(forX) : forX);
         }
 
         // if X >= 0:
         // u < 0 || X < u ==>> X |<| u
-        if (!isXNegated() && !isYNegated()) {
+        if (!xNegated && !yNegated) {
             LogicNode sym = simplifyComparison(forX, forY);
             if (sym != null) {
                 return sym;
@@ -211,7 +219,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
 
         // if X >= 0:
         // X |<| u || X < u ==>> X |<| u
-        if (forX instanceof IntegerBelowNode && forY instanceof IntegerLessThanNode && !isXNegated() && !isYNegated()) {
+        if (forX instanceof IntegerBelowNode && forY instanceof IntegerLessThanNode && !xNegated && !yNegated) {
             IntegerBelowNode xNode = (IntegerBelowNode) forX;
             IntegerLessThanNode yNode = (IntegerLessThanNode) forY;
             ValueNode xxNode = xNode.getX(); // X >= 0
@@ -227,23 +235,21 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
 
         // if X >= 0:
         // u < 0 || (X < u || tail) ==>> X |<| u || tail
-        if (forY instanceof ShortCircuitOrNode && !isXNegated() && !isYNegated()) {
+        if (forY instanceof ShortCircuitOrNode && !xNegated && !yNegated) {
             ShortCircuitOrNode yNode = (ShortCircuitOrNode) forY;
             if (!yNode.isXNegated()) {
                 LogicNode sym = simplifyComparison(forX, yNode.getX());
                 if (sym != null) {
-                    BranchProbabilityData combinedProfile = BranchProbabilityData.combineShortCircuitOr(getShortCircuitProbability(), yNode.getShortCircuitProbability());
-                    return new ShortCircuitOrNode(sym, isXNegated(), yNode.getY(), yNode.isYNegated(), combinedProfile);
+                    BranchProbabilityData combinedProfile = BranchProbabilityData.combineShortCircuitOr(shortCircuitProbability, yNode.getShortCircuitProbability());
+                    return new ShortCircuitOrNode(sym, xNegated, yNode.getY(), yNode.isYNegated(), combinedProfile);
                 }
             }
         }
 
-        if (forX instanceof CompareNode && forY instanceof CompareNode) {
+        if (tool != null && forX instanceof CompareNode && forY instanceof CompareNode) {
             CompareNode xCompare = (CompareNode) forX;
             CompareNode yCompare = (CompareNode) forY;
-
             if (xCompare.getX() == yCompare.getX() || xCompare.getX() == yCompare.getY()) {
-
                 Stamp succeedingStampX = xCompare.getSucceedingStampForX(!xNegated, xCompare.getX().stamp(view), xCompare.getY().stamp(view));
                 // Try to canonicalize the other comparison using the knowledge gained from assuming
                 // the first part of the short circuit or is false (which is the only relevant case
@@ -252,13 +258,13 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                     CanonicalizerTool proxyTool = new ProxyCanonicalizerTool(succeedingStampX, xCompare.getX(), tool, view);
                     ValueNode result = yCompare.canonical(proxyTool);
                     if (result != yCompare) {
-                        return ShortCircuitOrNode.create(forX, xNegated, (LogicNode) result, yNegated, this.shortCircuitProbability);
+                        return ShortCircuitOrNode.create(forX, xNegated, (LogicNode) result, yNegated, shortCircuitProbability);
                     }
                 }
             }
         }
-
-        return this;
+        // can be null
+        return self;
     }
 
     private static class ProxyCanonicalizerTool extends CoreProvidersDelegate implements CanonicalizerTool, NodeView {

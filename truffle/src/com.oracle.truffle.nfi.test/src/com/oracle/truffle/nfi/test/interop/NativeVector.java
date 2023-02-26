@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.nfi.test.interop;
 
+import java.lang.reflect.Field;
+import java.math.BigInteger;
+
+import org.junit.Assert;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,8 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import java.lang.reflect.Field;
-import org.junit.Assert;
+
 import sun.misc.Unsafe;
 
 @ExportLibrary(InteropLibrary.class)
@@ -190,6 +194,11 @@ public class NativeVector implements TruffleObject, AutoCloseable {
     }
 
     @ExportMessage
+    boolean fitsInBigInteger() {
+        return false;
+    }
+
+    @ExportMessage
     byte asByte() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -211,6 +220,11 @@ public class NativeVector implements TruffleObject, AutoCloseable {
 
     @ExportMessage
     float asFloat() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 }

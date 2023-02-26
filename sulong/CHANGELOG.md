@@ -1,3 +1,9 @@
+# Version 23.0.0
+
+Changes:
+
+* Updated LLVM toolchain to version 15.0.6.
+
 # Version 22.3.0
 
 New Features:

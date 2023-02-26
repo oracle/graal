@@ -2,6 +2,7 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+
 ## Version 23.0.0
 
 * GR-38526 Added `TruffleLanguage.Env#isSocketIOAllowed()`. The method returns true if access to network sockets is allowed.
@@ -16,6 +17,33 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-39189 Added attach methods on the `Instrumenter` class, that take `NearestSectionFilter` as a parameter. The new `NearestSectionFilter` class can be used to instrument or detect nearest locations to a given source line and column. For example, this can be used to implement breakpoints, where the exact line or column is not always precise and the location needs to be updated when new code is loaded.
 * GR-39189 Added `InstrumentableNode.findNearestNodeAt(int line, int column, ...)` to find the nearest node to the given source line and column. This is an alternative to the existing method that takes character offset.
 * GR-42674 It has been documented that methods `TruffleLanguage.Env#getPublicTruffleFile`, `TruffleLanguage.Env#getInternalTruffleFile`, `TruffleLanguage.Env#getTruffleFileInternal` and `TruffleInstrument.Env#getPublicTruffleFile` can throw `IllegalArgumentException` when the path string cannot be converted to a `Path` or uri preconditions required by the `FileSystem` do not hold.
+* GR-31342 Implemented several new features for Truffle DSL and improved its performance:
+	* Added an `@GenerateInline` annotation that allows Truffle nodes to be object-inlined automatically. Object-inlined Truffle nodes become singletons and therefore reduce memory footprint. Please see the [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/DSLNodeObjectInlining.md) for further details.
+	* Added an `@GenerateCached` annotation that allows users to control the generation of cached nodes. Use `@GenerateCached(false)` to disable cached node generation when all usages of nodes are object-inlined to save code footprint.
+	* Updated Truffle DSL nodes no longer require the node lock during specialization, resulting in improved first execution performance. CAS-style inline cache updates are now used to avoid deadlocks when calling CallTarget.call(...) in guards. Inline caches continue to guarantee no duplicate values and are not affected by race conditions. Language implementations should be aware that the reduced contention may reveal other thread-safety issues in the language.
+	* Improved Truffle DSL node memory footprint by merging generated fields for state and exclude bit sets and improving specialization data class generation to consider activation probability. Specializations should be ordered by activation probability for optimal results.
+	* Improved memory footprint by automatically inlining cached parameter values of enum types into the state bitset
+	* Added `@Cached(neverDefault=true|false)` option to indicate whether the cache initializer will ever return a `null` or primitive default value. Truffle DSL now emits a warning if it is beneficial to set this property. Alternatively, the new `@NeverDefault` annotation may be used on the bound method or variable. The generated code layout can benefit from this information and reduce memory overhead. If never default is set to `true`, then the DSL will now use the default value instead internally as a marker for uninitialized values.
+	* `@Shared` cached values may now use primitive values. Also, `@Shared` can now be used for caches contained in specializations with multiple instances. This means that the shared cache will be used across all instances of a specialization.
+	* Truffle DSL now generates many more Javadoc comments in the generated code that try to explain the decisions of the code generator. 
+	* Added inlined variants for all Truffle profiles in `com.oracle.truffle.api.profiles`. The DSL now emits recommendation warnings when inlined profiles should be used instead of the allocated ones.
+	* Truffle DSL now emits many more warnings for recommendations. For example, it emits warnings for inlining opportunities, cached sharing or when a cache initializer should be designated as `@NeverDefault`. To ease migration work, we added several new ways to suppress the warnings temporarily for a Java package. For a list of possible warnings and further usage instructions, see the new [warnings page](https://github.com/oracle/graal/blob/master/truffle/docs/DSLWarnings.md) in the docs.
+	* The DSL now produces warnings for specializations with multiple instances but an unspecified limit. The new warning can be resolved by specifying the desired limit (previously, default `"3"` was assumed)
+	* Added the capability to unroll specializations with multiple instances. Unrolling in combination with node object inlining may further reduce the memory footprint of a Truffle node. In particular, if all cached states can be encoded into the state bit set of the generated node. See `@Specialization(...unroll=2)` for further details
+
+* GR-31342 Deprecated `ConditionProfile.createBinaryProfile()` and `ConditionProfile.createCountingProfile()`. Use `ConditionProfile.create()` and `CountingConditionProfile.create()` instead.
+* GR-31342 Added `ValueProfile.create()` that automatically creates an exact class value profile. This allows its usage in `@Cached` without specifying a cached initializer.
+* GR-31342 The node `insert` method is now public instead of protected. This avoids the need to create cumbersome accessor methods when needed in corner-cases.
+* GR-43599 Specifying the sharing group in `@Shared` is now optional for cached values. If not specified, the parameter name will be used as sharing group. For example, `@Shared @Cached MyNode sharedNode` will get the sharing group `sharedNode` assigned. It is recommended to use the explicit sharing group still if it improves readability or if the parameter name cannot be changed.
+* GR-43492 `LanguageReference#get()` is now always supported inside of `InstrumentableNode#materializeInstrumentableNodes()`.
+* GR-43944 Added `HostCompilerDirectives.inInterpreterFastPath()` which allows to mark branches that should only be executed in the interpreter, but also optimized like fast-path code in the host compiler.
+* GR-25539 Added `InteropLibrary#fitsInBigInteger()` and `InteropLibrary#asBigInteger()` to access interop values that fit into `java.math.BigInteger` without loss of precision. A warning is produced for objects that export the `isNumber` interop message and don't export the new big integer messages.
+* GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
+* GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that reach a `@Fallback` specialization now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
+* GR-43903 Added `@Idempotent` and `@NonIdempotent` DSL annotations useful for DSL guard optimizations. Guards that only bind idempotent methods and no dynamic values can always be assumed `true` after they were `true` once on the slow-path. The generated code leverages this information and asserts instead of executes the guard on the fast-path. The DSL now emits warnings with for all guards where specifying the annotations may be beneficial. Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
+* GR-43663 Added RootNode#computeSize as a way for languages to specify an approximate size of a RootNode when number of AST nodes cannot be used (e.g. for bytecode interpreters).
+* GR-42539 (change of behavior) Unclosed polyglot engines are no longer closed automatically on VM shutdown. They just die with the VM. As a result, `TruffleInstrument#onDispose` is not called for active instruments on unclosed engines in the event of VM shutdown. In case an instrument is supposed to do some specific action before its disposal, e.g. print some kind of summary, it should be done in `TruffleInstrument#onFinalize`.
 
 ## Version 22.3.0
 
@@ -139,7 +167,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added [TruffleContext.Builder#onClosed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html#onClosed-java.lang.Runnable-) that allows throwing a custom guest exception when the new context is closed.
 * GR-35093 Deprecated `UnionAssumption`, use arrays of assumptions instead. Deprecated `NeverValidAssumption` and `AlwaysValidAssumption`, use `Assumption.NEVER_VALID` and `Assumption.ALWAYS_VALID` instead. Language implementations should avoid custom `Assumption` subclasses, they lead to performance degradation in the interpreter.
 * GR-35093 Added `create()` constructor methods to profiles in `com.oracle.truffle.api.profiles` where appropriate to simplify use with Truffle DSL.
-
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.

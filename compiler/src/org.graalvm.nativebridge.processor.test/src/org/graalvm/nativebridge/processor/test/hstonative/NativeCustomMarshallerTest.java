@@ -28,10 +28,12 @@ import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
 import org.graalvm.nativebridge.Idempotent;
 import org.graalvm.nativebridge.NativeIsolate;
 import org.graalvm.nativebridge.NativeObject;
+import org.graalvm.nativebridge.Out;
 import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
+import java.time.Duration;
 import java.util.Map;
 
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
@@ -44,4 +46,7 @@ abstract class NativeCustomMarshallerTest extends NativeObject implements Custom
     @Idempotent
     @Override
     public abstract Map<String, String> getProperties();
+
+    @Override
+    public abstract void fillDurations(@Out Duration[] durations);
 }

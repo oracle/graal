@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
@@ -73,15 +73,14 @@ import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
 
 /**
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
  * {@link ControlSplitNode ControlSplitNodes} with {@link FixedGuardNode FixedGuardNodes}.
- *
+ * <p>
  * This is useful because {@link FixedGuardNode FixedGuardNodes} will be lowered to {@link GuardNode
  * GuardNodes} which can later be optimized more aggressively than control-flow constructs.
- *
+ * <p>
  * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
@@ -108,7 +107,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            if (d.getAction() == DeoptimizationAction.None) {
+            if (!d.canFloat()) {
                 continue;
             }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {
@@ -290,7 +289,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
     private static boolean isCountedLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
         LoopsData loopsData = lazyLoops.get();
-        Loop<Block> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
+        Loop<HIRBlock> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
         if (loop != null) {
             LoopEx loopEx = loopsData.loop(loop);
             if (loopEx.detectCounted()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow.context.object;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -66,14 +65,10 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
         return allocationContext;
     }
 
-    public void setAllocatorContext(AnalysisContext allocatorContext) {
-        this.allocatorContext = allocatorContext;
-    }
-
     @Override
     public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert type.isArray();
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
+        assert bb.analysisPolicy().allocationSiteSensitiveHeap();
 
         if (!arrayElementsTypeStore.writeFlow().getState().canBeNull()) {
             /*

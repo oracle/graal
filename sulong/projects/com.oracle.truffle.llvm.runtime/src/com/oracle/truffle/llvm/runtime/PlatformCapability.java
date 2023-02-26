@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -212,5 +212,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     }
 
     public abstract OS getOS();
+
+    public abstract int getDoubleLongSize();
 
 }

@@ -44,6 +44,7 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ReachabilityTest {
 
     static class Reachability1 extends ValueNode {
@@ -203,6 +205,7 @@ public class ReachabilityTest {
 
     static class ReachabilityGuard1 extends ValueNode {
 
+        @Idempotent
         boolean foo() {
             return false;
         }
@@ -240,6 +243,7 @@ public class ReachabilityTest {
 
     static class ReachabilityGuard3 extends ValueNode {
 
+        @Idempotent
         boolean foo() {
             return false;
         }

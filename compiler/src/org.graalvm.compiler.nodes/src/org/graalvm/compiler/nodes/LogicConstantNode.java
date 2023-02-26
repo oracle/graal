@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.util.InterpreterState;
  * The {@code LogicConstantNode} represents a boolean constant.
  */
 @NodeInfo(nameTemplate = "{p#value}", cycles = CYCLES_0, size = SIZE_0)
-public final class LogicConstantNode extends LogicNode implements LIRLowerable {
+public final class LogicConstantNode extends LIRLowerableLogicNode implements LIRLowerable {
 
     public static final NodeClass<LogicConstantNode> TYPE = NodeClass.create(LogicConstantNode.class);
     protected final boolean value;

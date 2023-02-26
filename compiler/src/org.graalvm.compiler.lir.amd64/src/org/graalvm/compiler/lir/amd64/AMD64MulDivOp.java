@@ -34,7 +34,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.IMUL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.MUL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
@@ -66,7 +65,12 @@ public class AMD64MulDivOp extends AMD64LIRInstruction {
     @Use({REG, ILLEGAL}) protected AllocatableValue highX;
     @Use({REG}) protected AllocatableValue lowX;
 
-    @Use({REG, STACK}) protected AllocatableValue y;
+    // Even though an idiv instruction can use a memory address for its
+    // second operand, HotSpot on Windows does not recognize this form of
+    // instruction when handling the special case of MININT/-1:
+    // https://github.com/openjdk/jdk/blob/4b0e656bb6a823f50507039df7855183ab98cd83/src/hotspot/os/windows/os_windows.cpp#L2397
+    // As such, force the operand to be in a register.
+    @Use({REG}) protected AllocatableValue y;
 
     @State protected LIRFrameState state;
 

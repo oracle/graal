@@ -29,8 +29,16 @@ import java.util.EnumSet;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.loop.BasicInductionVariable;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -69,6 +77,23 @@ public class LoopUtility {
                     proxy.replaceAtUsagesAndDelete(proxy.getOriginalNode());
                 }
             }
+        }
+    }
+
+    /**
+     * Advance all of the loop's induction variables by {@code iterations} strides by modifying the
+     * underlying phi's init value.
+     */
+    public static void stepLoopIVs(StructuredGraph graph, LoopEx loop, ValueNode iterations) {
+        for (InductionVariable iv : loop.getInductionVariables().getValues()) {
+            if (!(iv instanceof BasicInductionVariable)) {
+                // Only step basic IVs; this will advance derived IVs automatically.
+                continue;
+            }
+            ValuePhiNode phi = ((BasicInductionVariable) iv).valueNode();
+            ValueNode convertedIterations = IntegerConvertNode.convert(iterations, iv.strideNode().stamp(NodeView.DEFAULT), NodeView.DEFAULT);
+            ValueNode steppedInit = AddNode.create(phi.valueAt(0), MulNode.create(convertedIterations, iv.strideNode(), NodeView.DEFAULT), NodeView.DEFAULT);
+            phi.setValueAt(0, graph.addOrUniqueWithInputs(steppedInit));
         }
     }
 }

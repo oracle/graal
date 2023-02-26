@@ -438,15 +438,15 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "receiver == cachedCallTarget", limit = "4")
-        static Object executeDirectCall(CallTarget receiver, Object input, int fromIndex,
+        static Object doDirectCall(CallTarget receiver, Object input, int fromIndex,
                         @Cached("receiver") CallTarget cachedCallTarget,
                         @Cached("create(cachedCallTarget)") DirectCallNode directCallNode) {
             return directCallNode.call(input, fromIndex);
         }
 
         @ReportPolymorphism.Megamorphic
-        @Specialization(replaces = "executeDirectCall")
-        static Object executeIndirectCall(CallTarget receiver, Object input, int fromIndex,
+        @Specialization(replaces = "doDirectCall")
+        static Object doIndirectCall(CallTarget receiver, Object input, int fromIndex,
                         @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(receiver, input, fromIndex);
         }

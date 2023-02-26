@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import java.util.function.Predicate;
+
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -32,11 +34,9 @@ import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import org.graalvm.compiler.options.OptionValues;
-
-import jdk.vm.ci.code.TargetDescription;
 import org.junit.Assert;
 
-import java.util.function.Predicate;
+import jdk.vm.ci.code.TargetDescription;
 
 public abstract class MatchRuleTest extends GraalCompilerTest {
     private LIR lir;
@@ -63,10 +63,10 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
         checkLIR(methodName, predicate, 0, expected);
     }
 
-    protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int blockIndex, int expected) {
+    protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int blockId, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
         int actualOpNum = 0;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[blockIndex])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getBlockById(lir.codeEmittingOrder()[blockId]))) {
             if (predicate.test(ins)) {
                 actualOpNum++;
             }
@@ -85,10 +85,11 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
             compile(getResolvedJavaMethod(methodName), null);
         }
         int actualOpNum = 0;
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (predicate.test(ins)) {
                     actualOpNum++;

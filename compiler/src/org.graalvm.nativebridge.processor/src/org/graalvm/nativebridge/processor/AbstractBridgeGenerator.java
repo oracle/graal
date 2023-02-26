@@ -34,6 +34,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.IntersectionType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
@@ -102,8 +103,11 @@ abstract class AbstractBridgeGenerator {
     void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
     }
 
-    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
+    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult, boolean hasOutParameter) {
         int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
+        if (hasOutParameter) {
+            slots++;
+        }
         return slots * BYTES_PER_PARAMETER;
     }
 
@@ -156,7 +160,7 @@ abstract class AbstractBridgeGenerator {
         newModifiers.remove(Modifier.ABSTRACT);
         builder.methodStart(newModifiers, methodElement.getSimpleName(),
                         methodType.getReturnType(),
-                        CodeBuilder.newParameters(methodElement.getParameters(), methodType.getParameterTypes()),
+                        CodeBuilder.newParameters(methodElement.getParameters(), methodType.getParameterTypes(), methodElement.isVarArgs()),
                         methodType.getThrownTypes());
         return builder;
     }
@@ -265,40 +269,127 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters, boolean addReferenceArrayLength) {
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters, boolean addReferenceArrayLength, boolean isOutParametersUpdate) {
         builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
         boolean first = true;
         for (MarshalledParameter e : marshalledParameters) {
-            if (first) {
-                first = false;
-            } else {
+            if (!first) {
                 builder.spaceIfNeeded().write("+").space();
             }
-            if (e.marshallerData.isCustom()) {
-                builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
-            } else if (e.marshallerData.isReference()) {
-                AnnotationMirror in = find(e.marshallerData.annotations, typeCache.in, types);
-                AnnotationMirror out = find(e.marshallerData.annotations, typeCache.out, types);
-                CharSequence arrayLength = null;
-                if (in != null) {
-                    arrayLength = getArrayLengthParameterName(in);
-                } else if (out != null) {
-                    arrayLength = getArrayLengthParameterName(out);
-                }
-                if (arrayLength == null) {
-                    arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
-                }
-                TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
-                if (addReferenceArrayLength) {
-                    TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
-                    builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
-                }
-                builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
-            } else {
-                throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
+            int mark = builder.position();
+            switch (e.marshallerData.kind) {
+                case CUSTOM:
+                    if (e.reserveSpace) {
+                        // Reservation for custom types is hard to guess as we don't have an
+                        // instance yet. It's highly probable that reallocation is needed anyway, we
+                        // ignore it.
+                    } else {
+                        if (e.parameterType.getKind() == TypeKind.ARRAY) {
+                            TypeMirror componentType = ((ArrayType) e.parameterType).getComponentType();
+                            if (componentType.getKind() == TypeKind.ARRAY) {
+                                // For multidimensional arrays it's impossible to infer size in a
+                                // constant time, because any sub-array may be null.
+                                // We rather use a constant estimate.
+                                builder.write("128");
+                            } else {
+                                CharSequence firstElement = new CodeBuilder(builder).arrayElement(e.parameterName, "0").build();
+                                builder.memberSelect(types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType(), "BYTES", false).write(" + ").write("(").write(e.parameterName).write(
+                                                " != null && ").memberSelect(e.parameterName, "length", false).write(" > 0 ? ").memberSelect(e.parameterName, "length", false).write(" * ").invoke(
+                                                                e.marshallerData.name, "inferSize", firstElement).write(" : 0").write(")");
+                            }
+                        } else {
+                            CharSequence inferMethodName = isOutParametersUpdate && !e.isResult ? "inferUpdateSize" : "inferSize";
+                            builder.invoke(e.marshallerData.name, inferMethodName, e.parameterName);
+                        }
+                    }
+                    break;
+                case REFERENCE:
+                    if (e.parameterType.getKind() == TypeKind.ARRAY) {
+                        if (e.reserveSpace) {
+                            // Reservation for arrays is hard to guess as we don't have an instance
+                            // yet. It's highly probable that reallocation is needed anyway, we
+                            // ignore it.
+                        } else {
+                            CharSequence arrayLength = null;
+                            if (e.marshallerData.in != null) {
+                                arrayLength = e.marshallerData.in.lengthParameter;
+                            } else if (e.marshallerData.out != null) {
+                                arrayLength = e.marshallerData.out.lengthParameter;
+                            }
+                            if (arrayLength == null) {
+                                arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
+                            }
+                            TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
+                            if (addReferenceArrayLength) {
+                                TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
+                                builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
+                            }
+                            builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
+                        }
+                    } else {
+                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reserveSpace);
+                    }
+                    break;
+                case VALUE:
+                    generateSizeOf(builder, e.parameterName, e.parameterType, e.reserveSpace);
+                    break;
+                case RAW_REFERENCE:
+                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reserveSpace);
+                    break;
+                default:
+                    throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
+            }
+            if (mark != builder.position()) {
+                first = false;
             }
         }
         builder.lineEnd(";");
+    }
+
+    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type, boolean reserveSpace) {
+        switch (type.getKind()) {
+            case BOOLEAN:
+            case BYTE:
+                builder.write("1");
+                break;
+            case SHORT:
+            case CHAR:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+                builder.memberSelect(types.boxedClass((PrimitiveType) type).asType(), "BYTES", false);
+                break;
+            case ARRAY:
+                if (reserveSpace) {
+                    // Reservation for arrays is hard to guess as we don't have an instance yet.
+                    // It's highly probable that reallocation is needed anyway, we ignore it.
+                } else {
+                    builder.memberSelect(variable, "length", false);
+                    builder.write(" * ");
+                    TypeMirror componentType = ((ArrayType) type).getComponentType();
+                    if (componentType.getKind().isPrimitive()) {
+                        generateSizeOf(builder, null, componentType, reserveSpace);
+                    } else {
+                        assert types.isSameType(typeCache.string, type);
+                        builder.write("32");    // String array element size estimate
+                    }
+                }
+                break;
+            case DECLARED:
+                if (reserveSpace) {
+                    // Reservation for strings is hard to guess as we don't have an instance yet.
+                    // It's highly probable that reallocation is needed anyway, we ignore it.
+                } else {
+                    assert types.isSameType(typeCache.string, type);
+                    generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT), reserveSpace);
+                    builder.write(" + ");
+                    builder.invoke(variable, "length");
+                }
+                break;
+            default:
+                throw new IllegalArgumentException(String.valueOf(type));
+        }
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
@@ -314,14 +405,6 @@ abstract class AbstractBridgeGenerator {
         return null;
     }
 
-    static CharSequence getArrayLengthParameterName(AnnotationMirror annotation) {
-        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayLengthParameter");
-    }
-
-    static CharSequence getArrayOffsetParameterName(AnnotationMirror annotation) {
-        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayOffsetParameter");
-    }
-
     static boolean isBinaryMarshallable(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
         if (marshaller.isCustom()) {
             // Custom type is always marshalled
@@ -335,10 +418,7 @@ abstract class AbstractBridgeGenerator {
     }
 
     boolean isOutParameter(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
-        if (isBinaryMarshallable(marshaller, type, hostToIsolate) && marshaller.isReference()) {
-            return find(marshaller.annotations, typeCache.out, types) != null;
-        }
-        return false;
+        return isBinaryMarshallable(marshaller, type, hostToIsolate) && marshaller.out != null;
     }
 
     abstract static class MarshallerSnippets {
@@ -403,7 +483,8 @@ abstract class AbstractBridgeGenerator {
         }
 
         @SuppressWarnings("unused")
-        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                        CharSequence jniEnvFieldName) {
             return null;
         }
 
@@ -412,20 +493,16 @@ abstract class AbstractBridgeGenerator {
         abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
                         CharSequence jniEnvFieldName);
 
+        abstract void write(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
+
+        abstract void read(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence resultVariable, CharSequence marshalledResultInput, CharSequence jniEnvFieldName);
+
         static CharSequence outArrayLocal(CharSequence parameterName) {
             return parameterName + "Out";
         }
 
         final boolean isArrayWithDirectionModifiers(TypeMirror parameterType) {
-            return parameterType.getKind() == TypeKind.ARRAY && !marshallerData.annotations.isEmpty();
-        }
-
-        final AnnotationMirror findIn(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.in, types);
-        }
-
-        final AnnotationMirror findOut(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.out, types);
+            return parameterType.getKind() == TypeKind.ARRAY && (marshallerData.in != null || marshallerData.out != null);
         }
 
         final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
@@ -490,6 +567,171 @@ abstract class AbstractBridgeGenerator {
             return result;
         }
 
+        final CharSequence lookupDirectSnippetWriteMethod(TypeMirror type) {
+            if (types.isSameType(cache.string, type)) {
+                return "writeUTF";
+            } else if (type.getKind() == TypeKind.ARRAY) {
+                return "write";
+            } else {
+                switch (type.getKind()) {
+                    case BOOLEAN:
+                        return "writeBoolean";
+                    case BYTE:
+                        return "writeByte";
+                    case CHAR:
+                        return "writeChar";
+                    case SHORT:
+                        return "writeShort";
+                    case INT:
+                        return "writeInt";
+                    case LONG:
+                        return "writeLong";
+                    case FLOAT:
+                        return "writeFloat";
+                    case DOUBLE:
+                        return "writeDouble";
+                    default:
+                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                }
+            }
+        }
+
+        final CharSequence lookupDirectSnippetReadMethod(TypeMirror type) {
+            if (types.isSameType(cache.string, type)) {
+                return "readUTF";
+            } else if (type.getKind() == TypeKind.ARRAY) {
+                return "read";
+            } else {
+                switch (type.getKind()) {
+                    case BOOLEAN:
+                        return "readBoolean";
+                    case BYTE:
+                        return "readByte";
+                    case CHAR:
+                        return "readChar";
+                    case SHORT:
+                        return "readShort";
+                    case INT:
+                        return "readInt";
+                    case LONG:
+                        return "readLong";
+                    case FLOAT:
+                        return "readFloat";
+                    case DOUBLE:
+                        return "readDouble";
+                    default:
+                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                }
+            }
+        }
+
+        final void writeCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                writeCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersOutput);
+            } else {
+                currentBuilder.lineStart().invoke(marshallerData.name, "write", marshalledParametersOutput, parameterName).lineEnd(";");
+            }
+        }
+
+        final void readCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                readCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersInput);
+            } else {
+                currentBuilder.lineStart().write(parameterType).space().write(parameterName).write(" = ").invoke(marshallerData.name, "read", marshalledParametersInput).lineEnd(";");
+            }
+        }
+
+        final void writeCustomObjectUpdate(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                // For an array element, we cannot use BinaryInput#writeUpdatepdate, but we need to
+                // re-read the whole element. Java array is a covariant type and the array
+                // element may change its type.
+                writeCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersOutput);
+            } else {
+                currentBuilder.lineStart().invoke(marshallerData.name, "writeUpdate", marshalledParametersOutput, parameterName).lineEnd(";");
+            }
+        }
+
+        final void readCustomObjectUpdate(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, boolean inArray) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                updateCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersInput);
+            } else {
+                if (inArray) {
+                    // For an array element, we cannot use BinaryInput#writeUpdate, but we need to
+                    // re-read the whole element. Java array is a covariant type and the array
+                    // element may change its type.
+                    currentBuilder.lineStart().write(parameterName).write(" = ").invoke(marshallerData.name, "read", marshalledParametersInput).lineEnd(";");
+                } else {
+                    currentBuilder.lineStart().invoke(marshallerData.name, "readUpdate", marshalledParametersInput, parameterName).lineEnd(";");
+                }
+            }
+        }
+
+        private void writeCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            currentBuilder.lineStart().write("if (").write(parameterName).write(" != null)").lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence len = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
+            currentBuilder.lineStart().invoke(marshalledParametersOutput, "writeInt", len).lineEnd(";");
+            TypeMirror componentType = parameterType.getComponentType();
+            CharSequence componentVariable = parameterName + "Element";
+            currentBuilder.lineStart().forEachLoop(componentType, componentVariable, parameterName).lineEnd(" {");
+            currentBuilder.indent();
+            writeCustomObject(currentBuilder, componentType, componentVariable, marshalledParametersOutput);
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("} else {");
+            currentBuilder.indent();
+            currentBuilder.lineStart().invoke(marshalledParametersOutput, "writeInt", "-1").lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
+        private void readCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            CharSequence len = parameterName + "Length";
+            currentBuilder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(len).write(" = ").invoke(marshalledParametersInput, "readInt").lineEnd(";");
+            currentBuilder.lineStart().write(parameterType).space().write(parameterName).lineEnd(";");
+            currentBuilder.lineStart().write("if (").write(len).write(" != -1)").lineEnd(" {");
+            currentBuilder.indent();
+            TypeMirror componentType = parameterType.getComponentType();
+            currentBuilder.lineStart(parameterName).write(" = ").newArray(componentType, len).lineEnd(";");
+            CharSequence index = parameterName + "Index";
+            List<CharSequence> init = List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(index).write(" = 0").build());
+            CharSequence test = new CodeBuilder(currentBuilder).write(index).write(" < ").write(len).build();
+            List<CharSequence> increment = List.of(new CodeBuilder(currentBuilder).write(index).write("++").build());
+            currentBuilder.lineStart().forLoop(init, test, increment).lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence componentVariable = parameterName + "Element";
+            readCustomObject(currentBuilder, componentType, componentVariable, marshalledParametersInput);
+            currentBuilder.lineStart().arrayElement(parameterName, index).write(" = ").write(componentVariable).lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("} else {");
+            currentBuilder.indent();
+            currentBuilder.lineStart(parameterName).write(" = null").lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
+        private void updateCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            CharSequence len = parameterName + "Length";
+            currentBuilder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(len).write(" = ").invoke(marshalledParametersInput, "readInt").lineEnd(";");
+            currentBuilder.lineStart().write("if (").write(len).write(" != -1)").lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence index = parameterName + "Index";
+            List<CharSequence> init = List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(index).write(" = 0").build());
+            CharSequence test = new CodeBuilder(currentBuilder).write(index).write(" < ").write(len).build();
+            List<CharSequence> increment = List.of(new CodeBuilder(currentBuilder).write(index).write("++").build());
+            currentBuilder.lineStart().forLoop(init, test, increment).lineEnd(" {");
+            currentBuilder.indent();
+            readCustomObjectUpdate(currentBuilder, parameterType.getComponentType(), new CodeBuilder(currentBuilder).arrayElement(parameterName, index).build(), marshalledParametersInput, true);
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
         private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
             if (marshallerData.hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
@@ -546,11 +788,6 @@ abstract class AbstractBridgeGenerator {
                 receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
             }
             return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : 0L").build();
-        }
-
-        static boolean trimToResult(AnnotationMirror annotation) {
-            Boolean value = (Boolean) AbstractBridgeParser.getAnnotationValue(annotation, "trimToResult");
-            return value != null && value;
         }
 
         final CharSequence marshallCopyHSObjectArrayToHotSpot(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType, CharSequence guestArray,
@@ -766,24 +1003,38 @@ abstract class AbstractBridgeGenerator {
     }
 
     static final class MarshalledParameter {
+        final boolean reserveSpace;
         final CharSequence parameterName;
         final TypeMirror parameterType;
+        final boolean isResult;
         final MarshallerData marshallerData;
 
-        MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, MarshallerData marshallerData) {
+        MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, boolean isResult, MarshallerData marshallerData) {
+            this.reserveSpace = false;
             this.parameterName = parameterName;
             this.parameterType = parameterType;
+            this.isResult = isResult;
+            this.marshallerData = marshallerData;
+        }
+
+        MarshalledParameter(TypeMirror resultType, MarshallerData marshallerData) {
+            this.reserveSpace = true;
+            this.parameterName = null;
+            this.parameterType = resultType;
+            this.isResult = true;
             this.marshallerData = marshallerData;
         }
     }
 
     static final class PreUnmarshallResult {
         final CharSequence result;
+        final CharSequence binaryInputResourcesToFree;
         final CharSequence binaryInput;
         final boolean unmarshalled;
 
-        PreUnmarshallResult(CharSequence result, CharSequence binaryInput, boolean unmarshalled) {
+        PreUnmarshallResult(CharSequence result, CharSequence binaryInputResourcesToFree, CharSequence binaryInput, boolean unmarshalled) {
             this.result = result;
+            this.binaryInputResourcesToFree = binaryInputResourcesToFree;
             this.binaryInput = binaryInput;
             this.unmarshalled = unmarshalled;
         }

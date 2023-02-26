@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -41,7 +40,9 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -53,16 +54,18 @@ public class DeletedMethod extends CustomSubstitutionMethod {
                     "Native method. If you intend to use the Java Native Interface (JNI), specify %1$s+JNI and see also %1$sJNIConfigurationFiles=<path> (use %1$s+PrintFlags for details)",
                     SubstrateOptionsParser.HOSTED_OPTION_PREFIX);
 
-    private final Delete deleteAnnotation;
+    private final String message;
+    private final AnnotationValue[] injectedAnnotations;
 
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
         super(original);
-        this.deleteAnnotation = deleteAnnotation;
+        this.message = deleteAnnotation.value();
+        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(deleteAnnotation);
     }
 
     @Override
-    public Annotation[] getInjectedAnnotations() {
-        return new Annotation[]{deleteAnnotation};
+    public AnnotationValue[] getInjectedAnnotations() {
+        return injectedAnnotations;
     }
 
     public static final Method reportErrorMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
@@ -78,11 +81,11 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return buildGraph(debug, method, providers, deleteAnnotation.value());
+        return buildGraph(debug, method, providers, message, purpose);
     }
 
-    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message, Purpose purpose) {
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());

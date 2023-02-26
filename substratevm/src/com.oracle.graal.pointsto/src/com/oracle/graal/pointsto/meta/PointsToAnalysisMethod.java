@@ -148,7 +148,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public BytecodePosition getParsingReason() {
+    public Object getParsingReason() {
         return typeFlow.getParsingReason();
     }
 

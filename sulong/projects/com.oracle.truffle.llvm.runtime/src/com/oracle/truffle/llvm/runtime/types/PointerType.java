@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 public final class PointerType extends AggregateType {
     public static final PointerType I8 = new PointerType(PrimitiveType.I8);
     public static final PointerType VOID = new PointerType(VoidType.INSTANCE);
+    public static final PointerType PTR = new PointerType(MetaType.UNKNOWN);
 
     private Type pointeeType;
 
@@ -50,8 +51,13 @@ public final class PointerType extends AggregateType {
         this.pointeeType = pointeeType;
     }
 
+    public boolean isOpaque() {
+        return pointeeType == MetaType.UNKNOWN;
+    }
+
     public Type getPointeeType() {
         CompilerAsserts.neverPartOfCompilation();
+        assert !isOpaque() : "unexpected getPointeeType() on opaque pointer";
         return pointeeType;
     }
 
@@ -104,7 +110,11 @@ public final class PointerType extends AggregateType {
     @Override
     @TruffleBoundary
     public String toString() {
-        return String.format("%s*", getPointeeType());
+        if (isOpaque()) {
+            return "ptr";
+        } else {
+            return String.format("%s*", getPointeeType());
+        }
     }
 
     @Override

@@ -180,7 +180,7 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
             if ((vv == 0L && (b & 0x40) == 0) || (vv == -1L && (b & 0x40) == 0x40)) {
                 more = false;
             } else {
-                b |= 0x80;
+                b |= (byte) 0x80;
             }
             writeByte(b);
         }

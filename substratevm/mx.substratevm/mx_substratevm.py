@@ -277,7 +277,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run'] + all_args, out=stdout_collector)
+        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -352,7 +352,6 @@ def truffle_unittest_task(extra_image_args=None):
 
 
 def svm_gate_body(args, tasks):
-
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -415,7 +414,7 @@ def svm_gate_body(args, tasks):
         if t:
             hellomodule(args.extra_image_builder_arguments)
 
-    with Task('Validate JSON build info', tasks, tags=[mx_gate.Tags.style]) as t:
+    with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             import json
             try:
@@ -792,10 +791,9 @@ def _helloworld(native_image, javac_command, path, build_only, args):
         if actual_output != expected_output:
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
-def _debuginfotest(native_image, path, build_only, args):
+def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     mkpath(path)
-    parent = os.path.dirname(path)
-    mx.log("parent=%s"%parent)
+    mx.log("path=%s"%path)
     sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
     mx.log("sourcepath=%s"%sourcepath)
     sourcecache = join(path, 'sources')
@@ -832,17 +830,21 @@ def _debuginfotest(native_image, path, build_only, args):
     if '--libc=musl' in args:
         os.environ.update({'debuginfotest_musl' : 'yes'})
 
+    testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
+    hello_binary = join(path, 'hello.hello')
+
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
-    build_debug_test(['-H:-SpawnIsolates'])
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_isolates' : 'no'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+    if not with_isolates_only:
+        build_debug_test(['-H:-SpawnIsolates'])
+        if mx.get_os() == 'linux' and not build_only:
+            os.environ.update({'debuginfotest_isolates' : 'no'})
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -892,7 +894,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -907,7 +909,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -919,7 +921,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 def _native_image_launcher_main_class():
@@ -1013,7 +1015,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
     priority=1,
     stability="earlyadopter",
     jlink=False,
@@ -1198,7 +1200,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     jlink=False,
     installable_id='native-image',
-    installable=True,
+    installable=False,
     priority=10,
 ))
 
@@ -1229,17 +1231,19 @@ def debuginfotest(args, config=None):
     builds a debuginfo Hello native image and tests it with gdb.
     """
     parser = ArgumentParser(prog='mx debuginfotest')
-    all_args = ['--output-path', '--build-only']
+    all_args = ['--output-path', '--build-only', '--with-isolates-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[2], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
+    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-            _debuginfotest(native_image, output_path, build_only, a), unmask(parsed.image_args),
+            _debuginfotest(native_image, output_path, build_only, with_isolates_only, a), unmask(parsed.image_args),
         config=config
     )
 
@@ -1383,8 +1387,9 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
         staticlib_path = ['lib', 'static', mx.get_os() + '-' + mx.get_arch()]
         if mx.is_linux():
+            libc = mx.get_os_variant()
             # Assume we are running under glibc by default for now.
-            staticlib_path = staticlib_path + ['glibc']
+            staticlib_path = staticlib_path + [libc if libc else 'glibc']
         # Allow older labsjdk versions to work
         if not exists(join(mx_compiler.jdk.home, *staticlib_path)):
             staticlib_path = ['lib']
@@ -1694,6 +1699,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
             '-Dgraalvm.locatorDisabled=true',
         ]
+        if mx.get_os() == 'linux':
+            libc = mx.get_os_variant() if mx.get_os_variant() else 'glibc'
+            graal_compiler_flags_base.append('-Dsubstratevm.HostLibC=' + libc)
+
         for key in graal_compiler_flags_map:
             graal_compiler_flags_map[key] = graal_compiler_flags_base + graal_compiler_flags_map[key]
 

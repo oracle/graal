@@ -56,7 +56,7 @@ import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class ReflectionTest extends AbstractParametrizedLibraryTest {
 
     @Parameters(name = "{0}")

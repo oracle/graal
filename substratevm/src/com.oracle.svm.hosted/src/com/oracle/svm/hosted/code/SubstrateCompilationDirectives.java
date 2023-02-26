@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -137,7 +138,8 @@ public class SubstrateCompilationDirectives {
         }
     }
 
-    protected boolean sealed;
+    private boolean deoptInfoSealed = false;
+    private boolean forceCompilationsSealed = false;
 
     private final Set<AnalysisMethod> forcedCompilations = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> frameInformationRequired = ConcurrentHashMap.newKeySet();
@@ -148,18 +150,24 @@ public class SubstrateCompilationDirectives {
         return ImageSingletons.lookup(SubstrateCompilationDirectives.class);
     }
 
+    public void sealDeoptimizationInfo() {
+        deoptInfoSealed = true;
+    }
+
     public void registerForcedCompilation(ResolvedJavaMethod method) {
-        assert !sealed;
+        assert !forceCompilationsSealed;
         forcedCompilations.add(toAnalysisMethod(method));
     }
 
     public boolean isForcedCompilation(ResolvedJavaMethod method) {
-        assert seal();
+        if (Assertions.assertionsEnabled()) {
+            forceCompilationsSealed = true;
+        }
         return forcedCompilations.contains(toAnalysisMethod(method));
     }
 
     public void registerFrameInformationRequired(AnalysisMethod frameMethod, AnalysisMethod deoptMethod) {
-        assert !sealed;
+        assert deoptInfoModifiable();
         frameInformationRequired.add(frameMethod);
         /*
          * Frame information is matched using the deoptimization entry point of a method. So in
@@ -171,7 +179,7 @@ public class SubstrateCompilationDirectives {
     }
 
     public boolean isFrameInformationRequired(ResolvedJavaMethod method) {
-        assert seal();
+        assert deoptInfoQueryable();
         return frameInformationRequired.contains(toAnalysisMethod(method));
     }
 
@@ -179,7 +187,7 @@ public class SubstrateCompilationDirectives {
      * @return whether this was a new frame state seen.
      */
     public boolean registerDeoptEntry(FrameState state, ResolvedJavaMethod method) {
-        assert !sealed;
+        assert deoptInfoModifiable();
         assert state.bci >= 0;
         long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.duringCall(), state.rethrowException());
 
@@ -193,26 +201,22 @@ public class SubstrateCompilationDirectives {
     }
 
     public boolean isRegisteredDeoptTarget(ResolvedJavaMethod method) {
-        assert seal();
+        assert deoptInfoQueryable();
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }
 
     public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
-        assert seal();
+        assert deoptInfoQueryable();
 
         if (method instanceof HostedMethod && ((HostedMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting()) {
             return true;
         }
 
-        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
-        assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
-
-        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
-        return bciMap.containsKey(encodedBci);
+        return isRegisteredDeoptEntry(method, bci, duringCall, rethrowException);
     }
 
     public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
-        assert seal();
+        assert deoptInfoQueryable();
         Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
         assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
 
@@ -221,17 +225,17 @@ public class SubstrateCompilationDirectives {
     }
 
     public void registerAsDeoptInlininingExclude(ResolvedJavaMethod method) {
-        assert !sealed;
+        assert deoptInfoModifiable();
         deoptInliningExcludes.add(toAnalysisMethod(method));
     }
 
     public boolean isDeoptInliningExclude(ResolvedJavaMethod method) {
-        assert seal();
+        assert deoptInfoQueryable();
         return deoptInliningExcludes.contains(toAnalysisMethod(method));
     }
 
     public Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> getDeoptEntries() {
-        assert seal();
+        assert deoptInfoQueryable();
         return deoptEntries;
     }
 
@@ -245,10 +249,33 @@ public class SubstrateCompilationDirectives {
         }
     }
 
-    private boolean seal() {
+    private boolean deoptInfoQueryable() {
         if (!SubstrateOptions.parseOnce()) {
-            sealed = true;
+            /*
+             * Without parseonce, once querying starts, then the deopt information should no longer
+             * be modified.
+             *
+             * However, with parseonce, we require deoptimization information to be incrementally
+             * read throughout execution, so it must be always queryable.
+             */
+            deoptInfoSealed = true;
         }
         return true;
+    }
+
+    private boolean deoptInfoModifiable() {
+        return !deoptInfoSealed;
+    }
+
+    /**
+     * Parse once records the deoptimization information twice: once during analysis and then again
+     * during compilation. The information recorded during compilation will be strictly a subset of
+     * the information recorded during analysis.
+     */
+    public void resetDeoptEntries() {
+        assert !deoptInfoSealed;
+        deoptEntries.clear();
+        // all methods which require frame information must have a deoptimization entry
+        frameInformationRequired.forEach(m -> deoptEntries.computeIfAbsent(m, n -> new ConcurrentHashMap<>()));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,22 @@
  */
 package org.graalvm.profdiff;
 
+import org.graalvm.profdiff.args.BooleanArgument;
+import org.graalvm.profdiff.args.CommandGroup;
+import org.graalvm.profdiff.args.DoubleArgument;
+import org.graalvm.profdiff.args.IntegerArgument;
+import org.graalvm.profdiff.args.InvalidArgumentException;
+import org.graalvm.profdiff.args.MissingArgumentException;
+import org.graalvm.profdiff.args.ProgramArgumentParser;
+import org.graalvm.profdiff.args.UnknownArgumentException;
+import org.graalvm.profdiff.command.AOTAOTCommand;
 import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
 import org.graalvm.profdiff.command.ReportCommand;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.core.VerbosityLevel;
-import org.graalvm.profdiff.parser.args.CommandGroup;
-import org.graalvm.profdiff.parser.args.DoubleArgument;
-import org.graalvm.profdiff.parser.args.EnumArgument;
-import org.graalvm.profdiff.parser.args.IntegerArgument;
-import org.graalvm.profdiff.parser.args.InvalidArgumentException;
-import org.graalvm.profdiff.parser.args.MissingArgumentException;
-import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
-import org.graalvm.profdiff.parser.args.UnknownArgumentException;
-import org.graalvm.profdiff.util.StdoutWriter;
+import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.StdoutWriter;
 
 public class Profdiff {
     private static class ProgramArguments {
@@ -50,7 +51,23 @@ public class Profdiff {
 
         private final DoubleArgument percentileArgument;
 
-        private final EnumArgument<VerbosityLevel> verbosityLevelArgument;
+        private final BooleanArgument optimizationContextTreeArgument;
+
+        private final BooleanArgument diffCompilationsArgument;
+
+        private final BooleanArgument bciLongFormArgument;
+
+        private final BooleanArgument sortInliningTreeArgument;
+
+        private final BooleanArgument sortUnorderedPhasesArgument;
+
+        private final BooleanArgument removeVeryDetailedPhasesArgument;
+
+        private final BooleanArgument pruneIdentitiesArgument;
+
+        private final BooleanArgument createFragmentsArgument;
+
+        private final BooleanArgument inlinerReasoningArgument;
 
         private final CommandGroup commandGroup;
 
@@ -67,10 +84,26 @@ public class Profdiff {
             percentileArgument = argumentParser.addDoubleArgument(
                             "--hot-percentile", 0.9,
                             "the percentile of the execution period that is spent executing hot compilation units");
-            verbosityLevelArgument = argumentParser.addEnumArgument(
-                            "--verbosity", VerbosityLevel.DEFAULT,
-                            "the verbosity level of the diff");
-            commandGroup = argumentParser.addCommandGroup("command", "the action to invoke");
+            optimizationContextTreeArgument = argumentParser.addBooleanArgument(
+                            "--optimization-context-tree", false, "combine optimization/inlining trees into an optimization-context tree");
+            diffCompilationsArgument = argumentParser.addBooleanArgument(
+                            "--diff-compilations", true, "match and diff compilations");
+            bciLongFormArgument = argumentParser.addBooleanArgument(
+                            "--long-bci", false, "display bci in long form");
+            sortInliningTreeArgument = argumentParser.addBooleanArgument(
+                            "--sort-inlining-tree", true, "sort inlining tree nodes by (bci, name)");
+            sortUnorderedPhasesArgument = argumentParser.addBooleanArgument(
+                            "--sort-unordered-phases", true, "sort the children of optimization phases where order is not important");
+            removeVeryDetailedPhasesArgument = argumentParser.addBooleanArgument(
+                            "--remove-detailed-phases", true, "remove phases which perform many optimizations");
+            pruneIdentitiesArgument = argumentParser.addBooleanArgument(
+                            "--prune-identities", true, "show only differences when trees are compared");
+            createFragmentsArgument = argumentParser.addBooleanArgument(
+                            "--create-fragments", true, "create compilation fragments from inlinees in hot compilation units");
+            inlinerReasoningArgument = argumentParser.addBooleanArgument(
+                            "--inliner-reasoning", false, "always print the reasoning for inlining decisions");
+            commandGroup = argumentParser.addCommandGroup(
+                            "command", "the action to invoke");
         }
 
         public void parseOrExit(String[] args) {
@@ -97,20 +130,24 @@ public class Profdiff {
             return commandGroup;
         }
 
-        public VerbosityLevel getVerbosityLevel() {
-            return verbosityLevelArgument.getValue();
-        }
-
         public ProgramArgumentParser getArgumentParser() {
             return argumentParser;
         }
 
-        public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
+        private HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
             HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
             hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
             hotCompilationUnitPolicy.setHotMaxLimit(hotMaxArgument.getValue());
             hotCompilationUnitPolicy.setHotPercentile(percentileArgument.getValue());
             return hotCompilationUnitPolicy;
+        }
+
+        public OptionValues getOptionValues() {
+            return new OptionValues(getHotCompilationUnitPolicy(), optimizationContextTreeArgument.getValue(),
+                            diffCompilationsArgument.getValue(), bciLongFormArgument.getValue(),
+                            sortInliningTreeArgument.getValue(), sortUnorderedPhasesArgument.getValue(),
+                            removeVeryDetailedPhasesArgument.getValue(), pruneIdentitiesArgument.getValue(),
+                            createFragmentsArgument.getValue(), inlinerReasoningArgument.getValue());
         }
     }
 
@@ -120,13 +157,12 @@ public class Profdiff {
         commandGroup.addCommand(new ReportCommand());
         commandGroup.addCommand(new JITJITCommand());
         commandGroup.addCommand(new JITAOTCommand());
+        commandGroup.addCommand(new AOTAOTCommand());
         commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
 
         programArguments.parseOrExit(args);
 
-        commandGroup.getSelectedCommand().setHotCompilationUnitPolicy(programArguments.getHotCompilationUnitPolicy());
-        VerbosityLevel verbosityLevel = programArguments.getVerbosityLevel();
-        StdoutWriter writer = new StdoutWriter(verbosityLevel);
+        StdoutWriter writer = new StdoutWriter(programArguments.getOptionValues());
         try {
             commandGroup.getSelectedCommand().invoke(writer);
         } catch (Exception exception) {

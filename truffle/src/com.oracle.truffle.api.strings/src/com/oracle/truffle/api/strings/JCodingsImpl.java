@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
@@ -48,7 +47,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
-import static com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 import java.util.Arrays;
 
@@ -62,10 +60,12 @@ import org.graalvm.shadowed.org.jcodings.transcode.TranscoderDB;
 import org.graalvm.shadowed.org.jcodings.util.CaseInsensitiveBytesHash;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 final class JCodingsImpl implements JCodings {
 
@@ -213,8 +213,8 @@ final class JCodingsImpl implements JCodings {
     }
 
     @Override
-    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, ConditionProfile validCharacterProfile,
-                    ConditionProfile fixedWidthProfile) {
+    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
+                    InlinedConditionProfile fixedWidthProfile) {
         if (TStringGuards.is7BitCompatible(encoding) && TStringOps.calcStringAttributesLatin1(location, array, offset + fromIndex, length) == TSCodeRange.get7Bit()) {
             return StringAttributes.create(length, TSCodeRange.get7Bit());
         }
@@ -228,13 +228,13 @@ final class JCodingsImpl implements JCodings {
         int loopCount = 0;
         for (; p < end; characters++) {
             final int lengthOfCurrentCharacter = getCodePointLength(enc, bytes, p, end);
-            if (validCharacterProfile.profile(lengthOfCurrentCharacter > 0 && p + lengthOfCurrentCharacter <= end)) {
+            if (validCharacterProfile.profile(location, lengthOfCurrentCharacter > 0 && p + lengthOfCurrentCharacter <= end)) {
                 p += lengthOfCurrentCharacter;
             } else {
                 codeRange = isSingleByte(enc) ? TSCodeRange.getBrokenFixedWidth() : TSCodeRange.getBrokenMultiByte();
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, there's no value in visiting any more ptr.
-                if (fixedWidthProfile.profile(isFixedWidth(enc))) {
+                if (fixedWidthProfile.profile(location, isFixedWidth(enc))) {
                     characters = (length + minLength(enc) - 1) / minLength(enc);
                     return StringAttributes.create(characters, codeRange);
                 } else {
@@ -268,8 +268,8 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    BranchProfile outOfMemoryProfile,
-                    ConditionProfile nativeProfile,
+                    InlinedBranchProfile outOfMemoryProfile,
+                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
         final TruffleString.Encoding encoding = TruffleString.Encoding.get(a.encoding());
         final JCodings.Encoding jCodingSrc;
@@ -311,7 +311,7 @@ final class JCodingsImpl implements JCodings {
             dstPtr.p = 0;
             int inStop = a.byteArrayOffset() + (a.length() << a.stride());
             if (arrayA instanceof AbstractTruffleString.NativePointer) {
-                ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(a, nativeProfile);
+                ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(location, a, nativeProfile);
             }
             byte[] bytes = JCodings.asByteArray(arrayA);
             EConvResult result = econvConvert(bytes, buffer, econv, srcPtr, dstPtr, inStop);
@@ -321,7 +321,7 @@ final class JCodingsImpl implements JCodings {
                     econvSetReplacement(jCodingDst, econv, replacement);
                 } else if (result.isDestinationBufferFull()) {
                     if (buffer.length == TStringConstants.MAX_ARRAY_SIZE) {
-                        outOfMemoryProfile.enter();
+                        outOfMemoryProfile.enter(location);
                         throw InternalErrors.outOfMemory();
                     }
                     buffer = Arrays.copyOf(buffer, (int) Math.min(TStringConstants.MAX_ARRAY_SIZE, ((long) buffer.length) << 1));
@@ -333,7 +333,7 @@ final class JCodingsImpl implements JCodings {
             length = dstPtr.p;
         }
         checkArrayRange(buffer, 0, length);
-        return fromBufferWithStringCompactionNode.execute(
+        return fromBufferWithStringCompactionNode.execute(location,
                         buffer, 0, length, targetEncoding, length != buffer.length || targetEncoding.isSupported(), undefinedConversion || a.isMutable());
     }
 

@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
+@GenerateInline(false)
 abstract class CachedGetNode extends Node {
     public abstract Object execute(DynamicObject obj, Object key);
 

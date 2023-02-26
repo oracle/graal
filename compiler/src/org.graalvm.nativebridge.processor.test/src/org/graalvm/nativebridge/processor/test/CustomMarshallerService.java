@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.nativebridge.processor.test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -32,4 +33,12 @@ public interface CustomMarshallerService {
     Map<String, String> createMap(List<String> keys, List<String> values);
 
     Map<String, String> getProperties();
+
+    Duration[] getDurations();
+
+    void setDurations(Duration[] durations);
+
+    Duration[] getSetDurations(Duration[] durations);
+
+    void fillDurations(Duration[] durations);
 }

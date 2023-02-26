@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class VoidCallInstruction extends VoidInstruction implements Call {
 
@@ -45,10 +46,13 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private final OperandBundle operandBundle;
 
-    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount, OperandBundle operandBundle) {
+    private final FunctionType functionType;
+
+    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount, OperandBundle operandBundle, FunctionType functionType) {
         this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.paramAttr = paramAtt;
         this.operandBundle = operandBundle;
+        this.functionType = functionType;
     }
 
     @Override
@@ -87,6 +91,11 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
+    public FunctionType getFunctionType() {
+        return functionType;
+    }
+
+    @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
@@ -98,10 +107,10 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle) {
-        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length, operandBundle);
+    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType) {
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length, operandBundle, functionType);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
-        Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
+        Call.parseArguments(scope, inst, inst.arguments, arguments, functionType);
         return inst;
     }
 

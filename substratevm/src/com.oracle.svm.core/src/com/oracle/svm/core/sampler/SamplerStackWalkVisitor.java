@@ -25,31 +25,33 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 
-final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
+/* Uninterruptible visitor that holds all its state in a thread-local because it is used concurrently by multiple threads. */
+public final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SamplerStackWalkVisitor() {
+    }
+
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
-        SamplerSampleWriterData writerData = SamplerThreadLocal.getWriterData();
-        boolean shouldSkipFrame = shouldSkipFrame(writerData);
-        boolean shouldContinueWalk = shouldContinueWalk(writerData);
-        if (!shouldSkipFrame && shouldContinueWalk) {
-            writerData.setHashCode(computeHash(writerData.getHashCode(), ip.rawValue()));
-            shouldContinueWalk = SamplerSampleWriter.putLong(writerData, ip.rawValue());
-        }
-        return shouldContinueWalk;
+        return recordIp(ip);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean shouldContinueWalk(SamplerSampleWriterData data) {
-        if (data.getNumFrames() >= data.getMaxDepth()) {
+        int numFrames = data.getNumFrames() - data.getSkipCount();
+        if (numFrames > data.getMaxDepth()) {
             /* The stack size exceeds given depth. Stop walk! */
             data.setTruncated(true);
             return false;
@@ -73,7 +75,25 @@ final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
-        SamplerThreadLocal.increaseUnparseableStacks();
+        /*
+         * The SIGPROF-based sampler may interrupt at any arbitrary code location. The stack
+         * information that we currently have is not always good enough to do a reliable stack walk.
+         */
+        JfrThreadLocal.increaseUnparseableStacks();
         return false;
+    }
+
+    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    private static boolean recordIp(CodePointer ip) {
+        SamplerSampleWriterData writerData = JfrThreadLocal.getSamplerWriterData();
+        assert writerData.isNonNull();
+
+        boolean shouldSkipFrame = shouldSkipFrame(writerData);
+        boolean shouldContinueWalk = shouldContinueWalk(writerData);
+        if (!shouldSkipFrame && shouldContinueWalk) {
+            writerData.setHashCode(computeHash(writerData.getHashCode(), ip.rawValue()));
+            shouldContinueWalk = SamplerSampleWriter.putLong(writerData, ip.rawValue());
+        }
+        return shouldContinueWalk;
     }
 }

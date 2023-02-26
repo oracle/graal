@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -383,16 +383,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         return Arrays.copyOf(nodes, size);
     }
 
-    protected void replace(T node, T other) {
-        incModCount();
-        for (int i = 0; i < size(); i++) {
-            if (nodes[i] == node) {
-                nodes[i] = other;
-                update(node, other);
-            }
-        }
-    }
-
     @Override
     public int indexOf(Object node) {
         for (int i = 0; i < size; i++) {
@@ -415,13 +405,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
-        for (T e : c) {
-            add(e);
-        }
-        return true;
-    }
-
-    public boolean addAll(T[] c) {
         for (T e : c) {
             add(e);
         }
@@ -473,11 +456,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         @Override
         public int size() {
             return list.size() - offset;
-        }
-
-        public SubList<R> subList(int startIndex) {
-            assert startIndex >= 0 && startIndex < size() : startIndex;
-            return new SubList<>(this.list, startIndex + offset);
         }
 
         @Override

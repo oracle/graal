@@ -78,10 +78,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public void registerThread(Thread thread) {
-        if (!SubstrateJVM.isRecording()) {
-            return;
-        }
-
         mutex.lockNoTransition();
         try {
             registerThread0(thread);
@@ -92,7 +88,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     private void registerThread0(Thread thread) {
-        assert SubstrateJVM.isRecording();
         JfrThreadEpochData epochData = getEpochData(false);
         if (epochData.threadBuffer.isNull()) {
             // This will happen only on the first call.

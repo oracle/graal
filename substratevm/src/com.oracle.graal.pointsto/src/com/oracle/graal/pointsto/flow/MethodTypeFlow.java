@@ -39,12 +39,11 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-
-import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -78,6 +77,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      */
     public synchronized void setAsStubFlow() {
         graphKind = MethodFlowsGraph.GraphKind.STUB;
+        assert !method.isOriginalMethod() : "setting original method as stub";
         assert !flowsGraphCreated() : "cannot set as flow creation kind flows graph is created";
     }
 
@@ -157,7 +157,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private synchronized void createFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (flowsGraph == null) {
             AnalysisError.guarantee(reason == null || reason.getSource() == null ||
-                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself " + method.format("%H.%n"));
+                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
             try {
@@ -172,7 +172,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 flowsGraph = builder.flowsGraph;
                 assert flowsGraph != null;
 
-                initFlowsGraph(bb);
+                initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
                 /* Wrap all other errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
@@ -201,8 +201,18 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
     }
 
-    protected void initFlowsGraph(PointsToAnalysis bb) {
-        flowsGraph.init(bb);
+    /**
+     * Run type flow initialization. This will trigger state propagation from source flows, link
+     * static load/store field flows, publish unsafe load/store flows, etc. The flows that need
+     * initialization are collected by {@link TypeFlowGraphBuilder#build()}. Their initialization
+     * needs to be triggered only after the graph is fully materialized such that lazily constructed
+     * type flows (like InovkeTypeFlow.actualReturn) can observe the type state that other flows may
+     * generate on initialization.
+     */
+    protected void initFlowsGraph(PointsToAnalysis bb, List<TypeFlow<?>> postInitFlows) {
+        for (TypeFlow<?> flow : postInitFlows) {
+            flow.initFlow(bb);
+        }
     }
 
     public Collection<MethodFlowsGraph> getFlows() {
@@ -244,8 +254,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public BytecodePosition getParsingReason() {
-        return parsingReason != null ? parsingReason.getSource() : null;
+    public Object getParsingReason() {
+        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
     }
 
     @Override
@@ -275,7 +285,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             throwSealedError();
         }
 
-        forceReparseOnCreation = forceReparse | forceReparseOnCreation;
+        forceReparseOnCreation = forceReparse || forceReparseOnCreation;
 
         assert !(newGraphKind == MethodFlowsGraph.GraphKind.STUB && graphKind == MethodFlowsGraph.GraphKind.FULL) : "creating less strict graph";
         MethodFlowsGraph.GraphKind originalGraphKind = graphKind;
@@ -319,7 +329,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
             flowsGraph.updateInternalState(newGraphKind);
 
-            initFlowsGraph(bb);
+            initFlowsGraph(bb, builder.postInitFlows);
 
             if (registerAsImplementationInvoked) {
                 if (parsingReason == null) {

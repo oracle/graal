@@ -52,6 +52,8 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
@@ -73,7 +75,6 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.Pair;
 
 /**
  * Implements the parsing and validation of Ruby regular expressions.
@@ -378,7 +379,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
+        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), false, compilationBuffer));
     }
 
     @Override
@@ -520,6 +521,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
+    private void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
+        if (!silent) {
+            astBuilder.pushConditionalBackReferenceGroup(referencedGroupNumber, namedReference);
+        }
+    }
+
     private void pushLookAheadAssertion(boolean negate) {
         if (!silent) {
             astBuilder.pushLookAheadAssertion(negate);
@@ -546,7 +553,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void addCharClass(CodePointSet charSet) {
         if (!silent) {
-            astBuilder.addCharClass(charSet);
+            astBuilder.addCharClass(charSet, false);
         }
     }
 
@@ -556,9 +563,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void addBackReference(int groupNumber) {
+    private void addBackReference(int groupNumber, boolean namedReference) {
         if (!silent) {
-            astBuilder.addBackReference(groupNumber);
+            astBuilder.addBackReference(groupNumber, namedReference, getLocalFlags().isIgnoreCase());
         }
     }
 
@@ -1189,57 +1196,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // character is dependent on whether the Ruby regular expression is set to use the ASCII range
     // only.
     private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
         // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordNonBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     /**
@@ -1369,7 +1335,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 position = restorePosition;
                 return false;
             }
-            buildBackreference(groupNumber);
+            buildBackreference(groupNumber, false);
             return true;
         } else {
             return false;
@@ -1465,27 +1431,25 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (groupNumbers.length == 0) {
             throw syntaxErrorHere(RbErrorMessages.undefinedReference(name));
         } else if (groupNumbers.length == 1) {
-            buildBackreference(groupNumbers[0]);
+            buildBackreference(groupNumbers[0], true);
         } else {
             pushGroup();
-            buildBackreference(groupNumbers[groupNumbers.length - 1]);
+            buildBackreference(groupNumbers[groupNumbers.length - 1], true);
             for (int i = groupNumbers.length - 2; i >= 0; i--) {
                 nextSequence();
-                buildBackreference(groupNumbers[i]);
+                buildBackreference(groupNumbers[i], true);
             }
             popGroup();
         }
     }
 
-    private void buildBackreference(int groupNumber) {
+    private void buildBackreference(int groupNumber, boolean namedReference) {
         if (isCaptureGroupOpen(groupNumber)) {
             // Ruby syntax allows references to an open capture group. However, such a reference can
             // never match anything as the capture group is reset on entry.
             addDeadNode();
-        } else if (getLocalFlags().isIgnoreCase()) {
-            bailOut("case insensitive backreferences not supported");
         } else {
-            addBackReference(groupNumber);
+            addBackReference(groupNumber, namedReference);
         }
     }
 
@@ -2169,8 +2133,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 if (canBeNonGreedy && match("?")) {
                     greedy = false;
                 }
-                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
-                                upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
+                return new Quantifier(quantifierBoundsToIntValue(lowerBound.orElse(BigInteger.ZERO)),
+                                quantifierBoundsToIntValue(upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY))),
                                 greedy, false);
             }
         } else {
@@ -2201,6 +2165,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             return new Quantifier(lower, upper, greedy, possessive);
         }
+    }
+
+    private static int quantifierBoundsToIntValue(BigInteger i) {
+        if (i.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0) {
+            return Quantifier.INFINITY;
+        }
+        return i.intValue();
     }
 
     /**
@@ -2268,7 +2239,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     break;
 
                 case '(':
-                    conditionalBackreference();
+                    conditionalBackReference();
                     break;
 
                 case '~':
@@ -2402,31 +2373,42 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     /**
-     * Parses a conditional backreference, assuming that the prefix '(?(' was already parsed.
+     * Parses a conditional back-reference, assuming that the prefix '(?(' was already parsed.
      */
-    private void conditionalBackreference() {
-        bailOut("conditional backreference groups not supported");
+    private void conditionalBackReference() {
+        List<Integer> groupNumbers;
+        boolean namedReference;
         if (match("<")) {
-            parseGroupReference('>', true, true, true, true);
+            namedReference = curChar() != '-' && !isDecDigit(curChar());
+            groupNumbers = parseGroupReference('>', true, true, true, true);
             mustMatch(")");
         } else if (match("'")) {
-            parseGroupReference('\'', true, true, true, true);
+            namedReference = curChar() != '-' && !isDecDigit(curChar());
+            groupNumbers = parseGroupReference('\'', true, true, true, true);
             mustMatch(")");
         } else if (isDecDigit(curChar())) {
-            parseGroupReference(')', true, false, true, true);
+            namedReference = false;
+            groupNumbers = parseGroupReference(')', true, false, true, true);
         } else {
             throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
         }
-        disjunction();
+        pushConditionalBackReferenceGroup(groupNumbers.get(0), namedReference);
+        alternative();
         if (match("|")) {
-            disjunction();
+            nextSequence();
+            canHaveQuantifier = false;
+            alternative();
             if (curChar() == '|') {
                 throw syntaxErrorHere(RbErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
             }
+        } else {
+            // Generate the implicit empty else-branch, if it was not specified.
+            nextSequence();
         }
         if (!match(")")) {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
+        popGroup();
         canHaveQuantifier = true;
     }
 

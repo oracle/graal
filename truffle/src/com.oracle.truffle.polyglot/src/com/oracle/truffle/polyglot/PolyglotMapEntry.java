@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,11 +53,8 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-
-import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.Objects;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
 
@@ -272,25 +274,26 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached PolyglotToHostNode toHost,
-                            @Cached BranchProfile error) {
+                            @Cached InlinedBranchProfile error) {
                 if (interop.hasArrayElements(receiver)) {
                     Object result;
                     try {
                         result = interop.readArrayElement(receiver, index);
                     } catch (UnsupportedMessageException e) {
-                        error.enter();
+                        error.enter(node);
                         throw unsupported(languageContext, receiver);
                     } catch (InvalidArrayIndexException e) {
-                        error.enter();
+                        error.enter(node);
                         throw invalidArrayIndex(languageContext, receiver, e.getInvalidIndex());
                     }
-                    return toHost.execute(languageContext, result, elementClass, elementType);
+                    return toHost.execute(node, languageContext, result, elementClass, elementType);
                 } else {
-                    error.enter();
+                    error.enter(node);
                     throw unsupported(languageContext, receiver);
                 }
             }

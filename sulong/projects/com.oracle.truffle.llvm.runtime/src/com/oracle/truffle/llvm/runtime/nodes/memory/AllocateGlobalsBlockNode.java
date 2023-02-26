@@ -52,7 +52,7 @@ public abstract class AllocateGlobalsBlockNode extends LLVMNode implements LLVMA
 
     @Specialization
     @GenerateAOT.Exclude
-    public LLVMPointer executeWithTarget(@Bind("getContext().getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
+    public LLVMPointer doDefault(@Bind("getContext().getAllocateGlobalsBlockFunction()") Object allocateGlobalsBlock,
                     @CachedLibrary("allocateGlobalsBlock") InteropLibrary interop) {
         try {
             Object ret = interop.execute(allocateGlobalsBlock, size);

@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -169,12 +170,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     public int getStart(int groupNumber) {
-        int index = groupNumber * 2;
+        int index = Group.groupNumberToBoundaryIndexStart(groupNumber);
         return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
     public int getEnd(int groupNumber) {
-        int index = groupNumber * 2 + 1;
+        int index = Group.groupNumberToBoundaryIndexEnd(groupNumber);
         return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
@@ -513,7 +514,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
-            int i = groupNumber * 2 + 1;
+            int i = Group.groupNumberToBoundaryIndexEnd(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
@@ -536,7 +537,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
-            int i = groupNumber * 2;
+            int i = Group.groupNumberToBoundaryIndexStart(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
 

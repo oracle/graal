@@ -107,7 +107,7 @@ public class MathPow extends Node {
         int doPowDoubleInt;
         int doPow;
 
-        @Specialization(guards = {"base == cachedBase", "exponent == cachedExponent"})
+        @Specialization(guards = {"base == cachedBase", "exponent == cachedExponent"}, limit = "3")
         double doPowCached(double base, int exponent, //
                         @Cached("base") double cachedBase, //
                         @Cached("exponent") int cachedExponent, //
@@ -124,7 +124,7 @@ public class MathPow extends Node {
             return Math.pow(base, exponent);
         }
 
-        @Specialization(replaces = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"})
+        @Specialization(replaces = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"}, limit = "3")
         double doPowCachedExponent(double base, int exponent, @Cached("exponent") int cachedExponent) {
             doPowCachedExponent++;
             double result = 1.0;

@@ -31,7 +31,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -54,14 +54,14 @@ class SSALinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
     }
 
     @Override
-    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings(BasicBlock<?> fromBlock, BasicBlock<?> toBlock, BasicBlock<?> midBlock, MoveResolver moveResolver) {
         super.resolveCollectMappings(fromBlock, toBlock, midBlock, moveResolver);
 
         if (toBlock.getPredecessorCount() > 1) {
             int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
             int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
 
-            AbstractBlockBase<?> phiOutBlock = midBlock != null ? midBlock : fromBlock;
+            BasicBlock<?> phiOutBlock = midBlock != null ? midBlock : fromBlock;
             ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(phiOutBlock);
             int phiOutIdx = SSAUtil.phiOutIndex(allocator.getLIR(), phiOutBlock);
             int phiOutId = midBlock != null ? fromBlockLastInstructionId : instructions.get(phiOutIdx).id();

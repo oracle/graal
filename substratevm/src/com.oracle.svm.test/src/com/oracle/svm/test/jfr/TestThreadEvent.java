@@ -36,9 +36,7 @@ import com.oracle.svm.test.jfr.events.ThreadEvent;
 public class TestThreadEvent extends JfrTest {
     @Override
     public String[] getTestedEvents() {
-        return new String[]{
-                        ThreadEvent.class.getName()
-        };
+        return new String[]{ThreadEvent.class.getName()};
     }
 
     @Test

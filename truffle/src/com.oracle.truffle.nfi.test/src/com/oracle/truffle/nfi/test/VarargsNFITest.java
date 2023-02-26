@@ -66,6 +66,7 @@ import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(TruffleRunner.class)
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class VarargsNFITest extends NFITest {
 
     abstract static class FormatNode extends Node {

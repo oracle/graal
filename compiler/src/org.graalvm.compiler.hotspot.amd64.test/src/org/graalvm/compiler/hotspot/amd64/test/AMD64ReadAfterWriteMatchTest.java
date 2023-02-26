@@ -29,7 +29,7 @@ import static org.junit.Assume.assumeTrue;
 
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.test.MatchRuleTest;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -82,7 +82,11 @@ public class AMD64ReadAfterWriteMatchTest extends MatchRuleTest {
         compile(getResolvedJavaMethod(method), null, options != null ? options : getInitialOptions());
         LIR lir = getLIR();
         int count = 0;
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
+            }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (filter.test(ins)) {
                     count++;

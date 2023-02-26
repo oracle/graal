@@ -92,7 +92,8 @@ public final class AnnotationPrimitiveValue extends AnnotationMemberValue {
 
     @Override
     public Object get(Class<?> memberType) {
-        return AnnotationMetadata.checkResult(value, memberType);
+        Class<?> boxedType = memberType.isPrimitive() ? Wrapper.forPrimitiveType(memberType).wrapperType() : memberType;
+        return AnnotationMetadata.checkResult(value, boxedType);
     }
 
     @Override

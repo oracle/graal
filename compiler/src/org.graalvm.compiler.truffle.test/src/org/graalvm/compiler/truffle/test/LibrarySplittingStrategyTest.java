@@ -205,7 +205,7 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
             @Specialization(guards = "name == CACHED_NAME")
             @ReportPolymorphism.Exclude
             static Object readStaticCached(DynamicallyDispatchedObject receiver, @SuppressWarnings("unused") String name,
-                            @SuppressWarnings("unused") @Cached("name") String cachedName) {
+                            @SuppressWarnings("unused") @Cached(value = "name", neverDefault = false) String cachedName) {
                 return receiver;
             }
 

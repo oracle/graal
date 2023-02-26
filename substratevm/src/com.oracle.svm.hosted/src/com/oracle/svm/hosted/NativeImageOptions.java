@@ -43,9 +43,10 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 
@@ -58,7 +59,7 @@ public class NativeImageOptions {
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list.", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
     @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
@@ -73,7 +74,7 @@ public class NativeImageOptions {
                     "option to the empty string. The specific options available are target platform " +
                     "dependent. See --list-cpu-features for feature list. The default values are: " +
                     "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
@@ -185,25 +186,30 @@ public class NativeImageOptions {
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
-    // Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
+    /**
+     * Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
+     *
+     * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
+     */
     private static final String DEFAULT_ERROR_FILE_NAME = "svm_err_b_%t_pid%p.md";
 
-    public static final Path getErrorFilePath() {
-        String errorFile = NativeImageOptions.ErrorFile.getValue();
-        if (errorFile.isEmpty()) {
-            return NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
-        } else {
-            return Paths.get(expandErrorFile(errorFile));
+    public static final Path getErrorFilePath(OptionValues hostedOptionValues) {
+        String errorFile = NativeImageOptions.ErrorFile.getValue(hostedOptionValues);
+        Path expandedErrorFile = expandErrorFile(errorFile);
+        if (expandedErrorFile.isAbsolute()) {
+            throw UserError.abort("The error filename mask specified with " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ErrorFile, errorFile) +
+                            " is not allowed to be an absolute path.");
         }
+        return NativeImageGenerator.generatedFiles(hostedOptionValues).resolve(expandedErrorFile);
     }
 
-    private static String expandErrorFile(String errorFile) {
+    private static Path expandErrorFile(String errorFile) {
         String timestamp = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS").format(new Date(GraalServices.getGlobalTimeStamp()));
-        return errorFile.replaceAll("%p", GraalServices.getExecutionID()).replaceAll("%t", timestamp);
+        return Path.of(errorFile.replaceAll("%p", GraalServices.getExecutionID()).replaceAll("%t", timestamp));
     }
 
     @Option(help = "If an error occurs, save a build error report to this file [default: " + DEFAULT_ERROR_FILE_NAME + "] (%p replaced with pid, %t with timestamp).)")//
-    public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>("");
+    public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>(DEFAULT_ERROR_FILE_NAME);
 
     @Option(help = "Show exception stack traces for exceptions during image building.)")//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
@@ -212,8 +218,9 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
 
     @Option(help = "Sets the dir where diagnostic information is dumped.")//
-    public static final HostedOptionKey<String> DiagnosticsDir = new HostedOptionKey<>(
-                    Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
+    @BundleMember(role = BundleMember.Role.Output)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DiagnosticsDir = new HostedOptionKey<>(
+                    LocatableMultiOptionValue.Paths.buildWithDefaults(Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""))));
 
     @Option(help = "Enables the diagnostic mode.")//
     public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<>(false) {

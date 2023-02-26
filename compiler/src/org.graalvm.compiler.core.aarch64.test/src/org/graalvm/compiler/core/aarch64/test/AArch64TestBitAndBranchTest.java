@@ -248,7 +248,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
     protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
         int actualOpNum = 0;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (predicate.test(ins)) {
                 actualOpNum++;
             }

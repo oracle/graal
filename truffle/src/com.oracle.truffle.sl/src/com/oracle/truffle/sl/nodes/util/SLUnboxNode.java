@@ -53,7 +53,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -89,7 +89,7 @@ public abstract class SLUnboxNode extends SLExpressionNode {
     }
 
     @Specialization
-    protected static SLBigNumber fromBigNumber(SLBigNumber value) {
+    protected static SLBigInteger fromBigNumber(SLBigInteger value) {
         return value;
     }
 
@@ -108,6 +108,8 @@ public abstract class SLUnboxNode extends SLExpressionNode {
         try {
             if (interop.fitsInLong(value)) {
                 return interop.asLong(value);
+            } else if (interop.fitsInBigInteger(value)) {
+                return value;
             } else if (interop.fitsInDouble(value)) {
                 return (long) interop.asDouble(value);
             } else if (interop.isString(value)) {

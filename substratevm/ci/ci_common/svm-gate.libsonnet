@@ -11,6 +11,8 @@
 
   local std_get = tools.std_get,
 
+  gate_triggering_suites:: ["sdk", "substratevm", "compiler", "truffle"],
+
   // mx gate build config
   mxgate(tags, suite, suite_short=suite):: task_spec(common.disable_proxies + {
       mxgate_batch:: null,

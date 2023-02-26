@@ -46,6 +46,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -198,7 +200,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return the array of new children
      * @since 0.8 or earlier
      */
-    protected final <T extends Node> T[] insert(final T[] newChildren) {
+    public final <T extends Node> T[] insert(final T[] newChildren) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (newChildren != null) {
             for (Node newChild : newChildren) {
@@ -217,7 +219,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return the new child
      * @since 0.8 or earlier
      */
-    protected final <T extends Node> T insert(final T newChild) {
+    public final <T extends Node> T insert(final T newChild) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (newChild != null) {
             adoptHelper(newChild);
@@ -552,7 +554,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 0.33
      */
-    protected final void reportPolymorphicSpecialize() {
+    public final void reportPolymorphicSpecialize() {
         CompilerAsserts.neverPartOfCompilation();
         NodeAccessor.RUNTIME.reportPolymorphicSpecialize(this);
     }
@@ -671,6 +673,10 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     private boolean inAtomicBlock() {
         return ((ReentrantLock) getLock()).isHeldByCurrentThread();
+    }
+
+    static Lookup lookup() {
+        return MethodHandles.lookup();
     }
 
 }

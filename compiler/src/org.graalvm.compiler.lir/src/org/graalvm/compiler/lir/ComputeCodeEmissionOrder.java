@@ -28,7 +28,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
@@ -53,10 +53,11 @@ public final class ComputeCodeEmissionOrder extends PostAllocationOptimizationPh
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        AbstractBlockBase<?>[] layout = context.blockOrder.computeCodeEmittingOrder(lir.getOptions(), ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS);
+        char[] layout = context.blockOrder.computeCodeEmittingOrder(lir.getOptions(), ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS);
         assert LIR.verifyBlocks(lir, layout) : "Block layout is not correct";
         lir.setCodeEmittingOrder(layout);
-        for (AbstractBlockBase<?> block : layout) {
+        for (int blockId : layout) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
             if (block.isAligned()) {
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";

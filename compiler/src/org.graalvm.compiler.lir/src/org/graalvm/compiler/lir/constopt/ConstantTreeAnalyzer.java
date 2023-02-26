@@ -30,7 +30,7 @@ import java.util.BitSet;
 import java.util.Deque;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.constopt.ConstantTree.Flags;
@@ -44,7 +44,7 @@ public final class ConstantTreeAnalyzer {
     private final BitSet visited;
 
     @SuppressWarnings("try")
-    public static NodeCost analyze(DebugContext debug, ConstantTree tree, AbstractBlockBase<?> startBlock) {
+    public static NodeCost analyze(DebugContext debug, ConstantTree tree, BasicBlock<?> startBlock) {
         try (DebugContext.Scope s = debug.scope("ConstantTreeAnalyzer")) {
             ConstantTreeAnalyzer analyzer = new ConstantTreeAnalyzer(tree);
             analyzer.analyzeBlocks(debug, startBlock);
@@ -68,11 +68,11 @@ public final class ConstantTreeAnalyzer {
      * @param startBlock The start block of the dominator subtree.
      */
     @SuppressWarnings("try")
-    private void analyzeBlocks(DebugContext debug, AbstractBlockBase<?> startBlock) {
-        Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
+    private void analyzeBlocks(DebugContext debug, BasicBlock<?> startBlock) {
+        Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
         worklist.offerLast(startBlock);
         while (!worklist.isEmpty()) {
-            AbstractBlockBase<?> block = worklist.pollLast();
+            BasicBlock<?> block = worklist.pollLast();
             try (Indent i = debug.logAndIndent(DebugContext.VERBOSE_LEVEL, "analyze: %s", block)) {
                 assert block != null : "worklist is empty!";
                 assert isMarked(block) : "Block not part of the dominator tree: " + block;
@@ -87,7 +87,7 @@ public final class ConstantTreeAnalyzer {
                     // if not yet visited (and not a leaf block) process all children first!
                     debug.log(DebugContext.VERBOSE_LEVEL, "not marked");
                     worklist.offerLast(block);
-                    AbstractBlockBase<?> dominated = block.getFirstDominated();
+                    BasicBlock<?> dominated = block.getFirstDominated();
                     while (dominated != null) {
                         filteredPush(debug, worklist, dominated);
                         dominated = dominated.getDominatedSibling();
@@ -108,13 +108,13 @@ public final class ConstantTreeAnalyzer {
      *
      * @param block The block to be processed.
      */
-    private void process(AbstractBlockBase<?> block) {
+    private void process(BasicBlock<?> block) {
         List<UseEntry> usages = new ArrayList<>();
         double bestCost = 0;
         int numMat = 0;
 
         // collect children costs
-        AbstractBlockBase<?> child = block.getFirstDominated();
+        BasicBlock<?> child = block.getFirstDominated();
         while (child != null) {
             if (isMarked(child)) {
                 NodeCost childCost = tree.getCost(child);
@@ -161,23 +161,23 @@ public final class ConstantTreeAnalyzer {
         return probabilityBlock * Math.pow(0.9, numMat - 1) < probabilityChildren;
     }
 
-    private void filteredPush(DebugContext debug, Deque<AbstractBlockBase<?>> worklist, AbstractBlockBase<?> block) {
+    private void filteredPush(DebugContext debug, Deque<BasicBlock<?>> worklist, BasicBlock<?> block) {
         if (isMarked(block)) {
             debug.log(DebugContext.VERBOSE_LEVEL, "adding %s to the worklist", block);
             worklist.offerLast(block);
         }
     }
 
-    private void leafCost(AbstractBlockBase<?> block) {
+    private void leafCost(BasicBlock<?> block) {
         tree.set(Flags.CANDIDATE, block);
         tree.getOrInitCost(block);
     }
 
-    private boolean isMarked(AbstractBlockBase<?> block) {
+    private boolean isMarked(BasicBlock<?> block) {
         return tree.isMarked(block);
     }
 
-    private boolean isLeafBlock(AbstractBlockBase<?> block) {
+    private boolean isLeafBlock(BasicBlock<?> block) {
         return tree.isLeafBlock(block);
     }
 

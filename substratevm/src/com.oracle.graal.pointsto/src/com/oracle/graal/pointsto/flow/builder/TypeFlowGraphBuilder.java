@@ -32,12 +32,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.typestate.PointsToStats;
 import org.graalvm.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
 
@@ -114,8 +114,13 @@ public class TypeFlowGraphBuilder {
     /**
      * Materialize all reachable flows starting from the sinks and working backwards following the
      * dependency chains. Unreachable flows will be implicitly pruned.
+     *
+     * @return the list of type flows that need initialization
      */
-    public void build() {
+    public List<TypeFlow<?>> build() {
+        /* List of type flows that need to be initialized after the graph is materialized. */
+        List<TypeFlow<?>> postInitFlows = new ArrayList<>();
+
         /* Work queue used by the iterative graph traversal. */
         HashSet<TypeFlowBuilder<?>> processed = new HashSet<>();
         ArrayDeque<TypeFlowBuilder<?>> workQueue = new ArrayDeque<>();
@@ -137,6 +142,10 @@ public class TypeFlowGraphBuilder {
                 TypeFlowBuilder<?> builder = workQueue.removeFirst();
                 /* Materialize the builder. */
                 TypeFlow<?> flow = builder.get();
+
+                if (flow.needsInitialization()) {
+                    postInitFlows.add(flow);
+                }
 
                 /* The retain reason is the sink from which it was reached. */
                 PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + ClassUtil.getUnqualifiedName(sinkBuilder.getFlowClass()));
@@ -164,5 +173,6 @@ public class TypeFlowGraphBuilder {
                 }
             }
         }
+        return postInitFlows;
     }
 }

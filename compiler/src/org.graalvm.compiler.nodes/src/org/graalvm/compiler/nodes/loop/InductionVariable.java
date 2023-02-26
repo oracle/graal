@@ -101,6 +101,8 @@ public abstract class InductionVariable {
 
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp);
 
+    public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount);
+
     public abstract boolean isConstantExtremum();
 
     public abstract long constantExtremum();
@@ -156,7 +158,26 @@ public abstract class InductionVariable {
     public abstract InductionVariable duplicate();
 
     /**
+     * Duplicate this IV with a new init node.
+     */
+    public abstract InductionVariable duplicateWithNewInit(ValueNode newInit);
+
+    /**
      * Return the value of this iv upon the first entry of the loop.
      */
     public abstract ValueNode entryTripValue();
+
+    /**
+     * Return the root induction variable of this IV. The root induction variable is a
+     * {@link BasicInductionVariable} directly representing a loop phi and a stride. It is computed
+     * by following {@link DerivedInductionVariable#getBase()} until the
+     * {@link BasicInductionVariable} is found.
+     */
+    public BasicInductionVariable getRootIV() {
+        if (this instanceof BasicInductionVariable) {
+            return (BasicInductionVariable) this;
+        }
+        assert this instanceof DerivedInductionVariable;
+        return ((DerivedInductionVariable) this).getBase().getRootIV();
+    }
 }

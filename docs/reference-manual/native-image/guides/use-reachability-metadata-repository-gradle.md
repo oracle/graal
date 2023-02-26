@@ -1,31 +1,29 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Use Shared Reachability Metadata with Native Image Gradle Plugin
+link_title: Configure Native Image Using Shared Reachability Metadata
 permalink: /reference-manual/native-image/guides/use-reachability-metadata-repository-gradle/
 ---
 
-# Use Shared Reachability Metadata with Native Image Gradle Plugin
+# Configure Native Image Using Shared Reachability Metadata
 
 With the Gradle plugin for GraalVM Native Image you can easily build a native executable from a Java application. The plugin is provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/index.html) and uses the [Gradle build tool](https://gradle.org/).
-If the application does not load dynamically any classes at run time, then your workflow is just one command: `./gradlew nativeRun`. 
+If the application does not dynamically load any classes at run time, then your workflow is just one command: `./gradlew nativeRun`. 
 
-In the real-world scenario, your application will, most likely, call either Java Reflection, Dynamic Proxy objects, or call some native code, or access classpath resources - the dynamic features which the `native-image` tool must be aware of at build time, and provided in the form of [metadata](../ReachabilityMetadata.md). 
+In the real-world, your application will, most likely, call either Java Reflection, Dynamic Proxy objects, or call some native code, or access resources on the class path - dynamic features that the `native-image` tool must be aware of at build time, and provided in the form of [metadata](../ReachabilityMetadata.md). 
 Native Image loads classes dynamically at build time, and not at run time.
 
-Depending on your application dependencies, there could be three ways to provide the metadata with the Native Image Gradle Plugin:
+Depending on your application dependencies, there are three ways to provide the metadata with the Native Image Gradle Plugin:
 
 1. [Using the Tracing Agent](#build-a-native-executable-with-the-agent)
 2. [Using the shared GraalVM Reachability Metadata Repository](#build-a-native-executable-using-the-graalvm-reachability-metadata-repository)
-3. [Autodetecting](use-native-image-gradle-plugin.md#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
+3. [Autodetecting](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
 
 For the Java application used in this guide the first two approaches are applicable. 
 This guide demonstrates how to build a native executable with the [Tracing agent](#build-a-native-executable-with-the-agent) and using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata).
 The goal is to show users the difference, and prove how using shared metadata can simplify the work.
 
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can go right to the [completed example](https://github.com/graalvm/native-build-tools/tree/master/samples/metadata-repo-integration).
-
-> You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 
 
 ## Prepare a Demo Application
 

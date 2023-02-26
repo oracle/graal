@@ -526,7 +526,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         @ExplodeLoop
         final Object execute(Object[] arguments,
                         @CachedLibrary("this") InteropLibrary lib,
-                        @Cached("this.iterations") int cachedIterations) {
+                        @Cached(value = "this.iterations", neverDefault = false) int cachedIterations) {
             int sum = 0;
             for (int i = 0; i < cachedIterations; i++) {
                 sum += BenchmarkContext.get(lib).index;

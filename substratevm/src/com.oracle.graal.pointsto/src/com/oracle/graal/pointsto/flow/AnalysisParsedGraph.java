@@ -97,7 +97,7 @@ public final class AnalysisParsedGraph {
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
 
-            Object result = bb.getHostVM().parseGraph(bb, method);
+            Object result = bb.getHostVM().parseGraph(bb, debug, method);
             if (result != HostVM.PARSING_UNHANDLED) {
                 if (result instanceof StructuredGraph) {
                     return optimizeAndEncode(bb, method, (StructuredGraph) result, false);

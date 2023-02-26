@@ -165,10 +165,8 @@ class NativeImageVM(GraalVm):
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
-            self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
-            self.image_build_stats_file = bm_suite.image_build_stats_file(self, args)
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g']
+            self.base_image_build_args += ['--no-fallback', '-H:Debug=2'] # GR-43934
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
@@ -177,9 +175,10 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += self.executable
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
-            self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintAnalysisStatistics']
             self.base_image_build_args += ['-H:+PrintCallEdges']
-            self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_stats_file]
+            self.base_image_build_args += ['-H:+CollectImageBuildStatistics']
+            self.image_build_stats_file = os.path.join(self.output_dir, 'reports', 'image_build_statistics.json')
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
@@ -812,12 +811,12 @@ class NativeImageVM(GraalVm):
             s.execute_command()
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
-        executable_name_args = ['-H:Name=' + instrumentation_image_name]
+        executable_name_args = ['-H:Name=' + instrumentation_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.gc == 'G1' or self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.is_llvm:
             instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         else:
             instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
@@ -833,8 +832,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.pgo_aot_inline and self.gc != 'G1' and not self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.pgo_aot_inline and not self.is_llvm:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
@@ -854,7 +853,7 @@ class NativeImageVM(GraalVm):
             self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
-        executable_name_args = ['-H:Name=' + config.final_image_name]
+        executable_name_args = ['-H:Name=' + config.final_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
@@ -1401,7 +1400,8 @@ mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
 
 def register_graalvm_vms():
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
-    host_vm_names = ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else []) + [default_host_vm_name]
+    short_host_vm_name = re.sub('-java[0-9]+$', '', default_host_vm_name)
+    host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)

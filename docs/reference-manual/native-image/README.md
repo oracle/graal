@@ -29,25 +29,14 @@ To get used to Native Image terminology and get better understanding of the tech
 
 ### Table of Contents
 
-* [Install Native Image](#install-native-image)
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
 * [License](#license)
 * [Further Reading](#further-reading)
 
-## Install Native Image
-
-Native Image can be added to GraalVM with the [GraalVM Updater](../graalvm-updater.md) tool.
-
-Run this command to install Native Image:
-```shell
-gu install native-image
-```
-The `native-image` tool is installed in the `$JAVA_HOME/bin` directory.
-
 ### Prerequisites
 
-The `native-image` tool depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
+The `native-image` tool, available in the `bin` directory of your GraalVM installation, depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
 These dependencies can be installed (if not yet installed) using a package manager on your machine.
 Choose your operating system to find instructions to meet the prerequisites.
 
@@ -93,8 +82,7 @@ There are two installation options:
 
 You can use Visual Studio 2017 version 15.9 or later.
 
-The `native-image` builder will only work when it is run from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt varies according to whether you only have the Visual Studio Build Tools installed or if you have the full Visual Studio 2019 installed. For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
+For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 
 ## Build a Native Executable
 
@@ -144,67 +132,9 @@ To build a native executable from a JAR file in the current working directory, u
 native-image [options] -jar jarfile [imagename]
 ```
 
-1. Prepare the application.
+The default behavior of `native-image` is aligned with the `java` command which means you can pass the `-jar`, `-cp`, `-m`  options to build with Native Image as you would normally do with `java`. For example, `java -jar App.jar someArgument` becomes `native-image -jar App.jar` and `./App someArgument`.
 
-    - Create a new Java project named "App", for example in your favorite IDE or from your terminal, with the following structure:
-
-        ```shell
-        | src
-        |   --com/
-        |      -- example
-        |          -- App.java
-        ```
-
-    - Add the following Java code into the _src/com/example/App.java_ file:
-
-        ```java
-        package com.example;
-
-        public class App {
-
-            public static void main(String[] args) {
-                String str = "Native Image is awesome";
-                String reversed = reverseString(str);
-                System.out.println("The reversed string is: " + reversed);
-            }
-
-            public static String reverseString(String str) {
-                if (str.isEmpty())
-                    return str;
-                return reverseString(str.substring(1)) + str.charAt(0);
-            }
-        }
-        ```
-        This is a small Java application that reverses a String using recursion.
-
-2. Compile the application:
-
-    ```shell
-    javac -d build src/com/example/App.java
-    ```
-    This produces the file _App.class_ in the _build/com/example_ directory.
-
-3. Create a runnable JAR file:
-
-    ```shell
-    jar --create --file App.jar --main-class com.example.App -C build .
-    ```
-    It will generate a runnable JAR file, named `App.jar`, in the root directory: 
-    To view its contents, type `jar tf App.jar`.
-
-4. Create a native executable:
-
-    ```
-    native-image -jar App.jar
-    ```
-    It will produce a native executable in the project root directory.
-5. Run the native executable:
-
-    ```shell
-    ./App
-    ```
-
-The `native-image` tool can provide the class path for all classes using the familiar option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
+[Follow this guide](guides/build-native-executable-from-jar.md) to build a native executable from a JAR file.
 
 ### From a Module
 

@@ -36,7 +36,6 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -387,19 +386,6 @@ class ForkJoinPoolCommonAccessor {
             injectedCommon = result;
         }
         return result;
-    }
-}
-
-@TargetClass(java.util.concurrent.CompletableFuture.class)
-final class Target_java_util_concurrent_CompletableFuture {
-
-    @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
-    private static Executor ASYNC_POOL;
-}
-
-class CompletableFutureAsyncPoolAccessor {
-    static Executor get() {
-        return ForkJoinPoolCommonAccessor.get();
     }
 }
 

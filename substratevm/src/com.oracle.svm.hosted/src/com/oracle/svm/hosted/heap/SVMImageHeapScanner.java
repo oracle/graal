@@ -91,7 +91,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     protected ImageHeapConstant getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant " + javaConstant);
+        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant: %s", javaConstant);
         return super.getOrCreateConstantReachableTask(javaConstant, reason, onAnalysisModified);
     }
 

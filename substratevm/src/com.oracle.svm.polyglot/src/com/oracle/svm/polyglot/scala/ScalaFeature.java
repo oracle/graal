@@ -73,7 +73,7 @@ public class ScalaFeature implements InternalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             plugins.appendNodePlugin(new ScalaAnalysisPlugin());
         }
     }

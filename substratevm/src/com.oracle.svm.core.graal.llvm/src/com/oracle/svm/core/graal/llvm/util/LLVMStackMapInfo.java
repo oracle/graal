@@ -36,6 +36,9 @@ import org.graalvm.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 public class LLVMStackMapInfo {
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
@@ -99,7 +102,8 @@ public class LLVMStackMapInfo {
      * Stack map format specification available at
      * https://llvm.org/docs/StackMaps.html#stack-map-format
      */
-    LLVMStackMapInfo(ByteBuffer buffer) {
+    LLVMStackMapInfo(ByteBuffer buffer, LLVMSectionIteratorRef relocationsSectionIteratorRef) {
+        LLVMRelocationIteratorRef relocationIteratorRef = LLVM.LLVMGetRelocations(relocationsSectionIteratorRef);
         StackMap stackMap = new StackMap();
 
         int offset = 0;
@@ -158,7 +162,7 @@ public class LLVMStackMapInfo {
             record.patchpointID = buffer.getLong(offset);
             offset += Long.BYTES;
 
-            record.instructionOffset = buffer.getInt(offset);
+            record.instructionOffset = LLVMTargetSpecific.get().getInstructionOffset(buffer, offset, relocationsSectionIteratorRef, relocationIteratorRef);
             offset += Integer.BYTES;
 
             record.flags = buffer.getShort(offset);
@@ -218,6 +222,8 @@ public class LLVMStackMapInfo {
             patchpointToFunction.put(record.patchpointID, function);
             patchpointsByID.computeIfAbsent(record.patchpointID, v -> new HashSet<>()).add(record);
         }
+
+        LLVM.LLVMDisposeRelocationIterator(relocationIteratorRef);
     }
 
     private Map<Long, Function> patchpointToFunction = new HashMap<>();

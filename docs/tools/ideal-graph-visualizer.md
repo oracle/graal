@@ -12,7 +12,7 @@ permalink: /tools/igv/
 * [Dumping Graphs](#dumping-graphs)
 
 Ideal Graph Visualizer (IGV) is a developer tool allowing users to analyze compilation graphs and investigate performance issues.
-The tool is essential for any language implementers building on top of **Oracle GraalVM Enterprise Edition**.
+The tool is essential for any language implementers building on top of GraalVM.
 It is available as a separate download on [Oracle Technology Network](https://www.oracle.com/downloads/graalvm-downloads.html) and requires accepting the Oracle Technology Network Developer License.
 
 IGV is developed to view and inspect intermediate representation graphs -- a language-independent intermediate representation (IR) between the source
@@ -44,12 +44,12 @@ puts js_obj[:msg]
 puts js_obj[:payload].join(' ')
 ```
 
-4. From another console window, make sure the `ruby` runtime is available in GraalVM Enterprise, and connect the `Test.rb` script to the running IGV:
+4. From another console window, make sure the `ruby` runtime is available in GraalVM, and connect the `Test.rb` script to the running IGV:
 ```shell
 gu list
 ruby --jvm --polyglot --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
 ```
-This causes GraalVM Enterprise to dump compiler graphs in the IGV format over the network to an IGV process listening on `127.0.0.1:4445`.
+This causes GraalVM to dump compiler graphs in the IGV format over the network to an IGV process listening on `127.0.0.1:4445`.
 Once the connection is made, you are able to see the graphs in the Outline window.
 Find, e.g., the `java.lang.String.char(int)` folder and open its After Parsing graph by double-clicking.
 If the node has `sourceNodePosition` property, then the Processing window will attempt to display its location and the entire stacktrace.
@@ -90,7 +90,7 @@ That one is initially hidden, but you can display the list of opened projects us
 
 ## Dumping Graphs
 
-The IGV tool is developed to allow GraalVM Enterprise language implementers to optimize their languages assembled with the [Language Implentation Framework](../../truffle/docs/README.md).
+The IGV tool is developed to allow GraalVM language implementers to optimize their languages assembled with the [Language Implentation Framework](../../truffle/docs/README.md).
 As a development tool it should not be installed to production environments.
 
 To dump the GraalVM compiler graphs from an embedded Java application to the IGV, you need to add options to GraalVM-based processes.
@@ -105,5 +105,5 @@ If the IGV does not listen on localhost, Options -> Ideal Graph Settings|Accept 
 If there is not an IGV instance listening on `127.0.0.1` or it cannot be connected to, the dumps will be redirected to the local file system.
 The file system location is `graal_dumps/` under the current working directory of the process and can be changed with the `-Dgraal.DumpPath` option.
 
-In case an older GraalVM Enterprise is used, you may need to explicitly request that dumps include the `nodeSourcePosition` property.
+In case an older GraalVM is used, you may need to explicitly request that dumps include the `nodeSourcePosition` property.
 This is done by adding the `-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints` options.

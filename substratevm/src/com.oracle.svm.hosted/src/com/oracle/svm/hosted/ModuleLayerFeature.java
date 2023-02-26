@@ -35,6 +35,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -141,6 +142,18 @@ public final class ModuleLayerFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
+
+        List<Module> bootLayerAutomaticModules = ModuleLayer.boot().modules()
+                        .stream()
+                        .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
+                        .toList();
+        if (!bootLayerAutomaticModules.isEmpty()) {
+            System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:\n" +
+                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining("\n")) +
+                            "\nExtending the image builder with automatic modules is not supported and might result in failed build. " +
+                            "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
+                            "Please ensure that only proper modules are found on the module-path");
+        }
     }
 
     @Override
@@ -506,6 +519,21 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         private static boolean isModuleSynthetic(Module m) {
             return m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC);
+        }
+
+        static String formatModule(Module module) {
+            if (!module.isNamed()) {
+                return module.toString();
+            }
+            Optional<ResolvedModule> optionalResolvedModule = module.getLayer().configuration().findModule(module.getName());
+            assert optionalResolvedModule.isPresent();
+            ResolvedModule resolvedModule = optionalResolvedModule.get();
+            Optional<URI> location = resolvedModule.reference().location();
+            if (location.isPresent()) {
+                return module + ", location: " + location;
+            } else {
+                return module.toString();
+            }
         }
 
         static int distanceFromBootModuleLayer(ModuleLayer layer) {

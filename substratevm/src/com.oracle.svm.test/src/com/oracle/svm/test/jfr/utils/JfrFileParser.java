@@ -32,10 +32,11 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.HashMap;
 
+import org.junit.Assert;
+
 import com.oracle.svm.core.jfr.JfrChunkWriter;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrType;
-
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassLoaderConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ConstantPoolParser;
@@ -44,6 +45,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.GCCauseConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.GCNameConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.SymbolConstantPoolParser;
@@ -51,8 +53,8 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
+
 import jdk.jfr.Recording;
-import org.junit.Assert;
 
 public class JfrFileParser {
 
@@ -78,6 +80,7 @@ public class JfrFileParser {
         supportedConstantPools.put(JfrType.GCName.getId(), new GCNameConstantPoolParser());
         supportedConstantPools.put(JfrType.GCCause.getId(), new GCCauseConstantPoolParser());
         supportedConstantPools.put(JfrType.VMOperation.getId(), new VMOperationConstantPoolParser());
+        supportedConstantPools.put(JfrType.MonitorInflationCause.getId(), new MonitorInflationCauseConstantPoolParser());
     }
 
     public static HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {

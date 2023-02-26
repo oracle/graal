@@ -658,13 +658,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assert !hub.isConstant();
         AddressNode mirrorAddress = createOffsetAddress(graph, hub, vmConfig.classMirrorOffset);
         FloatingReadNode read = graph.unique(
-                        new FloatingReadNode(mirrorAddress, CLASS_MIRROR_LOCATION, null, vmConfig.classMirrorIsHandle ? StampFactory.forKind(target.wordJavaKind) : n.stamp(NodeView.DEFAULT),
+                        new FloatingReadNode(mirrorAddress, CLASS_MIRROR_LOCATION, null, StampFactory.forKind(target.wordJavaKind),
                                         null, BarrierType.NONE));
-        if (vmConfig.classMirrorIsHandle) {
-            // Read the Object from the OopHandle
-            AddressNode address = createOffsetAddress(graph, read, 0);
-            read = graph.unique(new FloatingReadNode(address, HOTSPOT_OOP_HANDLE_LOCATION, null, n.stamp(NodeView.DEFAULT), null, BarrierType.NONE));
-        }
+        // Read the Object from the OopHandle
+        AddressNode address = createOffsetAddress(graph, read, 0);
+        read = graph.unique(new FloatingReadNode(address, HOTSPOT_OOP_HANDLE_LOCATION, null, n.stamp(NodeView.DEFAULT), null, BarrierType.NONE));
         n.replaceAtUsagesAndDelete(read);
     }
 

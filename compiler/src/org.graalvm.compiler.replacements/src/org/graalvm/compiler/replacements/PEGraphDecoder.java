@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1124,7 +1124,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    private InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
+    protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
             Object plugin = invocationPlugins.lookupInvocation(targetMethod, options);
             if (plugin == null) {
@@ -1372,6 +1372,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         for (InlineInvokePlugin plugin : inlineInvokePlugins) {
             plugin.notifyAfterInline(inlineMethod);
         }
+
+        if (methodScope.inliningLog != null) {
+            assert inlineScope.inliningLog != null : "all inlinees should have an inlining log if the root requires it";
+            methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, "PEGraphDecoder",
+                            "inlined during decoding");
+        }
+        if (methodScope.optimizationLog != null) {
+            assert inlineScope.optimizationLog != null : "all inlinees should have an optimization log if the root requires it";
+            methodScope.optimizationLog.inline(inlineScope.optimizationLog, false, null);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -1466,9 +1476,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings("try")
     @Override
-    protected Node canonicalizeFixedNode(MethodScope s, Node node) {
+    protected Node canonicalizeFixedNode(MethodScope s, LoopScope loopScope, Node originalNode) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
+        Node node = originalNode;
         Node replacedNode = node;
         if (nodePlugins != null && nodePlugins.length > 0) {
             if (node instanceof LoadFieldNode) {
@@ -1582,7 +1593,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
-        return super.canonicalizeFixedNode(methodScope, replacedNode);
+        return super.canonicalizeFixedNode(methodScope, loopScope, replacedNode);
     }
 
     protected boolean pluginReplacementMustSucceed() {

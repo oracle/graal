@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,16 +42,10 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
     private final int targetSlotIndex;
 
-    private final byte accessMode;
-
-    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, byte accessMode) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
+    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type, accessFlags);
         this.targetSlotIndex = targetSlotIndex;
-        this.accessMode = accessMode;
-    }
-
-    public VirtualFrameCopyNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, targetSlotIndex, type, VirtualFrameAccessFlags.NON_STATIC);
+        assert accessFlags.updatesFrame();
     }
 
     @Override
@@ -68,10 +62,10 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < objectVirtual.entryCount() && frameSlotIndex < primitiveVirtual.entryCount()) {
                 if (targetSlotIndex < tagVirtual.entryCount() && targetSlotIndex < objectVirtual.entryCount() && targetSlotIndex < primitiveVirtual.entryCount()) {
                     tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
-                    if ((accessMode & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
+                    if (accessFlags.isObject()) {
                         tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
                     }
-                    if ((accessMode & VirtualFrameAccessFlags.PRIMITIVE_FLAG) != 0) {
+                    if (accessFlags.isPrimitive()) {
                         tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                     }
                     tool.delete();
@@ -89,5 +83,10 @@ public final class VirtualFrameCopyNode extends VirtualFrameAccessorNode impleme
 
     public int getTargetSlotIndex() {
         return targetSlotIndex;
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        updater.copy(state, getFrameSlotIndex(), getTargetSlotIndex());
     }
 }

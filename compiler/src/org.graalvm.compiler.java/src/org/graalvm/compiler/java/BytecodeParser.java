@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1595,6 +1595,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.ARRAY_STORE, value);
     }
 
+    protected ValueNode maybeEmitIncompatibleClassChangeErrorCheck(ValueNode receiver, InvokeKind invokeKind, ResolvedJavaType referencedType) {
+        if (invokeKind != InvokeKind.Interface || receiver.getStackKind() != JavaKind.Object || !needsIncompatibleClassChangeErrorCheck()) {
+            return receiver;
+        }
+        GraalError.guarantee(referencedType != null, "Interface calls must have a referenceType");
+        return emitIncompatibleClassChangeCheck(receiver, referencedType);
+    }
+
     @Override
     public AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
         AbstractBeginNode result = GraphBuilderContext.super.emitBytecodeExceptionCheck(condition, passingOnTrue, exceptionKind, arguments);
@@ -1664,7 +1672,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
 
             ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(false));
-            Invoke invoke = appendInvoke(InvokeKind.Static, resolvedTarget, args);
+            Invoke invoke = appendInvoke(InvokeKind.Static, resolvedTarget, args, null);
             if (invoke != null && classInit[0] != null) {
                 invoke.setClassInit(classInit[0]);
             }
@@ -1689,7 +1697,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected void genInvokeInterface(JavaType referencedType, JavaMethod target) {
         if (callTargetIsResolved(target) && (referencedType == null || referencedType instanceof ResolvedJavaType)) {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            Invoke invoke = appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
+            Invoke invoke = appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args, (ResolvedJavaType) referencedType);
             if (invoke != null) {
                 invoke.callTarget().setReferencedType((ResolvedJavaType) referencedType);
             }
@@ -1732,7 +1740,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(true));
-        appendInvoke(InvokeKind.Virtual, resolvedTarget, args);
+        appendInvoke(InvokeKind.Virtual, resolvedTarget, args, null);
     }
 
     private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
@@ -1751,9 +1759,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
         ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
         if (hasReceiver) {
-            appendInvoke(InvokeKind.Virtual, target, args);
+            appendInvoke(InvokeKind.Virtual, target, args, null);
         } else {
-            appendInvoke(InvokeKind.Static, target, args);
+            appendInvoke(InvokeKind.Static, target, args, null);
         }
 
         return true;
@@ -1769,7 +1777,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert target != null;
             assert target.getSignature() != null;
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
+            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args, null);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Special);
         }
@@ -1816,11 +1824,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @Override
     public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+        GraalError.guarantee(invokeKind != InvokeKind.Interface, "Interface invoke needs a referencedType");
+        return handleReplacedInvoke(invokeKind, targetMethod, args, inlineEverything, null);
+    }
+
+    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything, ResolvedJavaType referencedType) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
             setBciCanBeDuplicated(true);
-            return appendInvoke(invokeKind, targetMethod, args);
+            return appendInvoke(invokeKind, targetMethod, args, referencedType);
         } finally {
             setBciCanBeDuplicated(false);
             forceInliningEverything = previous;
@@ -1834,7 +1847,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         createNonInlinedInvoke(exceptionEdgeAction, bci(), callTarget, resultType);
     }
 
-    protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
+    protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args, ResolvedJavaType referencedType) {
+        if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
+            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
+            JavaKind resultType = initialTargetMethod.getSignature().getReturnKind();
+            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
+            return null;
+        }
+
+        if (initialInvokeKind.hasReceiver()) {
+            args[0] = maybeEmitExplicitNullCheck(args[0]);
+            /* This check must be done before any de-virtualization of the invoke. */
+            args[0] = maybeEmitIncompatibleClassChangeErrorCheck(args[0], initialInvokeKind, referencedType);
+        }
+
         ResolvedJavaMethod targetMethod = initialTargetMethod;
         InvokeKind invokeKind = initialInvokeKind;
         if (initialInvokeKind.isIndirect()) {
@@ -1847,16 +1873,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         JavaKind resultType = targetMethod.getSignature().getReturnKind();
-        if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
-            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
-            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
-            return null;
-        }
-
         JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
-        if (invokeKind.hasReceiver()) {
-            args[0] = maybeEmitExplicitNullCheck(args[0]);
-        }
 
         if (initialInvokeKind == InvokeKind.Special && !targetMethod.isConstructor()) {
             emitCheckForInvokeSuperSpecial(args);
@@ -1935,7 +1952,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             targetMethod = originalMethod;
         }
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as an intrinsic so restrict this call site to
             // normal invoke handling.
@@ -1956,11 +1973,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      *            declared in a interface
      */
     private void emitCheckForDeclaringClassChange(ResolvedJavaType declaringClass, ValueNode[] args) {
-        ValueNode receiver = args[0];
-        TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), declaringClass);
-        LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
-        FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
-        args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
+        args[0] = emitIncompatibleClassChangeCheck(args[0], declaringClass);
     }
 
     /**
@@ -1977,12 +1990,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ResolvedJavaType callingClass = method.getDeclaringClass();
         callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
-            ValueNode receiver = args[0];
-            TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), callingClass);
-            LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
-            FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
-            args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
+            args[0] = emitIncompatibleClassChangeCheck(args[0], callingClass);
         }
+    }
+
+    protected ValueNode emitIncompatibleClassChangeCheck(ValueNode object, ResolvedJavaType checkedType) {
+        TypeReference checkedTypeRef = TypeReference.createTrusted(graph.getAssumptions(), checkedType);
+        LogicNode condition = genUnique(InstanceOfNode.create(checkedTypeRef, object));
+        ValueNode guardingNode;
+        if (needsExplicitIncompatibleClassChangeError()) {
+            guardingNode = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE);
+        } else {
+            guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
+        }
+        return append(PiNode.create(object, StampFactory.object(checkedTypeRef, true), guardingNode));
     }
 
     @SuppressWarnings("deprecation")
@@ -2237,7 +2258,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert getFrameStateBuilder().stackSize() > beforeDepth : "only pushes expected";
             getFrameStateBuilder().pop(currentInvoke.returnType.getJavaKind());
         }
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         lastInstr.setNext(end);
         lastInstr = previousLastInstr;
@@ -2366,7 +2387,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         printInlining(targetMethod, targetMethod, true, reason);
                         if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
                             PlaceholderInvokable invoke = new PlaceholderInvokable(method, targetMethod, bci());
-                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, reason);
+                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, null, targetMethod, reason);
                         }
                         notifyAfterInline(targetMethod);
                     }
@@ -2396,7 +2417,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 if (intrinsic.getOriginalMethod().isNative()) {
                     printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "native method");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "native method");
                     }
                     return false;
                 }
@@ -2407,7 +2428,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                     notifyAfterInline(inlinedMethod);
@@ -2415,7 +2436,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     return false;
                 }
@@ -2429,14 +2450,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "inline method");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "inline method");
                     }
                     parseAndInlineCallee(inlinedMethod, args, intrinsic);
                     notifyAfterInline(inlinedMethod);
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "no bytecodes (abstract or native)");
                     }
                     return false;
                 }
@@ -3469,6 +3490,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
                 loopBegin.disableSafepoint();
+                loopBegin.disableGuestSafepoint();
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
@@ -4721,6 +4743,19 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected boolean needsExplicitStoreCheckException(ValueNode array, ValueNode value) {
         return needsExplicitException();
+    }
+
+    protected boolean needsIncompatibleClassChangeErrorCheck() {
+        return false;
+    }
+
+    protected boolean needsExplicitIncompatibleClassChangeError() {
+        /*
+         * Note that we cannot use needsExplicitException() here: The "exception seen" profiling
+         * information for an invokeinterface bytecode is not related to the incompatible class
+         * change check, i.e., the Java HotSpot VM never has profiling information.
+         */
+        return false;
     }
 
     @Override

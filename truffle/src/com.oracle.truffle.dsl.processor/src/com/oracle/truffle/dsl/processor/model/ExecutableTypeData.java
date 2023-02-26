@@ -368,23 +368,6 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         return String.format("%s %s(%s,%s)", formatType(getReturnType()), getName(), formatType(getFrameParameter()), getEvaluatedParameters());
     }
 
-    public boolean sameParameters(ExecutableTypeData other) {
-        if (!typeEquals(other.getFrameParameter(), getFrameParameter())) {
-            return false;
-        }
-
-        if (getEvaluatedCount() != other.getEvaluatedCount()) {
-            return false;
-        }
-
-        for (int i = 0; i < getEvaluatedCount(); i++) {
-            if (!typeEquals(getEvaluatedParameters().get(i), other.getEvaluatedParameters().get(i))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public boolean sameSignature(ExecutableTypeData other) {
         if (!typeEquals(other.getReturnType(), getReturnType())) {
             return false;

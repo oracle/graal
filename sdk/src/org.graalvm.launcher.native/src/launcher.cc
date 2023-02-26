@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -231,6 +231,10 @@ CreateJVM load_vm_lib(std::string liblangPath) {
         void* jvmHandle = dlopen(liblangPath.c_str(), RTLD_NOW);
         if (jvmHandle != NULL) {
             return (CreateJVM) dlsym(jvmHandle, "JNI_CreateJavaVM");
+        }
+        char* errorString = dlerror();
+        if (errorString != NULL) {
+            std::cerr << "Error while loading " << liblangPath << ":" << std::endl << errorString << std::endl;
         }
 #else
         HMODULE jvmHandle = LoadLibraryA(liblangPath.c_str());

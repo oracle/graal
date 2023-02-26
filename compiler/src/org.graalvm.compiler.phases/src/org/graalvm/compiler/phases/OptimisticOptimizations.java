@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,14 +74,6 @@ public final class OptimisticOptimizations {
         return new OptimisticOptimizations(newOptimizations);
     }
 
-    public OptimisticOptimizations add(Optimization... optimizations) {
-        Set<Optimization> newOptimizations = EnumSet.copyOf(enabledOpts);
-        for (Optimization o : optimizations) {
-            newOptimizations.add(o);
-        }
-        return new OptimisticOptimizations(newOptimizations);
-    }
-
     private OptimisticOptimizations(Set<Optimization> enabledOpts) {
         this.enabledOpts = enabledOpts;
     }
@@ -112,10 +104,6 @@ public final class OptimisticOptimizations {
 
     public boolean useExceptionProbability(OptionValues options) {
         return GraalOptions.UseExceptionProbability.getValue(options) && enabledOpts.contains(Optimization.UseExceptionProbability);
-    }
-
-    public boolean useExceptionProbabilityForOperations() {
-        return enabledOpts.contains(Optimization.UseExceptionProbabilityForOperations);
     }
 
     public boolean useLoopLimitChecks(OptionValues options) {

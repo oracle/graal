@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -636,7 +637,7 @@ public final class EspressoOptions {
 
     // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
     public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);
-    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", true);
+    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", !JavaVersion.HOST_VERSION.java19OrLater());
 
     private static boolean booleanProperty(String name, boolean defaultValue) {
         String value = System.getProperty(name);

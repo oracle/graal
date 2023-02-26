@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_jdk_internal_module_ModuleLoaderMap_Modules.Provider.class)
 public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
-    private static final String[] TARGET_NAME = new String[]{"Target_jdk_internal_module_ModuleLoaderMap$Modules"};
+    private static final String[] TARGET_NAME = {"Target_jdk_internal_module_ModuleLoaderMap$Modules"};
 
     @Substitution(methodName = "<clinit>")
     public abstract static class Clinit extends SubstitutionNode {

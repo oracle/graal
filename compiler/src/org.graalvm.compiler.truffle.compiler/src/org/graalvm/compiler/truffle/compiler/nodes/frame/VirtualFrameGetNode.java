@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,17 +56,12 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameGetNode> TYPE = NodeClass.create(VirtualFrameGetNode.class);
 
-    private final byte accessFlags;
     private final JavaKind accessKind;
 
-    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type, byte accessFlags) {
-        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag, type);
-        this.accessFlags = accessFlags;
+    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag, type, accessFlags);
         this.accessKind = accessKind;
-    }
-
-    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, accessKind, accessTag, type, VirtualFrameAccessFlags.NON_STATIC);
+        assert !accessFlags.updatesFrame();
     }
 
     @Override
@@ -92,7 +87,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
-                final boolean staticAccess = (accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0;
+                final boolean staticAccess = accessFlags.isStatic();
                 if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
                     /*
                      * We cannot constant fold the tag-check immediately, so we need to create a
@@ -104,15 +99,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                 }
 
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (staticAccess) {
-                    // bytecode OSR frame transfer puts raw longs in the virtual array. Trust usages
-                    // of static access to do the right thing.
-                    ValueNode narrowedEntry = maybeNarrowForOSRStaticAccess(tool, dataEntry);
-                    if (dataEntry != narrowedEntry) {
-                        tool.setVirtualEntry(dataVirtual, frameSlotIndex, narrowedEntry, JavaKind.Long, -1);
-                        dataEntry = narrowedEntry;
-                    }
-                }
+                dataEntry = maybeNarrowForOSRStaticAccess(tool, dataEntry);
 
                 if (dataEntry.getStackKind() == getStackKind()) {
                     tool.replaceWith(dataEntry);
@@ -134,9 +121,21 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
      * virtualized and fed into later {@link VirtualFrameGetNode}.
      */
     private ValueNode maybeNarrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
-        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess(value)) {
+        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess()) {
             return value;
         }
+        // bytecode OSR frame transfer puts raw longs in the virtual array. Trust usages
+        // of static access to do the right thing.
+        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+        if (!(valueStamp instanceof PrimitiveStamp)) {
+            return value;
+        }
+        assert valueStamp.getStackKind() == JavaKind.Long;
+        return narrowForOSRStaticAccess(tool, value);
+    }
+
+    private ValueNode narrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
+        assert value.getStackKind() == JavaKind.Long && accessKind.isPrimitive();
         if (accessKind == JavaKind.Boolean) {
             // Special handling for boolean slots.
             // Canonically equivalent to:
@@ -147,11 +146,6 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
             tool.addNode(conditional);
             return conditional;
         }
-        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
-        if (!(valueStamp instanceof PrimitiveStamp)) {
-            return value;
-        }
-        assert value.getStackKind() == JavaKind.Long && accessKind.isPrimitive();
         int targetBits = accessKind.getBitCount();
         ValueNode tmpValue = value;
         int longBits = JavaKind.Long.getBitCount();
@@ -177,16 +171,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
         return tmpValue;
     }
 
-    /*
-     * Best effort to guess if a given frame slot is filled by bytecode OSR frame transfer.
-     */
-    private boolean isOSRRawStaticAccess(ValueNode dataEntry) {
-        if ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) == 0) {
-            return false;
-        }
-        if (dataEntry.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long) {
-            return true;
-        }
-        return false;
+    private boolean isOSRRawStaticAccess() {
+        return accessFlags.isStatic() && frame.isBytecodeOSRTransferTarget();
     }
 }

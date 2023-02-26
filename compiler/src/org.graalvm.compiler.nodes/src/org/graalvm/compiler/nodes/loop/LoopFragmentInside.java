@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -224,6 +224,8 @@ public class LoopFragmentInside extends LoopFragment {
                 ValueNode limit = counted.getLimit();
                 opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
                 ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
+                GraalError.guarantee(condition.hasExactlyOneUsage(),
+                                "Unrolling loop %s with condition %s, which has multiple usages. Usages other than the loop exit check would get an incorrect condition.", loop.loopBegin(), condition);
                 condition.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {

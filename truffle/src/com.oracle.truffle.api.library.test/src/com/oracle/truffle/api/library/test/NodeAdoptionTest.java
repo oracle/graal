@@ -47,6 +47,7 @@ import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -56,7 +57,7 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-@SuppressWarnings({"unused", "static-method"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused", "static-method"})
 public class NodeAdoptionTest extends AbstractLibraryTest {
 
     @GenerateLibrary
@@ -71,7 +72,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
 
         @ExportMessage
         static class M0 {
-            @Specialization(guards = "innerNode.execute(receiver)")
+            @Specialization(guards = "innerNode.execute(receiver)", limit = "1")
             @CompilerDirectives.TruffleBoundary
             static String doM0(NodeAdoptionObject receiver,
                             @Cached(allowUncached = true) InnerNode innerNode,
@@ -86,6 +87,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class InnerNode extends Node {
 
         abstract boolean execute(Object argument);

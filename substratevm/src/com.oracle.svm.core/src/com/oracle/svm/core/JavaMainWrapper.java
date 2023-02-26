@@ -66,10 +66,12 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jni.JNIJavaVMList;
+import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -161,9 +163,10 @@ public class JavaMainWrapper {
                 VMRuntime.initialize();
             }
 
-            if (ImageSingletons.contains(ProfilingSampler.class)) {
-                ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
-            }
+            ThreadListenerSupport.get().beforeThreadRun();
+
+            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
+            JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle
@@ -182,8 +185,6 @@ public class JavaMainWrapper {
              * HotSpot VM.
              */
             return 1;
-        } finally {
-            PlatformThreads.exit(Thread.currentThread());
         }
     }
 

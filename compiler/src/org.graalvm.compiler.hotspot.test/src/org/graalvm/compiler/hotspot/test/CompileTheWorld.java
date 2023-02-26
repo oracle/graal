@@ -242,7 +242,7 @@ public final class CompileTheWorld {
      * Manages native memory buffers for passing arguments into libgraal and receiving return
      * values. The native memory buffers are freed when this object is {@linkplain #close() closed}.
      */
-    static class LibGraalParams implements AutoCloseable {
+    public static class LibGraalParams implements AutoCloseable {
 
         static {
             LibGraal.registerNativeMethods(CompileTheWorld.class);
@@ -251,7 +251,7 @@ public final class CompileTheWorld {
         /**
          * Native memory containing {@linkplain OptionsEncoder encoded} {@link OptionValues}.
          */
-        static class OptionsBuffer {
+        public static class OptionsBuffer {
             private Long address;
             final byte[] encoded;
             final int hash;
@@ -268,7 +268,7 @@ public final class CompileTheWorld {
                 hash = Arrays.hashCode(encoded);
             }
 
-            long getAddress() {
+            public long getAddress() {
                 if (address == null) {
                     address = UNSAFE.allocateMemory(encoded.length);
                     UNSAFE.copyMemory(encoded, ARRAY_BYTE_BASE_OFFSET, null, address, encoded.length);
@@ -276,7 +276,15 @@ public final class CompileTheWorld {
                 return address;
             }
 
-            void free() {
+            public int length() {
+                return encoded.length;
+            }
+
+            public int getHash() {
+                return hash;
+            }
+
+            public void free() {
                 if (address != null) {
                     UNSAFE.freeMemory(address);
                     address = null;
@@ -288,7 +296,7 @@ public final class CompileTheWorld {
          * Manages native memory for receiving a {@linkplain Throwable#printStackTrace() stack
          * trace} from libgraal serialized via {@link ByteArrayOutputStream} to a byte array.
          */
-        static class StackTraceBuffer {
+        public static class StackTraceBuffer {
             final int size;
             private Long address;
 
@@ -296,14 +304,18 @@ public final class CompileTheWorld {
                 this.size = size;
             }
 
-            void free() {
+            public void free() {
                 if (address != null) {
                     UNSAFE.freeMemory(address);
                     address = null;
                 }
             }
 
-            long getAddress() {
+            public int getSize() {
+                return size;
+            }
+
+            public long getAddress() {
                 if (address == null) {
                     address = UNSAFE.allocateMemory(size);
                 }
@@ -317,7 +329,7 @@ public final class CompileTheWorld {
         /**
          * Gets the isolate-specific buffer used to pass options to an isolate.
          */
-        OptionsBuffer getOptions() {
+        public OptionsBuffer getOptions() {
             return LibGraalScope.current().getIsolate().getSingleton(OptionsBuffer.class, () -> {
                 OptionsBuffer optionsBuffer = new OptionsBuffer(inputOptions);
                 synchronized (optionsBuffers) {
@@ -333,7 +345,7 @@ public final class CompileTheWorld {
         /**
          * Gets a stack trace buffer for the current thread.
          */
-        StackTraceBuffer getStackTraceBuffer() {
+        public StackTraceBuffer getStackTraceBuffer() {
             return stackTraceBuffer.get();
         }
 
@@ -348,7 +360,7 @@ public final class CompileTheWorld {
             }
         };
 
-        LibGraalParams(OptionValues inputOptions) {
+        public LibGraalParams(OptionValues inputOptions) {
             this.inputOptions = inputOptions;
         }
 
@@ -1325,11 +1337,14 @@ public final class CompileTheWorld {
                     boolean useProfilingInfo,
                     boolean installAsDefault,
                     boolean printMetrics,
+                    boolean eagerResolving,
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
                     long encodedThrowableBufferAddress,
-                    int encodedThrowableBufferSize);
+                    int encodedThrowableBufferSize,
+                    long timeAndMemBufferAddress,
+                    long profileLoadAddress);
 
     /**
      * Compiles a method and gathers some statistics.
@@ -1361,11 +1376,12 @@ public final class CompileTheWorld {
                                 useProfilingInfo,
                                 installAsDefault,
                                 shouldPrintMetrics(LibGraalScope.current().getIsolate()),
+                                false,
                                 options.getAddress(),
                                 options.encoded.length,
                                 options.hash,
                                 stackTraceBufferAddress,
-                                stackTraceBuffer.size);
+                                stackTraceBuffer.size, 0, 0);
 
                 installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
                 if (installedCode == null) {

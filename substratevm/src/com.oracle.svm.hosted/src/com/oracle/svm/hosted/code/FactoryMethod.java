@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
-import java.util.Objects;
-
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -38,8 +35,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
@@ -50,13 +48,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-public final class FactoryMethod extends NonBytecodeStaticMethod {
+public final class FactoryMethod extends NonBytecodeMethod {
 
     private final ResolvedJavaMethod targetConstructor;
     private final boolean throwAllocatedObject;
 
-    FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
-        super(SubstrateUtil.uniqueStubName(targetConstructor), declaringClass, signature, constantPool);
+    FactoryMethod(String name, ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
+        super(name, true, declaringClass, signature, constantPool);
         this.targetConstructor = targetConstructor;
         this.throwAllocatedObject = throwAllocatedObject;
 
@@ -75,12 +73,12 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
     private static void annotationHolder() {
     }
 
-    private static final NeverInlineTrivial INLINE_ANNOTATION = Objects.requireNonNull(
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     ReflectionUtil.lookupMethod(FactoryMethod.class, "annotationHolder").getAnnotation(NeverInlineTrivial.class));
 
     @Override
-    public Annotation[] getInjectedAnnotations() {
-        return new Annotation[]{INLINE_ANNOTATION};
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 
     @Override
@@ -89,7 +87,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         ResolvedJavaMethod universeTargetConstructor = lookupMethodInUniverse(metaAccess, targetConstructor);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         AbstractNewObjectNode newInstance = support.createNewInstance(kit, universeTargetConstructor.getDeclaringClass(), true);
 

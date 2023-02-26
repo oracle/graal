@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,19 @@
 
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.AllTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpeculativeExecutionBarriers;
 import static org.junit.Assume.assumeTrue;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.SpectrePHTMitigations;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
@@ -127,5 +133,39 @@ public class SpectreFenceTest extends GraalCompilerTest {
     public void test03() {
         test(getFenceOptions(), "test3Snippet", 10D);
         assertNumberOfFences("test3Snippet", 1);
+    }
+
+    @Test
+    public void testOptionConsistency() throws Exception {
+        // If one side is unspecified, the options are synchronized
+        OptionValues onlyExecutionBarriers = new OptionValues(getInitialOptions(), SpeculativeExecutionBarriers, true);
+        Assert.assertTrue(SpeculativeExecutionBarriers.getValue(onlyExecutionBarriers));
+        Assert.assertEquals(SpectrePHTBarriers.getValue(onlyExecutionBarriers), AllTargets);
+        OptionValues onlyAllTargets = new OptionValues(getInitialOptions(), SpectrePHTMitigations.Options.SpectrePHTBarriers, AllTargets);
+        Assert.assertTrue(SpeculativeExecutionBarriers.getValue(onlyAllTargets));
+        Assert.assertEquals(SpectrePHTBarriers.getValue(onlyAllTargets), AllTargets);
+
+        // If both sides are set explicitly, they have to be consistent
+        try {
+            EconomicMap<OptionKey<?>, Object> optionValues = OptionValues.asMap(SpeculativeExecutionBarriers, false);
+            SpectrePHTBarriers.update(optionValues, AllTargets);
+            Assert.fail("Inconsistent option values are not prevented");
+        } catch (IllegalArgumentException e) {
+            // this should happen
+        }
+
+        try {
+            // If both sides are set explicitly, they have to be consistent
+            EconomicMap<OptionKey<?>, Object> optionValues = OptionValues.asMap(SpectrePHTBarriers, GuardTargets);
+            SpeculativeExecutionBarriers.update(optionValues, true);
+            Assert.fail("Inconsistent option values are not prevented");
+        } catch (IllegalArgumentException e) {
+            // this should happen
+        }
+
+        // Explicitly but consistent is fine
+        EconomicMap<OptionKey<?>, Object> optionValues = OptionValues.asMap(SpectrePHTBarriers, AllTargets);
+        SpeculativeExecutionBarriers.update(optionValues, true);
+
     }
 }

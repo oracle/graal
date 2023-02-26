@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
 
@@ -79,14 +80,6 @@ public abstract class TypeFlow<T> {
     private final boolean isClone; // true -> clone, false -> original
     protected final MethodFlowsGraph graphRef;
 
-    /** True if this flow is passed as a parameter to a call. */
-    protected boolean usedAsAParameter;
-
-    /**
-     * True if this flow is the receiver of a virtual call. If true, usedAsAParameter is also true.
-     */
-    protected boolean usedAsAReceiver;
-
     public volatile boolean inQueue;
 
     /**
@@ -122,8 +115,6 @@ public abstract class TypeFlow<T> {
         this.isClone = isClone;
         this.graphRef = graphRef;
         this.state = typeState;
-        this.usedAsAParameter = false;
-        this.usedAsAReceiver = false;
 
         validateSource();
     }
@@ -164,8 +155,6 @@ public abstract class TypeFlow<T> {
 
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
         this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
-        this.usedAsAParameter = original.usedAsAParameter;
-        this.usedAsAReceiver = original.usedAsAReceiver;
         PointsToStats.registerTypeFlowRetainReason(this, original);
     }
 
@@ -180,27 +169,21 @@ public abstract class TypeFlow<T> {
     }
 
     /**
-     * Initialization code for some clone corner case type flows.
+     * Initialization code for some type flow corner cases. {@link #needsInitialization()} also
+     * needs to be overridden to enable type flow initialization.
      *
      * @param bb
      */
     public void initFlow(PointsToAnalysis bb) {
+        throw AnalysisError.shouldNotReachHere("Type flow " + format(false, true) + " is not overriding initFlow().");
     }
 
-    public void setUsedAsAParameter(boolean usedAsAParameter) {
-        this.usedAsAParameter = usedAsAParameter;
-    }
-
-    public boolean isUsedAsAParameter() {
-        return usedAsAParameter;
-    }
-
-    public void setUsedAsAReceiver(boolean usedAsAReceiver) {
-        this.usedAsAReceiver = usedAsAReceiver;
-    }
-
-    public boolean isUsedAsAReceiver() {
-        return usedAsAReceiver;
+    /**
+     * Type flows that require initialization after the graph is created need to override this
+     * method and return true.
+     */
+    public boolean needsInitialization() {
+        return false;
     }
 
     /** Some flows have a receiver (e.g., loads, store and invokes). */
@@ -566,6 +549,28 @@ public abstract class TypeFlow<T> {
         }
         /* By default, filter all type flows with the declared type. */
         return TypeState.forIntersection(bb, newState, declaredType.getAssignableTypes(true));
+    }
+
+    /**
+     * In Java, interface types are not checked by the bytecode verifier. So even when, e.g., a
+     * method parameter has the declared type Comparable, any Object can be passed in. We therefore
+     * need to filter out interface types, as well as arrays of interface types, in many places
+     * where we use the declared type.
+     *
+     * Places where interface types need to be filtered: method parameters, method return values,
+     * and field loads (including unsafe memory loads).
+     * 
+     * Places where interface types need not be filtered: array element loads (because all array
+     * stores have an array store check).
+     */
+    public static AnalysisType filterUncheckedInterface(AnalysisType type) {
+        if (type != null) {
+            AnalysisType elementalType = type.getElementalType();
+            if (elementalType.isInterface()) {
+                return type.getUniverse().objectType().getArrayClass(type.getArrayDimension());
+            }
+        }
+        return type;
     }
 
     public void update(PointsToAnalysis bb) {

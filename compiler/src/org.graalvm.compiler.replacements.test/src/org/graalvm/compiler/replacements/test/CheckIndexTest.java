@@ -170,6 +170,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
         } catch (ClassNotFoundException e) {
             Assume.assumeNoException(e);
         }
+        Assume.assumeFalse(Runtime.version().feature() == 19);
         if (Runtime.version().feature() == 20) {
             try {
                 Class.forName("jdk.internal.foreign.Scoped");

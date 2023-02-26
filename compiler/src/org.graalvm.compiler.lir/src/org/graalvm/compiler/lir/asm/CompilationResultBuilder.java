@@ -47,7 +47,8 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
@@ -348,10 +349,11 @@ public class CompilationResultBuilder {
         return call;
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
+    public Call recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
         recordIfCallInvalidForDeoptimization(info, infopoint);
+        return infopoint;
     }
 
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
@@ -484,9 +486,9 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        AbstractBlockBase<?>[] order = lir.codeEmittingOrder();
-        assert order[currentBlockIndex] == edge.getSourceBlock();
-        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(order, currentBlockIndex);
+        char[] order = lir.codeEmittingOrder();
+        assert order[currentBlockIndex] == edge.getSourceBlock().getId();
+        BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
     }
 
@@ -499,16 +501,16 @@ public class CompilationResultBuilder {
             this.formatter = this.isEnable ? new Formatter() : null;
         }
 
-        void log(AbstractBlockBase<?> b, int startPC, int endPC) {
+        void log(BasicBlock<?> b, int startPC, int endPC) {
             if (this.isEnable) {
                 // Dump basic block information using the following csv format
                 // BBid, BBStartingPC, BBEndingPC, BBfreq, [(succID, succProbability)*]
                 this.formatter.format("%d, %d, %d, %f, [", b.getId(), startPC, endPC, b.getRelativeFrequency());
                 for (int i = 0; i < b.getSuccessorCount(); ++i) {
                     if (i < b.getSuccessorCount() - 1) {
-                        this.formatter.format("(%d, %f),", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                        this.formatter.format("(%d, %f),", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
                     } else {
-                        this.formatter.format("(%d, %f)", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                        this.formatter.format("(%d, %f)", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
                     }
                 }
                 this.formatter.format("]\n");
@@ -539,15 +541,26 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
-        AbstractBlockBase<?> previousBlock = null;
-        for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
+        BasicBlock<?> previousBlock = null;
+        for (int blockId : lir.codeEmittingOrder()) {
+            BasicBlock<?> b = lir.getBlockById(blockId);
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
             if (b != null) {
-                if (b.isAligned() && previousBlock != null && Arrays.stream(previousBlock.getSuccessors()).noneMatch((x) -> x == b)) {
-                    ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
-                    assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
-                    StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
-                    label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                if (b.isAligned() && previousBlock != null) {
+                    boolean hasSuccessorB = false;
+                    for (int i = 0; i < previousBlock.getSuccessorCount(); i++) {
+                        BasicBlock<?> succ = previousBlock.getSuccessorAt(i);
+                        if (succ == b) {
+                            hasSuccessorB = true;
+                            break;
+                        }
+                    }
+                    if (!hasSuccessorB) {
+                        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
+                        assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+                        StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+                        label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                    }
                 }
                 int basicBlockStartingPC = asm.position();
                 emitBlock(b);
@@ -568,13 +581,13 @@ public class CompilationResultBuilder {
         return lir;
     }
 
-    private void emitBlock(AbstractBlockBase<?> block) {
+    private void emitBlock(BasicBlock<?> block) {
         if (block == null) {
             return;
         }
         boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
-            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
+            blockComment(String.format("block B%d %s", (int) block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
@@ -650,18 +663,20 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (AbstractBlockBase<?> block : generatedLIR.getBlocks()) {
-            if (block != null) {
-                for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
-                    if (op instanceof LabelHoldingOp) {
-                        Label label = ((LabelHoldingOp) op).getLabel();
-                        if (label != null) {
-                            labelBindLirPositions.put(label, instructionPosition);
-                        }
+        for (int blockId : generatedLIR.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
+            }
+            BasicBlock<?> block = generatedLIR.getBlockById(blockId);
+            for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
+                if (op instanceof LabelHoldingOp) {
+                    Label label = ((LabelHoldingOp) op).getLabel();
+                    if (label != null) {
+                        labelBindLirPositions.put(label, instructionPosition);
                     }
-                    lirPositions.put(op, instructionPosition);
-                    instructionPosition++;
                 }
+                lirPositions.put(op, instructionPosition);
+                instructionPosition++;
             }
         }
     }
@@ -698,10 +713,11 @@ public class CompilationResultBuilder {
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (AbstractBlockBase<?> block : lir.getBlocks()) {
-            if (block == null) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op.needsClearUpperVectorRegisters()) {
                     return true;

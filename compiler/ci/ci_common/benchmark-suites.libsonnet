@@ -1,5 +1,4 @@
 {
-  local common_json = (import '../../../common.json'),
   local c = (import '../../../ci/ci_common/common.jsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
@@ -14,10 +13,10 @@
     legacy_and_secondary_suites:: unique_suites([$.renaissance_0_11, $.renaissance_legacy]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    special_suites:: unique_suites([$.renaissance, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
+    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
-    main_suites:: unique_suites([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites),
+    main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
     weekly_forks_suites:: self.main_suites,
@@ -60,8 +59,8 @@
       self._bench_upload(),
       self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "07:00:00",
-    forks_batches:: null, # weekly forks disabled
+    timelimit: "09:00:00",
+    forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
@@ -84,7 +83,7 @@
     ],
     timelimit: "01:30:00",
     forks_batches:: 1,
-    forks_timelimit:: "03:30:00",
+    forks_timelimit:: "04:30:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -209,7 +208,6 @@
   microservice_benchmarks: cc.compiler_benchmark + {
     suite:: "microservices",
     packages+: {
-      "python3": common_json.deps.common.packages["python3"],
       "pip:psutil": "==5.8.0"
     },
     local bench_upload = ["bench-uploader.py", "bench-results.json"],
@@ -268,7 +266,8 @@
       bench_upload
     ],
     timelimit: "7:00:00",
-    min_jdk_version:: 11, # GR-32793: disabled JDK8
+    restricted_archs:: ["amd64"],  # load testers only work on amd64 at the moment: GR-35619
+    min_jdk_version:: 11,
     max_jdk_version:: null
   },
 

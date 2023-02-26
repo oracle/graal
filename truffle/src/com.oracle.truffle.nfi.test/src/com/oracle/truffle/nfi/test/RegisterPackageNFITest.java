@@ -71,6 +71,7 @@ import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(TruffleRunner.class)
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class RegisterPackageNFITest extends NFITest {
 
     private static final FunctionRegistry REGISTRY = new FunctionRegistry();

@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
-@SuppressWarnings("static-method")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "static-method"})
 public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
     @GenerateLibrary

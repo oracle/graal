@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.profdiff.core.inlining.InliningPath;
+
 /**
  * Represents an optimization phase in the optimization tree. Allows the children (either
  * optimization phases or directly performed {@link Optimization optimizations}) to be incrementally
@@ -55,7 +57,7 @@ public class OptimizationPhase extends OptimizationTreeNode {
      * Suffixes of optimization phases names which produce many optimizations with little individual
      * impact.
      */
-    private static final String[] veryDetailedPhaseSuffixes = {"CanonicalizerPhase", "DeadCodeEliminationPhase", "InliningPhase"};
+    private static final String[] veryDetailedPhaseSuffixes = {"CanonicalizerPhase", "DeadCodeEliminationPhase"};
 
     /**
      * Returns whether this optimization phase produces many optimizations with little individual
@@ -116,6 +118,18 @@ public class OptimizationPhase extends OptimizationTreeNode {
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + getChildren().hashCode();
+        return getName().hashCode() + 31 * getChildren().hashCode();
+    }
+
+    @Override
+    public OptimizationPhase cloneMatchingPath(InliningPath prefix) {
+        OptimizationPhase copy = new OptimizationPhase(getName());
+        for (OptimizationTreeNode child : getChildren()) {
+            OptimizationTreeNode childCopy = child.cloneMatchingPath(prefix);
+            if (childCopy != null) {
+                copy.addChild(childCopy);
+            }
+        }
+        return copy;
     }
 }

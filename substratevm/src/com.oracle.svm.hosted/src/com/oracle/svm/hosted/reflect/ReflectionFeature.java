@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
@@ -111,7 +112,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
-    HostedMetaAccess hMetaAccess;
+    private UniverseMetaAccess metaAccess;
 
     final Map<Executable, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
     private final Map<SignatureKey, MethodPointer> expandSignatureMethods = new ConcurrentHashMap<>();
@@ -272,6 +273,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        metaAccess = analysisAccess.getMetaAccess();
         reflectionData.beforeAnalysis(analysisAccess);
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.flushConditionalConfiguration(access);
@@ -299,7 +301,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        hMetaAccess = ((BeforeCompilationAccessImpl) access).getMetaAccess();
+        metaAccess = ((BeforeCompilationAccessImpl) access).getMetaAccess();
 
         if (ImageSingletons.contains(FallbackFeature.class)) {
             FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
@@ -309,15 +311,19 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         }
     }
 
+    public HostedMetaAccess hostedMetaAccess() {
+        return (HostedMetaAccess) metaAccess;
+    }
+
     @Override
     public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
-        VMError.guarantee(hMetaAccess != null, "Field offsets are available only for compilation and afterwards.");
+        VMError.guarantee(metaAccess != null, "Field offsets are available only for compilation and afterwards.");
 
         /*
          * We have to use `optionalLookupJavaField` as fields are omitted when there is no
          * reflective access in an image.
          */
-        HostedField hostedField = hMetaAccess.optionalLookupJavaField(field);
+        HostedField hostedField = hostedMetaAccess().optionalLookupJavaField(field);
         if (hostedField == null || (checkUnsafeAccessed && !hostedField.wrapped.isUnsafeAccessed())) {
             return -1;
         }
@@ -326,7 +332,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public String getDeletionReason(Field reflectionField) {
-        ResolvedJavaField field = hMetaAccess.lookupJavaField(reflectionField);
+        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
         Delete annotation = AnnotationAccess.getAnnotation(field, Delete.class);
         return annotation != null ? annotation.value() : null;
     }
@@ -413,7 +419,7 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
     public Object transform(Object receiver, Object originalValue) {
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
         if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
-            SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hMetaAccess.lookupJavaMethod(accessor.getMember());
+            SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
             return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex());
         } else {
             VMError.guarantee(accessor.getVTableOffset() == SubstrateMethodAccessor.STATICALLY_BOUND);

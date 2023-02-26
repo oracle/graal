@@ -412,6 +412,18 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that the frame transfer helper works as expected, even with static accesses, both on OSR
+     * enter and exit, and that merging of static slots works fine.
+     */
+    @Test
+    public void testFrameTransferWithMergingStaticAccesses() {
+        var frameBuilder = FrameDescriptor.newBuilder();
+        RootNode rootNode = new Program(new FrameTransferringNodeWithMergingStaticAccess(frameBuilder), frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
      * Test that the frame transfer helper works even if a tag changes inside the OSR code. When
      * restoring the frame, we should detect the tag difference and deoptimize.
      */
@@ -1412,6 +1424,30 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
             }
+        }
+    }
+
+    public static class FrameTransferringNodeWithMergingStaticAccess extends FrameTransferringWithStaticAccessNode {
+        private boolean true1 = true;
+        private boolean true2 = true;
+
+        public FrameTransferringNodeWithMergingStaticAccess(FrameDescriptor.Builder builder) {
+            super(builder);
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            checkRegularState(osrFrame);
+            if (true1) {
+                if (true2) {
+                    setOSRState(osrFrame);
+                }
+                // Merges regular state with OSR state.
+                boundaryCall();
+            }
+            // Merges previously merged state with regular state.
+            boundaryCall();
+            return 42;
         }
     }
 

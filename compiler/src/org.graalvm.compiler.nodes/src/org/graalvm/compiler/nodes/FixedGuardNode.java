@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -103,12 +104,16 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         }
     }
 
+    public boolean canFloat() {
+        return DeoptimizeNode.canFloat(getReason(), getAction());
+    }
+
     @SuppressWarnings("try")
     @Override
     public void lower(LoweringTool tool) {
         try (DebugCloseable position = this.withNodeSourcePosition()) {
             if (graph().getGuardsStage().allowsFloatingGuards()) {
-                if (getAction() != DeoptimizationAction.None) {
+                if (canFloat()) {
                     ValueNode guard = tool.createGuard(this, getCondition(), getReason(), getAction(), getSpeculation(), isNegated(), getNoDeoptSuccessorPosition()).asNode();
                     this.replaceAtUsages(guard);
                     graph().removeFixed(this);

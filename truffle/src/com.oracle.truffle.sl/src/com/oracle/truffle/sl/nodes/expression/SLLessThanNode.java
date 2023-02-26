@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 
 /**
  * This class is similar to the extensively documented {@link SLAddNode}. The only difference: the
@@ -56,14 +61,26 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 public abstract class SLLessThanNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean lessThan(long left, long right) {
+    protected boolean doLong(long left, long right) {
         return left < right;
     }
 
     @Specialization
     @TruffleBoundary
-    protected boolean lessThan(SLBigNumber left, SLBigNumber right) {
+    protected boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
         return left.compareTo(right) < 0;
+    }
+
+    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+    @TruffleBoundary
+    protected boolean doInteropBigInteger(Object left, Object right,
+                    @CachedLibrary("left") InteropLibrary leftLibrary,
+                    @CachedLibrary("right") InteropLibrary rightLibrary) {
+        try {
+            return leftLibrary.asBigInteger(left).compareTo(rightLibrary.asBigInteger(right)) < 0;
+        } catch (UnsupportedMessageException e) {
+            throw shouldNotReachHere(e);
+        }
     }
 
     @Fallback

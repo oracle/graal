@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,11 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.util.Iterator;
-import java.util.Map;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
@@ -45,7 +42,7 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
      * Exception edges marked dead for this state by dominating {@link WithExceptionNode} control
      * flow split nodes.
      */
-    protected EconomicSet<Block> exceptionEdgesToKill;
+    protected EconomicSet<HIRBlock> exceptionEdgesToKill;
 
     public EffectsBlockState() {
         // emtpy
@@ -53,7 +50,7 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
     public EffectsBlockState(EffectsBlockState<T> other) {
         this.dead = other.dead;
-        EconomicSet<Block> otherExceptionEdgesToKill = other.exceptionEdgesToKill;
+        EconomicSet<HIRBlock> otherExceptionEdgesToKill = other.exceptionEdgesToKill;
         if (otherExceptionEdgesToKill != null) {
             this.exceptionEdgesToKill = EconomicSet.create(otherExceptionEdgesToKill);
         }
@@ -93,20 +90,5 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
             }
         }
         return true;
-    }
-
-    /**
-     * Modifies target so that only entries that have corresponding entries in source remain.
-     */
-    protected static <U, V> void meetMaps(Map<U, V> target, Map<U, V> source) {
-        Iterator<Map.Entry<U, V>> iter = target.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<U, V> entry = iter.next();
-            if (source.containsKey(entry.getKey())) {
-                assert source.get(entry.getKey()) == entry.getValue();
-            } else {
-                iter.remove();
-            }
-        }
     }
 }

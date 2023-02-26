@@ -378,6 +378,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object enterRootNodeVisit(RootNode root) {
+            return PolyglotFastThreadLocals.enterLayer(root);
+        }
+
+        @Override
+        public void leaveRootNodeVisit(RootNode root, Object prev) {
+            PolyglotFastThreadLocals.leaveLayer(prev);
+        }
+
+        @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             return context != null ? context.creatorTruffleContext : null;
@@ -1211,13 +1221,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isInternal(FileSystem fs) {
-            return FileSystems.isInternal(fs);
-        }
-
-        @Override
-        public boolean hasAllAccess(FileSystem fs) {
-            return FileSystems.hasAllAccess(fs);
+        public boolean isInternal(Object engineObject, FileSystem fs) {
+            AbstractPolyglotImpl polyglot;
+            if (engineObject instanceof PolyglotLanguageContext) {
+                polyglot = ((PolyglotLanguageContext) engineObject).getImpl();
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                polyglot = ((EmbedderFileSystemContext) engineObject).getImpl();
+            } else {
+                throw new AssertionError("Unsupported engine object " + engineObject);
+            }
+            return polyglot.getRootImpl().isInternalFileSystem(fs);
         }
 
         @Override
@@ -1709,7 +1722,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public void closeEngine(Object polyglotEngine, boolean force) {
             PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            engine.ensureClosed(force, false, false);
+            engine.ensureClosed(force, false);
         }
 
         @Override

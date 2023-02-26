@@ -100,7 +100,9 @@ public final class OrganizedImports {
 
     private void organizeImpl() {
         ImportTypeReferenceVisitor reference = new ImportTypeReferenceVisitor();
-        topLevelClass.accept(reference, null);
+        if (topLevelClass != null) {
+            topLevelClass.accept(reference, null);
+        }
     }
 
     public String createTypeReference(Element enclosedElement, TypeMirror type, boolean raw) {
@@ -329,9 +331,6 @@ public final class OrganizedImports {
 
         @Override
         public Void visitExecutable(CodeExecutableElement e, Void p) {
-            if (e.getDocTree() != null) {
-                visitTree(e.getDocTree(), null, e);
-            }
             visitAnnotations(e, e.getAnnotationMirrors());
             if (e.getReturnType() != null) {
                 visitTypeReference(e, e.getReturnType());
@@ -369,21 +368,29 @@ public final class OrganizedImports {
         }
 
         public void visitAnnotation(Element enclosingElement, AnnotationMirror e) {
-            visitTypeReference(enclosingElement, e.getAnnotationType());
-            if (!e.getElementValues().isEmpty()) {
-                Map<? extends ExecutableElement, ? extends AnnotationValue> values = e.getElementValues();
-                Set<? extends ExecutableElement> methodsSet = values.keySet();
-                List<ExecutableElement> methodsList = new ArrayList<>();
-                for (ExecutableElement method : methodsSet) {
-                    if (values.get(method) == null) {
-                        continue;
-                    }
-                    methodsList.add(method);
+            List<AnnotationMirror> repeatables = AbstractCodeWriter.unpackRepeatable(e);
+            if (repeatables != null) {
+                for (AnnotationMirror repeatable : repeatables) {
+                    visitAnnotation(enclosingElement, repeatable);
                 }
+            } else {
+                visitTypeReference(enclosingElement, e.getAnnotationType());
 
-                for (int i = 0; i < methodsList.size(); i++) {
-                    AnnotationValue value = values.get(methodsList.get(i));
-                    visitAnnotationValue(enclosingElement, value);
+                if (!e.getElementValues().isEmpty()) {
+                    Map<? extends ExecutableElement, ? extends AnnotationValue> values = e.getElementValues();
+                    Set<? extends ExecutableElement> methodsSet = values.keySet();
+                    List<ExecutableElement> methodsList = new ArrayList<>();
+                    for (ExecutableElement method : methodsSet) {
+                        if (values.get(method) == null) {
+                            continue;
+                        }
+                        methodsList.add(method);
+                    }
+
+                    for (int i = 0; i < methodsList.size(); i++) {
+                        AnnotationValue value = values.get(methodsList.get(i));
+                        visitAnnotationValue(enclosingElement, value);
+                    }
                 }
             }
         }

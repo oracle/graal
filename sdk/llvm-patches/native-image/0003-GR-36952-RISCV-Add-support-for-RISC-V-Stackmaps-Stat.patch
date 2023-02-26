@@ -1,7 +1,7 @@
-From c7a4a53c32ccf93dd118fb6c13f2ecf02baeadf4 Mon Sep 17 00:00:00 2001
+From e378a00f5e2cc321a5aaf84b2e8cedb8c4e76733 Mon Sep 17 00:00:00 2001
 From: Sacha Coppey <sacha.coppey@oracle.com>
 Date: Fri, 3 Jun 2022 11:41:20 +0200
-Subject: [PATCH 3/3] [GR-36952][RISCV] Add support for RISC-V
+Subject: [PATCH 3/4] [GR-36952][RISCV] Add support for RISC-V
  Stackmaps/Statepoints/Patchpoints
 
 ---
@@ -19,7 +19,7 @@ Subject: [PATCH 3/3] [GR-36952][RISCV] Add support for RISC-V
  create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap.ll
 
 diff --git a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
-index 9fed6e7baadc..3f51693ad338 100644
+index edd39f6547ed..b415d10e2045 100644
 --- a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
 @@ -13,6 +13,7 @@
@@ -41,19 +41,20 @@ index 9fed6e7baadc..3f51693ad338 100644
  #include "llvm/MC/MCStreamer.h"
  #include "llvm/MC/MCSymbol.h"
  #include "llvm/MC/TargetRegistry.h"
-@@ -38,15 +41,26 @@ STATISTIC(RISCVNumInstrsCompressed,
+@@ -38,16 +41,27 @@ STATISTIC(RISCVNumInstrsCompressed,
  
  namespace {
  class RISCVAsmPrinter : public AsmPrinter {
 +  StackMaps SM;
-   const MCSubtargetInfo *STI;
+   const MCSubtargetInfo *MCSTI;
+   const RISCVSubtarget *STI;
  
  public:
    explicit RISCVAsmPrinter(TargetMachine &TM,
                             std::unique_ptr<MCStreamer> Streamer)
--      : AsmPrinter(TM, std::move(Streamer)), STI(TM.getMCSubtargetInfo()) {}
+-      : AsmPrinter(TM, std::move(Streamer)), MCSTI(TM.getMCSubtargetInfo()) {}
 +      : AsmPrinter(TM, std::move(Streamer)), SM(*this),
-+        STI(TM.getMCSubtargetInfo()) {}
++        MCSTI(TM.getMCSubtargetInfo()) {}
  
    StringRef getPassName() const override { return "RISCV Assembly Printer"; }
  
@@ -69,7 +70,7 @@ index 9fed6e7baadc..3f51693ad338 100644
    bool runOnMachineFunction(MachineFunction &MF) override;
  
    void emitInstruction(const MachineInstr *MI) override;
-@@ -73,6 +87,160 @@ private:
+@@ -76,6 +90,160 @@ private:
  };
  }
  
@@ -166,7 +167,7 @@ index 9fed6e7baadc..3f51693ad338 100644
 +    }
 +  } else if (CalleeMO.isGlobal()) {
 +    MCOperand CallTargetMCOp;
-+    llvm::LowerRISCVMachineOperandToMCOperand(CalleeMO, CallTargetMCOp, *this);
++    llvm::lowerRISCVMachineOperandToMCOperand(CalleeMO, CallTargetMCOp, *this);
 +    EmitToStreamer(OutStreamer,
 +                   MCInstBuilder(RISCV::PseudoCALL).addOperand(CallTargetMCOp));
 +    EncodedBytes += 8;
@@ -196,7 +197,7 @@ index 9fed6e7baadc..3f51693ad338 100644
 +    switch (CallTarget.getType()) {
 +    case MachineOperand::MO_GlobalAddress:
 +    case MachineOperand::MO_ExternalSymbol:
-+      llvm::LowerRISCVMachineOperandToMCOperand(CallTarget, CallTargetMCOp,
++      llvm::lowerRISCVMachineOperandToMCOperand(CallTarget, CallTargetMCOp,
 +                                                *this);
 +      EmitToStreamer(
 +          OutStreamer,
@@ -230,7 +231,7 @@ index 9fed6e7baadc..3f51693ad338 100644
  #define GEN_COMPRESS_INSTR
  #include "RISCVGenCompressInstEmitter.inc"
  void RISCVAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
-@@ -93,8 +261,20 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
+@@ -99,8 +267,20 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
      return;
  
    MCInst TmpInst;
@@ -253,7 +254,7 @@ index 9fed6e7baadc..3f51693ad338 100644
  }
  
  bool RISCVAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-@@ -188,6 +368,8 @@ void RISCVAsmPrinter::emitEndOfAsmFile(Module &M) {
+@@ -195,6 +375,8 @@ void RISCVAsmPrinter::emitEndOfAsmFile(Module &M) {
  
    if (TM.getTargetTriple().isOSBinFormatELF())
      RTS.finishAttributeSection();
@@ -263,10 +264,10 @@ index 9fed6e7baadc..3f51693ad338 100644
  
  void RISCVAsmPrinter::emitAttributes() {
 diff --git a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-index 274b86593e0f..6adb772343f8 100644
+index d0ca325e9c14..f85508970d64 100644
 --- a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-@@ -8728,6 +8728,19 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+@@ -10209,6 +10209,19 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
      return emitQuietFCMP(MI, BB, RISCV::FLE_D, RISCV::FEQ_D, Subtarget);
    case RISCV::PseudoQuietFLT_D:
      return emitQuietFCMP(MI, BB, RISCV::FLT_D, RISCV::FEQ_D, Subtarget);
@@ -287,7 +288,7 @@ index 274b86593e0f..6adb772343f8 100644
  }
  
 diff --git a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
-index 55f4a19b79eb..f2db9c8b39fc 100644
+index 75a79895330f..f5c6b486af87 100644
 --- a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
 @@ -25,6 +25,7 @@
@@ -298,7 +299,7 @@ index 55f4a19b79eb..f2db9c8b39fc 100644
  #include "llvm/MC/MCInstBuilder.h"
  #include "llvm/MC/TargetRegistry.h"
  #include "llvm/Support/ErrorHandling.h"
-@@ -987,7 +988,25 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+@@ -1051,7 +1052,25 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
      if (isCompressibleInst(MI, &ST, MRI, STI))
        return 2;
    }
@@ -842,5 +843,5 @@ index 000000000000..e1dde9733731
 +declare void @llvm.experimental.patchpoint.void(i64, i32, i8*, i32, ...)
 +declare i64 @llvm.experimental.patchpoint.i64(i64, i32, i8*, i32, ...)
 -- 
-2.36.0
+2.36.2
 

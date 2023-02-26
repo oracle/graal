@@ -47,7 +47,7 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -216,7 +216,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 
-        Block[] blocks = cfg.getBlocks();
+        HIRBlock[] blocks = cfg.getBlocks();
         // check number of blocks
         assertDeepEquals(4, blocks.length);
 
@@ -249,13 +249,13 @@ public class SimpleCFGTest extends GraalCompilerTest {
         assertPostdominator(blocks[3], null);
     }
 
-    public static void assertDominator(Block block, Block expectedDominator) {
+    public static void assertDominator(HIRBlock block, HIRBlock expectedDominator) {
         Assert.assertEquals("dominator of " + block, expectedDominator, block.getDominator());
     }
 
-    public static void assertDominatedSize(Block block, int size) {
+    public static void assertDominatedSize(HIRBlock block, int size) {
         int count = 0;
-        Block domChild = block.getFirstDominated();
+        HIRBlock domChild = block.getFirstDominated();
         while (domChild != null) {
             count++;
             domChild = domChild.getDominatedSibling();
@@ -263,7 +263,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         Assert.assertEquals("number of dominated blocks of " + block, size, count);
     }
 
-    public static void assertPostdominator(Block block, Block expectedPostdominator) {
+    public static void assertPostdominator(HIRBlock block, HIRBlock expectedPostdominator) {
         Assert.assertEquals("postdominator of " + block, expectedPostdominator, block.getPostdominator());
     }
 

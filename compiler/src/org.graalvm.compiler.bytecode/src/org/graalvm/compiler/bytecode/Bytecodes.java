@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -580,16 +580,6 @@ public class Bytecodes {
     // Checkstyle: resume
 
     /**
-     * Determines if an opcode is commutative.
-     *
-     * @param opcode the opcode to check
-     * @return {@code true} iff commutative
-     */
-    public static boolean isCommutative(int opcode) {
-        return (flagsArray[opcode & 0xff] & COMMUTATIVE) != 0;
-    }
-
-    /**
      * Gets the length of an instruction denoted by a given opcode.
      *
      * @param opcode an instruction opcode
@@ -630,21 +620,6 @@ public class Bytecodes {
     }
 
     /**
-     * Allocation-free version of {@linkplain #nameOf(int)}.
-     *
-     * @param opcode an opcode.
-     * @return the mnemonic for {@code opcode} or {@code "<illegal opcode>"} if {@code opcode} is
-     *         not a legal opcode.
-     */
-    public static String baseNameOf(int opcode) {
-        String name = nameArray[opcode & 0xff];
-        if (name == null) {
-            return "<illegal opcode>";
-        }
-        return name;
-    }
-
-    /**
      * Gets the opcode corresponding to a given mnemonic.
      *
      * @param name an opcode mnemonic
@@ -658,74 +633,6 @@ public class Bytecodes {
             }
         }
         throw new IllegalArgumentException("No opcode for " + name);
-    }
-
-    /**
-     * Determines if a given opcode denotes an instruction that can cause an implicit exception.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} can cause an implicit exception, {@code false}
-     *         otherwise
-     */
-    public static boolean canTrap(int opcode) {
-        return (flagsArray[opcode & 0xff] & TRAP) != 0;
-    }
-
-    /**
-     * Determines if a given opcode denotes an instruction that loads a local variable to the
-     * operand stack.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} loads a local variable to the operand stack,
-     *         {@code false} otherwise
-     */
-    public static boolean isLoad(int opcode) {
-        return (flagsArray[opcode & 0xff] & LOAD) != 0;
-    }
-
-    /**
-     * Determines if a given opcode denotes an instruction that ends a basic block and does not let
-     * control flow fall through to its lexical successor.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} properly ends a basic block
-     */
-    public static boolean isStop(int opcode) {
-        return (flagsArray[opcode & 0xff] & STOP) != 0;
-    }
-
-    /**
-     * Determines if a given opcode denotes an instruction that stores a value to a local variable
-     * after popping it from the operand stack.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} stores a value to a local variable, {@code false}
-     *         otherwise
-     */
-    public static boolean isInvoke(int opcode) {
-        return (flagsArray[opcode & 0xff] & INVOKE) != 0;
-    }
-
-    /**
-     * Determines if a given opcode denotes an instruction that stores a value to a local variable
-     * after popping it from the operand stack.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} stores a value to a local variable, {@code false}
-     *         otherwise
-     */
-    public static boolean isStore(int opcode) {
-        return (flagsArray[opcode & 0xff] & STORE) != 0;
-    }
-
-    /**
-     * Determines if a given opcode is an instruction that delimits a basic block.
-     *
-     * @param opcode an opcode to test
-     * @return {@code true} iff {@code opcode} delimits a basic block
-     */
-    public static boolean isBlockEnd(int opcode) {
-        return (flagsArray[opcode & 0xff] & (STOP | FALL_THROUGH)) != 0;
     }
 
     /**
@@ -838,28 +745,5 @@ public class Bytecodes {
         Bytecodes.flagsArray[opcode] = flags;
 
         assert !isConditionalBranch(opcode) || isBranch(opcode) : "a conditional branch must also be a branch";
-    }
-
-    public static boolean isIfBytecode(int bytecode) {
-        switch (bytecode) {
-            case IFEQ:
-            case IFNE:
-            case IFLT:
-            case IFGE:
-            case IFGT:
-            case IFLE:
-            case IF_ICMPEQ:
-            case IF_ICMPNE:
-            case IF_ICMPLT:
-            case IF_ICMPGE:
-            case IF_ICMPGT:
-            case IF_ICMPLE:
-            case IF_ACMPEQ:
-            case IF_ACMPNE:
-            case IFNULL:
-            case IFNONNULL:
-                return true;
-        }
-        return false;
     }
 }

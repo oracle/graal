@@ -313,4 +313,248 @@ public class PythonTests extends RegexTestBase {
         test("(?<!\\.)b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
         test("(?=a)|(?<=a)|:", "", "PythonMethod=match", "a:", 1, true, 1, 1);
     }
+
+    @Test
+    public void testQuantifierOverflow() {
+        long max = Integer.MAX_VALUE;
+        test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
+        test(String.format("x{%d,}", max), "", "x", 0, false);
+        test(String.format("x{%d,}", max + 1), "", "x", 0, false);
+        expectSyntaxError(String.format("x{%d,%d}", max + 1, max), "", PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT);
+    }
+
+    @Test
+    public void test3DigitOctalEscape() {
+        test("()\\1000", "", "@0", 0, true, 0, 2, 0, 0, 1);
+    }
+
+    @Test
+    public void testForwardReference() {
+        expectSyntaxError("\\1()", "", PyErrorMessages.invalidGroupReference("1"));
+    }
+
+    @Test
+    public void testCCFirstBracket() {
+        test("[]-^]", "", "^", 0, true, 0, 1, -1);
+    }
+
+    @Test
+    public void testInlineGlobalFlags() {
+        test("(?i)b", "", "B", 0, true, 0, 1, -1);
+    }
+
+    @Test
+    public void testInlineGlobalFlagsInComments() {
+        // Inline flags that are commented out should be ignored...
+        // ...when the verbose flag is passed to re.compile,
+        test("#(?i)\nfoo", "x", "foo", 0, true, 0, 3, -1);
+        test("#(?i)\nfoo", "x", "FOO", 0, false);
+        // when the verbose flag is set inline, either before or after,
+        test("(?x)#(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
+        test("(?x)#(?i)\nfoo", "", "FOO", 0, false);
+        test("#(?i)\n(?x)foo", "", "foo", 0, true, 0, 3, -1);
+        test("#(?i)\n(?x)foo", "", "FOO", 0, false);
+        // and when the verbose flag is set in a local group.
+        test("(?x:#(?i)\n)foo", "", "foo", 0, true, 0, 3, -1);
+        test("(?x:#(?i)\n)foo", "", "FOO", 0, false);
+        // The (?x) inline flag can be hidden in a comment.
+        test("#(?x)(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
+        test("#(?x)(?i)\nfoo", "", "FOO", 0, false);
+
+        // Comments should be disabled in (?-x:...) blocks, inline flags within should be respected.
+        test("(?x:(?-x:#(?i)\n))foo", "", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?x:(?-x:#(?i)\n))foo", "", "#\nFOO", 0, true, 0, 5, -1);
+        // This throws an internal exception inside CPython's sre due to a bug, but it should work.
+        test("(?-x:#(?i)\n)foo", "x", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?-x:#(?i)\n)foo", "x", "#\nFOO", 0, true, 0, 5, -1);
+        test("(?x)(?-x:#(?i)\n)foo", "", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?x)(?-x:#(?i)\n)foo", "", "#\nFOO", 0, true, 0, 5, -1);
+
+        test("(?##)(?i)(?#\n)foo", "x", "foo", 0, true, 0, 3, -1);
+        test("(?##)(?i)(?#\n)foo", "x", "FOO", 0, true, 0, 3, -1);
+
+        test("(?#[)(?i)(?#])foo", "", "foo", 0, true, 0, 3, -1);
+        test("(?#[)(?i)(?#])foo", "", "FOO", 0, true, 0, 3, -1);
+    }
+
+    @Test
+    public void testPythonFlagChecks() {
+        expectSyntaxError("", "au", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?a)", "u", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?u)", "a", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?a)(?u)", "", "ASCII and UNICODE flags are incompatible");
+
+        expectSyntaxError("", "L", "cannot use LOCALE flag with a str pattern");
+        expectSyntaxError("", "u", "Encoding=LATIN-1", "cannot use UNICODE flag with a bytes pattern");
+
+        Assert.assertTrue("expected str pattern to default to UNICODE flag",
+                        compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());
+    }
+
+    @Test
+    public void testIncompleteQuantifiers() {
+        test("{", "", "{", 0, true, 0, 1, -1);
+        test("{1", "", "{1", 0, true, 0, 2, -1);
+        test("{,", "", "{,", 0, true, 0, 2, -1);
+        test("{1,", "", "{1,", 0, true, 0, 3, -1);
+    }
+
+    @Test
+    public void testConditionalBackReferences() {
+        test("(foo)(?(1)bar|baz)", "", "foobar", 0, true, 0, 6, 0, 3, 1);
+        test("(foo)(?(1)bar|baz)", "", "foobaz", 0, false);
+
+        test("(foo)?(?(1)bar|baz)", "", "foobar", 0, true, 0, 6, 0, 3, 1);
+        test("(foo)?(?(1)bar|baz)", "", "foobaz", 0, true, 3, 6, -1, -1, -1);
+        test("(foo)?(?(1)bar|baz)", "", "foxbar", 0, false);
+        test("(foo)?(?(1)bar|baz)", "", "foxbaz", 0, true, 3, 6, -1, -1, -1);
+
+        // GR-42252
+        test("(?P<quote>)(?(quote))", "", "", 0, true, 0, 0, 0, 0, 1);
+        // GR-42254
+        test("(?P<a>x)(?P=a)(?(a)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        test("(?P<a1>x)(?P=a1)(?(a1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        test("(?P<a1>x)\\1(?(1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        // GR-42255
+        test("(?:(a)|(x))b(?<=(?(2)x|c))c", "", "abc", 0, false);
+        // GR-42256
+        test("(a)b(?<=(?(1)c|x))(c)", "", "abc", 0, false);
+
+        // test_groupref_exists
+        test("^(\\()?([^()]+)(?(1)\\))$", "", "a", 0, true, 0, 1, -1, -1, 0, 1, 2);
+        // test_lookahead
+        test("(?:(a)|(x))b(?=(?(1)c|x))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
+        test("(?:(a)|(x))b(?=(?(2)x|c))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
+        test("(a)b(?=(?(2)x|c))(c)", "", "abc", 0, true, 0, 3, 0, 1, 2, 3, 2);
+        // test_lookbehind
+        test("(?:(a)|(x))b(?<=(?(2)x|b))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
+
+        // Test that we respect the order of capture group updates and condition checks
+        test("(?(1)()a|b)", "", "a", 0, false);
+        test("(?(1)()a|b)", "", "b", 0, true, 0, 1, -1, -1, -1);
+    }
+
+    @Test
+    public void testConditionalBackReferencesWithLookArounds() {
+        /// Test temporal ordering of lookaround assertions and conditional back-references in DFAs.
+        test("(?=(?(1)a|b))(b)", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("(?=x(?(1)a|b))(x)b", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("(?=xy(?(1)a|b))(x)yb", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+
+        // All following currently tests use back-tracking because the presence of capture groups in
+        // lookarounds in Python force the use of backtracking due to the calculation of lastGroup.
+        test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1, 1);
+        test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2, 1);
+        test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3, 1);
+        test("(?(1)a|b)(?<=(b))", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("x(?(1)a|b)(?<=(x)b)", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("xy(?(1)a|b)(?<=(x)yb)", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+
+        // Conditional back-reference and capture group within lookahead.
+        test("(?=(a)(?(1)a|b))", "", "aa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)x(?(1)a|b))", "", "axa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)xy(?(1)a|b))", "", "axya", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(?(1)a|b)())", "", "b", 0, true, 0, 0, 1, 1, 1);
+    }
+
+    @Test
+    public void gr44233() {
+        test("(\\bNone|\\bFalse|\\bTrue)?\\s*([=!]=)\\s*(?(1)|(None|False|True))\\b", "", "x == True", 0, true, 1, 9, -1, -1, 2, 4, 5, 9, 3);
+
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "a", 0, true, 0, 1, 0, 1, -1, -1, 1);
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "b", 0, true, 0, 1, -1, -1, 0, 1, 2);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "a", 0, false);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "b", 0, false);
+
+        test("(x)?(?(1)a|b)(?<=a)", "", "xa", 0, true, 0, 2, 0, 1, 1);
+        test("(x)?(?(1)a|b)(?<=a)", "", "b", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "xa", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "b", 0, true, 0, 1, -1, -1, -1);
+    }
+
+    public void testIgnoreCase() {
+        // \u00b5 (micro sign) and \u03bc (greek small letter mu) are considered equivalent when
+        // either of them appears in the pattern and the other in the text.
+        test("(\u00b5)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        test("(\u03bc)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        // However, these characters are not considered equal when matched using a backreference.
+        test("(\u00b5)\\1", "i", "\u00b5\u03bc", 0, false);
+        test("(\u03bc)\\1", "i", "\u00b5\u03bc", 0, false);
+        // This is because these two characters receive special care when compiling a regular
+        // expression. They are considered equivalent because they map to the same Uppercase
+        // character. However, when two strings are compared at runtime during the execution of a
+        // backreference, the characters are only tested by comparing their Lowercase mappings.
+
+        // We used to mistakenly consider a character equivalent to the first character of its
+        // extended case mapping. The ligature \ufb00 uppercases to FF and and the ligature \ufb01
+        // uppercases to FI. Both should be distinct from each other and from the letter F.
+        test("\ufb00", "i", "\ufb01", 0, false);
+        test("\ufb00", "i", "F", 0, false);
+    }
+
+    @Test
+    public void testSyntaxErrors() {
+        // Generated using sre from CPython 3.10.8
+        expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
+        expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
+        expectSyntaxError("()\\777", "", "octal escape value \\777 outside of range 0-0o377", 2);
+        expectSyntaxError("(\\1)", "", "cannot refer to an open group", 1);
+        expectSyntaxError("(?<=()\\1)", "", "cannot refer to group defined in the same lookbehind subpattern", 8);
+        expectSyntaxError("()(?P=1)", "", "bad character in group name '1'", 6);
+        expectSyntaxError("(?P<1)", "", "missing >, unterminated name", 4);
+        expectSyntaxError("(?P<1>)", "", "bad character in group name '1'", 4);
+        expectSyntaxError("(?P<a>)(?P<a>})", "", "redefinition of group name 'a' as group 2; was group 1", 11);
+        expectSyntaxError("[]", "", "unterminated character set", 0);
+        expectSyntaxError("[a-", "", "unterminated character set", 0);
+        expectSyntaxError("[b-a]", "", "bad character range b-a", 1);
+        expectSyntaxError("[\\d-e]", "", "bad character range \\d-e", 1);
+        expectSyntaxError("\\x", "", "incomplete escape \\x", 0);
+        expectSyntaxError("\\x1", "", "incomplete escape \\x1", 0);
+        expectSyntaxError("\\u111", "", "incomplete escape \\u111", 0);
+        expectSyntaxError("\\U1111", "", "incomplete escape \\U1111", 0);
+        expectSyntaxError("\\U1111111", "", "incomplete escape \\U1111111", 0);
+        expectSyntaxError("\\U11111111", "", "bad escape \\U11111111", 0);
+        expectSyntaxError("\\u2B50", "", "Encoding=LATIN-1", "bad escape \\u", 0);
+        expectSyntaxError("\\U0001FA99", "", "Encoding=LATIN-1", "bad escape \\U", 0);
+        expectSyntaxError("\\N1", "", "missing {", 2);
+        expectSyntaxError("\\N{1", "", "missing }, unterminated name", 3);
+        expectSyntaxError("\\N{}", "", "missing character name", 3);
+        expectSyntaxError("\\N{a}", "", "undefined character name 'a'", 0);
+        expectSyntaxError("x{2,1}", "", "min repeat greater than max repeat", 2);
+        expectSyntaxError("x**", "", "multiple repeat", 2);
+        expectSyntaxError("^*", "", "nothing to repeat", 1);
+        expectSyntaxError("\\A*", "", "nothing to repeat", 2);
+        expectSyntaxError("\\Z*", "", "nothing to repeat", 2);
+        expectSyntaxError("\\b*", "", "nothing to repeat", 2);
+        expectSyntaxError("\\B*", "", "nothing to repeat", 2);
+        expectSyntaxError("(?", "", "unexpected end of pattern", 2);
+        expectSyntaxError("(?P", "", "unexpected end of pattern", 3);
+        expectSyntaxError("(?P<", "", "missing group name", 4);
+        expectSyntaxError("(?Px", "", "unknown extension ?Px", 1);
+        expectSyntaxError("(?<", "", "unexpected end of pattern", 3);
+        expectSyntaxError("(?x", "", "missing -, : or )", 3);
+        expectSyntaxError("(?P<>)", "", "missing group name", 4);
+        expectSyntaxError("(?P<?>)", "", "bad character in group name '?'", 4);
+        expectSyntaxError("(?P=a)", "", "unknown group name 'a'", 4);
+        expectSyntaxError("(?#", "", "missing ), unterminated comment", 0);
+        expectSyntaxError("(", "", "missing ), unterminated subpattern", 0);
+        expectSyntaxError("(?i", "", "missing -, : or )", 3);
+        expectSyntaxError("(?L", "", "bad inline flags: cannot use 'L' flag with a str pattern", 3);
+        expectSyntaxError("(?t:)", "", "bad inline flags: cannot turn on global flag", 3);
+        expectSyntaxError("(?-t:)", "", "bad inline flags: cannot turn off global flag", 4);
+        expectSyntaxError("(?-:)", "", "missing flag", 3);
+        expectSyntaxError("(?ij:)", "", "unknown flag", 3);
+        expectSyntaxError("(?i-i:)", "", "bad inline flags: flag turned on and off", 5);
+        expectSyntaxError(")", "", "unbalanced parenthesis", 0);
+        expectSyntaxError("\\", "", "bad escape (end of pattern)", 0);
+        expectSyntaxError("(?P<a>)(?(0)a|b)", "", "bad group number", 10);
+        expectSyntaxError("()(?(1", "", "missing ), unterminated name", 5);
+        expectSyntaxError("()(?(1)a", "", "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(1)a|b", "", "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(2)a)", "", "invalid group reference 2", 5);
+        expectSyntaxError("(?(a))", "", "unknown group name 'a'", 3);
+        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "cannot refer to an open group", 13);
+        expectSyntaxError("(?(2147483648)a|b)", "", "invalid group reference 2147483648", 3);
+        expectSyntaxError("(?(42)a|b)[", "", "unterminated character set", 10);
+    }
 }

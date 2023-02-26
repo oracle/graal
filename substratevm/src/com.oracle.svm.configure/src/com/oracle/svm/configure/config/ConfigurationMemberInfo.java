@@ -95,9 +95,6 @@ public final class ConfigurationMemberInfo {
             if (equals(DECLARED_AND_PUBLIC)) {
                 return DECLARED.equals(other) || PUBLIC.equals(other);
             }
-            if (equals(PRESENT)) {
-                return true;
-            }
             return equals(other);
         }
     }

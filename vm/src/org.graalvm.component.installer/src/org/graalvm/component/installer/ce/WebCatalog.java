@@ -41,21 +41,22 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
-import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.model.ComponentStorage;
-import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.model.RemoteInfoProcessor;
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 
 public class WebCatalog implements SoftwareChannel {
     private final String urlString;
@@ -161,12 +162,15 @@ public class WebCatalog implements SoftwareChannel {
         Map<String, String> graalCaps = local.getGraalCapabilities();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(SystemUtils.patternOsName(graalCaps.get(CommonConstants.CAP_OS_NAME)).toLowerCase());
+        sb.append(
+                        SystemUtils.patternOsName(
+                                        graalCaps.get(CommonConstants.CAP_OS_NAME),
+                                        graalCaps.get(CommonConstants.CAP_OS_VARIANT)).toLowerCase());
         sb.append("_");
         sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
         try {
-            catalogURL = new URL(urlString);
+            catalogURL = SystemUtils.toURL(urlString);
         } catch (MalformedURLException ex) {
             throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
         }
@@ -185,7 +189,7 @@ public class WebCatalog implements SoftwareChannel {
             if (savedException != null) {
                 throw savedException;
             }
-            catalogURL = new URL(urlString);
+            catalogURL = SystemUtils.toURL(urlString);
             String l = source.getLabel();
             dn = new FileDownloader(feedback.l10n(l == null || l.isEmpty() ? "REMOTE_CatalogLabel2" : "REMOTE_CatalogLabel", l), catalogURL, feedback);
             dn.download();

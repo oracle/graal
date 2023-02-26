@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,8 @@ public interface AnnotationExtractor {
     boolean hasAnnotation(AnnotatedElement element, Class<? extends Annotation> annotationType);
 
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
+
+    Annotation[] extractAnnotations(AnnotatedElement element, boolean declaredOnly);
 
     Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element);
 }

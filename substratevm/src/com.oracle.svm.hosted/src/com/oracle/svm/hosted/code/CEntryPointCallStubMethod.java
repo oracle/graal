@@ -143,7 +143,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         JavaType[] parameterTypes = method.toParameterTypes();
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
@@ -184,13 +184,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
                     InvokeWithExceptionNode invokeBailoutCustomizer = generatePrologueOrEpilogueInvoke(kit, bailoutMethods[0], invokePrologue);
                     VMError.guarantee(bailoutMethods[0].getSignature().getReturnKind() == method.getSignature().getReturnKind(),
-                                    "Return type mismatch: " + bailoutMethods[0] + " is incompatible with " + targetMethod);
+                                    "Return type mismatch: %s is incompatible with %s", bailoutMethods[0], targetMethod);
                     kit.createReturn(invokeBailoutCustomizer, targetMethod.getSignature().getReturnKind());
                 }
 
                 kit.endIf();
             } else {
-                VMError.guarantee(prologueReturnKind == JavaKind.Void, prologueMethod + " is a prologue method and must therefore either return int or void.");
+                VMError.guarantee(prologueReturnKind == JavaKind.Void, "%s is a prologue method and must therefore either return int or void.", prologueMethod);
             }
         }
 
@@ -243,7 +243,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "@%s method declared as built-in must not have a custom exception handler: %s", CEntryPoint.class.getSimpleName(), universeTargetMethod);
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(providers, universeTargetMethod.toParameterTypes(), universeTargetMethod.getParameterAnnotations());
 
@@ -252,11 +252,11 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods()) {
             CEntryPointBuiltinImplementation annotation = candidate.getAnnotation(CEntryPointBuiltinImplementation.class);
             if (annotation != null && annotation.builtin().equals(builtin)) {
-                VMError.guarantee(builtinCallee == null, "More than one candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
+                VMError.guarantee(builtinCallee == null, "More than one candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
                 builtinCallee = candidate;
             }
         }
-        VMError.guarantee(builtinCallee != null, "No candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
+        VMError.guarantee(builtinCallee != null, "No candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
 
         ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
         ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
@@ -266,16 +266,16 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         for (int i = 0; i < builtinParamTypes.length; i++) {
             ResolvedJavaType type = (ResolvedJavaType) builtinParamTypes[i];
             if (isolateType.isAssignableFrom(type)) {
-                VMError.guarantee(builtinIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
-                                Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.guarantee(builtinIsolateIndex == -1, "@%s built-in with more than one %s parameter: %s",
+                                CEntryPoint.class.getSimpleName(), Isolate.class.getSimpleName(), builtinCallee);
                 builtinIsolateIndex = i;
             } else if (threadType.isAssignableFrom(type)) {
-                VMError.guarantee(builtinThreadIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
-                                IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.guarantee(builtinThreadIndex == -1, "@%s built-in with more than one %s parameter: %s",
+                                CEntryPoint.class.getSimpleName(), IsolateThread.class.getSimpleName(), builtinCallee);
                 builtinThreadIndex = i;
             } else {
-                VMError.shouldNotReachHere("@" + CEntryPoint.class.getSimpleName() + " built-in currently may have only " + Isolate.class.getSimpleName() +
-                                " or " + IsolateThread.class.getSimpleName() + " parameters: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.shouldNotReachHere("@%s built-in currently may have only %s or %s parameters: %s",
+                                CEntryPoint.class.getSimpleName(), Isolate.class.getSimpleName(), IsolateThread.class.getSimpleName(), builtinCallee);
             }
         }
 
@@ -284,15 +284,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         ValueNode[] builtinArgs = new ValueNode[builtinParamTypes.length];
         if (builtinIsolateIndex != -1) {
             VMError.guarantee(executionContext.designatedIsolateIndex != -1 || executionContext.isolateCount == 1,
-                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
-                                            Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                            "@%s built-in %s needs exactly one %s parameter: %s", CEntryPoint.class.getSimpleName(), entryPointData.getBuiltin(), Isolate.class.getSimpleName(), builtinCallee);
             int index = (executionContext.designatedIsolateIndex != -1) ? executionContext.designatedIsolateIndex : executionContext.lastIsolateIndex;
             builtinArgs[builtinIsolateIndex] = args[index];
         }
         if (builtinThreadIndex != -1) {
             VMError.guarantee(executionContext.designatedThreadIndex != -1 || executionContext.threadCount == 1,
-                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
-                                            IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                            "@%s built-in %s needs exactly one %s parameter: %s", CEntryPoint.class.getSimpleName(), entryPointData.getBuiltin(), IsolateThread.class.getSimpleName(), builtinCallee);
             int index = (executionContext.designatedThreadIndex != -1) ? executionContext.designatedThreadIndex : executionContext.lastThreadIndex;
             builtinArgs[builtinThreadIndex] = args[index];
         }
@@ -401,7 +399,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private static InvokeWithExceptionNode generatePrologueOrEpilogueInvoke(SubstrateGraphKit kit, ResolvedJavaMethod method, ValueNode... args) {
-        VMError.guarantee(Uninterruptible.Utils.isUninterruptible(method), "The method " + method + " must be uninterruptible as it is used for a prologue or epilogue.");
+        VMError.guarantee(Uninterruptible.Utils.isUninterruptible(method), "The method %s must be uninterruptible as it is used for a prologue or epilogue.", method);
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(method, InvokeKind.Static, kit.getFrameState(), kit.bci(), args);
         kit.exceptionPart();
         kit.append(new DeadEndNode());

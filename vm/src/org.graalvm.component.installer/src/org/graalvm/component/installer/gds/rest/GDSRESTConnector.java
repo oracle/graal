@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.component.installer.gds.rest;
 
 import com.oracle.truffle.tools.utils.json.JSONException;
@@ -57,6 +56,7 @@ class GDSRESTConnector {
     static final String ENDPOINT_PRODUCTS = "products";
     static final String ENDPOINT_LICENSE = "licenses/";
     static final String ENDPOINT_LICENSE_ACCEPT = "licenseAcceptance/";
+    static final String ENDPOINT_REVOKE_TOKEN = "tokenRequests";
 
     static final String QUERRY_DISPLAY_NAME = "displayName";
     static final String QUERRY_PRODUCT_NAME = "GraalVM";
@@ -89,7 +89,7 @@ class GDSRESTConnector {
         }
         URL url = null;
         try {
-            url = new URL(baseURL);
+            url = SystemUtils.toURL(baseURL);
         } catch (MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
@@ -114,6 +114,24 @@ class GDSRESTConnector {
 
     Map<String, List<String>> getParams() {
         return params;
+    }
+
+    public void revokeToken(String token) {
+        try {
+            GDSRequester tr = getGDSRequester(baseURL + ENDPOINT_REVOKE_TOKEN, token);
+            tr.revokeToken(token);
+        } catch (IOException ex) {
+            throw feedback.failure("ERR_VerificationEmail", ex, feedback.l10n("MSG_YourEmail"));
+        }
+    }
+
+    public void revokeTokens(String email) {
+        try {
+            GDSRequester tr = getGDSRequester(baseURL + ENDPOINT_REVOKE_TOKEN, email);
+            tr.revokeTokens(email);
+        } catch (IOException ex) {
+            throw feedback.failure("ERR_VerificationEmail", ex, email);
+        }
     }
 
     public FileDownloader obtainComponents() {
@@ -189,7 +207,7 @@ class GDSRESTConnector {
     URL makeArtifactDownloadURL(String id) {
         String url = baseURL + ENDPOINT_ARTIFACTS + id + ENDPOINT_DOWNLOAD;
         try {
-            return new URL(url);
+            return SystemUtils.toURL(url);
         } catch (MalformedURLException ex) {
             feedback.error("ERR_MalformedArtifactUrl", ex, url);
         }
@@ -201,7 +219,7 @@ class GDSRESTConnector {
         try {
             FileDownloader dn = new FileDownloader(
                             feedback.l10n("OLDS_ReleaseFile"),
-                            new URL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
+                            SystemUtils.toURL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
                             feedback);
             fillBasics(dn);
             dn.download();
@@ -257,33 +275,36 @@ class GDSRESTConnector {
     }
 
     GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
-        return new GDSRequester(new URL(acceptLicLink), licID);
+        return new GDSRequester(SystemUtils.toURL(acceptLicLink), licID);
     }
 
     class GDSRequester {
         static final String GENERATE_CONFIG = "GENERATE_TOKEN_AND_ACCEPT_LICENSE";
         static final String ACCEPT_LICENSE = "ACCEPT_LICENSE_USING_TOKEN";
+        static final String REVOKE_TOKEN = "REVOKE";
 
         static final String HEADER_CONTENT = "Content-Type";
         static final String HEADER_VAL_JSON = "application/json";
 
-        static final String REQUEST_CONFIG_BODY = "{\"email\":\"%s\",\"licenseId\":\"%s\",\"type\":\"%s\"}";
-        static final String REQUEST_ACCEPT_BODY = "{\"token\":\"%s\",\"licenseId\":\"%s\",\"type\":\"%s\"}";
+        static final String REQUEST_CONFIG_BODY = "{\"type\":\"%s\",\"email\":\"%s\",\"licenseId\":\"%s\"}";
+        static final String REQUEST_ACCEPT_BODY = "{\"type\":\"%s\",\"token\":\"%s\",\"licenseId\":\"%s\"}";
+        static final String REQUEST_REVOKE_BODY = "{\"type\":\"%s\",\"downloadToken\":\"%s\"}";
+        static final String REQUEST_REVOKE_ALL_BODY = "{\"type\":\"%s\",\"email\":\"%s\"}";
 
         static final String JSON_CONFIG = "token";
 
-        final URL licenseUrl;
-        final String licID;
+        final URL url;
+        final String id;
         URLConnectionFactory factory;
 
-        GDSRequester(URL licenseUrl, String licID) {
-            this.licenseUrl = licenseUrl;
-            this.licID = licID;
+        GDSRequester(URL url, String id) {
+            this.url = url;
+            this.id = id;
         }
 
         public String obtainConfig(String email) throws IOException {
             String config = null;
-            URLConnection connector = getConnectionFactory().createConnection(licenseUrl, createConfigCallBack(true, email));
+            URLConnection connector = getConnectionFactory().createConnection(url, createConfigCallBack(Request.GENERATE, email));
             String response = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connector.getInputStream()))) {
                 response = reader.lines().collect(Collectors.joining());
@@ -298,33 +319,79 @@ class GDSRESTConnector {
         }
 
         public String acceptLic(String config) throws IOException {
-            getConnectionFactory().createConnection(licenseUrl, createConfigCallBack(false, config)).connect();
-            return config;
+            return connect(Request.ACCEPT, config);
         }
 
-        private String generateRequestBody(boolean configGenerate, String content) {
-            return String.format(configGenerate ? REQUEST_CONFIG_BODY : REQUEST_ACCEPT_BODY,
+        public void revokeTokens(String email) throws IOException {
+            connect(Request.REVOKE_ALL, email);
+        }
+
+        public void revokeToken(String token) throws IOException {
+            connect(Request.REVOKE, token);
+        }
+
+        private String connect(Request req, String content) throws IOException {
+            getConnectionFactory().createConnection(url, createConfigCallBack(req, content)).connect();
+            return content;
+        }
+
+        private String generateRequestBody(Request req, String content) {
+            return String.format(getRequestFormat(req),
+                            getRequestName(req),
                             content,
-                            licID,
-                            configGenerate ? GENERATE_CONFIG : ACCEPT_LICENSE);
+                            id);
         }
 
-        private URLConnectionFactory.Configure createConfigCallBack(boolean configGenerate, String content) {
+        private String getRequestFormat(Request req) {
+            switch (req) {
+                case REVOKE_ALL:
+                    return REQUEST_REVOKE_ALL_BODY;
+                case REVOKE:
+                    return REQUEST_REVOKE_BODY;
+                case ACCEPT:
+                    return REQUEST_ACCEPT_BODY;
+                case GENERATE:
+                    return REQUEST_CONFIG_BODY;
+            }
+            return null;
+        }
+
+        private String getRequestName(Request req) {
+            switch (req) {
+                case REVOKE_ALL:
+                case REVOKE:
+                    return REVOKE_TOKEN;
+                case ACCEPT:
+                    return ACCEPT_LICENSE;
+                case GENERATE:
+                    return GENERATE_CONFIG;
+            }
+            return null;
+        }
+
+        private URLConnectionFactory.Configure createConfigCallBack(Request req, String content) {
             return (URLConnection connector) -> {
                 connector.addRequestProperty(HEADER_USER_AGENT, gdsUserAgent);
                 connector.setDoOutput(true);
                 connector.setRequestProperty(HEADER_CONTENT, HEADER_VAL_JSON);
                 try (OutputStreamWriter out = new OutputStreamWriter(connector.getOutputStream())) {
-                    out.append(generateRequestBody(configGenerate, content));
+                    out.append(generateRequestBody(req, content));
                 }
             };
         }
 
         URLConnectionFactory getConnectionFactory() throws MalformedURLException {
             if (factory == null) {
-                factory = new ProxyConnectionFactory(feedback, new URL(baseURL));
+                factory = new ProxyConnectionFactory(feedback, SystemUtils.toURL(baseURL));
             }
             return factory;
         }
+    }
+
+    enum Request {
+        GENERATE,
+        ACCEPT,
+        REVOKE,
+        REVOKE_ALL
     }
 }

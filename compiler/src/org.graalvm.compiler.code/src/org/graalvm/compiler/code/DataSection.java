@@ -391,15 +391,6 @@ public final class DataSection implements Iterable<Data> {
         buffer.position(start + sectionSize);
     }
 
-    public Data findData(DataSectionReference ref) {
-        for (Data d : dataItems) {
-            if (d.ref == ref) {
-                return d;
-            }
-        }
-        return null;
-    }
-
     public static void emit(ByteBuffer buffer, Data data, Patches patch) {
         data.emit(buffer, patch);
     }

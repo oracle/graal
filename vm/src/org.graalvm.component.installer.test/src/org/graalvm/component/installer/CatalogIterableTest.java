@@ -301,7 +301,7 @@ public class CatalogIterableTest extends CommandTestBase {
         URL u = getClass().getResource(relSpec);
         Handler.bind(TEST_CATALOG_URL, u);
 
-        downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
+        downloader = new RemoteCatalogDownloader(this, this, SystemUtils.toURL(TEST_CATALOG_URL));
         this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 

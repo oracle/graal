@@ -60,11 +60,14 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.InlineFieldData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 
@@ -103,8 +106,12 @@ public class NodeFactoryFactory {
             clazz.add(createCreateGetNodeClass());
             clazz.add(createCreateGetExecutionSignature());
             clazz.add(createCreateGetNodeSignatures());
-            clazz.add(createCreateNodeMethod());
-            clazz.addOptional(createGetUncached());
+            if (node.isGenerateCached()) {
+                clazz.add(createCreateNodeMethod());
+            }
+            if (node.isGenerateUncached()) {
+                clazz.addOptional(createGetUncached());
+            }
             clazz.add(createGetInstanceMethod(visibility));
             clazz.add(createInstanceConstant(clazz.asType()));
             List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
@@ -233,7 +240,7 @@ public class NodeFactoryFactory {
                 if (!ElementUtils.isObject(param.asType())) {
                     builder.string("(").type(param.asType()).string(") ");
                     if (ElementUtils.hasGenericTypes(param.asType())) {
-                        GeneratorUtils.mergeSupressWarnings(method, "unchecked");
+                        GeneratorUtils.mergeSuppressWarnings(method, "unchecked");
                     }
                 }
                 builder.string("arguments[").string(String.valueOf(index)).string("]");
@@ -284,16 +291,115 @@ public class NodeFactoryFactory {
     public static List<CodeExecutableElement> createFactoryMethods(NodeData node, List<ExecutableElement> constructors) {
         List<CodeExecutableElement> methods = new ArrayList<>();
         for (ExecutableElement constructor : constructors) {
-            methods.add(createCreateMethod(node, constructor));
+            if (node.isGenerateCached()) {
+                methods.add(createCreateMethod(node, constructor));
+            }
             if (constructor instanceof CodeExecutableElement) {
                 ElementUtils.setVisibility(constructor.getModifiers(), Modifier.PRIVATE);
             }
             if (node.isGenerateUncached()) {
                 methods.add(createGetUncached(node, constructor));
             }
+            if (node.isGenerateInline()) {
+                // avoid compile errors in the error node.
+                if (!node.hasErrors() || ElementUtils.findStaticMethod(node.getTemplateType(), "inline") == null) {
+                    methods.add(createInlineMethod(node, constructor));
+                }
+            }
         }
 
         return methods;
+    }
+
+    public static CodeExecutableElement createInlineMethod(NodeData node, ExecutableElement constructorPrototype) {
+        CodeExecutableElement method;
+        if (constructorPrototype == null) {
+            method = new CodeExecutableElement(node.getNodeType(), "inline");
+        } else {
+            method = CodeExecutableElement.clone(constructorPrototype);
+            method.setSimpleName(CodeNames.of("inline"));
+            method.getModifiers().clear();
+            method.setReturnType(node.getNodeType());
+        }
+        method.getModifiers().add(Modifier.PUBLIC);
+        method.getModifiers().add(Modifier.STATIC);
+        method.getAnnotationMirrors().add(new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().NeverDefault));
+        CodeTreeBuilder body = method.createBuilder();
+        TypeMirror nodeType = NodeCodeGenerator.nodeType(node);
+        body.startReturn();
+        if (node.hasErrors()) {
+            body.startNew(nodeType);
+            for (VariableElement var : method.getParameters()) {
+                body.defaultValue(var.asType());
+            }
+            body.end();
+        } else {
+            body.startNew(ElementUtils.getSimpleName(nodeType) + ".Inlined");
+            TruffleTypes types = ProcessorContext.getInstance().getTypes();
+
+            CodeVariableElement inlineTarget = new CodeVariableElement(types.InlineSupport_InlineTarget, "target");
+            body.string(inlineTarget.getName());
+            method.addParameter(inlineTarget);
+
+            List<CodeAnnotationValue> requiredFields = new ArrayList<>();
+
+            ExecutableElement value = ElementUtils.findMethod(types.InlineSupport_RequiredField, "value");
+            ExecutableElement bits = ElementUtils.findMethod(types.InlineSupport_RequiredField, "bits");
+            ExecutableElement type = ElementUtils.findMethod(types.InlineSupport_RequiredField, "type");
+            ExecutableElement dimensions = ElementUtils.findMethod(types.InlineSupport_RequiredField, "dimensions");
+
+            CodeTreeBuilder docBuilder = method.createDocBuilder();
+            docBuilder.startJavadoc();
+            docBuilder.string("Required Fields: ");
+            docBuilder.string("<ul>");
+            docBuilder.newLine();
+
+            for (InlineFieldData field : FlatNodeGenFactory.createInlinedFields(node)) {
+                CodeAnnotationMirror requiredField = new CodeAnnotationMirror(types.InlineSupport_RequiredField);
+                requiredField.setElementValue(value, new CodeAnnotationValue(field.getFieldType()));
+
+                if (field.hasBits()) {
+                    requiredField.setElementValue(bits, new CodeAnnotationValue(field.getBits()));
+                }
+                if (!field.isPrimitive() && field.getType() != null) {
+                    requiredField.setElementValue(type, new CodeAnnotationValue(field.getType()));
+                }
+
+                if (field.getDimensions() != 0) {
+                    requiredField.setElementValue(dimensions, new CodeAnnotationValue(field.getDimensions()));
+                }
+
+                Element sourceElement = field.getSourceElement();
+                docBuilder.string("<li>");
+                if (sourceElement != null) {
+                    if (sourceElement.getEnclosingElement() == null) {
+                        docBuilder.string("{@link ");
+                        docBuilder.string("Inlined#");
+                        docBuilder.string(sourceElement.getSimpleName().toString());
+                        docBuilder.string("}");
+                    } else {
+                        docBuilder.javadocLink(sourceElement, null);
+                    }
+                } else {
+                    docBuilder.string("Unknown source");
+                }
+                docBuilder.newLine();
+
+                requiredFields.add(new CodeAnnotationValue(requiredField));
+            }
+            docBuilder.string("</ul>");
+            docBuilder.end();
+
+            ExecutableElement fieldsValue = ElementUtils.findMethod(types.InlineSupport_RequiredFields, "value");
+            CodeAnnotationMirror requiredFieldsMirror = new CodeAnnotationMirror(types.InlineSupport_RequiredFields);
+            requiredFieldsMirror.setElementValue(fieldsValue, new CodeAnnotationValue(requiredFields));
+            inlineTarget.getAnnotationMirrors().add(requiredFieldsMirror);
+            body.end();
+
+        }
+
+        body.end();
+        return method;
     }
 
     private static CodeExecutableElement createGetUncached(NodeData node, ExecutableElement constructor) {
@@ -303,6 +409,7 @@ public class NodeFactoryFactory {
         method.getModifiers().add(Modifier.PUBLIC);
         method.getModifiers().add(Modifier.STATIC);
         method.setReturnType(node.getNodeType());
+        method.getAnnotationMirrors().add(new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().NeverDefault));
         CodeTreeBuilder body = method.createBuilder();
         body.startReturn();
         TypeMirror type = NodeCodeGenerator.nodeType(node);
@@ -328,6 +435,7 @@ public class NodeFactoryFactory {
         method.getModifiers().add(Modifier.PUBLIC);
         method.getModifiers().add(Modifier.STATIC);
         method.setReturnType(node.getNodeType());
+        method.getAnnotationMirrors().add(new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().NeverDefault));
 
         CodeTreeBuilder body = method.createBuilder();
         body.startReturn();

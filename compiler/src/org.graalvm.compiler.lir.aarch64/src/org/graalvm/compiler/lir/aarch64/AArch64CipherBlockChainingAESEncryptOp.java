@@ -67,9 +67,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 2636,
-          lineEnd   = 2738,
-          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
+          lineStart = 2618,
+          lineEnd   = 2720,
+          commit    = "10b4cc9eb49c14a6be03b3f53e97037529169ed1",
           sha1      = "a42450cd58995c057fe3c5edb2a63d68a154d735")
 // @formatter:on
 public final class AArch64CipherBlockChainingAESEncryptOp extends AArch64LIRInstruction {

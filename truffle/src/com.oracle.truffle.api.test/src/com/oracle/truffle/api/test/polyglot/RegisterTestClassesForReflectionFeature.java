@@ -63,6 +63,7 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
                     PolyglotExceptionTest.class,
                     LanguageSPIHostInteropTest.class,
                     HostAccessTest.class,
+                    HostRecordAccessTest.class,
                     ExposeToGuestTest.class,
                     ContextAPITest.class,
                     GR40903Outer.class,

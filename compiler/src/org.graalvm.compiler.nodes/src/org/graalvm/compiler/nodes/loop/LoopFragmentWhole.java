@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 public class LoopFragmentWhole extends LoopFragment {
 
@@ -63,7 +63,7 @@ public class LoopFragmentWhole extends LoopFragment {
     @Override
     public NodeBitMap nodes() {
         if (nodes == null) {
-            Loop<Block> loop = loop().loop();
+            Loop<HIRBlock> loop = loop().loop();
             NodeBitMap loopNodes = graph().createNodeBitMap();
             LoopFragment.computeNodes(loopNodes, graph(), loop(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirBlocks(loop.getLoopExits()));
             nodes = loopNodes;

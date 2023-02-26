@@ -81,7 +81,8 @@ typedef union {
                       : 1,
              osxsave  : 1,
              avx      : 1,
-                      : 2,
+             f16c     : 1,
+                      : 1,
              hv       : 1;
   } bits;
 } StdCpuid1Ecx;
@@ -215,7 +216,9 @@ typedef union {
              avx512dq : 1,
                       : 1,
                   adx : 1,
-                      : 3,
+                      : 1,
+           avx512ifma : 1,
+                      : 1,
            clflushopt : 1,
                  clwb : 1,
                       : 1,

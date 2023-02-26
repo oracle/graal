@@ -108,7 +108,7 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
     @Override
     public Object get(Class<?> memberType) {
         Class<?> componentType = memberType.getComponentType();
-        Object[] result = (Object[]) Array.newInstance(memberType.getComponentType(), elements.length);
+        Object result = Array.newInstance(memberType.getComponentType(), elements.length);
         int tag = 0;
         boolean typeMismatch = false;
         for (int i = 0; i < elements.length; ++i) {
@@ -117,7 +117,7 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
                 typeMismatch = true;
                 tag = elements[i].getTag();
             } else {
-                result[i] = value;
+                Array.set(result, i, value);
             }
         }
         if (typeMismatch) {

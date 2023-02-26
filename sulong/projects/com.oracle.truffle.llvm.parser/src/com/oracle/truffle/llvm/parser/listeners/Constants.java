@@ -228,8 +228,9 @@ public final class Constants implements ParserListener {
 
     private void createGetElementPointerExpression(RecordBuffer buffer) {
         int opCode = buffer.getId();
+        Type gepType = null;
         if (opCode == CONSTANT_CE_GEP_WITH_INRANGE_INDEX || buffer.size() % 2 != 0) {
-            buffer.skip(); // type of pointee
+            gepType = types.get(buffer.read());
         }
 
         boolean isInbounds;
@@ -249,6 +250,6 @@ public final class Constants implements ParserListener {
             indices[j] = buffer.readInt();
         }
 
-        scope.addSymbol(GetElementPointerConstant.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds), type);
+        scope.addSymbol(GetElementPointerConstant.fromSymbols(scope.getSymbols(), type, gepType, pointer, indices, isInbounds), type);
     }
 }

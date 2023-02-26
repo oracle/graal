@@ -37,6 +37,7 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -149,7 +150,7 @@ public abstract class HostVM {
      * 
      * @param newValue the type to initialize
      */
-    public abstract void initializeType(AnalysisType newValue);
+    public abstract void onTypeReachable(AnalysisType newValue);
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -264,7 +265,7 @@ public abstract class HostVM {
      *         {@link StructuredGraph} when a custom parsing routine has been performed.
      */
     @SuppressWarnings("unused")
-    public Object parseGraph(BigBang bb, AnalysisMethod method) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         return PARSING_UNHANDLED;
     }
 

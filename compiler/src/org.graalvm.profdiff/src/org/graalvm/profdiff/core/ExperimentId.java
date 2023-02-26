@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,11 @@
 package org.graalvm.profdiff.core;
 
 /**
- * Identifies an experiment in the context of two compared experiments. The first experiment is
- * assigned the ID {@code ONE} and the second is assigned the ID {@code TWO}.
+ * Identifies an experiment in the context of one or more experiments loaded by the program.
+ *
+ * The first experiment is assigned the ID {@link #ONE} and the second (if any) is assigned the ID
+ * {@link #TWO}. An additional experiment used to identify hot methods gets the ID
+ * {@link #AUXILIARY}.
  */
 public enum ExperimentId {
     /**
@@ -36,11 +39,17 @@ public enum ExperimentId {
     /**
      * The ID of the second experiment.
      */
-    TWO;
+    TWO,
+    /**
+     * The ID of an auxiliary experiment, which is used to identify hot methods.
+     */
+    AUXILIARY;
 
     @Override
     public String toString() {
         switch (this) {
+            case AUXILIARY:
+                return "0";
             case ONE:
                 return "1";
             case TWO:

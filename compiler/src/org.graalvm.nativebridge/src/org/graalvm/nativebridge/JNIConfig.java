@@ -216,8 +216,9 @@ public final class JNIConfig {
             this.binaryMarshallers = new HashMap<>();
             this.annotationBinaryMarshallers = new HashMap<>();
             // Register default marshallers
+            this.binaryMarshallers.put(String.class, BinaryMarshaller.nullable(new StringMarshaller()));
             this.binaryMarshallers.put(Throwable.class, new DefaultThrowableMarshaller());
-            this.binaryMarshallers.put(StackTraceElement[].class, defaultStackTraceMarshaller());
+            this.binaryMarshallers.put(StackTraceElement.class, StackTraceElementMarshaller.INSTANCE);
         }
 
         /**
@@ -259,6 +260,23 @@ public final class JNIConfig {
             Objects.requireNonNull(annotationType, "AnnotationType must be non null.");
             Objects.requireNonNull(marshaller, "Marshaller must be non null.");
             insert(annotationBinaryMarshallers, type, annotationType, marshaller);
+            return this;
+        }
+
+        /**
+         * Registers a {@link BinaryMarshaller} for the {@code parameterizedType} and
+         * {@code annotationType}.
+         *
+         * @param parameterizedType the type to register {@link BinaryMarshaller} for.
+         * @param annotationType a required annotation to look up the marshaller.
+         * @param marshaller the marshaller to register.
+         *
+         */
+        public <T> Builder registerMarshaller(TypeLiteral<T> parameterizedType, Class<? extends Annotation> annotationType, BinaryMarshaller<T> marshaller) {
+            Objects.requireNonNull(parameterizedType, "ParameterizedType must be non null.");
+            Objects.requireNonNull(annotationType, "AnnotationType must be non null.");
+            Objects.requireNonNull(marshaller, "Marshaller must be non null.");
+            insert(annotationBinaryMarshallers, parameterizedType.getRawType(), annotationType, marshaller);
             return this;
         }
 
@@ -318,17 +336,6 @@ public final class JNIConfig {
             Objects.requireNonNull(action, "Action must be non null.");
             this.shutDownIsolateAction = action;
             return this;
-        }
-
-        /**
-         * Registers a callback used by the {@link NativeIsolate} to tear down the isolate.
-         *
-         * @param action a {@link LongUnaryOperator} that takes an isolate thread address as a
-         *            parameter and returns {@code 0} on success or non-zero in case of an error.
-         */
-        public Builder setShutDownIsolateAction(LongUnaryOperator action) {
-            Objects.requireNonNull(action, "Action must be non null.");
-            return setShutDownIsolateAction((isolateId, isolateThreadId) -> action.applyAsLong(isolateThreadId));
         }
 
         /**

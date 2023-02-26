@@ -32,6 +32,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 
@@ -45,6 +46,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -57,6 +59,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class Resources {
 
+    private static final int INVALID_TIMESTAMP = -1;
     public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
 
     public static Resources singleton() {
@@ -70,11 +73,22 @@ public final class Resources {
      */
     private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
+    /**
+     * Embedding a resource into an image is counted as a modification. Since all resources are
+     * baked into the image during image generation, we save this value so that it can be fetched
+     * later by calling {@link ResourceURLConnection#getLastModified()}.
+     */
+    private long lastModifiedTime = INVALID_TIMESTAMP;
+
     Resources() {
     }
 
     public EconomicMap<Pair<String, String>, ResourceStorageEntry> resources() {
         return resources;
+    }
+
+    public long getLastModifiedTime() {
+        return lastModifiedTime;
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
@@ -91,6 +105,9 @@ public final class Resources {
             Pair<String, String> key = Pair.create(moduleName, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
+                if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
+                    singleton().lastModifiedTime = new Date().getTime();
+                }
                 entry = new ResourceStorageEntry(isDirectory, fromJar);
                 resources.put(key, entry);
             }

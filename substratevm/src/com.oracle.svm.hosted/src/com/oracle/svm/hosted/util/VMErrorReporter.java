@@ -28,8 +28,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -40,7 +42,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 @SuppressWarnings("try")
 public final class VMErrorReporter {
 
-    public static void generateErrorReport(PrintWriter pw, StringBuilder buildOutputLog, ImageClassLoader classLoader, FeatureHandler featureHandler, Throwable t) {
+    public static void generateErrorReport(PrintWriter pw, StringBuilder buildOutputLog, ImageClassLoader classLoader, Optional<FeatureHandler> featureHandler, Throwable t) {
         pw.println("# GraalVM Native Image Error Report");
         pw.println();
         reportBuildLog(pw, buildOutputLog);
@@ -78,13 +80,14 @@ public final class VMErrorReporter {
     private static void reportGraalVMSetup(PrintWriter pw) {
         pw.println("## GraalVM Setup");
         pw.println();
-        String version = ImageSingletons.lookup(VM.class).version;
+        boolean isImageSingletonsInstalled = ImageSingletonsSupport.isInstalled();
+        String version = isImageSingletonsInstalled && ImageSingletons.contains(VM.class) ? ImageSingletons.lookup(VM.class).version : new VM().version;
         String javaVersion = System.getProperty("java.runtime.version");
         pw.println("| Name | Value |");
         pw.println("| ---- | ----- |");
         pw.printf("| GraalVM version | `%s` |%n", version);
         pw.printf("| Java version | `%s` |%n", javaVersion);
-        if (ImageSingletons.contains(CCompilerInvoker.class)) {
+        if (isImageSingletonsInstalled && ImageSingletons.contains(CCompilerInvoker.class)) {
             pw.printf("| C compiler | `%s` |%n", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription());
         }
 
@@ -108,7 +111,7 @@ public final class VMErrorReporter {
         return null;
     }
 
-    private static void reportBuilderSetup(PrintWriter pw, ImageClassLoader classLoader, FeatureHandler featureHandler) {
+    private static void reportBuilderSetup(PrintWriter pw, ImageClassLoader classLoader, Optional<FeatureHandler> featureHandler) {
         pw.println("## Builder Setup");
         pw.println();
         try (DetailsPrinter p = new DetailsPrinter(pw, "Class path")) {
@@ -136,7 +139,11 @@ public final class VMErrorReporter {
         }
         pw.println();
         try (DetailsPrinter p = new DetailsPrinter(pw, "Features enabled")) {
-            featureHandler.dumpAllFeatures(pw);
+            if (featureHandler.isPresent()) {
+                featureHandler.get().dumpAllFeatures(pw);
+            } else {
+                pw.println("*FeatureHandler not present.*");
+            }
         }
     }
 

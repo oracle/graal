@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -130,7 +131,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public ConstantTypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
-        return new ConstantTypeState(bb, 0, exactType, constant);
+        return new ConstantTypeState(bb, exactType, constant);
     }
 
     @Override
@@ -246,13 +247,13 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects) {
-        return new SingleTypeState(bb, canBeNull, properties, type);
+    public SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
+        return new SingleTypeState(bb, canBeNull, type);
     }
 
     @Override
-    public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects) {
-        return new MultiTypeState(bb, canBeNull, properties, typesBitSet);
+    public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects) {
+        return new MultiTypeState(bb, canBeNull, typesBitSet, typesCount);
     }
 
     /*
@@ -299,8 +300,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              * types, just construct the types bit set.
              */
             BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
-
-            TypeState result = new MultiTypeState(bb, resultCanBeNull, 0, typesBitSet);
+            assert typesBitSet.cardinality() == 2;
+            TypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, 2);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -318,7 +319,9 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return s1.forCanBeNull(bb, resultCanBeNull);
         } else {
             BitSet typesBitSet = TypeStateUtils.set(s1.typesBitSet(), s2.exactType().getId());
-            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, 0, typesBitSet);
+            int typesCount = s1.typesCount() + 1;
+            assert typesCount == typesBitSet.cardinality();
+            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, typesCount);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -346,7 +349,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         /* Logical OR the type bit sets. */
         BitSet resultTypesBitSet = TypeStateUtils.or(s1.typesBitSet(), s2.typesBitSet());
 
-        MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, 0, resultTypesBitSet);
+        MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality());
         assert !result.equals(s1) && !result.equals(s2);
         PointsToStats.registerUnionOperation(bb, s1, s2, result);
         return result;
@@ -390,13 +393,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         BitSet resultTypesBitSet = TypeStateUtils.and(s1.typesBitSet(), s2.typesBitSet());
-        if (resultTypesBitSet.cardinality() == 0) {
+        int typesCount = resultTypesBitSet.cardinality();
+        if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-        } else if (resultTypesBitSet.cardinality() == 1) {
+        } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
-            return new SingleTypeState(bb, resultCanBeNull, 0, type);
+            return new SingleTypeState(bb, resultCanBeNull, type);
         } else {
-            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, 0, resultTypesBitSet);
+            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
             assert !result.equals(s1);
             return result;
         }
@@ -409,12 +413,13 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         if (s1.containsType(s2.exactType())) {
             /* s2 is contained in s1, so remove s2's type from s1. */
             BitSet resultTypesBitSet = TypeStateUtils.clear(s1.typesBitSet(), s2.exactType().getId());
-            assert resultTypesBitSet.cardinality() > 0;
-            if (resultTypesBitSet.cardinality() == 1) {
+            int typesCount = resultTypesBitSet.cardinality();
+            assert typesCount > 0;
+            if (typesCount == 1) {
                 AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
-                return new SingleTypeState(bb, resultCanBeNull, 0, type);
+                return new SingleTypeState(bb, resultCanBeNull, type);
             } else {
-                return new MultiTypeState(bb, resultCanBeNull, 0, resultTypesBitSet);
+                return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
             }
         } else {
             return s1.forCanBeNull(bb, resultCanBeNull);
@@ -446,14 +451,58 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.typesBitSet(), s2.typesBitSet());
-        if (resultTypesBitSet.cardinality() == 0) {
+        int typesCount = resultTypesBitSet.cardinality();
+        if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-        } else if (resultTypesBitSet.cardinality() == 1) {
+        } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
-            return new SingleTypeState(bb, resultCanBeNull, 0, type);
+            return new SingleTypeState(bb, resultCanBeNull, type);
         } else {
-            return new MultiTypeState(bb, resultCanBeNull, 0, resultTypesBitSet);
+            return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
         }
     }
 
+    @Override
+    public void processArrayCopyStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
+        /* In the default configuration, when array aliasing is enabled, this method is not used. */
+        assert !bb.analysisPolicy().aliasArrayTypeFlows();
+
+        /*
+         * The source and destination array can have reference types which, although must be
+         * compatible, can be different.
+         */
+        for (AnalysisObject srcArrayObject : srcArrayState.objects(bb)) {
+            if (!srcArrayObject.type().isArray()) {
+                /*
+                 * Ignore non-array type. Sometimes the analysis cannot filter out non-array types
+                 * flowing into array copy, however this will fail at runtime.
+                 */
+                continue;
+            }
+
+            if (srcArrayObject.isPrimitiveArray() || srcArrayObject.isEmptyObjectArrayConstant(bb)) {
+                /* Nothing to read from a primitive array or an empty array constant. */
+                continue;
+            }
+
+            ArrayElementsTypeFlow srcArrayElementsFlow = srcArrayObject.getArrayElementsFlow(bb, false);
+
+            for (AnalysisObject dstArrayObject : dstArrayState.objects(bb)) {
+                if (!dstArrayObject.type().isArray()) {
+                    /* Ignore non-array type. */
+                    continue;
+                }
+
+                if (dstArrayObject.isPrimitiveArray() || dstArrayObject.isEmptyObjectArrayConstant(bb)) {
+                    /* Cannot write to a primitive array or an empty array constant. */
+                    continue;
+                }
+
+                if (areTypesCompatibleForSystemArraycopy(srcArrayObject.type(), dstArrayObject.type())) {
+                    ArrayElementsTypeFlow dstArrayElementsFlow = dstArrayObject.getArrayElementsFlow(bb, true);
+                    srcArrayElementsFlow.addUse(bb, dstArrayElementsFlow);
+                }
+            }
+        }
+    }
 }

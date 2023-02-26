@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -96,5 +96,10 @@ final class LinuxAMD64PlatformCapability extends BasicAMD64PlatformCapability<Li
     @Override
     public OS getOS() {
         return OS.Linux;
+    }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 80;
     }
 }

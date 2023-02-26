@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 
 import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace
@@ -85,7 +85,7 @@ public class MatchStatement {
      * @return true if the statement matched something and set a {@link ComplexMatchResult} to be
      *         evaluated by the NodeLIRBuilder.
      */
-    public boolean generate(NodeLIRBuilder builder, int index, Node node, Block block, StructuredGraph.ScheduleResult schedule) {
+    public boolean generate(NodeLIRBuilder builder, int index, Node node, HIRBlock block, StructuredGraph.ScheduleResult schedule) {
         DebugContext debug = node.getDebug();
         assert index == schedule.getBlockToNodesMap().get(block).indexOf(node);
         // Check that the basic shape matches

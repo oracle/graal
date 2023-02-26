@@ -154,7 +154,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }
-            wrapped = HostToTypeNode.convertToObject(hostContext, value, lib);
+            wrapped = HostToTypeNode.convertToObject(lib, hostContext, value, lib);
         } else {
             wrapped = value;
         }

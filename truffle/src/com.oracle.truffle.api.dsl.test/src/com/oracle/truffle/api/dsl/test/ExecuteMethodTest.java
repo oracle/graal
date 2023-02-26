@@ -56,6 +56,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ExecuteMethodTest {
 
     private static final String ERROR_NO_EXECUTE = "No accessible and overridable generic execute method found. Generic execute methods usually have the signature 'public abstract {Type} " +

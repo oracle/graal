@@ -97,7 +97,7 @@ public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    private ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
             // @formatter:off
             0xfefa3800, 0x3fe62e42, 0x93c76730, 0x3d2ef357, 0xaa241800,
             0x3fe5ee82, 0x0cda46be, 0x3d220238, 0x5c364800, 0x3fe5af40,
@@ -206,23 +206,23 @@ public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
             // @formatter:off
             0xfefa3800, 0x3fa62e42,
     });
-    private ArrayDataPointerConstant log28 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log28 = pointerConstant(8, new int[]{
             0x93c76730, 0x3ceef357
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
             // @formatter:off
             0x92492492, 0x3fc24924, 0x00000000, 0xbfd00000,
     });
-    private ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
             0x3d6fb175, 0xbfc5555e, 0x55555555, 0x3fd55555,
     });
-    private ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
             0x9999999a, 0x3fc99999, 0x00000000, 0xbfe00000
             // @formatter:on
     });

@@ -20,51 +20,50 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (2.5s @ 0.21GB)
- Version info: 'GraalVM dev Java 11 CE'
- C compiler: gcc (linux, x86_64, 9.3.0)
- Garbage collector: Serial GC
-[2/8] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
-   2,718 (72.93%) of  3,727 types reachable
-   3,442 (53.43%) of  6,442 fields reachable
-  12,128 (44.82%) of 27,058 methods reachable
-      27 types,     0 fields, and   271 methods registered for reflection
-      58 types,    59 fields, and    52 methods registered for JNI access
+[1/8] Initializing...                                            (3.3s @ 0.25GB)
+ Version info: 'GraalVM dev Java 19+36-jvmci-23.0-b01 CE'
+ Java version info: '19+36-jvmci-23.0-b01'
+ C compiler: gcc (linux, x86_64, 11.3.0)
+ Garbage collector: Serial GC (max heap size: unlimited)
+[2/8] Performing analysis...  [****]                             (6.2s @ 0.47GB)
+   2,880 (71.50%) of  4,028 types reachable
+   3,519 (51.06%) of  6,892 fields reachable
+  13,339 (45.11%) of 29,570 methods reachable
+     879 types,     0 fields, and   356 methods registered for reflection
+      57 types,    56 fields, and    52 methods registered for JNI access
        4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (0.5s @ 0.61GB)
-[4/8] Parsing methods...      [*]                                (0.5s @ 0.86GB)
-[5/8] Inlining methods...     [****]                             (0.5s @ 0.73GB)
-[6/8] Compiling methods...    [**]                               (3.7s @ 2.38GB)
-[7/8] Layouting methods...    [*]                                (0.5s @ 0.71GB)
-[8/8] Creating image...                                          (2.1s @ 1.04GB)
-   4.00MB (28.31%) for code area:     7,073 compilation units
-   5.90MB (41.70%) for image heap:   83,319 objects and 5 resources
-   3.24MB (22.91%) for debug info generated in 1.0s
-   1.00MB ( 7.08%) for other data
-  14.15MB in total
+[3/8] Building universe...                                       (1.1s @ 2.26GB)
+[4/8] Parsing methods...      [*]                                (1.0s @ 2.76GB)
+[5/8] Inlining methods...     [***]                              (0.8s @ 0.99GB)
+[6/8] Compiling methods...    [***]                              (6.4s @ 4.86GB)
+[7/8] Layouting methods...    [**]                               (4.2s @ 3.98GB)
+[8/8] Creating image...                                          (4.0s @ 2.04GB)
+   4.52MB (22.97%) for code area:     7,470 compilation units
+   7.06MB (35.87%) for image heap:  101,764 objects and 5 resources
+   7.52MB (38.24%) for debug info generated in 1.8s
+ 590.19KB ( 2.93%) for other data
+  19.68MB in total
 --------------------------------------------------------------------------------
-Top 10 packages in code area:           Top 10 object types in image heap:
- 632.68KB java.util                      871.62KB byte[] for code metadata
- 324.42KB java.lang                      798.53KB java.lang.String
- 223.90KB java.util.regex                774.91KB byte[] for general heap data
- 221.62KB java.text                      614.06KB java.lang.Class
- 198.30KB com.oracle.svm.jni             492.51KB byte[] for java.lang.String
- 166.02KB java.util.concurrent           314.81KB java.util.HashMap$Node
- 115.44KB java.math                      233.58KB c.o.s.c.h.DynamicHubCompanion
-  98.48KB sun.text.normalizer            154.84KB java.lang.String[]
-  97.42KB java.util.logging              139.54KB byte[] for embedded resources
-  95.18KB c.oracle.svm.core.genscavenge  139.04KB char[]
-   1.83MB for 118 more packages            1.29MB for 753 more object types
+Top 10 origins of code area:            Top 10 object types in image heap:
+   3.43MB java.base                        1.01MB byte[] for code metadata
+ 760.98KB svm.jar (Native Image)        1000.72KB java.lang.String
+ 102.06KB java.logging                   884.18KB byte[] for general heap data
+  48.03KB org.graalvm.nativeimage.base   686.91KB byte[] for java.lang.String
+  40.49KB jdk.proxy1                     659.87KB java.lang.Class
+  38.23KB jdk.proxy3                     247.50KB c.o.s.c.h.DynamicHubCompanion
+  25.73KB jdk.internal.vm.ci             239.25KB java.lang.Object[]
+  23.55KB org.graalvm.sdk                226.08KB java.util.HashMap$Node
+  11.10KB jdk.proxy2                     173.15KB java.lang.String[]
+   8.10KB jdk.internal.vm.compiler       163.22KB j.u.c.ConcurrentHashMap$Node
+   1.39KB for 2 more origins               1.70MB for 808 more object types
 --------------------------------------------------------------------------------
-    0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
+    0.5s (1.8% of total time) in 24 GCs | Peak RSS: 5.62GB | CPU load: 8.92
 --------------------------------------------------------------------------------
 Produced artifacts:
- /home/janedoe/helloworld/helloworld (executable)
+ /home/janedoe/helloworld/helloworld (executable, debug_info)
  /home/janedoe/helloworld/sources (debug_info)
- /home/janedoe/helloworld/helloworld (debug_info)
- /home/janedoe/helloworld/helloworld.build_artifacts.txt
 ================================================================================
-Finished generating 'helloworld' in 16.2s.
+Finished generating 'helloworld' in 27.4s.
 ```
 
 ## Build Stages
@@ -94,6 +93,12 @@ The garbage collector used within the generated executable:
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
 For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
+
+#### <a name="glossary-gc-max-heap-size"></a>Maximum Heap Size
+By default, the heap size is *unlimited*, allowing the garbage collector to freely allocate memory according to its policy.
+Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
+This can also improve latency in some cases.
+Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
 
 #### <a name="glossary-user-specific-features"></a>User-Specific Features
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
@@ -147,6 +152,14 @@ Debug info is also generated as part of this stage (if requested).
 #### <a name="glossary-code-area"></a>Code Area
 The code area contains machine code produced by the Graal compiler for all reachable methods.
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
+
+##### <a name="glossary-code-area-origins"></a>Origins of Code Area
+To help users understand where the machine code of the code area comes from, the build output shows a breakdown of the top origins.
+An origin is a group of Java sources and can be a JAR file, a package name, or a class name, depending on the information available.
+The [`java.base` module](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/module-summary.html), for example, contains base classes from the JDK.
+The `svm.jar` file, the `org.graalvm.nativeimage.base` module, and similar origins contain internal sources for the Native Image runtime.
+To reduce the size of the code area and with that, the total size of the native executable, re-evaluate the dependencies of your application based on the code area breakdown.
+Some libraries and frameworks are better prepared for Native Image than others, and newer versions of a library or framework may improve (or worsen) their code footprint. 
 
 #### <a name="glossary-image-heap"></a>Image Heap
 The heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
@@ -212,23 +225,7 @@ Traceback (most recent call last):
 AssertionError: Too many reachable methods: 12128
 ```
 
-## Build Output Options
-
-Run `native-image --expert-options-all | grep "BuildOutput"` to see all build output options:
-
-```
--H:±BuildOutputBreakdowns    Show code and heap breakdowns as part of the build output. Default: + (enabled).
--H:±BuildOutputColorful      Colorize build output. Default: + (enabled).
--H:±BuildOutputGCWarnings    Print GC warnings as part of build output. Default: + (enabled).
--H:BuildOutputJSONFile=""    Print build output statistics as JSON to the specified file. The output is according to the JSON schema located at:
-                             docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json.
--H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
--H:±BuildOutputPrefix        Prefix build output with '<pid>:<name of binary>'. Default: - (disabled).
--H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
--H:±BuildOutputSilent        Silence build output. Default: - (disabled).
-```
-
-### Related Documentation
+## Related Documentation
 
 - [Build a Native Shared Library](guides/build-native-shared-library.md)
 - [Build a Statically Linked or Mostly-Statically Linked Native Executable](guides/build-static-and-mostly-static-executable.md)

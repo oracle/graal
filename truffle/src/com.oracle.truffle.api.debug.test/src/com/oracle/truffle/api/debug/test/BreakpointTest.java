@@ -1056,6 +1056,10 @@ public class BreakpointTest extends AbstractDebugTest {
                 Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
                 checkState(event, 3, true, "EXPRESSION");
             });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "STATEMENT");
+            });
             expectDone();
         }
     }

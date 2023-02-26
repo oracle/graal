@@ -211,7 +211,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         RuntimeJNIAccess.register(constructor(a, "java.net.NetworkInterface"));
         RuntimeJNIAccess.register(fields(a, "java.net.NetworkInterface", "name", "displayName", "index", "addrs", "bindings", "childs"));
         if (isPosix()) {
-            RuntimeJNIAccess.register(fields(a, "java.net.NetworkInterface", "virtual", "parent", "defaultIndex"));
+            RuntimeJNIAccess.register(fields(a, "java.net.NetworkInterface", "virtual", "parent"));
+            if (JavaVersionUtil.JAVA_SPEC < 20) {
+                RuntimeJNIAccess.register(fields(a, "java.net.NetworkInterface", "defaultIndex"));
+            }
         }
 
         RuntimeJNIAccess.register(constructor(a, "java.net.InterfaceAddress"));

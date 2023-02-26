@@ -42,13 +42,16 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 @GenerateUncached
+@GenerateInline(false)
 public abstract class WasmIndirectCallNode extends Node {
 
     static final int INLINE_CACHE_LIMIT = 5;
@@ -68,6 +71,7 @@ public abstract class WasmIndirectCallNode extends Node {
         return indirectCall.call(target, args);
     }
 
+    @NeverDefault
     public static WasmIndirectCallNode create() {
         return WasmIndirectCallNodeGen.create();
     }

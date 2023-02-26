@@ -35,7 +35,7 @@ import java.util.EnumSet;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -106,7 +106,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
     private static final class Optimization {
 
-        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = EconomicMap.create(Equivalence.IDENTITY);
+        EconomicMap<BasicBlock<?>, BlockData> blockData = EconomicMap.create(Equivalence.IDENTITY);
 
         RegisterArray callerSaveRegs;
 
@@ -172,16 +172,17 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         private void initBlockData(LIR lir) {
             DebugContext debug = lir.getDebug();
-            AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
+            char[] blockIds = lir.linearScanOrder();
             numRegs = 0;
 
-            int maxStackLocations = COMPLEXITY_LIMIT / blocks.length;
+            int maxStackLocations = COMPLEXITY_LIMIT / blockIds.length;
 
             /*
              * Search for relevant locations which can be optimized. These are register or stack
              * slots which occur as destinations of move instructions.
              */
-            for (AbstractBlockBase<?> block : blocks) {
+            for (int blockId : blockIds) {
+                BasicBlock<?> block = lir.getBlockById(blockId);
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
                     if (isEligibleMove(op)) {
@@ -207,7 +208,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              */
             int numLocations = numRegs + stackIndices.size();
             debug.log("num locations = %d (regs = %d, stack = %d)", numLocations, numRegs, stackIndices.size());
-            for (AbstractBlockBase<?> block : blocks) {
+            for (int blockId : blockIds) {
+                BasicBlock<?> block = lir.getBlockById(blockId);
                 BlockData data = new BlockData(numLocations);
                 blockData.put(block, data);
             }
@@ -227,23 +229,17 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("solve data flow")) {
-
-                AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
-
+                char[] blockIds = lir.linearScanOrder();
                 int numIter = 0;
-
-                /*
-                 * Iterate until there are no more changes.
-                 */
+                // Iterate until there are no more changes.
                 int currentValueNum = 1;
                 boolean firstRound = true;
                 boolean changed;
                 do {
                     changed = false;
                     try (Indent indent2 = debug.logAndIndent("new iteration")) {
-
-                        for (AbstractBlockBase<?> block : blocks) {
-
+                        for (int blockId : blockIds) {
+                            BasicBlock<?> block = lir.getBlockById(blockId);
                             BlockData data = blockData.get(block);
                             /*
                              * Initialize the number for global value numbering for this block. It
@@ -257,7 +253,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             assert valueNum > 0;
                             boolean newState = false;
 
-                            if (block == blocks[0] || block.isExceptionEntry()) {
+                            if (block.getId() == blockIds[0] || block.isExceptionEntry()) {
                                 /*
                                  * The entry block has undefined values. And also exception handler
                                  * blocks: the LinearScan can insert moves at the end of an
@@ -272,7 +268,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                                 /*
                                  * Merge the states of predecessor blocks
                                  */
-                                for (AbstractBlockBase<?> predecessor : block.getPredecessors()) {
+                                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                                    BasicBlock<?> predecessor = block.getPredecessorAt(i);
                                     BlockData predData = blockData.get(predecessor);
                                     newState |= mergeState(data.entryState, predData.exitState, valueNum);
                                 }
@@ -327,15 +324,11 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         @SuppressWarnings("try")
         private void eliminateMoves(LIR lir) {
             DebugContext debug = lir.getDebug();
-
             try (Indent indent = debug.logAndIndent("eliminate moves")) {
-
-                AbstractBlockBase<?>[] blocks = lir.linearScanOrder();
-
-                for (AbstractBlockBase<?> block : blocks) {
-
+                char[] blockIds = lir.linearScanOrder();
+                for (int blockId : blockIds) {
+                    BasicBlock<?> block = lir.getBlockById(blockId);
                     try (Indent indent2 = debug.logAndIndent("eliminate moves in block %d", block.getId())) {
-
                         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                         BlockData data = blockData.get(block);
                         boolean hasDead = false;

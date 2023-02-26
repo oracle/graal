@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -441,10 +441,10 @@ public class LLIRTestGen {
             strings.append(String.format("[%d x i8] c\"%s\\00\", align 1\n", len, text));
 
             // Fails on LLVM 3.8 with "@%s = local_unnamed_addr global ..."
-            strings.append(String.format("@%s = global i8* getelementptr inbounds ", id));
-            strings.append(String.format("([%d x i8], [%d x i8]* @.str%s, i64 0, i64 0), align 8\n", len, len, id));
+            strings.append(String.format("@%s = global ptr getelementptr inbounds ", id));
+            strings.append(String.format("([%d x i8], ptr @.str%s, i64 0, i64 0), align 8\n", len, id));
 
-            return String.format("load i8*, i8** @%s, align 8", id);
+            return String.format("load ptr, ptr @%s, align 8", id);
         }
     }
 
@@ -454,15 +454,12 @@ public class LLIRTestGen {
      */
     private static void storeAndCheck(IDCounter idCounter, StringDB strings, StringBuilder str, String id, Type type,
                     String output, String description) {
-        String pointer = idCounter.nextId();
-
-        str.append(String.format("%s = bitcast i8* %s to %s*\n", pointer, output, type));
-        str.append(String.format("store %s %s, %s* %s, align 64\n", type, id, type, pointer));
+        str.append(String.format("store %s %s, ptr %s, align 64\n", type, id, output));
 
         String string = idCounter.nextId();
 
         str.append(String.format("%s = %s\n", string, strings.addConst(description)));
-        str.append(String.format("tail call void @print_output(i8* %s, i8* %s)\n", output, string));
+        str.append(String.format("tail call void @print_output(ptr %s, ptr %s)\n", output, string));
     }
 
     static class Info {
@@ -485,24 +482,18 @@ public class LLIRTestGen {
     }
 
     private static LoadedValues genBitcastAndLoad(IDCounter idCounter, Info info, Type type) {
-        String castPointer0 = idCounter.nextId();
-        String castPointer1 = idCounter.nextId();
         LoadedValues loadValues = new LoadedValues(idCounter.nextId(), idCounter.nextId());
 
-        String bitcastFmt = "%s = bitcast i8* %s to %s*\n";
-        info.str.append(String.format(bitcastFmt, castPointer0, info.in0, type));
-        info.str.append(String.format(bitcastFmt, castPointer1, info.in1, type));
-
-        String loadFmt = "%s = load %s, %s* %s, align 8\n";
-        info.str.append(String.format(loadFmt, loadValues.v0, type, type, castPointer0));
-        info.str.append(String.format(loadFmt, loadValues.v1, type, type, castPointer1));
+        String loadFmt = "%s = load %s, ptr %s, align 8\n";
+        info.str.append(String.format(loadFmt, loadValues.v0, type, info.in0));
+        info.str.append(String.format(loadFmt, loadValues.v1, type, info.in1));
 
         return loadValues;
     }
 
     private static Info genPrefix(IDCounter idCounter, StringDB strings, Type type, boolean includeStores) {
         Info info = new Info();
-        info.str.append("define void @run(i8*,i8*,i8*) {\n");
+        info.str.append("define void @run(ptr,ptr,ptr) {\n");
 
         // Load all possible data types from the input parameters.
         info.loadedValues = genBitcastAndLoad(idCounter, info, type);
@@ -511,7 +502,7 @@ public class LLIRTestGen {
         String initialString = idCounter.nextId();
 
         info.str.append(String.format("%s = %s\n", initialString, strings.addConst("initial")));
-        info.str.append(String.format("tail call void @print_output(i8* %s, i8* %s)\n", info.out, initialString));
+        info.str.append(String.format("tail call void @print_output(ptr %s, ptr %s)\n", info.out, initialString));
 
         if (includeStores) {
             // Simply store all types back to the output array.
@@ -719,7 +710,7 @@ public class LLIRTestGen {
                             "target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"", //
                             "target triple = \"x86_64-unknown-linux-gnu\"", //
                             "; Function Attrs: noinline nounwind optnone uwtable", //
-                            "declare dso_local void @print_output(i8* %0, i8* %1)", //
+                            "declare dso_local void @print_output(ptr %0, ptr %1)", //
                             "");
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -215,7 +214,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, OptionValues options) {
+    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, boolean eagerResolving,
+                    OptionValues options) {
         int entryBCI = graph.getEntryBCI();
         ResolvedJavaMethod method = graph.method();
         assert options == graph.getOptions();
@@ -238,11 +238,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
         result.setEntryBCI(entryBCI);
         boolean shouldDebugNonSafepoints = providers.getCodeCache().shouldDebugNonSafepoints();
-        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables, isOSR);
+        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables,
+                        eagerResolving, isOSR);
 
-        try (DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(graph, providers))) {
-            GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
-        }
+        GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
+        graph.getOptimizationLog().emit(new StableMethodNameFormatter(providers, graph.getDebug()));
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
@@ -252,10 +252,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
     public CompilationResult compile(StructuredGraph graph,
                     boolean shouldRetainLocalVariables,
+                    boolean eagerResolving,
                     CompilationIdentifier compilationId,
                     DebugContext debug) {
         CompilationResult result = new CompilationResult(compilationId);
-        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, debug.getOptions());
+        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, eagerResolving, debug.getOptions());
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {
@@ -283,8 +284,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
      * @return a new suite derived from {@code suite} if any of the GBS parameters did not have a
      *         default value otherwise {@code suite}
      */
-    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean isOSR) {
-        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR) {
+    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean eagerResolving,
+                    boolean isOSR) {
+        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR || eagerResolving) {
             PhaseSuite<HighTierContext> newGbs = suite.copy();
             GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
             GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
@@ -293,6 +295,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             }
             if (shouldRetainLocalVariables) {
                 graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
+            }
+            if (eagerResolving) {
+                graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
+                graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
             }
             GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
             newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);

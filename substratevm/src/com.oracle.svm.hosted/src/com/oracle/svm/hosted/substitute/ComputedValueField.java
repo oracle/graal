@@ -57,9 +57,9 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -460,11 +460,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     @Override
-    public boolean allowConstantFolding() {
-        return isFinal;
-    }
-
-    @Override
     public boolean injectFinalForRuntimeCompilation() {
         if (original.isFinal()) {
             /*
@@ -485,7 +480,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = (HostedField) metaAccess.lookupJavaField(f);
-                    guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));
+                    guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: %s", sf);
                     return JavaConstant.forLong(sf.getLocation());
                 }
             }
@@ -549,6 +544,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

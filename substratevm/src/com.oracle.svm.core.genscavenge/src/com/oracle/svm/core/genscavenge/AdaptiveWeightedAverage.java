@@ -39,17 +39,34 @@ import com.oracle.svm.core.util.UnsignedUtils;
 class AdaptiveWeightedAverage {
     static final int OLD_THRESHOLD = 100;
 
-    private final int weight;
+    /** @see #computeEffectiveHistoryLengthForWeight */
+    static double computeWeightForEffectiveHistoryLength(double length) {
+        assert length > 0;
+        return 100.0 * (1.0 - Math.pow(Math.E, -1.0 / length));
+    }
+
+    /**
+     * Computes the effective history length for the given weight, which is the number of data
+     * points after which the former history is discounted to 1/e, i.e., its time constant.
+     */
+    static double computeEffectiveHistoryLengthForWeight(double weight) {
+        assert weight > 0 && weight <= 100;
+        return -1.0 / Math.log(1.0 - weight / 100.0);
+    }
+
+    private final double weight;
 
     private double average;
     private long sampleCount;
     private boolean isOld;
 
-    AdaptiveWeightedAverage(int weight) {
+    /** @param weight Weight of newest sample in percent, from 0 (exclusive) to 100 (inclusive). */
+    AdaptiveWeightedAverage(double weight) {
         this(weight, 0);
     }
 
-    AdaptiveWeightedAverage(int weight, double avg) {
+    AdaptiveWeightedAverage(double weight, double avg) {
+        assert weight > 0 && weight <= 100;
         this.weight = weight;
         this.average = avg;
     }
@@ -76,16 +93,16 @@ class AdaptiveWeightedAverage {
          * it meaningful. We'd like the first weight used to be 1, the second to be 1/2, etc until
          * we have OLD_THRESHOLD/weight samples.
          */
-        long countWeight = 0;
+        double countWeight = 0;
         if (!isOld) { // avoid division by zero if the counter wraps
-            countWeight = OLD_THRESHOLD / sampleCount;
+            countWeight = OLD_THRESHOLD / (double) sampleCount;
         }
-        long adaptiveWeight = Math.max(weight, countWeight);
+        double adaptiveWeight = Math.max(weight, countWeight);
         return expAvg(avg, sample, adaptiveWeight);
     }
 
-    private static double expAvg(double avg, double sample, long adaptiveWeight) {
-        assert adaptiveWeight <= 100 : "weight must be a percentage";
+    private static double expAvg(double avg, double sample, double adaptiveWeight) {
+        assert adaptiveWeight > 0 && adaptiveWeight <= 100 : "weight must be a percentage";
         return (100.0 - adaptiveWeight) * avg / 100.0 + adaptiveWeight * sample / 100.0;
     }
 }
@@ -103,7 +120,7 @@ class AdaptivePaddedAverage extends AdaptiveWeightedAverage {
     private double paddedAverage;
     private double deviation;
 
-    AdaptivePaddedAverage(int weight, int padding) {
+    AdaptivePaddedAverage(double weight, int padding) {
         this(weight, padding, false);
     }
 
@@ -112,7 +129,7 @@ class AdaptivePaddedAverage extends AdaptiveWeightedAverage {
      *            allowed to change. This is to prevent zero samples from drastically changing the
      *            padded average.
      */
-    AdaptivePaddedAverage(int weight, int padding, boolean noZeroDeviations) {
+    AdaptivePaddedAverage(double weight, int padding, boolean noZeroDeviations) {
         super(weight);
         this.padding = padding;
         this.noZeroDeviations = noZeroDeviations;

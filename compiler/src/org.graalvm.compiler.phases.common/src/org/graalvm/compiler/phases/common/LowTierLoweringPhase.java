@@ -37,10 +37,6 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
  */
 public class LowTierLoweringPhase extends LoweringPhase {
 
-    public LowTierLoweringPhase(CanonicalizerPhase canonicalizer, boolean lowerOptimizableMacroNodes) {
-        super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, lowerOptimizableMacroNodes, StageFlag.LOW_TIER_LOWERING);
-    }
-
     public LowTierLoweringPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, StageFlag.LOW_TIER_LOWERING);
     }

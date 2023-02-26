@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -116,7 +117,20 @@ public @interface GenerateAOT {
          *
          * @since 21.1
          */
-        void prepareForAOT(TruffleLanguage<?> language, RootNode root);
+        @SuppressWarnings("unused")
+        default void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Called and implemented by framework code. Do not use directly.
+         *
+         * @since 23.0
+         */
+        @SuppressWarnings("unused")
+        default void prepareForAOT(TruffleLanguage<?> language, RootNode root, Node inlinedNode) {
+            throw new UnsupportedOperationException();
+        }
 
     }
 

@@ -65,9 +65,9 @@ public final class ParserKlass {
                     Symbol<Name> name,
                     Symbol<Type> type,
                     Symbol<Type> superKlass,
-                    final Symbol<Type>[] superInterfaces,
-                    final ParserMethod[] methods,
-                    final ParserField[] fields,
+                    Symbol<Type>[] superInterfaces,
+                    ParserMethod[] methods,
+                    ParserField[] fields,
                     Attribute[] attributes,
                     int thisKlassIndex) {
         this.pool = pool;
@@ -133,5 +133,10 @@ public final class ParserKlass {
 
     public int getThisKlassIndex() {
         return thisKlassIndex;
+    }
+
+    @Override
+    public String toString() {
+        return "ParserKlass<" + getType() + ">";
     }
 }

@@ -137,11 +137,12 @@ public class RubyCall {
         }
     }
 
+    @SuppressWarnings("truffle-inlining")
     public abstract static class RubyLookupNode extends Node {
 
         public abstract InternalMethod executeLookup(RubyObject receiver, Object method);
 
-        @Specialization(guards = "receiver.getRubyClass() == cachedClass", assumptions = "cachedClass.getDependentAssumptions()")
+        @Specialization(guards = "receiver.getRubyClass() == cachedClass", assumptions = "cachedClass.getDependentAssumptions()", limit = "3")
         protected static InternalMethod cachedLookup(RubyObject receiver, Object name, //
                         @Cached("receiver.getRubyClass()") RubyClass cachedClass, //
                         @Cached("genericLookup(receiver, name)") InternalMethod cachedLookup) {
@@ -156,6 +157,7 @@ public class RubyCall {
     }
 
     @ImportStatic(InternalMethod.class)
+    @SuppressWarnings("truffle-inlining")
     public abstract static class RubyDispatchNode extends Node {
 
         public abstract Object executeDispatch(VirtualFrame frame, InternalMethod function, Object[] packedArguments);
@@ -164,7 +166,7 @@ public class RubyCall {
          * Please note that cachedMethod != METHOD_MISSING is invoked once at specialization
          * instantiation. It is never executed on the fast path.
          */
-        @Specialization(guards = {"method == cachedMethod", "cachedMethod != METHOD_MISSING"})
+        @Specialization(guards = {"method == cachedMethod", "cachedMethod != METHOD_MISSING"}, limit = "3")
         protected static Object directCall(InternalMethod method, Object[] arguments, //
                         @Cached("method") InternalMethod cachedMethod, //
                         @Cached("create(cachedMethod.getTarget())") DirectCallNode callNode) {
@@ -183,7 +185,7 @@ public class RubyCall {
 
         @Specialization(replaces = "directCall", guards = "method != METHOD_MISSING")
         protected static Object indirectCall(InternalMethod method, Object[] arguments, //
-                        @Cached("create()") IndirectCallNode callNode) {
+                        @Cached IndirectCallNode callNode) {
             return callNode.call(method.getTarget(), arguments);
         }
 

@@ -46,9 +46,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
@@ -74,6 +74,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -119,6 +120,7 @@ import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -146,7 +148,6 @@ public class SVMHost extends HostVM {
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
-    private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -164,17 +165,24 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
+    private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         super(options, classLoader);
         this.classInitializationSupport = classInitializationSupport;
-        this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
         this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
+        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
+            multiMethodAnalysisPolicy = ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
+        } else {
+            /* Install the default so no other policy can be installed. */
+            ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
+            multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+        }
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -264,7 +272,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType analysisType) {
+    public void onTypeReachable(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
@@ -298,7 +306,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
     }
 
     @Override
@@ -519,7 +527,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(originalSnippetReflection, type);
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
@@ -531,10 +539,19 @@ public class SVMHost extends HostVM {
         }
     }
 
+    protected boolean deoptsForbidden(AnalysisMethod method) {
+        /*
+         * Runtime compiled methods can deoptimize.
+         */
+        return method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+    }
+
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            if (deoptsForbidden(method)) {
+                graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            }
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
@@ -553,7 +570,7 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (!method.isDeoptTarget()) {
+        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions()) && !method.isDeoptTarget()) {
             /*
              * Deoptimization Targets cannot have virtual objects in frame states.
              */
@@ -745,14 +762,34 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(originalSnippetReflection, (ResolvedJavaType) element).getPackage();
+            ResolvedJavaType javaType = (ResolvedJavaType) element;
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
                 return false;
             }
         }
         if (element instanceof Class) {
-            Package p = ((Class<?>) element).getPackage();
+            Class<?> clazz = (Class<?>) element;
+            Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            Class<?> enclosingClass;
+            try {
+                enclosingClass = clazz.getEnclosingClass();
+            } catch (LinkageError e) {
+                enclosingClass = null;
+            }
+            if (enclosingClass != null && !platformSupported(enclosingClass)) {
                 return false;
             }
         }
@@ -820,11 +857,11 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Object parseGraph(BigBang bb, AnalysisMethod method) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, method);
+            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, debug, method);
         } else {
-            return super.parseGraph(bb, method);
+            return super.parseGraph(bb, debug, method);
         }
     }
 
@@ -849,11 +886,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
-        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
-            return ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
-        } else {
-            return super.getMultiMethodAnalysisPolicy();
-        }
+        return multiMethodAnalysisPolicy;
     }
 
     @Override

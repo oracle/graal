@@ -8,7 +8,7 @@ GraalVM LLVM runtime. The [last section](./INTEROP.md#interoperability-and-stati
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
 runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h)
-(located in `$GRAALVM_HOME/jre/languages/llvm/include/graalvm/llvm/polyglot.h` in the GraalVM
+(located in `$JAVA_HOME/jre/languages/llvm/include/graalvm/llvm/polyglot.h` in the GraalVM
 distribution).
 
 To use the functions from `graalvm/llvm/*` headers, binaries have to link against `-lgraalvm-llvm`.

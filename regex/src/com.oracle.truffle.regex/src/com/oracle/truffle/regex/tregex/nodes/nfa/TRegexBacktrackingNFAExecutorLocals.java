@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.util.BitSets;
 
 /**
@@ -333,11 +334,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public int getCaptureGroupStart(int groupNumber) {
-        return getCaptureGroupBoundary(groupNumber * 2);
+        return getCaptureGroupBoundary(Group.groupNumberToBoundaryIndexStart(groupNumber));
     }
 
     public int getCaptureGroupEnd(int groupNumber) {
-        return getCaptureGroupBoundary(groupNumber * 2 + 1);
+        return getCaptureGroupBoundary(Group.groupNumberToBoundaryIndexEnd(groupNumber));
     }
 
     public void overwriteCaptureGroups(int[] captureGroups) {

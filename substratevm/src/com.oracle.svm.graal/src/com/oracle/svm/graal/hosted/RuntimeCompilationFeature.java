@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,15 +27,18 @@ package com.oracle.svm.graal.hosted;
 import static com.oracle.svm.core.util.VMError.guarantee;
 
 import java.lang.reflect.Executable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -43,7 +46,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.options.Option;
@@ -98,10 +100,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
@@ -125,11 +125,14 @@ import jdk.vm.ci.services.Services;
 public abstract class RuntimeCompilationFeature {
 
     public static class Options {
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
 
+        @Option(help = "Print call tree of methods reachable for runtime compilation")//
+        public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
+
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -174,47 +177,163 @@ public abstract class RuntimeCompilationFeature {
         boolean allowRuntimeCompilation(ResolvedJavaMethod method);
     }
 
-    public interface AbstractCallTreeNode {
+    public abstract static class AbstractCallTreeNode implements Comparable<AbstractCallTreeNode> {
+        private final AnalysisMethod implementationMethod;
+        private final AnalysisMethod targetMethod;
+        private final AbstractCallTreeNode parent;
+        private final int level;
+        private Set<AbstractCallTreeNode> children;
+
+        protected AbstractCallTreeNode(AbstractCallTreeNode parent, AnalysisMethod targetMethod, AnalysisMethod implementationMethod) {
+            this.implementationMethod = implementationMethod;
+            this.targetMethod = targetMethod;
+            this.parent = parent;
+            this.children = null;
+            if (parent != null) {
+                level = parent.level + 1;
+            } else {
+                level = 0;
+            }
+        }
+
+        public AnalysisMethod getImplementationMethod() {
+            return implementationMethod;
+        }
+
+        public AnalysisMethod getTargetMethod() {
+            return targetMethod;
+        }
+
+        protected AbstractCallTreeNode getParent() {
+            return parent;
+        }
+
+        /**
+         * Helper method to create parent->child link when this node becomes part of the call tree.
+         */
+        protected void linkAsChild() {
+            if (parent != null) {
+                if (parent.children == null) {
+                    parent.children = new LinkedHashSet<>();
+                }
+                boolean added = parent.children.add(this);
+                assert added : "child linked to parent multiple times.";
+            }
+        }
+
+        private Collection<AbstractCallTreeNode> getChildren() {
+            return children == null ? List.of() : children;
+        }
+
+        protected int getLevel() {
+            return level;
+        }
+
+        public abstract String getPosition();
+
+        public abstract int getNodeCount();
+
+        @Override
+        public int compareTo(AbstractCallTreeNode o) {
+            int result = implementationMethod.getQualifiedName().compareTo(o.implementationMethod.getQualifiedName());
+            if (result != 0) {
+                return result;
+            }
+            result = targetMethod.getQualifiedName().compareTo(o.targetMethod.getQualifiedName());
+            if (result != 0) {
+                return result;
+            }
+
+            result = Integer.compare(level, o.level);
+            if (result != 0) {
+                return result;
+            }
+
+            if (parent != null && o.parent != null) {
+                return parent.compareTo(o.parent);
+            }
+
+            // this must be true otherwise the level check should return different value
+            assert parent == null && o.parent == null;
+            return 0;
+        }
+
+        /**
+         * For equality purposes we only care whether it is an equivalent call site (i.e., the
+         * target and implementation match).
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            AbstractCallTreeNode that = (AbstractCallTreeNode) o;
+
+            return implementationMethod.equals(that.implementationMethod) && targetMethod.equals(that.targetMethod);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(implementationMethod, targetMethod);
+        }
+    }
+
+    protected abstract AbstractCallTreeNode getCallTreeNode(RuntimeCompilationCandidate candidate);
+
+    protected abstract AbstractCallTreeNode getCallTreeNode(RuntimeCompiledMethod method);
+
+    protected abstract AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method);
+
+    public interface RuntimeCompiledMethod {
+        AnalysisMethod getMethod();
+
+        Collection<ResolvedJavaMethod> getInlinedMethods();
+
+        Collection<ResolvedJavaMethod> getInvokeTargets();
+    }
+
+    public abstract Collection<RuntimeCompiledMethod> getRuntimeCompiledMethods();
+
+    public interface RuntimeCompilationCandidate {
         AnalysisMethod getImplementationMethod();
 
         AnalysisMethod getTargetMethod();
-
-        StructuredGraph getGraph();
-
-        String getSourceReference();
-
-        AbstractCallTreeNode getParent();
-
-        List<AbstractCallTreeNode> getChildren();
-
-        int getLevel();
     }
 
-    public AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
-        assert method instanceof AnalysisMethod;
-        return getRuntimeCompiledMethods().get(method);
+    public abstract Collection<RuntimeCompilationCandidate> getAllRuntimeCompilationCandidates();
+
+    public final Comparator<RuntimeCompilationCandidate> getRuntimeCompilationComparator() {
+        return (o1, o2) -> getCallTreeNode(o1).compareTo(getCallTreeNode(o2));
+    }
+
+    public final List<String> getCallTrace(ResolvedJavaMethod method) {
+        return getCallTraceHelper(getCallTreeNode(method));
+    }
+
+    public final List<String> getCallTrace(RuntimeCompilationCandidate candidate) {
+        return getCallTraceHelper(getCallTreeNode(candidate));
+    }
+
+    private static List<String> getCallTraceHelper(AbstractCallTreeNode node) {
+        List<String> trace = new ArrayList<>();
+        for (AbstractCallTreeNode cur = node; cur != null; cur = cur.getParent()) {
+            trace.add(cur.getPosition());
+        }
+        return trace;
     }
 
     protected GraalGraphObjectReplacer objectReplacer;
     protected HostedProviders hostedProviders;
     protected GraphEncoder graphEncoder;
-    private SharedRuntimeConfigurationBuilder runtimeConfigBuilder;
 
     private boolean initialized;
     protected GraphBuilderConfiguration graphBuilderConfig;
     protected OptimisticOptimizations optimisticOpts;
     protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
     protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
-    protected Map<AnalysisMethod, AbstractCallTreeNode> runtimeCompiledMethodMap;
-    protected Set<AbstractCallTreeNode> runtimeCompilationCandidates;
-
-    public StructuredGraph lookupMethodGraph(AnalysisMethod method) {
-        AbstractCallTreeNode callTree = runtimeCompiledMethodMap.get(method);
-        assert callTree != null : "Unable to find method.";
-        StructuredGraph graph = callTree.getGraph();
-        assert graph != null : "Method's graph is null.";
-        return graph;
-    }
 
     public HostedProviders getHostedProviders() {
         return hostedProviders;
@@ -232,6 +351,9 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected final void duringSetupHelper(DuringSetupAccess c) {
+        if (SubstrateOptions.useLLVMBackend()) {
+            throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
+        }
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
         if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
@@ -246,36 +368,28 @@ public abstract class RuntimeCompilationFeature {
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
-    public Map<AnalysisMethod, AbstractCallTreeNode> getRuntimeCompiledMethods() {
-        return runtimeCompiledMethodMap;
-    }
-
-    public Set<AbstractCallTreeNode> getAllRuntimeCompilationCandidates() {
-        return runtimeCompilationCandidates;
-    }
-
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
-        runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
-                        config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider(),
-                        platformConfig).build();
-        RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
+        RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(), originalProviders.getConstantReflection(),
+                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
+                        .build();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
-        WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
+        WordTypes wordTypes = runtimeConfig.getWordTypes();
         hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider(),
                         runtimeProviders.getLoopsDataProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
+        final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
-                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget());
+                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
@@ -322,9 +436,7 @@ public abstract class RuntimeCompilationFeature {
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        runtimeCompiledMethodMap = new LinkedHashMap<>();
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
-        runtimeCompilationCandidates = new HashSet<>();
 
         /*
          * Ensure all snippet types are registered as used.
@@ -391,12 +503,20 @@ public abstract class RuntimeCompilationFeature {
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
     protected final void afterAnalysisHelper() {
-        ProgressReporter.singleton().setNumRuntimeCompiledMethods(runtimeCompiledMethodMap.size());
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(getRuntimeCompiledMethods().size());
     }
 
     protected final void beforeCompilationHelper() {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
+            System.out.println("****Start Print Runtime Compile Methods***");
+            getRuntimeCompiledMethods().stream().map(m -> m.getMethod().format("%H.%n(%p)")).sorted().collect(Collectors.toList()).forEach(System.out::println);
+            System.out.println("****End Print Runtime Compile Methods***");
+        }
+
+        if (Options.PrintRuntimeCompilationCallTree.getValue()) {
+            System.out.println("****Start Print Runtime Compile Call Tree***");
             printCallTree();
+            System.out.println("****End Print Runtime Compile Call Tree***");
         }
 
         int maxMethods = 0;
@@ -405,20 +525,21 @@ public abstract class RuntimeCompilationFeature {
             try {
                 /* Strip optional comment string from MaxRuntimeCompileMethods value */
                 numberStr = value.split("#")[0];
-                maxMethods += Long.parseLong(numberStr);
+                maxMethods += Integer.parseInt(numberStr);
             } catch (NumberFormatException ex) {
                 throw UserError.abort("Invalid value for option 'MaxRuntimeCompileMethods': '%s' is not a valid number", numberStr);
             }
         }
-        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && runtimeCompiledMethodMap.size() > maxMethods) {
+        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && getRuntimeCompiledMethods().size() > maxMethods) {
             printDeepestLevelPath();
-            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + runtimeCompiledMethodMap.size() + " > " + maxMethods);
+            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + getRuntimeCompiledMethods().size() + " > " + maxMethods);
         }
     }
 
     private void printDeepestLevelPath() {
         AbstractCallTreeNode maxLevelCallTreeNode = null;
-        for (AbstractCallTreeNode callTreeNode : runtimeCompiledMethodMap.values()) {
+        for (var method : getRuntimeCompiledMethods()) {
+            var callTreeNode = getCallTreeNode(method);
             if (maxLevelCallTreeNode == null || maxLevelCallTreeNode.getLevel() < callTreeNode.getLevel()) {
                 maxLevelCallTreeNode = callTreeNode;
             }
@@ -429,9 +550,8 @@ public abstract class RuntimeCompilationFeature {
         while (node != null) {
             AnalysisMethod implementationMethod = node.getImplementationMethod();
             AnalysisMethod targetMethod = node.getTargetMethod();
-            StructuredGraph graph = node.getGraph();
 
-            System.out.format("%5d ; %s ; %s", graph == null ? -1 : graph.getNodeCount(), node.getSourceReference(), implementationMethod == null ? ""
+            System.out.format("%5d ; %s ; %s", node.getNodeCount(), node.getPosition(), implementationMethod == null ? ""
                             : implementationMethod.format("%H.%n(%p)"));
             if (targetMethod != null && !targetMethod.equals(implementationMethod)) {
                 System.out.print(" ; " + targetMethod.format("%H.%n(%p)"));
@@ -443,18 +563,17 @@ public abstract class RuntimeCompilationFeature {
 
     private void printCallTree() {
         System.out.println("depth;method;Graal nodes;invoked from source;full method name;full name of invoked virtual method");
-        for (AbstractCallTreeNode node : runtimeCompiledMethodMap.values()) {
+        for (var method : getRuntimeCompiledMethods()) {
+            var node = getCallTreeNode(method);
             if (node.getLevel() == 0) {
                 printCallTreeNode(node);
             }
         }
-        System.out.println();
     }
 
     private void printCallTreeNode(AbstractCallTreeNode node) {
         AnalysisMethod implementationMethod = node.getImplementationMethod();
         AnalysisMethod targetMethod = node.getTargetMethod();
-        StructuredGraph graph = node.getGraph();
 
         StringBuilder indent = new StringBuilder();
         for (int i = 0; i < node.getLevel(); i++) {
@@ -464,7 +583,7 @@ public abstract class RuntimeCompilationFeature {
             indent.append(implementationMethod.format("%h.%n"));
         }
 
-        System.out.format("%4d ; %-80s  ;%5d ; %s ; %s", node.getLevel(), indent, graph == null ? -1 : graph.getNodeCount(), node.getSourceReference(),
+        System.out.format("%4d ; %-80s  ;%5d ; %s ; %s", node.getLevel(), indent, node.getNodeCount(), node.getPosition(),
                         implementationMethod == null ? "" : implementationMethod.format("%H.%n(%p)"));
         if (targetMethod != null && !targetMethod.equals(implementationMethod)) {
             System.out.print(" ; " + targetMethod.format("%H.%n(%p)"));
@@ -485,7 +604,7 @@ public abstract class RuntimeCompilationFeature {
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) runtimeConfigBuilder.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
@@ -519,15 +638,6 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
         }
         assert type instanceof AnalysisType;
         return hUniverse.lookup(type);
-    }
-
-    @Override
-    protected HostedMethod toHosted(ResolvedJavaMethod method) {
-        if (method == null) {
-            return null;
-        }
-        assert method instanceof AnalysisMethod;
-        return hUniverse.lookup(method);
     }
 
     @Override

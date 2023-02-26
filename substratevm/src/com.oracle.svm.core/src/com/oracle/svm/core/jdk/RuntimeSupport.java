@@ -36,8 +36,8 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
@@ -55,13 +55,19 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     /**
      * Hooks that run after the Java {@code main} method or when calling {@link Runtime#exit} (or
      * {@link System#exit}).
+     *
+     * Note that it is possible for shutdownHooks to be called even if the {@link #startupHooks}
+     * have not executed.
      */
     private final AtomicReference<Hook[]> shutdownHooks = new AtomicReference<>();
 
     /** Hooks that run during isolate initialization. */
     private final AtomicReference<Hook[]> initializationHooks = new AtomicReference<>();
 
-    /** Hooks that run during isolate tear-down. */
+    /**
+     * Hooks that run during isolate tear-down. Note it is possible for these hooks to run even if
+     * the {@link #initializationHooks} have not executed.
+     */
     private final AtomicReference<Hook[]> tearDownHooks = new AtomicReference<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -96,6 +102,10 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         }
     }
 
+    /**
+     * Adds a hook which will execute during the shutdown process. Note it is possible for the
+     * {@link #shutdownHooks} to called without the {@link #startupHooks} executing first.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addShutdownHook(Hook hook) {
         addHook(shutdownHooks, hook);
@@ -114,6 +124,10 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().initializationHooks);
     }
 
+    /**
+     * Adds a hook which will execute during isolate tear-down. Note it is possible for the
+     * {@link #tearDownHooks} to called without the {@link #initializationHooks} executing first.
+     */
     public void addTearDownHook(Hook tearDownHook) {
         addHook(tearDownHooks, tearDownHook);
     }

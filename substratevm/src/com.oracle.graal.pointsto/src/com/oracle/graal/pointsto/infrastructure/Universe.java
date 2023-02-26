@@ -55,9 +55,9 @@ public interface Universe {
 
     JavaMethod lookupAllowUnresolved(JavaMethod method);
 
-    WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass);
+    WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass);
 
-    WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass);
+    WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass);
 
     JavaConstant lookup(JavaConstant constant);
 

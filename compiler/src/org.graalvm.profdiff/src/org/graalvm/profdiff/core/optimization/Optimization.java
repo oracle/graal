@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.Writer;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
 /**
  * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
@@ -38,6 +40,11 @@ import org.graalvm.profdiff.util.Writer;
  * performed by an {@link OptimizationPhase optimization phase} like {@code LoopPeelingPhase}.
  */
 public class Optimization extends OptimizationTreeNode {
+    /**
+     * A special bci value indicating that the true bci is unknown.
+     */
+    public static final int UNKNOWN_BCI = -1;
+
     /**
      * The name of the transformation performed by the optimization phase. One optimization phase
      * can perform several transformations.
@@ -123,6 +130,32 @@ public class Optimization extends OptimizationTreeNode {
     }
 
     /**
+     * Returns the bci of this optimization relative to an enclosing method.
+     *
+     * As an example, if the position of this optimization is:
+     *
+     * <pre>
+     * {c(): 4, b(): 3, a(): 2}
+     * </pre>
+     *
+     * Then, the method returns 2 for method {@code a()}, 3 for method {@code b()}, and 4 for method
+     * {@code c()}.
+     *
+     * @param enclosingMethod an enclosing method
+     * @return the bci of this optimization relative to an enclosing method
+     */
+    private int getRelativeBCI(InliningTreeNode enclosingMethod) {
+        assert !position.isEmpty() : "the position must not be empty";
+        InliningPath optimizationPath = InliningPath.ofEnclosingMethod(this);
+        InliningPath enclosingMethodPath = InliningPath.fromRootToNode(enclosingMethod);
+        if (enclosingMethodPath.matches(optimizationPath)) {
+            return position.getValues().iterator().next();
+        }
+        assert enclosingMethodPath.isPrefixOf(optimizationPath) : "the path must lead to an enclosing method of the optimization";
+        return optimizationPath.get(enclosingMethodPath.size()).getCallsiteBCI();
+    }
+
+    /**
      * Appends a representation of an {@link EconomicMap} to a {@link StringBuilder}.
      *
      * The output format is:
@@ -151,35 +184,40 @@ public class Optimization extends OptimizationTreeNode {
 
     /**
      * Returns a string representation of this optimization with its properties and the position. If
-     * the properties/position is {@code null}, it is omitted.
+     * the properties/position are {@code null}, it is omitted.
      *
      * An example of the output in the long form is:
      *
      * <pre>
-     * DeadCodeElimination NodeRemoval at bci {java.util.stream.ReferencePipeline$8$1.accept(Object): 13, java.util.Spliterators$ArraySpliterator.forEachRemaining(Consumer): 53}
+     * Canonicalizer CanonicalReplacement at bci {b(): 53, a(): 13} with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
      * </pre>
      *
-     * The short form looks like the example below.
+     * The short form prints a bci relative to an enclosing method.
      *
      * <pre>
-     * Canonicalizer CanonicalReplacement at bci 18 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
+     * Canonicalizer CanonicalReplacement at bci 53 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
      * </pre>
      *
+     * If {@code enclosingMethod} is {@code null}, the method prints the bci of the innermost
+     * enclosing method (53 in the example). If the enclosing method were specified as {@code a()}
+     * in the above example, the bci would be 13.
+     *
      * @param bciLongForm byte code indices should be printed in the long form
+     * @param enclosingMethod an enclosing method or {@code null}; ignored if the long form is
+     *            enabled
      * @return a string representation of this optimization
      */
-    private String toString(boolean bciLongForm) {
+    private String toString(boolean bciLongForm, InliningTreeNode enclosingMethod) {
         StringBuilder sb = new StringBuilder();
         sb.append(getName()).append(" ").append(eventName);
         if (!position.isEmpty()) {
             sb.append(" at bci ");
             if (bciLongForm) {
                 formatMap(sb, position);
+            } else if (enclosingMethod == null) {
+                sb.append(position.getValues().iterator().next());
             } else {
-                UnmodifiableMapCursor<String, Integer> positionCursor = position.getEntries();
-                if (positionCursor.advance()) {
-                    sb.append(positionCursor.getValue());
-                }
+                sb.append(getRelativeBCI(enclosingMethod));
             }
         }
         if (properties.isEmpty()) {
@@ -191,14 +229,41 @@ public class Optimization extends OptimizationTreeNode {
     }
 
     /**
-     * Writes {@link #toString(boolean) the representation of this optimization} to the destination
-     * writer according to the current verbosity level.
+     * Writes {@link #toString the representation of this optimization} to the destination writer
+     * according to the option values.
      *
      * @param writer the destination writer
      */
     @Override
     public void writeHead(Writer writer) {
-        writer.writeln(toString(writer.getVerbosityLevel().isBciLongForm()));
+        writer.writeln(toString(writer.getOptionValues().isBCILongForm(), null));
+    }
+
+    /**
+     * Writes {@link #toString the representation of this optimization} to the destination writer
+     * according to the option values. This is a variant of {@link #writeHead(Writer)} that allows
+     * specifying a different enclosing method than the innermost enclosing method.
+     *
+     * This variant is useful in the optimization-context tree, where some optimizations cannot be
+     * attributed to their exact position. In the following example, {@code SomeOptimization} is
+     * attributed to method {@code a()}, because method {@code b()} is missing from the inlining
+     * tree.
+     *
+     * <pre>
+     * A compilation unit of method a()
+     *     Optimization-context tree
+     *         (root) a()
+     *             SomeOptimization at bci {b(): 2, a(): 3}
+     * </pre>
+     *
+     * The short-form bci of {@code SomeOptimization} should be 3 rather than 2.
+     *
+     * @param writer the destination writer
+     * @param enclosingMethod an enclosing method or {@code null}; ignored if long form enabled
+     * @see #toString(boolean, InliningTreeNode)
+     */
+    public void writeHead(Writer writer, InliningTreeNode enclosingMethod) {
+        writer.writeln(toString(writer.getOptionValues().isBCILongForm(), enclosingMethod));
     }
 
     private int calculateHashCode() {
@@ -234,5 +299,22 @@ public class Optimization extends OptimizationTreeNode {
     @Override
     public void writeRecursive(Writer writer) {
         writeHead(writer);
+    }
+
+    @Override
+    public Optimization cloneMatchingPath(InliningPath prefix) {
+        InliningPath path = InliningPath.ofEnclosingMethod(this);
+        if (!prefix.isPrefixOf(path)) {
+            return null;
+        }
+        EconomicMap<String, Integer> newPosition = EconomicMap.create();
+        UnmodifiableMapCursor<String, Integer> cursor = position.getEntries();
+        int i = 0;
+        int size = position.size() - prefix.size() + 1;
+        while (cursor.advance() && i < size) {
+            newPosition.put(cursor.getKey(), cursor.getValue());
+            ++i;
+        }
+        return new Optimization(getName(), eventName, newPosition, properties);
     }
 }

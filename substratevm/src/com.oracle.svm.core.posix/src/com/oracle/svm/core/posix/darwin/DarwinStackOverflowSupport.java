@@ -68,8 +68,8 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static int vmComputeStackGuard(UnsignedWord stackend) {
-        int guardsize = 0;
+    private static UnsignedWord vmComputeStackGuardSize(UnsignedWord stackend) {
+        UnsignedWord guardsize = WordFactory.zero();
 
         WordPointer address = StackValue.get(WordPointer.class);
         address.write(stackend);
@@ -85,11 +85,11 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
             count.write(VM_REGION_SUBMAP_INFO_COUNT_64());
 
             if (mach_vm_region(task, address, size, VM_REGION_BASIC_INFO_64(), info, count, dummyobject) != 0) {
-                return -1;
+                throw VMError.shouldNotReachHere();
             }
 
             if (isProtected(info.protection())) {
-                guardsize += size.read().rawValue();
+                guardsize = guardsize.add(size.read());
             }
 
             UnsignedWord currentAddress = address.read();
@@ -116,8 +116,8 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
         UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
         stackBasePtr.write(stackaddr);
 
-        int guardsize = vmComputeStackGuard(stackaddr.subtract(stacksize));
-        VMError.guarantee(guardsize >= 0 && guardsize < 100 * 1024);
+        UnsignedWord guardsize = vmComputeStackGuardSize(stackaddr.subtract(stacksize));
+        VMError.guarantee(guardsize.belowThan(100 * 1024));
         VMError.guarantee(stacksize.aboveThan(guardsize));
 
         stacksize = stacksize.subtract(guardsize);

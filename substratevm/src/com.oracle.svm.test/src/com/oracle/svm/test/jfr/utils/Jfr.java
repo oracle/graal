@@ -37,8 +37,6 @@ public interface Jfr {
 
     Recording createRecording(String recordingName) throws Exception;
 
-    Recording createRecording(String recordingName, String configName) throws Exception;
-
     void startRecording(Recording recording);
 
     void endRecording(Recording recording) throws Exception;

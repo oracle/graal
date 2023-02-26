@@ -24,17 +24,13 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractEndNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
@@ -49,7 +45,7 @@ import org.graalvm.compiler.nodes.LoopExitNode;
  *
  * The block order is special in that {@linkplain LoopEndNode blocks} are processed before
  * {@linkplain LoopExitNode blocks}. This has the advantage that for
- * {@linkplain Block#getRelativeFrequency() basic block frequency calculations} nested loops are
+ * {@linkplain HIRBlock#getRelativeFrequency() basic block frequency calculations} nested loops are
  * processed before the outer loop exit blocks allowing a linear computation of loop frequencies.
  *
  * Additionally, loops are guaranteed to be fully included in the RPO before any dominated sibling
@@ -62,22 +58,22 @@ public class ReversePostOrder {
      * Enqueue the block in the reverse post order with the next index and assign the index to the
      * block itself.
      */
-    private static void enqueueBlockInRPO(Block b, Block[] reversePostOrder, int nextIndex) {
+    private static void enqueueBlockInRPO(HIRBlock b, HIRBlock[] reversePostOrder, char nextIndex) {
         reversePostOrder[nextIndex] = b;
         b.setId(nextIndex);
     }
 
     /**
      * Compute the reverse post order for the given {@link ControlFlowGraph}. The creation of
-     * {@link Block} and the assignment of {@link FixedNode} to {@link Block} is already done by the
-     * {@link ControlFlowGraph}.
+     * {@link HIRBlock} and the assignment of {@link FixedNode} to {@link HIRBlock} is already done
+     * by the {@link ControlFlowGraph}.
      *
      * The algorithm has special handling for {@link LoopBeginNode} and {@link LoopExitNode} nodes
      * to ensure a loop is fully processed before any dominated code is visited.
      */
-    private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] rpoBlocks, int startIndex) {
+    private static void compute(ControlFlowGraph cfg, FixedNode start, HIRBlock[] rpoBlocks, int startIndex) {
         assert startIndex < rpoBlocks.length;
-        LinkedList<FixedNode> toProcess = new LinkedList<>();
+        LinkedStack<Node> toProcess = new LinkedStack<>();
         toProcess.push(start);
         NodeBitMap visitedNodes = cfg.graph.createNodeBitMap();
         int currentIndex = startIndex;
@@ -86,16 +82,19 @@ public class ReversePostOrder {
         class OpenLoopsData {
             int endsVisited;
             final LoopBeginNode lb;
-            final boolean loopHasNoExits;
 
             OpenLoopsData(LoopBeginNode lb) {
                 this.lb = lb;
-                loopHasNoExits = lb.loopExits().count() == 0;
+            }
+
+            boolean loopHasNoExits() {
+                return lb.loopExits().count() == 0;
             }
 
             /**
-             * A loop is fully processed, i.e., all body {@link Block} are part of the reverse post
-             * order array, if all loop end blocks and all loop exit predecessor blocks are visited.
+             * A loop is fully processed, i.e., all body {@link HIRBlock} are part of the reverse
+             * post order array, if all loop end blocks and all loop exit predecessor blocks are
+             * visited.
              */
             boolean loopFullyProcessed() {
                 return allEndsVisited() && allLexPredecessorsVisited();
@@ -123,7 +122,7 @@ public class ReversePostOrder {
 
         // stack of open (nested) loops processed at the moment, i.e., not fully included in the
         // reverse post order yet
-        ArrayDeque<OpenLoopsData> openLoops = new ArrayDeque<>();
+        LinkedStack<OpenLoopsData> openLoops = new LinkedStack<>();
 
         /**
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
@@ -146,7 +145,7 @@ public class ReversePostOrder {
             }
             if (cur == null) {
                 if (!toProcess.isEmpty()) {
-                    cur = toProcess.pop();
+                    cur = (FixedNode) toProcess.pop();
                 }
             }
             // we are done
@@ -182,7 +181,7 @@ public class ReversePostOrder {
                  * and every predecessor node of a loop exit is visited
                  */
                 if (!ol.loopFullyProcessed()) {
-                    GraalError.guarantee(toProcess.size() > 0, "If a loop is not fully processed there need to be further blocks, %s", lex);
+                    GraalError.guarantee(!toProcess.isEmpty(), "If a loop is not fully processed there need to be further blocks, %s", lex);
                     /*
                      * Since the current loop is not fully processed we need to stall the processing
                      * of the exit paths still. Mixing the stalled exits with the loop blocks would
@@ -203,17 +202,17 @@ public class ReversePostOrder {
                 final List<LoopExitNode> loopExits = ol.lb.loopExits().snapshot();
                 for (int i = loopExits.size() - 1; i >= 0; i--) {
                     final LoopExitNode singleExit = loopExits.get(i);
-                    enqueueBlockInRPO(cfg.blockFor(singleExit), rpoBlocks, currentIndex++);
+                    enqueueBlockInRPO(cfg.blockFor(singleExit), rpoBlocks, (char) currentIndex++);
                     visitedNodes.mark(singleExit);
                     pushOrStall(singleExit.next(), toProcess);
                 }
                 continue;
             }
 
-            final Block curBlock = cfg.blockFor(cur);
+            final HIRBlock curBlock = cfg.blockFor(cur);
             if (cur == curBlock.getBeginNode()) {
                 // we are at a block start, enqueue the actual block in the RPO
-                enqueueBlockInRPO(curBlock, rpoBlocks, currentIndex++);
+                enqueueBlockInRPO(curBlock, rpoBlocks, (char) currentIndex++);
             }
 
             while (true) {
@@ -235,7 +234,7 @@ public class ReversePostOrder {
                         final OpenLoopsData ol = openLoops.peek();
                         GraalError.guarantee(ol.lb == len.loopBegin(), "Loop begin does not match, loop end begin %s stack loop begin %s", len.loopBegin(), ol.lb);
                         ol.endsVisited++;
-                        if (ol.loopHasNoExits && ol.loopFullyProcessed()) {
+                        if (ol.loopHasNoExits() && ol.loopFullyProcessed()) {
                             openLoops.pop();
                         }
                     } else if (cur instanceof ControlSplitNode) {
@@ -260,7 +259,7 @@ public class ReversePostOrder {
 
     }
 
-    private static void pushOrStall(FixedNode n, LinkedList<FixedNode> toProcess) {
+    private static void pushOrStall(FixedNode n, LinkedStack<Node> toProcess) {
         if (!(n instanceof LoopExitNode)) {
             toProcess.push(n);
         }
@@ -277,75 +276,13 @@ public class ReversePostOrder {
         return true;
     }
 
-    public static Block[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
-        Block startBlock = cfg.blockFor(cfg.graph.start());
-        startBlock.setPredecessors(Block.EMPTY_ARRAY);
-        Block[] reversePostOrder = new Block[numBlocks];
+    public static HIRBlock[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
+        HIRBlock[] reversePostOrder = new HIRBlock[numBlocks];
         compute(cfg, cfg.graph.start(), reversePostOrder, 0);
-        assignPredecessorsAndSuccessors(reversePostOrder, cfg);
+        if (reversePostOrder[0].isModifiable()) {
+            HIRBlock.assignPredecessorsAndSuccessors(reversePostOrder, cfg);
+        }
         return reversePostOrder;
-
-    }
-
-    private static void computeLoopPredecessors(NodeMap<Block> nodeMap, Block block, LoopBeginNode loopBeginNode) {
-        int forwardEndCount = loopBeginNode.forwardEndCount();
-        LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
-        Block[] predecessors = new Block[forwardEndCount + loopEnds.length];
-        for (int i = 0; i < forwardEndCount; ++i) {
-            predecessors[i] = nodeMap.get(loopBeginNode.forwardEndAt(i));
-        }
-        for (int i = 0; i < loopEnds.length; ++i) {
-            predecessors[i + forwardEndCount] = nodeMap.get(loopEnds[i]);
-        }
-        block.setPredecessors(predecessors);
-    }
-
-    private static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
-        for (int bI = 0; bI < blocks.length; bI++) {
-            Block b = blocks[bI];
-            FixedNode blockEndNode = b.getEndNode();
-            if (blockEndNode instanceof EndNode) {
-                EndNode endNode = (EndNode) blockEndNode;
-                Block suxBlock = cfg.getNodeToBlock().get(endNode.merge());
-                b.setSuccessors(new Block[]{suxBlock});
-            } else if (blockEndNode instanceof ControlSplitNode) {
-                ArrayList<Block> succ = new ArrayList<>();
-                Block[] ifPred = new Block[]{b};
-                for (Node sux : blockEndNode.successors()) {
-                    Block sucBlock = cfg.getNodeToBlock().get(sux);
-                    succ.add(sucBlock);
-                    sucBlock.setPredecessors(ifPred);
-                }
-                b.setSuccessors(succ.toArray(new Block[succ.size()]), ((ControlSplitNode) blockEndNode).successorProbabilities());
-            } else if (blockEndNode instanceof LoopEndNode) {
-                LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
-                b.setSuccessors(new Block[]{cfg.getNodeToBlock().get(loopEndNode.loopBegin())});
-            } else if (blockEndNode instanceof ControlSinkNode) {
-                b.setSuccessors(Block.EMPTY_ARRAY);
-            } else {
-                assert !(blockEndNode instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
-                Block[] ifPred = new Block[]{b};
-                for (Node suxNode : blockEndNode.successors()) {
-                    Block sux = cfg.getNodeToBlock().get(suxNode);
-                    sux.setPredecessors(ifPred);
-                }
-                assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
-                Block sequentialSuc = cfg.getNodeToBlock().get(blockEndNode.successors().first());
-                b.setSuccessors(new Block[]{sequentialSuc});
-            }
-            FixedNode blockBeginNode = b.getBeginNode();
-            if (blockBeginNode instanceof LoopBeginNode) {
-                computeLoopPredecessors(cfg.getNodeToBlock(), b, (LoopBeginNode) blockBeginNode);
-            } else if (blockBeginNode instanceof AbstractMergeNode) {
-                AbstractMergeNode mergeNode = (AbstractMergeNode) blockBeginNode;
-                int forwardEndCount = mergeNode.forwardEndCount();
-                Block[] predecessors = new Block[forwardEndCount];
-                for (int i = 0; i < forwardEndCount; ++i) {
-                    predecessors[i] = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i));
-                }
-                b.setPredecessors(predecessors);
-            }
-        }
     }
 
 }

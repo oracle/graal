@@ -145,12 +145,6 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
 
     public static StackValueNode create(int sizeInBytes, ResolvedJavaMethod method, int bci, boolean disallowVirtualThread) {
         String name = method.asStackTraceElement(bci).toString();
-        if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + name);
-        }
-
-        /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */
-        int alignmentInBytes = ConfigurationValues.getTarget().stackAlignment;
         StackSlotIdentity slotIdentity = new StackSlotIdentity(name, false);
 
         /*
@@ -160,6 +154,16 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
          * callees.
          */
         boolean checkVirtualThread = disallowVirtualThread && VirtualThreads.isSupported() && !Uninterruptible.Utils.isUninterruptible(method);
+        return create(sizeInBytes, slotIdentity, checkVirtualThread);
+    }
+
+    public static StackValueNode create(int sizeInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
+        if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
+            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
+        }
+
+        /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */
+        int alignmentInBytes = ConfigurationValues.getTarget().stackAlignment;
 
         return new StackValueNode(sizeInBytes, alignmentInBytes, slotIdentity, checkVirtualThread);
     }

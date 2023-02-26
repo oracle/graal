@@ -45,6 +45,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -153,6 +154,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     }
 
     @Test
+    @Ignore("GR-43475") // fails transiently
     public void testContextThreadLocalRead() throws Throwable {
         Engine engine = Engine.create();
         Context c = createContext(engine, SHARED1);

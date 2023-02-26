@@ -31,7 +31,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -64,7 +64,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     abstract class BlockScope implements AutoCloseable {
 
-        public abstract AbstractBlockBase<?> getCurrentBlock();
+        public abstract BasicBlock<?> getCurrentBlock();
 
         @Override
         public abstract void close();
@@ -83,7 +83,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     ForeignCallsProvider getForeignCalls();
 
-    AbstractBlockBase<?> getCurrentBlock();
+    BasicBlock<?> getCurrentBlock();
 
     LIRGenerationResult getResult();
 

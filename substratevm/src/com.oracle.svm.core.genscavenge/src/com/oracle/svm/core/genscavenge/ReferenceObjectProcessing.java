@@ -218,9 +218,10 @@ final class ReferenceObjectProcessing {
     }
 
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(referentAddr);
+        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
+        UnsignedWord header = ohi.readHeaderFromPointer(referentAddr);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Object forwardedObj = ObjectHeaderImpl.getForwardedObject(referentAddr);
+            Object forwardedObj = ohi.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);
             return true;
         }

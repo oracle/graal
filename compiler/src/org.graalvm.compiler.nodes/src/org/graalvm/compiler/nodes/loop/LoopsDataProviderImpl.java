@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.loop;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 
 public class LoopsDataProviderImpl implements LoopsDataProvider {
@@ -32,6 +33,11 @@ public class LoopsDataProviderImpl implements LoopsDataProvider {
     @Override
     public LoopsData getLoopsData(StructuredGraph graph) {
         return LoopsData.compute(graph);
+    }
+
+    @Override
+    public LoopsData getLoopsData(ControlFlowGraph cfg) {
+        return LoopsData.compute(cfg);
     }
 
 }

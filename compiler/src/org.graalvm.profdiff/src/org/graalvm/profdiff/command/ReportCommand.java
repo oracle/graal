@@ -27,13 +27,12 @@ package org.graalvm.profdiff.command;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.Method;
-import org.graalvm.profdiff.core.VerbosityLevel;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.parser.args.StringArgument;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.args.StringArgument;
+import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Prints out one experiment which may optionally include proftool data.
@@ -44,8 +43,6 @@ public class ReportCommand implements Command {
     private final StringArgument optimizationLogArgument;
 
     private final StringArgument proftoolArgument;
-
-    private HotCompilationUnitPolicy hotCompilationUnitPolicy;
 
     public ReportCommand() {
         argumentParser = new ArgumentParser();
@@ -71,20 +68,14 @@ public class ReportCommand implements Command {
     }
 
     @Override
-    public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
-        this.hotCompilationUnitPolicy = hotCompilationUnitPolicy;
-    }
-
-    @Override
-    public void invoke(Writer writer) throws Exception {
+    public void invoke(Writer writer) throws ExperimentParserError {
         boolean hasProftool = proftoolArgument.getValue() != null;
         ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool);
         explanationWriter.explain();
 
-        VerbosityLevel verbosity = writer.getVerbosityLevel();
         writer.writeln();
         Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
-        hotCompilationUnitPolicy.markHotCompilationUnits(experiment);
+        writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
         experiment.writeExperimentSummary(writer);
 
         for (Method method : experiment.getMethodsByDescendingPeriod()) {
@@ -96,14 +87,12 @@ public class ReportCommand implements Command {
             writer.increaseIndent();
             method.writeCompilationList(writer);
             writer.increaseIndent();
-            if ((verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) && !verbosity.shouldShowOnlyDiff()) {
-                Iterable<CompilationUnit> compilationUnits = method.getCompilationUnits();
-                if (proftoolArgument.getValue() != null) {
-                    compilationUnits = method.getHotCompilationUnits();
-                }
-                for (CompilationUnit compilationUnit : compilationUnits) {
-                    compilationUnit.write(writer);
-                }
+            Iterable<CompilationUnit> compilationUnits = method.getCompilationUnits();
+            if (proftoolArgument.getValue() != null) {
+                compilationUnits = method.getHotCompilationUnits();
+            }
+            for (CompilationUnit compilationUnit : compilationUnits) {
+                compilationUnit.write(writer);
             }
             writer.decreaseIndent(2);
         }

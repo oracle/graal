@@ -42,8 +42,8 @@ package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 final class JCodingsDisabled implements JCodings {
 
@@ -120,15 +120,15 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, ConditionProfile validCharacterProfile,
-                    ConditionProfile fixedWidthProfile) {
+    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
+                    InlinedConditionProfile fixedWidthProfile) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    BranchProfile outOfMemoryProfile,
-                    ConditionProfile nativeProfile,
+                    InlinedBranchProfile outOfMemoryProfile,
+                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }

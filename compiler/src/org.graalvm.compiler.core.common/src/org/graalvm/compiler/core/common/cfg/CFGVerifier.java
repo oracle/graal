@@ -25,30 +25,31 @@
 package org.graalvm.compiler.core.common.cfg;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 
 public class CFGVerifier {
 
-    public static <T extends AbstractBlockBase<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
+    public static <T extends BasicBlock<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
         for (T block : cfg.getBlocks()) {
-            assert block.getId() >= 0;
+            assert block.getId() <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
             assert cfg.getBlocks()[block.getId()] == block;
 
-            for (T pred : block.getPredecessors()) {
-                assert Arrays.asList(pred.getSuccessors()).contains(block);
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                T pred = block.getPredecessorAt(i);
+                assert pred.containsSucc(block);
                 assert pred.getId() < block.getId() || pred.isLoopEnd();
             }
 
-            for (T sux : block.getSuccessors()) {
-                assert Arrays.asList(sux.getPredecessors()).contains(block);
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                T sux = block.getSuccessorAt(i);
+                assert sux.containsPred(block);
                 assert sux.getId() > block.getId() || sux.isLoopHeader();
             }
 
             if (block.getDominator() != null) {
                 assert block.getDominator().getId() < block.getId();
 
-                AbstractBlockBase<?> domChild = block.getDominator().getFirstDominated();
+                BasicBlock<?> domChild = block.getDominator().getFirstDominated();
                 while (domChild != null) {
                     if (domChild == block) {
                         break;
@@ -73,7 +74,8 @@ public class CFGVerifier {
                 visitedBlocks.put(block, true);
 
                 Deque<T> stack = new ArrayDeque<>();
-                for (T sux : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    T sux = block.getSuccessorAt(i);
                     visitedBlocks.put(sux, true);
                     stack.push(sux);
                 }
@@ -86,7 +88,8 @@ public class CFGVerifier {
                     }
                     assert tos.getSuccessorCount() > 0 : "no path found";
 
-                    for (T sux : tos.getSuccessors()) {
+                    for (int i = 0; i < tos.getSuccessorCount(); i++) {
+                        T sux = tos.getSuccessorAt(i);
                         if (visitedBlocks.get(sux) == null) {
                             visitedBlocks.put(sux, true);
                             stack.push(sux);
@@ -112,7 +115,8 @@ public class CFGVerifier {
                     }
 
                     if (!(block.isLoopHeader() && block.getLoop() == loop)) {
-                        for (T pred : block.getPredecessors()) {
+                        for (int i = 0; i < block.getPredecessorCount(); i++) {
+                            T pred = block.getPredecessorAt(i);
                             if (!loop.getBlocks().contains(pred)) {
                                 assert false : "Loop " + loop + " does not contain " + pred;
                                 return false;

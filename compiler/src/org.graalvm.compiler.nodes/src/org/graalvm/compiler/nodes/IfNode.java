@@ -66,7 +66,7 @@ import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -1651,7 +1651,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             // This can occur when nodes were created after the last schedule.
             return null;
         }
-        Block block = schedule.getCFG().blockFor(successor);
+        HIRBlock block = schedule.getCFG().blockFor(successor);
         if (block == null) {
             return null;
         }

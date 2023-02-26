@@ -258,7 +258,7 @@ for detecting the causes of memory overhead.
 To execute the memory layout extractor, run:
 
 ```bash
-$ mx --dy /compiler wasm-memory-layout -- [wasm-file]
+$ mx --dy /compiler wasm-memory-layout -Djol.magicFieldOffset=true -- [wasm-file]
 ```
 
 This prints the memory layout tree of the given file to the console. The application provides additional options:

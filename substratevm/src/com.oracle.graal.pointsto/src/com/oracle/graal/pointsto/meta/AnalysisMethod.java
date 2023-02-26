@@ -262,7 +262,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return universe.lookup(resolvedCatchType);
     }
 
-    private AnalysisUniverse getUniverse() {
+    @Override
+    protected AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
     }
@@ -284,22 +285,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /**
      * @return the position of the invocation that triggered parsing for this method, or null
      */
-    public abstract BytecodePosition getParsingReason();
+    public abstract Object getParsingReason();
 
     /**
      * @return the parsing context in which given method was parsed
      */
     public final StackTraceElement[] getParsingContext() {
         List<StackTraceElement> trace = new ArrayList<>();
-        BytecodePosition curr = getParsingReason();
+        Object curr = getParsingReason();
 
         while (curr != null) {
+            if (!(curr instanceof BytecodePosition)) {
+                AnalysisError.guarantee(curr instanceof String, "Parsing reason should be a BytecodePosition or String: %s", curr);
+                trace.add(ReportUtils.rootMethodSentinel((String) curr));
+                break;
+            }
             if (trace.size() > parsingContextMaxDepth) {
                 trace.add(ReportUtils.truncatedStackTraceSentinel(this));
                 break;
             }
-            AnalysisMethod caller = (AnalysisMethod) curr.getMethod();
-            trace.add(caller.asStackTraceElement(curr.getBCI()));
+            BytecodePosition position = (BytecodePosition) curr;
+            AnalysisMethod caller = (AnalysisMethod) position.getMethod();
+            trace.add(caller.asStackTraceElement(position.getBCI()));
             curr = caller.getParsingReason();
         }
         return trace.toArray(new StackTraceElement[0]);
@@ -347,7 +354,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * the method as invoked, it would have an unwanted side effect, where this method could
          * return before the class gets marked as reachable.
          */
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as implementation invoked");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
         return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onReachable);
     }
 
@@ -386,7 +393,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
     public boolean registerAsVirtualRootMethod() {
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as virtual root");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
         return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
     }
 
@@ -394,7 +401,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Registers this method as a direct (special or static) root for the analysis.
      */
     public boolean registerAsDirectRootMethod() {
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as direct root");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
         return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
     }
 
@@ -533,7 +540,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass().getWrappedWithResolve());
     }
 
     @Override
@@ -649,7 +656,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ConstantPool getConstantPool() {
-        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass().getWrappedWithResolve());
     }
 
     @Override
@@ -684,7 +691,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public String toString() {
-        return "AnalysisMethod<" + format("%H.%n") + " -> " + wrapped.toString() + ">";
+        return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ", invoked: " + (isInvoked != null) +
+                        ", implInvoked: " + (isImplementationInvoked != null) + ", intrinsic: " + (isIntrinsicMethod != null) + ", inlined: " + (isInlined != null) +
+                        (isVirtualRootMethod != 0 ? ", virtual root" : "") + (isDirectRootMethod != 0 ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
     }
 
     @Override
@@ -729,7 +738,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(getUniverse().getOriginalSnippetReflection(), wrapped);
+        return OriginalMethodProvider.getJavaMethod(wrapped);
     }
 
     /**

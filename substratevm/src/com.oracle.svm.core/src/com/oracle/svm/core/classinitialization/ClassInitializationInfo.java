@@ -29,6 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -183,6 +185,21 @@ public final class ClassInitializationInfo {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void initialize(ClassInitializationInfo info, DynamicHub hub) {
         IsolateThread self = CurrentIsolate.getCurrentThread();
+
+        /*
+         * GR-43118: If a predefined class is not loaded, and the caller class is loaded, set the
+         * classloader of the initialized class to the class loader of the caller class.
+         * 
+         * This does not work in general as class loading happens in more places than class
+         * initialization, e.g., on class literals. However, this workaround makes most of the cases
+         * work until we have a proper implementation of class loading.
+         */
+        if (!hub.isLoaded()) {
+            Class<?> callerClass = Reflection.getCallerClass();
+            if (DynamicHub.fromClass(callerClass).isLoaded()) {
+                PredefinedClassesSupport.loadClassIfNotLoaded(callerClass.getClassLoader(), null, DynamicHub.toClass(hub));
+            }
+        }
 
         /*
          * Step 1: Synchronize on the initialization lock, LC, for C. This involves waiting until

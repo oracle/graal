@@ -28,7 +28,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -86,13 +85,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
+        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
+        Word header = ohi.readHeaderFromPointer(p);
         if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().hasRememberedSet(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
-                Object obj = ObjectHeaderImpl.getForwardedObject(p, header);
+                Object obj = ohi.getForwardedObject(p, header);
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
@@ -101,7 +101,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
-            assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
+            assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.

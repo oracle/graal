@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
 
 final class NumberConversion {
@@ -91,52 +90,52 @@ final class NumberConversion {
     private static final long MAX_SAFE_INTEGER_LONG = (long) Math.pow(2, 53) - 1;
     private static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
 
-    static int parseInt(TruffleStringIterator it, int radix, BranchProfile errorProfile,
-                    TruffleStringIterator.NextNode nextNode) throws TruffleString.NumberFormatException {
-        return (int) parseNum(it, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE, nextNode);
+    static int parseInt(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile,
+                    TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
+        return (int) parseNum(node, it, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE, nextNode);
     }
 
-    static long parseLong(TruffleStringIterator it, int radix, BranchProfile errorProfile,
-                    TruffleStringIterator.NextNode nextNode) throws TruffleString.NumberFormatException {
-        return parseNum(it, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
+    static long parseLong(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile,
+                    TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
+        return parseNum(node, it, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
     }
 
-    static int parseInt7Bit(AbstractTruffleString a, Object ptrA, int stride, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return (int) parseNum7Bit(a, ptrA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    static int parseInt7Bit(Node node, AbstractTruffleString a, Object ptrA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        return (int) parseNum7Bit(node, a, ptrA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    static long parseLong7Bit(AbstractTruffleString a, Object ptrA, int stride, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return parseNum7Bit(a, ptrA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
+    static long parseLong7Bit(Node node, AbstractTruffleString a, Object ptrA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        return parseNum7Bit(node, a, ptrA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     static boolean isSafeInteger(long value) {
         return MIN_SAFE_INTEGER_LONG <= value && value <= MAX_SAFE_INTEGER_LONG;
     }
 
-    private static long parseNum(TruffleStringIterator it, int radix, BranchProfile errorProfile, long min, long max,
-                    TruffleStringIterator.NextNode nextNode) throws TruffleString.NumberFormatException {
-        checkArgs(it, radix, errorProfile);
+    private static long parseNum(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile, long min, long max,
+                    TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
+        checkArgs(node, it, radix, errorProfile);
         long result = 0;
         boolean negative = false;
         long limit = -max;
         if (it.hasNext()) {
-            int firstChar = nextNode.execute(it);
+            int firstChar = nextNode.execute(node, it);
             if (firstChar < '0') { // Possible leading "+" or "-"
                 if (firstChar == '-') {
                     negative = true;
                     limit = min;
                 } else if (firstChar != '+') {
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 if (!it.hasNext()) { // Cannot have lone "+" or "-"
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.LONE_SIGN);
                 }
             } else {
                 int digit = Character.digit(firstChar, radix);
                 if (digit < 0) {
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 assert result >= limit + digit;
@@ -145,34 +144,35 @@ final class NumberConversion {
             long multmin = limit / radix;
             while (it.hasNext()) {
                 // Accumulating negatively avoids surprises near MAX_VALUE
-                int digit = Character.digit(nextNode.execute(it), radix);
+                int digit = Character.digit(nextNode.execute(node, it), radix);
                 if (digit < 0) {
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.INVALID_CODEPOINT);
                 }
                 if (result < multmin) {
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.OVERFLOW);
                 }
                 result *= radix;
                 if (result < limit + digit) {
-                    errorProfile.enter();
+                    errorProfile.enter(node);
                     throw numberFormatException(it, Reason.OVERFLOW);
                 }
                 result -= digit;
             }
         } else {
-            errorProfile.enter();
+            errorProfile.enter(node);
             throw numberFormatException(it, Reason.EMPTY);
         }
         return negative ? result : -result;
     }
 
-    private static long parseNum7Bit(AbstractTruffleString a, Object arrayA, int stride, int radix, BranchProfile errorProfile, long min, long max) throws TruffleString.NumberFormatException {
+    private static long parseNum7Bit(Node node, AbstractTruffleString a, Object arrayA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
+                    throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
-        assert TStringGuards.is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(a));
-        checkRadix(a, radix, errorProfile);
-        checkEmptyStr(a, errorProfile);
+        assert TStringGuards.is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(null, a));
+        checkRadix(node, a, radix, errorProfile);
+        checkEmptyStr(node, a, errorProfile);
         long result = 0;
         boolean negative = false;
         long limit = -max;
@@ -183,11 +183,11 @@ final class NumberConversion {
                 negative = true;
                 limit = min;
             } else if (firstChar != '+') {
-                errorProfile.enter();
+                errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.INVALID_CODEPOINT);
             }
             if (a.length() == 1) { // Cannot have lone "+" or "-"
-                errorProfile.enter();
+                errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.LONE_SIGN);
             }
             i++;
@@ -196,14 +196,14 @@ final class NumberConversion {
         while (i < a.length()) {
             // Accumulating negatively avoids surprises near MAX_VALUE
             int c = TStringOps.readValue(a, arrayA, stride, i++);
-            final int digit = parseDigit7Bit(a, i, radix, errorProfile, c);
+            final int digit = parseDigit7Bit(node, a, i, radix, errorProfile, c);
             if (result < multmin) {
-                errorProfile.enter();
+                errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.OVERFLOW);
             }
             result *= radix;
             if (result < limit + digit) {
-                errorProfile.enter();
+                errorProfile.enter(node);
                 throw numberFormatException(a, i, Reason.OVERFLOW);
             }
             result -= digit;
@@ -211,7 +211,7 @@ final class NumberConversion {
         return negative ? result : -result;
     }
 
-    private static int parseDigit7Bit(AbstractTruffleString a, int i, int radix, BranchProfile errorProfile, int c) throws TruffleString.NumberFormatException {
+    private static int parseDigit7Bit(Node node, AbstractTruffleString a, int i, int radix, InlinedBranchProfile errorProfile, int c) throws TruffleString.NumberFormatException {
         if ('0' <= c && c <= Math.min((radix - 1) + '0', '9')) {
             return c & 0xf;
         } else if (radix > 10) {
@@ -220,25 +220,25 @@ final class NumberConversion {
                 return lc - ('a' - 10);
             }
         }
-        errorProfile.enter();
+        errorProfile.enter(node);
         throw numberFormatException(a, i, Reason.INVALID_CODEPOINT);
     }
 
-    private static void checkArgs(TruffleStringIterator it, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    private static void checkArgs(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         assert it != null;
-        checkRadix(it.a, radix, errorProfile);
+        checkRadix(node, it.a, radix, errorProfile);
     }
 
-    private static void checkRadix(AbstractTruffleString a, int radix, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    private static void checkRadix(Node node, AbstractTruffleString a, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
-            errorProfile.enter();
+            errorProfile.enter(node);
             throw numberFormatException(a, Reason.UNSUPPORTED_RADIX);
         }
     }
 
-    private static void checkEmptyStr(AbstractTruffleString a, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    private static void checkEmptyStr(Node node, AbstractTruffleString a, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         if (a.isEmpty()) {
-            errorProfile.enter();
+            errorProfile.enter(node);
             throw numberFormatException(a, Reason.EMPTY);
         }
     }

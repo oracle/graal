@@ -94,7 +94,7 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.tck.DebuggerTester;
 
@@ -735,7 +735,7 @@ public class SLInstrumentTest {
         }
         assertTrue(interopFailure);
 
-        earlyReturn.returnValue = new SLBigNumber(new BigInteger("-42"));
+        earlyReturn.returnValue = new SLBigInteger(new BigInteger("-42"));
         ret = context.eval(source);
         assertTrue(ret.isNumber());
         assertEquals(-41L, ret.asLong());

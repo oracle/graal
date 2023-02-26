@@ -30,7 +30,7 @@ import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.all
 import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedSlots;
 import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.virtualFramesize;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -104,7 +104,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
                 }
                 return value;
             };
-            for (AbstractBlockBase<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : res.getLIR().getControlFlowGraph().getBlocks()) {
                 try (Indent indent0 = debug.logAndIndent("block: %s", block)) {
                     for (LIRInstruction inst : res.getLIR().getLIRforBlock(block)) {
                         try (Indent indent1 = debug.logAndIndent("Inst: %d: %s", inst.id(), inst)) {

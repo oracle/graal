@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
@@ -45,9 +44,9 @@ class ProgressReporterJsonHelper {
     private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
-    private final String jsonOutputFile;
+    private final Path jsonOutputFile;
 
-    ProgressReporterJsonHelper(String outFile) {
+    ProgressReporterJsonHelper(Path outFile) {
         this.jsonOutputFile = outFile;
     }
 
@@ -105,9 +104,8 @@ class ProgressReporterJsonHelper {
 
     public Path printToFile() {
         recordSystemFixedValues();
-        final File file = new File(jsonOutputFile);
         String description = "image statistics in json";
-        return ReportUtils.report(description, file.getAbsoluteFile().toPath(), out -> {
+        return ReportUtils.report(description, jsonOutputFile.toAbsolutePath(), out -> {
             try {
                 new JsonWriter(out).print(statsHolder);
             } catch (IOException e) {

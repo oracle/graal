@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.alloc.lsra.ssa;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -50,7 +50,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
     }
 
     @Override
-    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+    protected boolean canEliminateSpillMove(BasicBlock<?> block, MoveOp move) {
         if (super.canEliminateSpillMove(block, move)) {
             // SSA Linear Scan might introduce moves to stack slots
             Interval curInterval = allocator.intervalFor(move.getResult());
@@ -64,7 +64,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
     }
 
     @SuppressWarnings("try")
-    private boolean isPhiResolutionMove(AbstractBlockBase<?> block, MoveOp move, Interval toInterval) {
+    private boolean isPhiResolutionMove(BasicBlock<?> block, MoveOp move, Interval toInterval) {
         if (!toInterval.isSplitParent()) {
             return false;
         }
@@ -79,9 +79,9 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
         if (!(op instanceof LabelOp)) {
             return false;
         }
-        AbstractBlockBase<?> intStartBlock = allocator.blockForId(toInterval.from());
+        BasicBlock<?> intStartBlock = allocator.blockForId(toInterval.from());
         assert allocator.getLIR().getLIRforBlock(intStartBlock).get(0).equals(op);
-        if (!block.getSuccessors()[0].equals(intStartBlock)) {
+        if (!block.getSuccessorAt(0).equals(intStartBlock)) {
             return false;
         }
         DebugContext debug = allocator.getDebug();

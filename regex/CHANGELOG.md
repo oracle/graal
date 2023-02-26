@@ -8,6 +8,8 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Dropped `Flavor=PythonStr` and `Flavor=PythonBytes` in favor of `Flavor=Python,Encoding=UTF-32` and `Flavor=Python,Encoding=LATIN-1`.
 * Dropped support for the `execBytes(byte[] input, int fromIndex)` entrypoint.
 * Dropped support for `TruffleObject`s with characters/code points as array elements.
+* Added support for conditional back-references (e.g. `(foo)(?(1)bar|no_foo)`) in Python and Ruby regular expressions.
+* Added support for case-insensitive back-references in Python and Ruby regular expressions.
 
 ## Version 22.2.0
 

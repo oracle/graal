@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -81,7 +82,7 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     }
 
     @Override
-    protected void initFlowsGraph(PointsToAnalysis bb) {
+    protected void initFlowsGraph(PointsToAnalysis bb, List<TypeFlow<?>> postInitFlows) {
         // nothing to do, cloning does all the initialization
     }
 

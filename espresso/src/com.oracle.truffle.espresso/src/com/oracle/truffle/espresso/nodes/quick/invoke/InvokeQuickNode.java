@@ -114,7 +114,7 @@ public abstract class InvokeQuickNode extends QuickNode {
         if (method.getRedefineAssumption().isValid()) {
             return false;
         } else {
-            return method.getMethod().isRemovedByRedefition();
+            return method.getMethod().isRemovedByRedefinition();
         }
     }
 

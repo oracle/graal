@@ -65,8 +65,6 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
@@ -126,7 +124,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
         public ReflectionMetadataEncoder create(CodeInfoEncoder.Encoders encoders) {
@@ -420,7 +417,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         boolean isMethod = object instanceof Method;
 
         /* Register string and class values in annotations */
-        AnnotatedElement analysisObject = (AnnotatedElement) hostedObject.getWrapped();
+        AnnotatedElement analysisObject = hostedObject.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisObject);
         AnnotationValue[][] parameterAnnotations = isExecutable ? registerParameterAnnotationValues((AnalysisMethod) analysisObject) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);

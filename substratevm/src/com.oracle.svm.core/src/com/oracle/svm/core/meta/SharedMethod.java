@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.meta;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -72,6 +73,7 @@ public interface SharedMethod extends ResolvedJavaMethod {
 
     int getCodeOffsetInImage();
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getDeoptOffsetInImage();
 
 }

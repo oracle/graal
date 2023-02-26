@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeInsertion;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +44,7 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Node.NodeInsertionStackTrace;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -221,15 +220,6 @@ public class Graph {
         return trackNodeSourcePosition() && sourcePosition != null ? new NodeSourcePositionScope(sourcePosition) : null;
     }
 
-    /**
-     * Opens a scope in which newly created nodes do not get any source information added.
-     *
-     * @return a {@link DebugCloseable} for managing the opened scope
-     */
-    public DebugCloseable withoutNodeSourcePosition() {
-        return new NodeSourcePositionScope(null);
-    }
-
     public boolean trackNodeSourcePosition() {
         return trackNodeSourcePosition;
     }
@@ -386,18 +376,6 @@ public class Graph {
      * Creates a copy of this graph.
      *
      * @param newName the name of the copy, used for debugging purposes (can be null)
-     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
-     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
-     *            accessed by multiple threads).
-     */
-    public final Graph copy(String newName, DebugContext debugForCopy) {
-        return copy(newName, null, debugForCopy);
-    }
-
-    /**
-     * Creates a copy of this graph.
-     *
-     * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
      *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
@@ -451,15 +429,6 @@ public class Graph {
     }
 
     /**
-     * Gets the number of times this graph has been {@linkplain #maybeCompress() compressed}. Node
-     * identifiers are only stable between compressions. To ensure this constraint is observed, any
-     * entity relying upon stable node identifiers should use {@link NodeIdAccessor}.
-     */
-    public int getCompressions() {
-        return compressions;
-    }
-
-    /**
      * Gets the number of nodes which have been deleted from this graph since it was last
      * {@linkplain #maybeCompress() compressed}.
      */
@@ -496,37 +465,51 @@ public class Graph {
             return node;
         }
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node);
+            return uniqueHelper(node, null);
         }
         return add(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
+        return addOrUniqueWithInputs(node, null);
+    }
+
+    public <T extends Node> T addOrUniqueWithInputs(T node, NodePredicate predicate) {
         if (node.isAlive()) {
             assert node.graph() == this;
             return node;
         } else {
             assert node.isUnregistered();
-            addInputs(node);
+            addInputs(node, predicate);
             if (node.getNodeClass().valueNumberable()) {
-                return uniqueHelper(node);
+                return uniqueHelper(node, predicate);
             }
             return add(node);
         }
     }
 
     public <T extends Node> T addWithoutUniqueWithInputs(T node) {
-        addInputs(node);
+        addInputs(node, null);
         return addHelper(node);
     }
 
     private final class AddInputsFilter extends Node.EdgeVisitor {
 
+        private final NodePredicate predicate;
+
+        AddInputsFilter(NodePredicate predicate) {
+            this.predicate = predicate;
+        }
+
+        AddInputsFilter() {
+            this(null);
+        }
+
         @Override
         public Node apply(Node self, Node input) {
             if (!input.isAlive()) {
                 assert !input.isDeleted();
-                return addOrUniqueWithInputs(input);
+                return addOrUniqueWithInputs(input, predicate);
             } else {
                 return input;
             }
@@ -536,8 +519,12 @@ public class Graph {
 
     private AddInputsFilter addInputsFilter = new AddInputsFilter();
 
-    private <T extends Node> void addInputs(T node) {
-        node.applyInputs(addInputsFilter);
+    private <T extends Node> void addInputs(T node, NodePredicate predicate) {
+        if (predicate == null) {
+            node.applyInputs(addInputsFilter);
+        } else {
+            node.applyInputs(new AddInputsFilter(predicate));
+        }
     }
 
     private <T extends Node> T addHelper(T node) {
@@ -768,12 +755,12 @@ public class Graph {
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
-        return uniqueHelper(node);
+        return uniqueHelper(node, null);
     }
 
-    <T extends Node> T uniqueHelper(T node) {
+    <T extends Node> T uniqueHelper(T node, NodePredicate predicate) {
         assert node.getNodeClass().valueNumberable();
-        T other = this.findDuplicate(node);
+        T other = this.findDuplicate(node, predicate);
         if (other != null) {
             if (other.getNodeSourcePosition() == null) {
                 other.setNodeSourcePosition(node.getNodeSourcePosition());
@@ -834,18 +821,23 @@ public class Graph {
         return result;
     }
 
-    /**
-     * Returns a possible duplicate for the given node in the graph or {@code null} if no such
-     * duplicate exists.
-     */
     @SuppressWarnings("unchecked")
     public <T extends Node> T findDuplicate(T node) {
+        return findDuplicate(node, null);
+    }
+
+    /**
+     * Returns a possible duplicate for the given node in the graph or {@code null} if no such
+     * duplicate exists. The predicate parameter is used to filter potential results.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Node> T findDuplicate(T node, NodePredicate predicate) {
         NodeClass<?> nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
-            if (cachedNode != null && cachedNode != node) {
+            if (cachedNode != null && cachedNode != node && (predicate == null || predicate.apply(cachedNode))) {
                 return (T) cachedNode;
             } else {
                 return null;
@@ -872,7 +864,7 @@ public class Graph {
             }
             if (minCountNode != null) {
                 for (Node usage : minCountNode.usages()) {
-                    if (usage != node && nodeClass == usage.getNodeClass() && node.valueEquals(usage) && nodeClass.equalInputs(node, usage) &&
+                    if (usage != node && nodeClass == usage.getNodeClass() && (predicate == null || predicate.apply(usage)) && node.valueEquals(usage) && nodeClass.equalInputs(node, usage) &&
                                     nodeClass.equalSuccessors(node, usage)) {
                         return (T) usage;
                     }
@@ -913,13 +905,6 @@ public class Graph {
         }
 
         /**
-         * Determines if this mark is positioned at the first live node in the graph.
-         */
-        public boolean isStart() {
-            return value == 0;
-        }
-
-        /**
          * Gets the {@linkplain Graph#getNodeCount() live node count} of the associated graph when
          * this object was created.
          */
@@ -949,13 +934,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark == null ? 0 : mark.getValue();
-        return new NodeIterable<>() {
-
-            @Override
-            public Iterator<Node> iterator() {
-                return new GraphNodeIterator(Graph.this, index);
-            }
-        };
+        return () -> new GraphNodeIterator(Graph.this, index);
     }
 
     /**
@@ -978,18 +957,6 @@ public class Graph {
         };
     }
 
-    // Fully qualified annotation name is required to satisfy javac
-    @org.graalvm.compiler.nodeinfo.NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-    static final class PlaceHolderNode extends Node {
-
-        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
-
-        protected PlaceHolderNode() {
-            super(TYPE);
-        }
-
-    }
-
     private static final CounterKey GraphCompressions = DebugContext.counter("GraphCompressions");
 
     @SuppressWarnings("unused")
@@ -1008,16 +975,6 @@ public class Graph {
      */
     public final boolean maybeCompress() {
         return compress(false);
-    }
-
-    /**
-     * Minimize the memory occupied by the graph by trimming all node arrays to the minimum size.
-     * Note that this can make subsequent optimization phases run slower, because additions to the
-     * graph must re-allocate larger arrays again. So invoking this method is only beneficial if a
-     * graph is alive for a long time.
-     */
-    public final void minimizeSize() {
-        compress(true);
     }
 
     protected boolean compress(boolean minimizeSize) {
@@ -1237,11 +1194,6 @@ public class Graph {
 
     }
 
-    @SuppressWarnings("unused")
-    private void postDeserialization() {
-        recomputeIterableNodeLists();
-    }
-
     /**
      * Rebuilds the lists used to support {@link #getNodes(NodeClass)}. This is useful for
      * serialization where the underlying {@linkplain NodeClass#iterableId() iterable ids} may have
@@ -1355,7 +1307,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, UnmodifiableEconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -1372,9 +1324,9 @@ public class Graph {
 
     private static final class MapReplacement implements DuplicationReplacement {
 
-        private final EconomicMap<Node, Node> map;
+        private final UnmodifiableEconomicMap<Node, Node> map;
 
-        MapReplacement(EconomicMap<Node, Node> map) {
+        MapReplacement(UnmodifiableEconomicMap<Node, Node> map) {
             this.map = map;
         }
 

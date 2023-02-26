@@ -40,18 +40,21 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CreateTestChildNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CreateTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeChildCreateTestFactory.CustomCreateTestNodeGen;
 import com.oracle.truffle.api.nodes.Node;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import org.junit.Assert;
-import org.junit.Test;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class NodeChildCreateTest {
 
     abstract static class CreateTestBaseNode extends Node {

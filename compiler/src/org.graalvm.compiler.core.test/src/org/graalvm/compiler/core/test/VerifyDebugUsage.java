@@ -80,20 +80,20 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
             if (callee.getDeclaringClass().equals(debugType)) {
                 boolean isDump = calleeName.equals("dump");
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || isDump) {
-                    verifyParameters(t, graph, t.arguments(), stringType, isDump ? 2 : 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, isDump ? 2 : 1);
                 }
             }
             if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
                 if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 1);
                 }
             }
             if (callee.getDeclaringClass().isAssignableFrom(graalErrorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
                 if (calleeName.equals("guarantee")) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 0);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 0);
                 }
                 if (calleeName.equals("<init>") && callee.getSignature().getParameterCount(false) == 2) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 1);
                 }
             }
         }
@@ -121,6 +121,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidConcatDumpUsagePhase.run",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidDumpUsagePhase.run",
                     "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
+                    "com.oracle.graal.pointsto.phases.InlineBeforeAnalysis.decodeGraph",
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpBasic"));
 
     /**
@@ -142,8 +143,9 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo"));
 
     @Override
-    protected void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx, int varArgsIndex) {
-        super.verifyParameters(callerGraph, debugCallTarget, args, stringType, startArgIdx, varArgsIndex);
+    protected void verifyParameters(MetaAccessProvider metaAccess1, StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType,
+                    int startArgIdx, int varArgsIndex) {
+        super.verifyParameters(metaAccess1, callerGraph, debugCallTarget, args, stringType, startArgIdx, varArgsIndex);
 
         ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
         if (verifiedCallee.getName().equals("dump")) {

@@ -31,7 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -83,10 +83,11 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         }
 
         LIR ir = lirGenRes.getLIR();
-        for (AbstractBlockBase<?> block : ir.getBlocks()) {
-            if (block == null) {
+        for (int blockId : ir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = ir.getBlockById(blockId);
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             for (int i = 0; i < instructions.size(); i++) {
                 LIRInstruction op = instructions.get(i);
@@ -104,8 +105,8 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         private final int newThreadStatus;
         private final CFunctionEpilogueMarker epilogueMarker;
 
-        private final Set<AbstractBlockBase<?>> processed = new HashSet<>();
-        private final Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
+        private final Set<BasicBlock<?>> processed = new HashSet<>();
+        private final Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         private final List<LIRFrameState> states = new ArrayList<>();
 
@@ -115,7 +116,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
             this.epilogueMarker = epilogueMarker;
         }
 
-        void run(AbstractBlockBase<?> startBlock, int startInstruction) {
+        void run(BasicBlock<?> startBlock, int startInstruction) {
 
             /*
              * Traverse all instructions of the control flow graph, starting with the instruction
@@ -149,7 +150,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
             }
         }
 
-        private void processBlock(AbstractBlockBase<?> block, int startInstruction) {
+        private void processBlock(BasicBlock<?> block, int startInstruction) {
             processed.add(block);
 
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
@@ -168,7 +169,8 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
             if (block.getSuccessorCount() == 0) {
                 throw VMError.shouldNotReachHere("No epilogue marker found");
             }
-            for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                BasicBlock<?> successor = block.getSuccessorAt(i);
                 if (!processed.contains(successor)) {
                     worklist.add(successor);
                 }

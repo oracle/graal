@@ -58,6 +58,8 @@ import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 final class NFIClosure implements TruffleObject {
 
@@ -83,7 +85,7 @@ final class NFIClosure implements TruffleObject {
             return ret;
         }
 
-        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"})
+        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {

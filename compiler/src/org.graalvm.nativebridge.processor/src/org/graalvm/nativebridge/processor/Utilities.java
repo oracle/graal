@@ -222,8 +222,7 @@ final class Utilities {
                 into.append("char");
                 break;
             case DECLARED:
-                TypeElement typeElement = (TypeElement) ((DeclaredType) type).asElement();
-                into.append(fqn ? typeElement.getQualifiedName() : typeElement.getSimpleName());
+                into.append(fqn ? getQualifiedName(type) : getSimpleName(type));
                 break;
             case DOUBLE:
                 into.append("double");
@@ -244,6 +243,14 @@ final class Utilities {
                 into.append("void");
                 break;
         }
+    }
+
+    static String getQualifiedName(TypeMirror type) {
+        return ((TypeElement) ((DeclaredType) type).asElement()).getQualifiedName().toString();
+    }
+
+    static String getSimpleName(TypeMirror type) {
+        return ((DeclaredType) type).asElement().getSimpleName().toString();
     }
 
     static String cSymbol(String name) {

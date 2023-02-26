@@ -144,4 +144,16 @@ public interface SamplerSampleWriterData extends PointerBase {
      */
     @RawField
     void setTruncated(boolean value);
+
+    /**
+     * Returns {@code true} if it is allowed to allocate new buffers and {@code false} otherwise.
+     */
+    @RawField
+    boolean getAllowBufferAllocation();
+
+    /**
+     * Determines if allocating new buffers is allowed.
+     */
+    @RawField
+    void setAllowBufferAllocation(boolean allowBufferAllocation);
 }
