@@ -138,10 +138,10 @@ public class GraalInterpreter {
             evaluatedParams.add(valueFactory.createFromObject(arg));
         }
 
-        // TODO: static class initialisation? (<clinit>): Does loadStaticFields handle this?
         InterpreterValue returnValue = myState.interpretGraph(graph, evaluatedParams);
-
-        // TODO: extend this to return objects, by implementing InterpreterValueObject.asObject().
+        if (returnValue == InterpreterValue.InterpreterValueVoid.INSTANCE) {
+            return null;
+        }
         Object returnObject = returnValue.asObject();
         if (returnValue.isUnwindException()) {
             GraalError.guarantee(returnObject instanceof Exception, "isException returned true but underlying interpreter value is not an Exception object");
