@@ -45,6 +45,10 @@ import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.languages.c.CPointer;
 
+/**
+ * Represents a factory that creates the internal representation of debug value for the C++
+ * programming language.
+ */
 public class CppObjectFactory extends DebugObjectFactory {
 
     @Override

@@ -49,6 +49,9 @@ import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 import org.graalvm.wasm.debugging.data.objects.DebugLink;
 
+/**
+ * Represents a debug type that represents a variant type.
+ */
 public class DebugVariantType extends DebugType {
     private final String name;
     private final DebugObject discriminant;
@@ -78,12 +81,12 @@ public class DebugVariantType extends DebugType {
     @Override
     public DebugObject asDebugObject(DebugContext context, DebugLocation location) {
         if (!discriminant.fitsIntoLong()) {
-            return new DebugConstantObject("discriminant", "unsupported discriminant type");
+            return DebugConstantObject.UNSUPPORTED;
         }
         final DebugLocation discLocation = discriminant.getLocation(location);
         final long valueIndex = discriminant.asLong(context, discLocation);
         if (!values.containsKey(valueIndex)) {
-            return new DebugConstantObject("unsupported", "Value not found");
+            return DebugConstantObject.UNSUPPORTED;
         }
         final DebugObject value = values.get(valueIndex);
         return new DebugLink(name + "::" + value.asTypeName(), value);

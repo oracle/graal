@@ -45,6 +45,10 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 
+/**
+ * Represents a debug object that maps the location of a member to a different location. This is
+ * useful when a class inherits members from another class to load them from the correct location.
+ */
 public class DebugRelocatedMember extends DebugObject {
     private final DebugLocation objectLocation;
     private final DebugObject object;

@@ -43,15 +43,39 @@ package org.graalvm.wasm.debugging.data;
 
 import org.graalvm.wasm.debugging.DebugLocation;
 
+/**
+ * Represents a value with a location in the source language like a variable or member.
+ */
 public abstract class DebugObject extends DebugType {
 
+    /**
+     * @return The string representation of the value.
+     */
     public abstract String toDisplayString();
 
+    /**
+     * Checks for the visibility of the value.
+     * 
+     * @param sourceCodeLocation the current source code location
+     * @return Whether the value is visible at the given source code location.
+     */
     public boolean isVisible(@SuppressWarnings("unused") int sourceCodeLocation) {
         return true;
     }
 
+    /**
+     * Gets the location of the value.
+     * 
+     * @param location the current reference location
+     * @return The new location.
+     */
     public abstract DebugLocation getLocation(DebugLocation location);
 
+    /**
+     * Gets the context of the value.
+     * 
+     * @param context the current context
+     * @return The new context.
+     */
     public abstract DebugContext getContext(DebugContext context);
 }

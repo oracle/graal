@@ -47,6 +47,9 @@ import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.encoding.AttributeEncodings;
 
+/**
+ * Represents a debug type that is a base type like int or float.
+ */
 public class DebugBaseType extends DebugType {
     private final String typeName;
     private final int encoding;
@@ -148,7 +151,7 @@ public class DebugBaseType extends DebugType {
         if (encoding == AttributeEncodings.UTF) {
             return toZeroTerminatedString(location);
         }
-        return new DebugConstantDisplayValue("unsupported base type");
+        return DebugConstantDisplayValue.UNSUPPORTED;
     }
 
     @Override

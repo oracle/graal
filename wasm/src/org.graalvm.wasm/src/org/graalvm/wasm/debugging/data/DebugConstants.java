@@ -41,29 +41,6 @@
 
 package org.graalvm.wasm.debugging.data;
 
-import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.parser.DebugParserContext;
-import org.graalvm.wasm.debugging.parser.DebugData;
-import org.graalvm.wasm.debugging.encoding.Attributes;
-
-import java.util.Optional;
-
-public class DebugEntryUtil {
-    public static int[] readPcs(DebugData data, DebugParserContext context) {
-        int lowPc = data.asI32(Attributes.LOW_PC);
-        int highPc;
-        final Optional<Integer> highPcValue = data.tryAsI32(Attributes.HIGH_PC);
-        if (highPcValue.isPresent()) {
-            highPc = highPcValue.get();
-            if (data.isConstant(Attributes.HIGH_PC)) {
-                highPc = lowPc + highPc;
-            }
-        } else {
-            final int rangeOffset = data.asI32(Attributes.RANGES);
-            final IntArrayList ranges = context.readRangeSection(rangeOffset);
-            lowPc = ranges.get(0);
-            highPc = ranges.get(ranges.size() - 1);
-        }
-        return new int[]{lowPc, highPc};
-    }
+public class DebugConstants {
+    public static final int ADDRESS_LENGTH = 4;
 }

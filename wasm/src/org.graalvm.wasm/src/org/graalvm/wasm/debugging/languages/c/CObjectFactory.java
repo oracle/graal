@@ -44,6 +44,10 @@ package org.graalvm.wasm.debugging.languages.c;
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a factory that creates the internal representation of debug values for the C
+ * programming language.
+ */
 public class CObjectFactory extends DebugObjectFactory {
     @Override
     public String languageName() {

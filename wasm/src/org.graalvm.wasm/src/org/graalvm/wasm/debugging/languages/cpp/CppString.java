@@ -44,9 +44,11 @@ package org.graalvm.wasm.debugging.languages.cpp;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
+import org.graalvm.wasm.debugging.languages.c.CConstants;
 
 /**
- * Intermediate representation of strings as produced by the Emscripten compiler.
+ * Represents the string type in C++. This allows to resolve the underlying values of the type and
+ * return it as a {@link String}.
  */
 public class CppString extends DebugType {
     private static final int STRING_REP_LENGTH = 12;
@@ -77,7 +79,7 @@ public class CppString extends DebugType {
         if (length == LONG_INDICATOR_VALUE) {
             stringLocation = location.loadAsLocation();
             if (stringLocation.isZero()) {
-                return CppConstants.NULL;
+                return CConstants.NULL;
             }
             final long longLength = location.addOffset(LONG_LENGTH_OFFSET).loadU32();
             length = (int) longLength;

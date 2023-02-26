@@ -46,6 +46,10 @@ import org.graalvm.wasm.debugging.data.types.DebugSubroutineType;
 
 import java.util.StringJoiner;
 
+/**
+ * Represents a {@link DebugSubroutineType} specific to Rust. It changes the string representation
+ * of the type.
+ */
 public class RustFunctionType extends DebugSubroutineType {
     public RustFunctionType(String name, DebugType returnType, DebugType[] parameterTypes) {
         super(name, returnType, parameterTypes);

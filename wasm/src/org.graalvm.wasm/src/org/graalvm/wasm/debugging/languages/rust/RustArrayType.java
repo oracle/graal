@@ -44,6 +44,10 @@ package org.graalvm.wasm.debugging.languages.rust;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.types.DebugArrayType;
 
+/**
+ * Represents a {@link DebugArrayType} specific to Rust. It changes the string representation of the
+ * type.
+ */
 public class RustArrayType extends DebugArrayType {
     public RustArrayType(String name, DebugType elementType, int[] dimensionLengths) {
         super(name, elementType, dimensionLengths);

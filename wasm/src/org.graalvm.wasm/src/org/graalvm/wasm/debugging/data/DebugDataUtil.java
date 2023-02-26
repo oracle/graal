@@ -39,55 +39,37 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.debugging.data.objects;
+package org.graalvm.wasm.debugging.data;
 
-import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugContext;
-import org.graalvm.wasm.debugging.data.DebugType;
-import org.graalvm.wasm.debugging.parser.DebugParser;
+import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.debugging.parser.DebugParserContext;
+import org.graalvm.wasm.debugging.parser.DebugData;
+import org.graalvm.wasm.debugging.encoding.Attributes;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import java.util.Optional;
 
 /**
- * Represents a debug object that is a parameter of a function.
+ * Utility class used for resolving the data of a debug entry.
  */
-public class DebugParameter extends DebugBinding {
-    private final String name;
-    @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
-
-    /**
-     * Creates a debug parameter.
-     * 
-     * @param name the name of the parameter
-     * @param type the type of the parameter
-     * @param locationExpression the location expression of the parameter. If the location
-     *            expression is null, the location of the parameter becomes invalid.
-     */
-    public DebugParameter(String name, DebugType type, byte[] locationExpression) {
-        super(type);
-        this.name = name;
-        this.locationExpression = locationExpression;
+public final class DebugDataUtil {
+    private DebugDataUtil() {
     }
 
-    private DebugLocation parameterLocation(DebugLocation baseLocation) {
-        if (locationExpression != null) {
-            return DebugParser.readExpression(locationExpression, baseLocation);
+    public static int[] readPcs(DebugData data, DebugParserContext context) {
+        int lowPc = data.asI32(Attributes.LOW_PC);
+        int highPc;
+        final Optional<Integer> highPcValue = data.tryAsI32(Attributes.HIGH_PC);
+        if (highPcValue.isPresent()) {
+            highPc = highPcValue.get();
+            if (data.isConstant(Attributes.HIGH_PC)) {
+                highPc = lowPc + highPc;
+            }
+        } else {
+            final int rangeOffset = data.asI32(Attributes.RANGES);
+            final IntArrayList ranges = context.readRangeSection(rangeOffset);
+            lowPc = ranges.get(0);
+            highPc = ranges.get(ranges.size() - 1);
         }
-        return baseLocation.invalidate();
-    }
-
-    @Override
-    public String toDisplayString() {
-        return name;
-    }
-
-    @Override
-    public DebugLocation getLocation(DebugLocation location) {
-        return parameterLocation(location);
-    }
-
-    @Override
-    public DebugContext getContext(DebugContext context) {
-        return context.with(name);
+        return new int[]{lowPc, highPc};
     }
 }

@@ -46,10 +46,15 @@ import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a debug object that binds a value of a specific type to a name. This could be a
+ * variable, a member of a struct, etc. This object forwards calls to its methods to its underlying
+ * type by default.
+ */
 public abstract class DebugBinding extends DebugObject {
     private final DebugType type;
 
-    public DebugBinding(DebugType type) {
+    protected DebugBinding(DebugType type) {
         this.type = type;
     }
 

@@ -43,6 +43,9 @@ package org.graalvm.wasm.debugging.parser;
 
 import org.graalvm.collections.EconomicMap;
 
+/**
+ * Represents the result of parsing debug information.
+ */
 public class DebugParseUnit {
     private final DebugData rootData;
     private final EconomicMap<Integer, DebugData> entries;

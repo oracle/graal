@@ -49,8 +49,9 @@ import org.graalvm.wasm.nodes.WasmDataAccess;
 import java.util.Objects;
 
 /**
- * Representation of a location descriptor. The value consist of a type (local variable, global
- * variable, value stack, memory) and a corresponding address.
+ * Represents a location descriptor. The value consist of a type (local variable, global variable,
+ * value stack, memory) and a corresponding address. This is needed to retrieve the value of a debug
+ * object.
  */
 public final class DebugLocation {
     private static final byte LOCAL = 1;
@@ -203,6 +204,9 @@ public final class DebugLocation {
      */
 
     public DebugLocation addOffset(long offset) {
+        if (isInvalid()) {
+            return this;
+        }
         if (isMemory()) {
             return new DebugLocation(address + offset, type, frame, dataAccess, Objects.requireNonNullElse(frameBase, this), addressSize);
         } else {
@@ -215,10 +219,10 @@ public final class DebugLocation {
     }
 
     /**
-     * @return If this location represents a valid address.
+     * @return If this location represents an invalid address.
      */
     public boolean isInvalid() {
-        return address < 0;
+        return address < 0 || ((isStack() || isLocal() || isGlobal()) && !isIntAddress());
     }
 
     private static int shiftInt(int value, int bitSize, int bitOffset) {
@@ -259,6 +263,10 @@ public final class DebugLocation {
 
     /**
      * Loads the signed byte value at this location.
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
      */
     public byte loadI8() {
         if (isStack() && isIntAddress()) {
@@ -281,6 +289,10 @@ public final class DebugLocation {
      *
      * @param bitSize the bit size
      * @param bitOffset the bit offset
+     *
+     * @throws WasmDebugException if this location is invalid
+     * 
+     * @see #isInvalid()
      */
     public byte loadI8(int bitSize, int bitOffset) {
         final byte value = loadI8();
@@ -302,6 +314,10 @@ public final class DebugLocation {
      * 
      * @param bitSize the bit size
      * @param bitOffset the bit offset
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
      */
     public int loadU8(int bitSize, int bitOffset) {
         final byte value = loadI8();
@@ -318,10 +334,24 @@ public final class DebugLocation {
         }
     }
 
+    /**
+     * Loads the unsigned byte at this location.
+     *
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public int loadU8() {
         return loadU8(-1, 0);
     }
 
+    /**
+     * Loads the signed short value at this location.
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public short loadI16() {
         if (isStack() && isIntAddress()) {
             return (short) dataAccess.loadI32FromStack(frame, (int) address);
@@ -338,6 +368,16 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to read short value from " + this);
     }
 
+    /**
+     * Loads the signed short value at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public short loadI16(int bitSize, int bitOffset) {
         final short value = loadI16();
         if (bitSize < 0) {
@@ -353,6 +393,15 @@ public final class DebugLocation {
         }
     }
 
+    /**
+     * Loads the unsigned short value at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public int loadU16(int bitSize, int bitOffset) {
         final short value = loadI16();
         if (bitSize < 0) {
@@ -368,11 +417,13 @@ public final class DebugLocation {
         }
     }
 
-    @SuppressWarnings("unused")
-    public int loadU16() {
-        return loadU16(-1, 0);
-    }
-
+    /**
+     * Loads the signed integer at this location.
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public int loadI32() {
         if (isStack() && isIntAddress()) {
             return dataAccess.loadI32FromStack(frame, (int) address);
@@ -389,6 +440,16 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to read int value from " + this);
     }
 
+    /**
+     * Loads the signed integer at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public int loadI32(int bitSize, int bitOffset) {
         final int value = loadI32();
         if (bitSize < 0) {
@@ -404,6 +465,16 @@ public final class DebugLocation {
         }
     }
 
+    /**
+     * Loads the unsigned integer at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public long loadU32(int bitSize, int bitOffset) {
         final int value = loadI32();
         if (bitSize < 0) {
@@ -419,10 +490,24 @@ public final class DebugLocation {
         }
     }
 
+    /**
+     * Loads the unsigned integer at this location.
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     * 
+     * @see #isInvalid()
+     */
     public long loadU32() {
         return loadU32(-1, 0);
     }
 
+    /**
+     * Loads the signed long at this location.
+     *
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public long loadI64() {
         if (isStack() && isIntAddress()) {
             return dataAccess.loadI64FromStack(frame, (int) address);
@@ -439,6 +524,16 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to read long value from " + this);
     }
 
+    /**
+     * Loads the signed long at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     *
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public long loadI64(int bitSize, int bitOffset) {
         final long value = loadI64();
         if (bitSize < 0) {
@@ -454,6 +549,16 @@ public final class DebugLocation {
         }
     }
 
+    /**
+     * Loads the unsigned long at this location.
+     * 
+     * @param bitSize the bit size
+     * @param bitOffset the bit offset
+     *
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public String loadU64(int bitSize, int bitOffset) {
         final long value = loadI64();
         if (bitSize < 0) {
@@ -469,11 +574,13 @@ public final class DebugLocation {
         }
     }
 
-    @SuppressWarnings("unused")
-    public String loadU64() {
-        return loadU64(-1, 0);
-    }
-
+    /**
+     * Loads the float at this location.
+     *
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public float loadF32() {
         if (isStack() && isIntAddress()) {
             return dataAccess.loadF32FromStack(frame, (int) address);
@@ -490,6 +597,13 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to load float value from " + this);
     }
 
+    /**
+     * Loads the double at this location.
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public double loadF64() {
         if (isStack() && isIntAddress()) {
             return dataAccess.loadF64FromStack(frame, (int) address);
@@ -506,7 +620,19 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to load double value from " + this);
     }
 
+    /**
+     * Loads the string at this location.
+     * 
+     * @param length the length of the string
+     * 
+     * @throws WasmDebugException if this location is invalid.
+     *
+     * @see #isInvalid()
+     */
     public String loadString(int length) {
+        if (isInvalid()) {
+            throw new WasmDebugException("Invalid location");
+        }
         // Make sure non memory locations are resolved.
         return addOffset(0).loadStringFromMemory(length);
     }
@@ -518,7 +644,13 @@ public final class DebugLocation {
         throw new WasmDebugException("Unable to read string value from " + this);
     }
 
+    /**
+     * Loads the location value at this location.
+     */
     public DebugLocation loadAsLocation() {
+        if (isInvalid()) {
+            return this;
+        }
         if (addressSize == DebugAddressSize.I32) {
             return createMemoryAccess(loadI32(), frame, dataAccess, frameBase, addressSize);
         }
@@ -528,10 +660,16 @@ public final class DebugLocation {
         return createInvalid(frameBase, frame, dataAccess, addressSize);
     }
 
+    /**
+     * Invalidates this location.
+     */
     public DebugLocation invalidate() {
         return createInvalid(frameBase, frame, dataAccess, addressSize);
     }
 
+    /**
+     * @return Whether the address of this location is zero or not.
+     */
     public boolean isZero() {
         return address == 0L;
     }

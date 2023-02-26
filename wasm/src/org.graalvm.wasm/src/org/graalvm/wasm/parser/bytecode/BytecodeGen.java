@@ -44,7 +44,7 @@ package org.graalvm.wasm.parser.bytecode;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 /**
- * Base class for generating bytecode data.
+ * Class for generating bytecode data.
  */
 public class BytecodeGen {
     private final ByteArrayList data;

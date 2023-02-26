@@ -42,11 +42,16 @@
 package org.graalvm.wasm.debugging.data.types;
 
 import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugConstants;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
+import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 import org.graalvm.wasm.debugging.data.objects.DebugValue;
 
+/**
+ * Represents a debug type that is a pointer.
+ */
 public class DebugPointerType extends DebugType {
     protected final DebugType baseType;
 
@@ -61,7 +66,7 @@ public class DebugPointerType extends DebugType {
 
     @Override
     public int valueLength() {
-        return 4;
+        return DebugConstants.ADDRESS_LENGTH;
     }
 
     @Override
@@ -77,6 +82,9 @@ public class DebugPointerType extends DebugType {
     @Override
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
         final DebugLocation pointerLocation = location.loadAsLocation();
+        if (pointerLocation.isInvalid()) {
+            return DebugConstantObject.UNDEFINED;
+        }
         final String name = context.elementName().orElse("");
         return new DebugValue("*" + name, pointerLocation, baseType);
     }

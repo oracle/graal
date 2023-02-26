@@ -46,6 +46,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+/**
+ * The debug context used for resolving values. Represents information like the current source code
+ * location or the name of the variable that is resolved.
+ */
 public class DebugContext {
     private final int sourceCodeLocation;
     private String elementName = null;
@@ -64,18 +68,36 @@ public class DebugContext {
         this.sourceCodeLocation = sourceCodeLocation;
     }
 
+    /**
+     * Creates a duplicate of the context with a changed element name.
+     * 
+     * @param newElementName the new element name
+     */
     public DebugContext with(String newElementName) {
         return new DebugContext(newElementName, memberBitSize, memberBitOffset, sourceCodeLocation);
     }
 
+    /**
+     * Creates a duplicate of the context with updated information.
+     * 
+     * @param newElementName the name element name
+     * @param newBitSize the new bit size
+     * @param newBitOffset the new bit offset
+     */
     public DebugContext with(String newElementName, int newBitSize, int newBitOffset) {
         return new DebugContext(newElementName, newBitSize, newBitOffset, sourceCodeLocation);
     }
 
+    /**
+     * @return The current position in the source code.
+     */
     public int sourceCodeLocation() {
         return sourceCodeLocation;
     }
 
+    /**
+     * @return The current element name if it is present.
+     */
     public Optional<String> elementName() {
         if (elementName != null) {
             return Optional.of(elementName);
@@ -83,6 +105,9 @@ public class DebugContext {
         return Optional.empty();
     }
 
+    /**
+     * @return The current bit size if it is present.
+     */
     public OptionalInt memberBitSize() {
         if (memberBitSize != -1) {
             return OptionalInt.of(memberBitSize);
@@ -90,6 +115,9 @@ public class DebugContext {
         return OptionalInt.empty();
     }
 
+    /**
+     * @return The current bit offset if it is present.
+     */
     public OptionalInt memberBitOffset() {
         if (memberBitOffset != -1) {
             return OptionalInt.of(memberBitOffset);

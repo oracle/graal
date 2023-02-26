@@ -39,55 +39,10 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.debugging.data.objects;
+package org.graalvm.wasm.debugging.languages.c;
 
-import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugContext;
-import org.graalvm.wasm.debugging.data.DebugType;
-import org.graalvm.wasm.debugging.parser.DebugParser;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
-/**
- * Represents a debug object that is a parameter of a function.
- */
-public class DebugParameter extends DebugBinding {
-    private final String name;
-    @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
-
-    /**
-     * Creates a debug parameter.
-     * 
-     * @param name the name of the parameter
-     * @param type the type of the parameter
-     * @param locationExpression the location expression of the parameter. If the location
-     *            expression is null, the location of the parameter becomes invalid.
-     */
-    public DebugParameter(String name, DebugType type, byte[] locationExpression) {
-        super(type);
-        this.name = name;
-        this.locationExpression = locationExpression;
-    }
-
-    private DebugLocation parameterLocation(DebugLocation baseLocation) {
-        if (locationExpression != null) {
-            return DebugParser.readExpression(locationExpression, baseLocation);
-        }
-        return baseLocation.invalidate();
-    }
-
-    @Override
-    public String toDisplayString() {
-        return name;
-    }
-
-    @Override
-    public DebugLocation getLocation(DebugLocation location) {
-        return parameterLocation(location);
-    }
-
-    @Override
-    public DebugContext getContext(DebugContext context) {
-        return context.with(name);
-    }
+public final class CConstants {
+    public static final DebugConstantDisplayValue NULL = new DebugConstantDisplayValue("null");
 }

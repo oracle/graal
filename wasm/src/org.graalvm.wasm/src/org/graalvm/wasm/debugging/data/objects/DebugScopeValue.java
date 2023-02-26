@@ -47,6 +47,9 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 
+/**
+ * Represents the debug object in a scope like a function scope or global scope.
+ */
 public class DebugScopeValue extends DebugObject {
     private final String name;
     private final List<DebugObject> values;

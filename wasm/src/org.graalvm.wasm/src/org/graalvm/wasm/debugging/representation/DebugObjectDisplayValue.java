@@ -64,7 +64,7 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
 /**
- * Representation of an object scope in the debug environment.
+ * Represents an object scope in the debug environment.
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")

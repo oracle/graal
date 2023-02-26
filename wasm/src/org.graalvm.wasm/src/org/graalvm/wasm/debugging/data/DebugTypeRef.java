@@ -42,6 +42,10 @@ package org.graalvm.wasm.debugging.data;
 
 import org.graalvm.wasm.debugging.DebugLocation;
 
+/**
+ * Represents a reference to a {@link DebugType}. This is necessary to resolve circular dependencies
+ * while parsing the debug information.
+ */
 public final class DebugTypeRef extends DebugType {
     private DebugType delegate;
 

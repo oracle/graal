@@ -47,8 +47,10 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 import org.graalvm.wasm.debugging.data.types.DebugPointerType;
-import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
+/**
+ * Represents a {@link DebugPointerType} specific to C-like languages. It allows for null pointers.
+ */
 public class CPointer extends DebugPointerType {
     public CPointer(DebugType baseType) {
         super(baseType);
@@ -58,7 +60,7 @@ public class CPointer extends DebugPointerType {
     public DebugObject readMember(DebugContext context, DebugLocation location, int index) {
         if (location.loadAsLocation().isZero()) {
             final String name = context.elementName().orElse("");
-            return new DebugConstantObject("*" + name, new DebugConstantDisplayValue("null"));
+            return new DebugConstantObject("*" + name, CConstants.NULL);
         }
         return super.readMember(context, location, index);
     }

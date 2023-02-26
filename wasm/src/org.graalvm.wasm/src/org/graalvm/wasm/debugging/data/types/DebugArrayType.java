@@ -47,11 +47,21 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.objects.DebugValue;
 
+/**
+ * Represents a debug type that is an array.
+ */
 public class DebugArrayType extends DebugType {
     protected final String typeName;
     protected final DebugType elementType;
     protected final int[] dimensionSizes;
 
+    /**
+     * Creates an array type.
+     * 
+     * @param typeName the name of the type
+     * @param elementType the element type of the array
+     * @param dimensionSizes the number of elements in each dimension of the array
+     */
     public DebugArrayType(String typeName, DebugType elementType, int[] dimensionSizes) {
         this.typeName = typeName;
         this.elementType = elementType;

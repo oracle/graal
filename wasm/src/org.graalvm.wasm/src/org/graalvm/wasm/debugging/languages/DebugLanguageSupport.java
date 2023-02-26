@@ -47,10 +47,18 @@ import org.graalvm.wasm.debugging.languages.c.CObjectFactory;
 import org.graalvm.wasm.debugging.languages.cpp.CppObjectFactory;
 import org.graalvm.wasm.debugging.languages.rust.RustObjectFactory;
 
+/**
+ * Represents the supported debug languages.
+ */
 public final class DebugLanguageSupport {
     private DebugLanguageSupport() {
     }
 
+    /**
+     * Returns a {@link DebugObjectFactory} based on the given language id.
+     * 
+     * @param languageId the language id
+     */
     public static DebugObjectFactory getObjectFactory(int languageId) {
         switch (languageId) {
             case Languages.C:

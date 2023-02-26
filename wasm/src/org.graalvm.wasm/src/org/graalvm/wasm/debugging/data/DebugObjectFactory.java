@@ -74,6 +74,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
+/**
+ * Represents a factory that creates the internal representation of all types and objects in the
+ * debug information.
+ */
 public abstract class DebugObjectFactory {
     private static final DebugObject[] EMPTY_OBJECTS = {};
     private static final DebugType[] EMPTY_TYPES = {};
@@ -81,8 +85,14 @@ public abstract class DebugObjectFactory {
     private final EconomicMap<Integer, DebugType> types = EconomicMap.create();
     private final EconomicMap<Integer, DebugObject> objects = EconomicMap.create();
 
+    /**
+     * @return The name of the source language.
+     */
     public abstract String languageName();
 
+    /**
+     * @return The namespace separator used in the source language.
+     */
     protected abstract String namespaceSeparator();
 
     protected DebugType createArrayType(String name, DebugType elementType, int[] dimensionLengths) {
@@ -135,7 +145,7 @@ public abstract class DebugObjectFactory {
     }
 
     protected DebugType createUnspecifiedType() {
-        return new DebugConstantObject("Unspecified", new DebugConstantDisplayValue("unspecified"));
+        return DebugConstantObject.UNSPECIFIED;
     }
 
     private Optional<DebugType> parseArrayType(DebugParserContext context, DebugParserScope scope, DebugData data) {
@@ -202,7 +212,7 @@ public abstract class DebugObjectFactory {
     private Optional<DebugType> parseLexicalBlock(DebugParserContext context, DebugParserScope scope, DebugData data) {
         final DebugParserScope blockScope;
         if (data.hasAttribute(Attributes.LOW_PC)) {
-            final int[] pcs = DebugEntryUtil.readPcs(data, context);
+            final int[] pcs = DebugDataUtil.readPcs(data, context);
             blockScope = scope.with(null, pcs[0], pcs[1]);
         } else {
             blockScope = scope;
@@ -339,7 +349,7 @@ public abstract class DebugObjectFactory {
             return Optional.empty();
         }
 
-        final int[] pcs = DebugEntryUtil.readPcs(data, context);
+        final int[] pcs = DebugDataUtil.readPcs(data, context);
         final int scopeStartPc = pcs[0];
         final int scopeEndPc = pcs[1];
         final int startLine = lineMap.getLine(scopeStartPc);
@@ -388,7 +398,7 @@ public abstract class DebugObjectFactory {
         if (locationExpression != null) {
             variable = new DebugVariable(name, type, locationExpression, startLocation, endLocation);
         } else {
-            variable = new DebugConstantObject(name, new DebugConstantDisplayValue("variable not present"));
+            variable = DebugConstantObject.UNDEFINED;
         }
         if (variableName != null) {
             scope.addVariable(variable);
@@ -410,6 +420,14 @@ public abstract class DebugObjectFactory {
         return parse(context, scope, data.get());
     }
 
+    /**
+     * Parses the given debug data and produces the associated internal type or object
+     * representation if possible.
+     * 
+     * @param context the parsing context
+     * @param scope the parsing scope
+     * @param data the data of the debug entry
+     */
     @TruffleBoundary
     public Optional<? extends DebugType> parse(DebugParserContext context, DebugParserScope scope, DebugData data) {
         final int tag = data.tag();

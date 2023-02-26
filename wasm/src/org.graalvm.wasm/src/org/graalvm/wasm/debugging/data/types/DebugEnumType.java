@@ -47,6 +47,9 @@ import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a debug type that is an enum with a base type as the discriminator.
+ */
 public class DebugEnumType extends DebugType {
     private final String typeName;
     private final DebugType baseType;
@@ -76,7 +79,7 @@ public class DebugEnumType extends DebugType {
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
         if (!baseType.fitsIntoLong()) {
-            return new DebugConstantDisplayValue("unsupported enum type");
+            return DebugConstantDisplayValue.UNSUPPORTED;
         }
         final long index = baseType.asLong(context, location);
         if (values.containsKey(index)) {

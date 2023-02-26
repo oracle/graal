@@ -42,6 +42,9 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+/**
+ * Represents a function used for notifying an instrument.
+ */
 @FunctionalInterface
 public interface WasmNotifyFunction {
     void notifyLine(VirtualFrame frame, int currentLine, int nextLine, int sourceCodeLocation);

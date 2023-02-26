@@ -44,6 +44,10 @@ package org.graalvm.wasm.debugging.languages.rust;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.types.DebugPointerType;
 
+/**
+ * Represents a {@link DebugPointerType} specific to Rust. It changes the string representation of
+ * the type.
+ */
 public class RustPointer extends DebugPointerType {
     public RustPointer(DebugType baseType) {
         super(baseType);

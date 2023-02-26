@@ -49,6 +49,9 @@ import org.graalvm.wasm.debugging.data.DebugType;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.debugging.data.objects.DebugRelocatedMember;
 
+/**
+ * Represents a debug type that represents a structure type like a class, struct, or union.
+ */
 public class DebugStructType extends DebugType {
     private final String name;
     @CompilationFinal(dimensions = 1) private final DebugObject[] members;

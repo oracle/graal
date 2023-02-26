@@ -49,6 +49,9 @@ import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a debug type that represents a subroutine like a function type.
+ */
 public class DebugSubroutineType extends DebugType {
     protected final String name;
     protected final DebugType returnType;

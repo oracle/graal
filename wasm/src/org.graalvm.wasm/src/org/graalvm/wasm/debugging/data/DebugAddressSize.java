@@ -41,6 +41,9 @@
 
 package org.graalvm.wasm.debugging.data;
 
+/**
+ * The address size used in the debug information. Currently only 32-bit addresses are supported.
+ */
 public enum DebugAddressSize {
     I32,
     I64

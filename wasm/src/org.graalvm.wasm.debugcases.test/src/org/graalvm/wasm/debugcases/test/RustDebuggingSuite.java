@@ -272,7 +272,7 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
             assertHidden(locals, "j");
             assertHidden(locals, "k");
             assertHidden(locals, "l");
@@ -294,8 +294,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertHidden(locals, "k");
             assertHidden(locals, "l");
 
@@ -316,8 +316,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertHidden(locals, "l");
 
@@ -338,8 +338,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 
@@ -360,8 +360,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 
@@ -382,8 +382,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 
@@ -404,8 +404,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 
@@ -426,8 +426,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 
@@ -448,8 +448,8 @@ public class RustDebuggingSuite extends DebuggingSuiteBase {
             assertValueEquals(locals, "f", 32L);
             assertValueEquals(locals, "g", -64L);
             assertValueEquals(locals, "h", "64");
-            assertValueEquals(locals, "i", "unsupported base type");
-            assertValueEquals(locals, "j", "unsupported base type");
+            assertValueEquals(locals, "i", "unsupported");
+            assertValueEquals(locals, "j", "unsupported");
             assertValueEquals(locals, "k", 10);
             assertValueEquals(locals, "l", 32L);
 

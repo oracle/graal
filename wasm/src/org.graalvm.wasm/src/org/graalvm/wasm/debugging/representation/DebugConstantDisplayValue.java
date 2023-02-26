@@ -46,8 +46,15 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+/**
+ * Represents a constant value in the debug environment.
+ */
 @ExportLibrary(InteropLibrary.class)
 public class DebugConstantDisplayValue implements TruffleObject {
+    public static DebugConstantDisplayValue UNDEFINED = new DebugConstantDisplayValue("undefined");
+    public static DebugConstantDisplayValue UNSUPPORTED = new DebugConstantDisplayValue("unsupported");
+    public static DebugConstantDisplayValue UNSPECIFIED = new DebugConstantDisplayValue("unspecified");
+
     private final Object value;
 
     public DebugConstantDisplayValue(String value) {

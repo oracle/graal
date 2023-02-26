@@ -47,7 +47,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.DebugLineMap;
 import org.graalvm.wasm.debugging.WasmDebugException;
-import org.graalvm.wasm.debugging.data.DebugEntryUtil;
+import org.graalvm.wasm.debugging.data.DebugDataUtil;
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.encoding.Attributes;
@@ -56,6 +56,9 @@ import org.graalvm.wasm.debugging.languages.DebugLanguageSupport;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 
+/**
+ * Extracts the debug information and converts it to an internal representation of values.
+ */
 public class DebugTranslator {
     private final DebugParser parser;
     private final DebugSourceLoader sourceLoader;
@@ -132,7 +135,7 @@ public class DebugTranslator {
             return null;
         }
         final DebugParserContext context = new DebugParserContext(customData, debugInfoOffset, entries, fileLineMaps, fileSources);
-        final int[] pcs = DebugEntryUtil.readPcs(data, context);
+        final int[] pcs = DebugDataUtil.readPcs(data, context);
         final int scopeStart = pcs[0];
         final int scopeEnd = pcs[1];
         final DebugParserScope scope = context.globalScope().with(null, scopeStart, scopeEnd);

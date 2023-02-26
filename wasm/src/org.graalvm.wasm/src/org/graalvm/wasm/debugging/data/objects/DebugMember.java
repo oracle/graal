@@ -48,6 +48,9 @@ import org.graalvm.wasm.debugging.parser.DebugParser;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+/**
+ * Represents a debug object that is a member of a structure type like a struct or a variant type.
+ */
 public class DebugMember extends DebugBinding {
     private final String name;
     @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
@@ -55,6 +58,18 @@ public class DebugMember extends DebugBinding {
     private final int bitOffset;
     private final int bitSize;
 
+    /**
+     * Creates a debug member.
+     * 
+     * @param name the name of the member
+     * @param type the type of the member
+     * @param locationExpression the location expression of the member. If the location expression
+     *            is null, an offset must be provided.
+     * @param offset the offset from the start of the structure type. If a location expression is
+     *            provided, this value is ignored.
+     * @param bitOffset the bit offset from the start of the structure type
+     * @param bitSize the bit size used to represent this member
+     */
     public DebugMember(String name, DebugType type, byte[] locationExpression, int offset, int bitOffset, int bitSize) {
         super(type);
         this.name = name;

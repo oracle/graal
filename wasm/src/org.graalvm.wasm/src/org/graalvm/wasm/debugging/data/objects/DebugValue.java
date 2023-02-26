@@ -45,6 +45,9 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a debug binding at a specific location like an array element or a pointer.
+ */
 public class DebugValue extends DebugBinding {
     private final String name;
     private final DebugLocation loc;

@@ -55,7 +55,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 /**
- * Representation of an array scope in the debug environment.
+ * Represents an array scope in the debug environment.
  */
 @SuppressWarnings("static-method")
 @ExportLibrary(InteropLibrary.class)

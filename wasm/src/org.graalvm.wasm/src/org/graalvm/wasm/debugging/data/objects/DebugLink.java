@@ -45,6 +45,11 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 
+/**
+ * Represents a debug object that assigns a different type name to a given object. This allows for
+ * type definitions to be represented. All calls except for the type name are forwarded to the
+ * underlying reference.
+ */
 public class DebugLink extends DebugObject {
     private final String typeName;
     private final DebugObject reference;

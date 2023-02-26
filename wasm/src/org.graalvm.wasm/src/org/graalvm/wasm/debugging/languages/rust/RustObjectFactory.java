@@ -47,6 +47,10 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugObjectFactory;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a factory that creates the internal representation of debug values for the Rust
+ * programming language.
+ */
 public class RustObjectFactory extends DebugObjectFactory {
 
     @Override

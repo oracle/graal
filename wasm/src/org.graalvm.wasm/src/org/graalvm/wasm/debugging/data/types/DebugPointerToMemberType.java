@@ -42,12 +42,16 @@
 package org.graalvm.wasm.debugging.data.types;
 
 import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugConstants;
 import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
 
+/**
+ * Represents a debug type that is a pointer to a member of a structure type.
+ */
 public class DebugPointerToMemberType extends DebugType {
     private final DebugType baseType;
     private final DebugType containingType;
@@ -73,7 +77,7 @@ public class DebugPointerToMemberType extends DebugType {
 
     @Override
     public int valueLength() {
-        return 4;
+        return DebugConstants.ADDRESS_LENGTH;
     }
 
     @Override

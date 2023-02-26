@@ -41,8 +41,9 @@
 
 package org.graalvm.wasm.debugging.languages.rust;
 
-public class RustConstants {
+public final class RustConstants {
     public static final String STRING_TYPE = "&str";
-    public static final String STRING_LENGTH = "length";
-    public static final String STRING_DATA = "data_ptr";
+
+    private RustConstants() {
+    }
 }

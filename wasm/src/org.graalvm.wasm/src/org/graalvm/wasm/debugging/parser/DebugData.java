@@ -48,6 +48,9 @@ import org.graalvm.wasm.debugging.encoding.DataEncoding;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+/**
+ * Represents the data of an entry in the Dwarf Debug Information Format v4.
+ */
 public class DebugData {
     private final int tag;
     private final int offset;
@@ -92,6 +95,12 @@ public class DebugData {
         return -1;
     }
 
+    /**
+     * Converts the underlying attribute value to an integer.
+     *
+     * @throws WasmDebugException if the attribute is not present or the value of the attribute
+     *             cannot be converted to an integer.
+     */
     public int asI32(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -111,6 +120,10 @@ public class DebugData {
         return value;
     }
 
+    /**
+     * Tries to convert the underlying value to an integer. Returns {@link Optional#empty()} if the
+     * attribute is not present or the attribute value cannot be converted to an integer.
+     */
     public Optional<Integer> tryAsI32(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -130,6 +143,12 @@ public class DebugData {
         return Optional.of(value);
     }
 
+    /**
+     * Converts the underlying attribute value to a long.
+     * 
+     * @throws WasmDebugException if the attribute is not present or the value of the attribute
+     *             cannot be converted to a long.
+     */
     public long asI64(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -151,6 +170,10 @@ public class DebugData {
         return value;
     }
 
+    /**
+     * Tries to convert the underlying value to a long. Returns {@link Optional#empty()} if the
+     * attribute is not present or the attribute value cannot be converted to a long.
+     */
     public Optional<Long> tryAsI64(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -172,6 +195,12 @@ public class DebugData {
         return Optional.of(value);
     }
 
+    /**
+     * Extracts the underlying attribute as a {@link String}.
+     *
+     * @throws WasmDebugException if the attribute is not present or the value of the attribute is
+     *             not a {@link String}.
+     */
     public String asString(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -184,6 +213,11 @@ public class DebugData {
         throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
     }
 
+    /**
+     * Tries to extract the underlying attribute as a {@link String}. Returns
+     * {@link Optional#empty()} if the attribute is not present or the attribute value is not a
+     * {@link String}.
+     */
     public Optional<String> tryAsString(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -196,6 +230,12 @@ public class DebugData {
         return Optional.empty();
     }
 
+    /**
+     * Extracts the underlying attribute as a byte array.
+     *
+     * @throws WasmDebugException if the attribute is not present or the value of the attribute is
+     *             not a byte array.
+     */
     public byte[] asByteArray(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -208,6 +248,10 @@ public class DebugData {
         throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
     }
 
+    /**
+     * Tries to extract the underlying attribute as a byte array. Returns {@link Optional#empty()}
+     * if the attribute is not present or the attribute value is not a byte array.
+     */
     public Optional<byte[]> tryAsByteArray(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -220,6 +264,10 @@ public class DebugData {
         return Optional.empty();
     }
 
+    /**
+     * Returns <code>true</code> if the attribute is represented by a constant value, else
+     * <code>false</code>.
+     */
     public boolean isConstant(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -228,6 +276,10 @@ public class DebugData {
         return DataEncoding.isConstant(attributeEncoding(attributeInfo[index]));
     }
 
+    /**
+     * Returns <code>true</code> if the attribute is a boolean value and its value is
+     * <code>true</code>, else <code>false</code>.
+     */
     public boolean exists(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
@@ -240,6 +292,9 @@ public class DebugData {
         return false;
     }
 
+    /**
+     * Returns <code>true</code> if the attribute is present, else <code>false</code>.
+     */
     public boolean hasAttribute(int attribute) {
         return attributeIndex(attribute) != -1;
     }

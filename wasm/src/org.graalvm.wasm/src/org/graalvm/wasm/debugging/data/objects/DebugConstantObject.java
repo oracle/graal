@@ -44,8 +44,18 @@ package org.graalvm.wasm.debugging.data.objects;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
+/**
+ * Represents a debug object with a name and a constant value. The name is used as both the display
+ * string and the type name. The constant does not have a length and should therefore not be used as
+ * a member of structure types or arrays.
+ */
 public class DebugConstantObject extends DebugObject {
+    public static final DebugConstantObject UNDEFINED = new DebugConstantObject("undefined", DebugConstantDisplayValue.UNDEFINED);
+    public static final DebugConstantObject UNSUPPORTED = new DebugConstantObject("unsupported", DebugConstantDisplayValue.UNSUPPORTED);
+    public static final DebugConstantObject UNSPECIFIED = new DebugConstantObject("unspecified", DebugConstantDisplayValue.UNSPECIFIED);
+
     private final String name;
     private final Object constant;
 

@@ -52,6 +52,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Represents a function in the debug information.
+ */
 public class DebugFunction extends DebugType {
     private final String name;
     private final DebugLineMap lineMap;
@@ -79,30 +82,53 @@ public class DebugFunction extends DebugType {
         return 0;
     }
 
+    /**
+     * @return Whether globals are defined or not.
+     */
     public boolean hasGlobals() {
         return globals.size() != 0;
     }
 
+    /**
+     * @return A scope capturing the global values of the current application.
+     */
     public DebugObject globals() {
         return new DebugScopeValue("globals", globals);
     }
 
+    /**
+     * @return A scope capturing the local values of the function.
+     */
     public DebugObject locals() {
         return new DebugScopeValue("locals", variables);
     }
 
+    /**
+     * @param frame the frame
+     * @param dataAccess the data access
+     * @return The frame base location of the function.
+     */
     public DebugLocation frameBase(MaterializedFrame frame, WasmDataAccess dataAccess) {
         return DebugLocation.createFrameBase(frame, dataAccess, frameBaseExpression);
     }
 
+    /**
+     * @return The source section of the function.
+     */
     public SourceSection sourceSection() {
         return sourceSection;
     }
 
+    /**
+     * @return The line map associated with the function.
+     */
     public DebugLineMap lineMap() {
         return lineMap;
     }
 
+    /**
+     * @return The name of the function.
+     */
     public String name() {
         return name;
     }

@@ -59,6 +59,13 @@ import com.oracle.truffle.api.source.Source;
 public class DebugSourceLoader {
     private final Map<Path, Source> cache = new HashMap<>();
 
+    /**
+     * Loads the source at the given path.
+     * 
+     * @param path the path of the source
+     * @param language the source language
+     * @param testMode if true, load the source as a resource instead of from the file system.
+     */
     @TruffleBoundary
     public Source load(Path path, String language, boolean testMode) {
         if (path == null || language == null) {

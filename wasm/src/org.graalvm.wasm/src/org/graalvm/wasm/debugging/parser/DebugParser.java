@@ -63,6 +63,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.debugging.data.DebugAddressSize;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
+/**
+ * Represents a parser for the DWARF Debug Information Format.
+ */
 public class DebugParser {
 
     @CompilationFinal(dimensions = 1) private final byte[] data;

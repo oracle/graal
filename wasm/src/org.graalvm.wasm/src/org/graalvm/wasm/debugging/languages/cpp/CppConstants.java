@@ -41,7 +41,7 @@
 
 package org.graalvm.wasm.debugging.languages.cpp;
 
-public class CppConstants {
+public final class CppConstants {
     public static final String STRING_TYPE = "string";
-    public static final String NULL = "null";
+
 }

@@ -46,6 +46,9 @@ import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 
+/**
+ * Represents a debug type that represents a type definition.
+ */
 public class DebugTypeDef extends DebugType {
     private final String name;
     private final DebugType type;

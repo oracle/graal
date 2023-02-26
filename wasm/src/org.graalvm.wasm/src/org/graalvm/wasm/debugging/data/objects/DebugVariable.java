@@ -48,18 +48,21 @@ import org.graalvm.wasm.debugging.parser.DebugParser;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+/**
+ * Represents a debug object that is a variable of function or a global variable.
+ */
 public class DebugVariable extends DebugBinding {
     private final String name;
     @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
-    private final int startLocation;
-    private final int endLocation;
+    private final int startSourceLocation;
+    private final int endSourceLocation;
 
-    public DebugVariable(String name, DebugType type, byte[] locationExpression, int startLocation, int endLocation) {
+    public DebugVariable(String name, DebugType type, byte[] locationExpression, int startSourceLocation, int endSourceLocation) {
         super(type);
         this.name = name;
         this.locationExpression = locationExpression;
-        this.startLocation = startLocation;
-        this.endLocation = endLocation;
+        this.startSourceLocation = startSourceLocation;
+        this.endSourceLocation = endSourceLocation;
     }
 
     private DebugLocation variableLocation(DebugLocation baseLocation) {
@@ -73,7 +76,7 @@ public class DebugVariable extends DebugBinding {
 
     @Override
     public boolean isVisible(int sourceCodeLocation) {
-        return startLocation < sourceCodeLocation && sourceCodeLocation < endLocation;
+        return startSourceLocation < sourceCodeLocation && sourceCodeLocation < endSourceLocation;
     }
 
     @Override

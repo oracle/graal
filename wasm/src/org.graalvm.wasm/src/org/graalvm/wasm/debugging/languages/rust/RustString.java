@@ -45,9 +45,16 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
-import org.graalvm.wasm.debugging.data.objects.DebugConstantObject;
+import org.graalvm.wasm.debugging.representation.DebugConstantDisplayValue;
 
+/**
+ * Represents the string type in Rust. This allows to resolve the underlying values of the type and
+ * return it as a {@link String}.
+ */
 public class RustString extends DebugType {
+    public static final String STRING_LENGTH = "length";
+    public static final String STRING_DATA = "data_ptr";
+
     private final String name;
     private final DebugObject lengthMember;
     private final DebugObject dataMember;
@@ -57,10 +64,10 @@ public class RustString extends DebugType {
         DebugObject lengthObject = null;
         DebugObject dataObject = null;
         for (final DebugObject member : members) {
-            if (RustConstants.STRING_LENGTH.equals(member.toDisplayString())) {
+            if (STRING_LENGTH.equals(member.toDisplayString())) {
                 lengthObject = member;
             }
-            if (RustConstants.STRING_DATA.equals(member.toDisplayString())) {
+            if (STRING_DATA.equals(member.toDisplayString())) {
                 dataObject = member;
             }
         }
@@ -86,11 +93,11 @@ public class RustString extends DebugType {
     @Override
     public Object asValue(DebugContext context, DebugLocation location) {
         if (lengthMember == null || !lengthMember.fitsIntoLong()) {
-            return new DebugConstantObject("Unsupported", "String format not supported");
+            return DebugConstantDisplayValue.UNSUPPORTED;
         }
         final long length = lengthMember.asLong(context, lengthMember.getLocation(location));
         if (dataMember == null || !dataMember.isLocation() || length > Integer.MAX_VALUE) {
-            return new DebugConstantObject("Unsupported", "String format not supported");
+            return DebugConstantDisplayValue.UNSUPPORTED;
         }
         final DebugLocation address = dataMember.asLocation(context, dataMember.getLocation(location));
         return address.loadString((int) length);
