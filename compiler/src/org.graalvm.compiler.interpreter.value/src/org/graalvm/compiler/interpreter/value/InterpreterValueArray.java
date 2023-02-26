@@ -32,7 +32,7 @@ public class InterpreterValueArray extends InterpreterValue {
     private final ResolvedJavaType componentType;
     private final int length;
     // NOTE We cannot use Object[] because primitive arrays like int[] cannot be
-    // case into Object[].
+    // cast into Object[].
     private final Object contents;
 
     public InterpreterValueArray(JVMContext jvmContext, ResolvedJavaType componentType, Object nativeArray) {
@@ -82,17 +82,8 @@ public class InterpreterValueArray extends InterpreterValue {
                     throw new RuntimeException(e);
                 }
             }
-        // NOTE no need to populate elements because JVM will do it for us.
-        // if (populateDefault) {
-        //     populateContentsWithDefaultValues(storageKind);
-        // }
+        // NOTE no need to populate elements because JVM does it for us.
     }
-
-    // private void populateContentsWithDefaultValues(JavaKind storageKind) {
-    //     for (int i = 0; i < length; i++) {
-    //         contents[i] = InterpreterValue.createDefaultOfKind(storageKind);
-    //     }
-    // }
 
     public int getLength() {
         return length;
@@ -134,7 +125,7 @@ public class InterpreterValueArray extends InterpreterValue {
 
     public void setAtIndex(int index, InterpreterValue value) {
         checkBounds(index);
-        // TODO: should we bother checking type compatbilitity?
+        // NOTE: coercion of value size (e.g. long to short) will be handled by Array.set
         // NOTE Boolean literal values are represented as integers in IR, so
         // we need to handle this situation.
         if (componentType.getJavaKind() == JavaKind.Boolean && value.getJavaKind() == JavaKind.Int) {
