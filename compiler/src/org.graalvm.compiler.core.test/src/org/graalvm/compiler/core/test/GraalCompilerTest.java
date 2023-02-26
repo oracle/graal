@@ -815,10 +815,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         // return test(getInitialOptions(), name, args);
         Result result = test(getInitialOptions(), name, args);
         String interpret = System.getProperty("graal.Interpreter");
-        // remove graal.Interpreter flag testing temporarily to enable interpreter test
         if (
-            //"ALL".equals(interpret) ||
-                //"PRIM".equals(interpret) &&
+            "ALL".equals(interpret) ||
+                "PRIM".equals(interpret) &&
                 primitiveArgs(args) && result.exception == null) {
             checkAgainstInterpreter(result, false, name, args);
         }
