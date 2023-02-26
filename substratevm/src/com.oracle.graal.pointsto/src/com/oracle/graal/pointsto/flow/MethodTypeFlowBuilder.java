@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1526,9 +1526,6 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
                 actualParametersBuilders[i] = paramBuilder;
                 paramBuilder.markAsBuildingAnActualParameter();
-                if (i == 0 && !targetIsStatic) {
-                    paramBuilder.markAsBuildingAnActualReceiver();
-                }
                 /*
                  * Actual parameters must not be removed. They are linked when the callee is
                  * analyzed, hence, although they might not have any uses, cannot be removed during
