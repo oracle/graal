@@ -66,7 +66,6 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
-import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
