@@ -931,7 +931,12 @@ public abstract class GraalCompilerTest extends GraalTest {
             GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext(), getClass().getClassLoader(), MethodHandles.lookup());
             Result interpreterResult = null;
             try {
-                interpreterResult = new Result(interpreter.executeGraph(methodGraph, args), null);
+                Object resultValue = interpreter.executeGraph(methodGraph, args);
+                JavaKind resultKind = method.getSignature().getReturnKind();
+                if (resultKind == JavaKind.Boolean && resultValue instanceof Integer) {
+                    resultValue = (resultValue == Integer.valueOf(0)) ? Boolean.FALSE : Boolean.TRUE;
+                }
+                interpreterResult = new Result(resultValue, null);
             } catch (InvocationTargetException e) {
                 interpreterResult = new Result(null, e.getTargetException());
             } catch (InterpreterException e) {
