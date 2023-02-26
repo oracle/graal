@@ -325,7 +325,7 @@ suite = {
         "org.graalvm.compiler.serviceprovider"
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Graal,Debug",
     },
 
