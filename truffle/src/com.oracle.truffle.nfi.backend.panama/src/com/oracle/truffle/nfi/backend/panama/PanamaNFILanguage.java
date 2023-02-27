@@ -54,6 +54,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+
 @TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
@@ -71,6 +77,9 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     static final class ErrorContext {
         private Throwable throwable = null;
+        @SuppressWarnings("preview") private MemorySegment errnoLocation;
+        private Integer nativeErrno = null;
+        final PanamaNFIContext ctx;
 
         public void setThrowable(Throwable throwable) {
             this.throwable = throwable;
@@ -84,12 +93,53 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
             }
         }
 
-        @SuppressWarnings("unchecked")
-        static <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable t) throws E {
-            throw (E) t;
+        public boolean nativeErrnoSet() {
+            return (nativeErrno != null);
+        }
+
+        public int getNativeErrno() {
+            return nativeErrno;
+        }
+
+        public void setNativeErrno(int nativeErrno) {
+            this.nativeErrno = nativeErrno;
+        }
+
+        @SuppressWarnings("preview")
+        MemorySegment getErrnoLocation() {
+            Linker linker = Linker.nativeLinker();
+            FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
+
+            MemorySegment t = linker.defaultLookup().find("__errno_location").get();
+            MethodHandle handle = linker.downcallHandle(desc);
+            try {
+                return MemorySegment.ofAddress((long) handle.invokeExact(t), 4, ctx.getScope());
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        void initialize() {
+            errnoLocation = getErrnoLocation();
+        }
+
+        @SuppressWarnings("preview")
+        int getErrno() {
+            return errnoLocation.get(ValueLayout.JAVA_INT, 0);
+        }
+
+        @SuppressWarnings("preview")
+        void setErrno(int newErrno) {
+            errnoLocation.set(ValueLayout.JAVA_INT, 0, newErrno);
         }
 
         ErrorContext(PanamaNFIContext ctx, Thread thread) {
+            this.ctx = ctx;
+        }
+
+        @SuppressWarnings("unchecked")
+        static <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable t) throws E {
+            throw (E) t;
         }
     }
 
@@ -146,6 +196,7 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     @Override
     protected void initializeContext(PanamaNFIContext context) throws Exception {
         context.initialize();
+        errorContext.get().initialize();
     }
 
     @Override

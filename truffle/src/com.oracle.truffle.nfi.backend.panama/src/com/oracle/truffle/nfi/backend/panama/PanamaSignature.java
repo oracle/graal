@@ -368,8 +368,17 @@ final class PanamaSignature {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
+            PanamaNFILanguage.ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
             try {
+                int errnoMirror = ctx.getErrno();
+                if (ctx.nativeErrnoSet()) {
+                    ctx.setErrno(ctx.getNativeErrno());
+                }
                 Object result = (Object) downcallHandle.invokeExact(segment, args);
+
+                ctx.setNativeErrno(ctx.getErrno());
+                ctx.setErrno(errnoMirror);
+
                 if (result == null) {
                     return NativePointer.NULL;
                 } else if (retType.type == NativeSimpleType.STRING) {
