@@ -817,11 +817,11 @@ public final class TruffleBaseFeature implements InternalFeature {
                                 Object replacement = replacements.get(obj);
                                 if (replacement != null) {
 
-                                    // The `replacements` map is populated by the generated factories.
-                                    // The keys of this map are the primitive byte arrays and the
-                                    // factory instances that must be replaced, and the values are their
-                                    // replacements. Before a replacement is computed, the value is
-                                    // identical to the key.
+                                    // The `replacements` map is populated by the generated
+                                    // factories. The keys of this map are the primitive byte arrays
+                                    // and the factory instances that must be replaced, and the
+                                    // values are their replacements. Before a replacement is
+                                    // computed, the value is identical to the key.
                                     if (replacement == obj) {
                                         // on first access: generate the replacement and register it
                                         if (isByteArray) {
@@ -838,24 +838,24 @@ public final class TruffleBaseFeature implements InternalFeature {
                                             int objectArraySize = ReflectionUtil.readField(factoryClass, "objectArraySize", obj);
 
                                             Constructor<?> constructor = ReflectionUtil.lookupConstructor(factoryClass,
-                                                    shape.getClass(),
-                                                    int.class,
-                                                    int.class,
-                                                    boolean.class);
+                                                            shape.getClass(),
+                                                            int.class,
+                                                            int.class,
+                                                            boolean.class);
 
                                             Object newFactory = ReflectionUtil.newInstance(constructor,
-                                                    shape,
-                                                    primitiveArraySize + ALIGNMENT_CORRECTION,
-                                                    objectArraySize,
-                                                    // do not register patched factories, else
-                                                    // we end up patching them again
-                                                    false);
+                                                            shape,
+                                                            primitiveArraySize + ALIGNMENT_CORRECTION,
+                                                            objectArraySize,
+                                                            // do not register patched factories,
+                                                            // else we end up patching them again
+                                                            false);
 
                                             replacement = newFactory;
                                         }
                                         if (!replacements.replace(obj, obj, replacement)) {
-                                            // another thread already registered a replacement in the
-                                            // meanwhile. Use that one.
+                                            // another thread already registered a replacement in
+                                            // the meanwhile. Use that one.
                                             replacement = replacements.get(obj);
                                         }
                                     }
