@@ -117,7 +117,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    @CompilationFinal public boolean singleContext;
+    @CompilationFinal public boolean singleContext = true;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
