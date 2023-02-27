@@ -58,6 +58,8 @@ final class Target_sun_util_calendar_CalendarSystem {
     private static CalendarSystem forName(String calendarName) {
         if ("gregorian".equals(calendarName)) {
             return Util_sun_util_calendar_CalendarSystem.GREGORIAN;
+        } else if ("japanese".equals(calendarName)) {
+            return Util_sun_util_calendar_CalendarSystem.JAPANESE;
         } else if ("julian".equals(calendarName)) {
             return Util_sun_util_calendar_CalendarSystem.JULIAN;
         } else {
@@ -70,6 +72,7 @@ final class Util_sun_util_calendar_CalendarSystem {
 
     // The static fields are initialized during native image generation.
     static final CalendarSystem GREGORIAN = CalendarSystem.forName("gregorian");
+    static final CalendarSystem JAPANESE = CalendarSystem.forName("japanese");
     static final CalendarSystem JULIAN = CalendarSystem.forName("julian");
 }
 
