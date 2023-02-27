@@ -440,13 +440,13 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
-        SubstrateJVM.get().include(thread);
+        SubstrateJVM.get().setExcluded(thread, false);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
-        SubstrateJVM.get().exclude(thread);
+        SubstrateJVM.get().setExcluded(thread, true);
     }
 
     @Substitute

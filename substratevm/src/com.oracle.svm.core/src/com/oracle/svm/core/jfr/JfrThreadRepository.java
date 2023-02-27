@@ -102,6 +102,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
             return;
         }
 
+        epochData.unflushedThreadCount++;
+
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
 
@@ -158,6 +160,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         if (!epochData.visitedThreadGroups.putIfAbsent(jfrVisited)) {
             return;
         }
+        epochData.unflushedThreadGroupCount++;
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadGroupBuffer);
@@ -209,12 +212,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
         int count = writeThreads(writer, epochData);
         count += writeThreadGroups(writer, epochData);
 
-        /*
-         * Thread repository epoch data may be cleared after a flush because threads are only
-         * registered once with fixed IDs. There is no need to do a lookup in this repo for a
-         * thread's ID.
-         */
-        epochData.clear();
         return count;
     }
 
@@ -224,7 +221,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrThreadEpochData epochData = getEpochData(!flush);
         maybeLock(flush);
         try {
-            if (epochData.visitedThreads.getSize() == 0) {
+            if (epochData.unflushedThreadCount == 0) {
                 return lastCheckpointOffset;
             }
             SignedWord start = writer.beginEvent();
@@ -239,7 +236,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
             // If only writing threads pool, count is 1
             int poolCount = 1;
-            if (epochData.visitedThreadGroups.getSize() > 0) {
+            if (epochData.unflushedThreadGroupCount > 0) {
                 poolCount = 2;
             }
             writer.writeInt(poolCount);
@@ -252,23 +249,33 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
         } finally {
             maybeUnlock(flush);
+            /*
+             * Thread repository epoch data may be cleared after a flush because threads are only
+             * registered once with fixed IDs. There is no need to do a lookup in this repo for a
+             * thread's ID. However, we preserve visitedThreads and visitedThreadGroups until the
+             * epoch change to avoid unnecessary re-registrations.
+             */
+            if (!flush) {
+                epochData.clear();
+            }
         }
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
     private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData) {
-        VMError.guarantee(epochData.visitedThreads.getSize() > 0, "Thread repository must not be empty.");
+        VMError.guarantee(epochData.unflushedThreadCount > 0, "Thread repository must not be empty.");
 
         writer.writeCompressedLong(JfrType.Thread.getId());
-        writer.writeCompressedInt(epochData.visitedThreads.getSize());
+        writer.writeCompressedInt(epochData.unflushedThreadCount);
         writer.write(epochData.threadBuffer);
-
+        JfrBufferAccess.reinitialize(epochData.threadBuffer);
+        epochData.unflushedThreadCount = 0;
         return NON_EMPTY;
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
     private static int writeThreadGroups(JfrChunkWriter writer, JfrThreadEpochData epochData) {
-        int threadGroupCount = epochData.visitedThreadGroups.getSize();
+        int threadGroupCount = epochData.unflushedThreadGroupCount;
         if (threadGroupCount == 0) {
             return EMPTY;
         }
@@ -276,7 +283,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
         writer.writeCompressedLong(JfrType.ThreadGroup.getId());
         writer.writeCompressedInt(threadGroupCount);
         writer.write(epochData.threadGroupBuffer);
-
+        JfrBufferAccess.reinitialize(epochData.threadGroupBuffer);
+        epochData.unflushedThreadGroupCount = 0;
         return NON_EMPTY;
     }
 
@@ -294,6 +302,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
          */
         private final JfrVisitedTable visitedThreads;
         private final JfrVisitedTable visitedThreadGroups;
+        private int unflushedThreadCount;
+        private int unflushedThreadGroupCount;
 
         private JfrBuffer threadBuffer;
         private JfrBuffer threadGroupBuffer;
@@ -302,13 +312,16 @@ public final class JfrThreadRepository implements JfrConstantPool {
         JfrThreadEpochData() {
             this.visitedThreads = new JfrVisitedTable();
             this.visitedThreadGroups = new JfrVisitedTable();
+            this.unflushedThreadCount = 0;
+            this.unflushedThreadGroupCount = 0;
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
         public void clear() {
             visitedThreads.clear();
             visitedThreadGroups.clear();
-
+            unflushedThreadCount = 0;
+            unflushedThreadGroupCount = 0;
             JfrBufferAccess.reinitialize(threadBuffer);
             JfrBufferAccess.reinitialize(threadGroupBuffer);
         }

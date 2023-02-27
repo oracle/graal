@@ -31,11 +31,10 @@ import jdk.internal.misc.Unsafe;
 import org.graalvm.word.WordFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
+
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.PointerBase;
+
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 
 /**
@@ -43,40 +42,11 @@ import com.oracle.svm.core.thread.JavaSpinLockUtils;
  * Threads shall only add one node to the list. Only the thread performing a flush or epoch change
  * shall iterate this list and is allowed to remove nodes. There is a list-level lock that is
  * acquired when adding nodes, and when beginning iteration at the head. Threads may access their
- * own nodes at any time up until they set the alive flag to false {@link JfrBufferNode#setAlive}.
- * When entering a safepoint, the list lock must not be held by one of the blocked Java threads.
+ * own nodes at any time up until they set the alive flag to false
+ * {@link com.oracle.svm.core.jfr.JfrBufferNodeAccess#setRetired(JfrBufferNode)}. When entering a
+ * safepoint, the list lock must not be held by one of the blocked Java threads.
  */
 public class JfrBufferNodeLinkedList {
-    @RawStructure
-    public interface JfrBufferNode extends PointerBase {
-        @RawField
-        JfrBufferNode getNext();
-
-        @RawField
-        void setNext(JfrBufferNode value);
-
-        @RawField
-        JfrBuffer getValue();
-
-        /**
-         * This field is effectively final and should always be non-null. Changing its value after
-         * the node is added to the {@link JfrBufferNodeLinkedList} can result in races.
-         */
-        @RawField
-        void setValue(JfrBuffer value);
-
-        @RawField
-        IsolateThread getThread();
-
-        @RawField
-        void setThread(IsolateThread thread);
-
-        @RawField
-        boolean getAlive();
-
-        @RawField
-        void setAlive(boolean alive);
-    }
 
     private static final long LOCK_OFFSET = Unsafe.getUnsafe().objectFieldOffset(JfrBufferNodeLinkedList.class, "lock");
 
@@ -87,7 +57,7 @@ public class JfrBufferNodeLinkedList {
     private static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
         JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
         if (node.isNonNull()) {
-            node.setAlive(true);
+            JfrBufferNodeAccess.setAlive(node);
             node.setValue(buffer);
             node.setThread(thread);
             node.setNext(WordFactory.nullPointer());
@@ -103,13 +73,18 @@ public class JfrBufferNodeLinkedList {
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
             JfrBufferAccess.free(node.getValue());
-            node.setAlive(false);
+            /*
+             * Once JfrBufferNode. JfrBufferNodeAccess.setRetired(node) is called, another thread
+             * may free the node at any time. In this case it shouldn't matter because the recording
+             * has ended and this is called at a safepoint.
+             */
+            JfrBufferNodeAccess.setRetired(node);
             removeNode(node, WordFactory.nullPointer());
             node = next;
         }
     }
 
-    @Uninterruptible(reason = "Locking with no transition.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking with no transition.")
     public JfrBufferNode getHead() {
         acquireList();
         try {

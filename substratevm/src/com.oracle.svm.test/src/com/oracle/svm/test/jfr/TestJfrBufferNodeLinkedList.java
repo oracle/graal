@@ -29,11 +29,12 @@ package com.oracle.svm.test.jfr;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
-import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
+import com.oracle.svm.core.jfr.JfrBufferNode;
 import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.jfr.JfrBufferType;
 import com.oracle.svm.core.jfr.JfrBuffer;
 import com.oracle.svm.core.jfr.JfrBufferAccess;
+import com.oracle.svm.core.jfr.JfrBufferNodeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import static org.junit.Assert.assertTrue;
 import com.oracle.svm.core.Uninterruptible;
@@ -104,7 +105,11 @@ public class TestJfrBufferNodeLinkedList {
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
             JfrBufferAccess.free(node.getValue());
-            node.setAlive(false);
+            /*
+             * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the node
+             * at any time.
+             */
+            JfrBufferNodeAccess.setRetired(node);
             list.removeNode(node, WordFactory.nullPointer());
             node = next;
         }
@@ -120,7 +125,11 @@ public class TestJfrBufferNodeLinkedList {
             JfrBufferNode next = node.getNext();
             if (count == target) {
                 JfrBufferAccess.free(node.getValue());
-                node.setAlive(false);
+                /*
+                 * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the
+                 * node at any time.
+                 */
+                JfrBufferNodeAccess.setRetired(node);
                 list.removeNode(node, prev);
                 break;
             }

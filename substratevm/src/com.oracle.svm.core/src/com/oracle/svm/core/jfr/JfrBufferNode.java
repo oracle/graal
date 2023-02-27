@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
-public class JfrMetadata {
-    private long currentMetadataId;
-    private volatile byte[] metadataDescriptor;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
+import org.graalvm.word.PointerBase;
+import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.IsolateThread;
 
-    public JfrMetadata(byte[] bytes) {
-        metadataDescriptor = bytes;
-        currentMetadataId = 0;
-    }
+@RawStructure
+public interface JfrBufferNode extends PointerBase {
+    @RawField
+    JfrBufferNode getNext();
 
-    public void setDescriptor(byte[] bytes) {
-        metadataDescriptor = bytes;
-        currentMetadataId++;
-    }
+    @RawField
+    void setNext(JfrBufferNode value);
 
-    public byte[] getDescriptor() {
-        return metadataDescriptor;
-    }
+    @RawField
+    JfrBuffer getValue();
 
-    public long getCurrentMetadataId() {
-        return currentMetadataId;
+    /**
+     * This field is effectively final and should always be non-null. Changing its value after
+     * the node is added to the {@link JfrBufferNodeLinkedList} can result in races.
+     */
+    @RawField
+    void setValue(JfrBuffer value);
+
+    @RawField
+    IsolateThread getThread();
+
+    @RawField
+    void setThread(IsolateThread thread);
+
+    @RawField
+    boolean getAlive();
+
+    @RawFieldOffset
+    static int offsetOfAlive() {
+        throw VMError.unimplemented(); // replaced
     }
 }

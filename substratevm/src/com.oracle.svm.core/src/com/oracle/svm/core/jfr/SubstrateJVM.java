@@ -673,14 +673,9 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
-    public void exclude(Thread thread) {
+    public void setExcluded(Thread thread, boolean excluded) {
         JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
-        jfrThreadLocal.exclude(thread);
-    }
-
-    public void include(Thread thread) {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
-        jfrThreadLocal.include(thread);
+        jfrThreadLocal.setExcluded(thread, excluded);
     }
 
     public boolean isExcluded(Thread thread) {

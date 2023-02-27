@@ -197,7 +197,7 @@ public class VMMutex {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public boolean isOwned() {
+    public boolean hasOwner() {
         return owner.isNonNull();
     }
 }

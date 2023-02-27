@@ -49,7 +49,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -134,25 +133,28 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode jbn = javaBufferNode.get(isolateThread);
         JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
+        /*
+         * Once JfrBufferNode. JfrBufferNodeAccess.setRetired(JfrBufferNode) is called, another
+         * thread may free the node at any time.
+         */
         if (jbn.isNonNull()) {
             JfrBuffer jb = jbn.getValue();
             assert jb.isNonNull() && jbn.getAlive();
             flush(jb, WordFactory.unsigned(0), 0);
-            jbn.setAlive(false);
-
+            javaBufferNode.set(isolateThread, WordFactory.nullPointer());
+            JfrBufferNodeAccess.setRetired(jbn);
         }
         if (nbn.isNonNull()) {
             JfrBuffer nb = nbn.getValue();
             assert nb.isNonNull() && nbn.getAlive();
             flush(nb, WordFactory.unsigned(0), 0);
-            nbn.setAlive(false);
+            nativeBufferNode.set(isolateThread, WordFactory.nullPointer());
+            JfrBufferNodeAccess.setRetired(nbn);
         }
 
         /* Clear event-related thread-locals. */
         dataLost.set(isolateThread, WordFactory.unsigned(0));
         javaEventWriter.set(isolateThread, null);
-        javaBufferNode.set(isolateThread, WordFactory.nullPointer());
-        nativeBufferNode.set(isolateThread, WordFactory.nullPointer());
 
         /* Clear stacktrace-related thread-locals. */
         missedSamples.set(isolateThread, 0);
@@ -330,40 +332,25 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     public void teardown() {
-        JfrBufferNodeLinkedList nativeBuffers = getNativeBufferList();
-        if (nativeBuffers != null) {
-            nativeBuffers.teardown();
-        }
-        JfrBufferNodeLinkedList javaBuffers = getJavaBufferList();
-        if (javaBuffers != null) {
-            javaBuffers.teardown();
-        }
+        getNativeBufferList().teardown();
+        getJavaBufferList().teardown();
     }
 
-    public void exclude(Thread thread) {
+    /**
+     * This method excludes/includes a thread from JFR (emitting events and sampling). Unlike in
+     * hotspot, only the current thread may be excluded/included. TODO: possibly modify this method
+     * to match hotspot behaviour.
+     */
+    public void setExcluded(Thread thread, boolean excluded) {
         if (!thread.equals(Thread.currentThread())) {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        tjlt.jfrExcluded = true;
+        tjlt.jfrExcluded = excluded;
 
         if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
-            javaEventWriter.get(currentIsolateThread).excluded = true;
-        }
-    }
-
-    public void include(Thread thread) {
-        if (!thread.equals(Thread.currentThread())) {
-            return;
-        }
-
-        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        tjlt.jfrExcluded = false;
-
-        if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
-            javaEventWriter.get(currentIsolateThread).excluded = false;
+            javaEventWriter.get(currentIsolateThread).excluded = excluded;
         }
     }
 

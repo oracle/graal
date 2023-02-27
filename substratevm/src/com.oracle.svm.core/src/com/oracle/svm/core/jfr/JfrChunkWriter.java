@@ -48,7 +48,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.locks.VMMutex;
 
-import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
@@ -371,37 +370,37 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBoolean(boolean value) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         writeByte((byte) (value ? 1 : 0));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeByte(byte value) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         getFileSupport().writeByte(fd, value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBytes(byte[] values) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         getFileSupport().write(fd, values);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeCompressedInt(int value) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         writeCompressedLong(value & 0xFFFFFFFFL);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeInt(int value) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         getFileSupport().writeInt(fd, makePaddedInt(value));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeCompressedLong(long value) {
-        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         long v = value;
         if ((v & ~0x7FL) == 0L) {
             getFileSupport().writeByte(fd, (byte) v); // 0-6
