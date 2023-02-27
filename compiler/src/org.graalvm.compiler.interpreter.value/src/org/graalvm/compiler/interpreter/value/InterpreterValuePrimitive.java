@@ -156,6 +156,18 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
         }
     }
 
+    public static InterpreterValuePrimitive ofByte(int value) {
+        return ofPrimitiveConstant(JavaConstant.forByte((byte) value));
+    }
+
+    public static InterpreterValuePrimitive ofShort(int value) {
+        return ofPrimitiveConstant(JavaConstant.forShort((short) value));
+    }
+
+    public static InterpreterValuePrimitive ofChar(int value) {
+        return ofPrimitiveConstant(JavaConstant.forChar((char) value));
+    }
+
     public static InterpreterValuePrimitive ofInt(int value) {
         return ofPrimitiveConstant(JavaConstant.forInt(value));
     }
@@ -197,13 +209,13 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
             return ofBoolean(primitive.asBoolean());
         }
         if (expected == JavaKind.Byte) {
-            return ofInt((byte) primitive.asInt());
+            return ofByte(primitive.asInt());
         }
         if (expected == JavaKind.Short) {
-            return ofInt((short) primitive.asInt());
+            return ofShort(primitive.asInt());
         }
         if (expected == JavaKind.Char) {
-            return ofInt((char) primitive.asInt());
+            return ofChar(primitive.asInt());
         }
         if (expected == JavaKind.Int) {
             return ofInt(primitive.asInt());

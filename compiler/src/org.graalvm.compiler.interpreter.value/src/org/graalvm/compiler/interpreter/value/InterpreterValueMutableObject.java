@@ -126,6 +126,8 @@ public class InterpreterValueMutableObject extends InterpreterValueObject {
             } else {
                 if (expected != actual && value.isPrimitive()) {
                     value = ((InterpreterValuePrimitive) value).coerce(expected);
+                    System.out.printf("\nsetField %s RHS coerced from type %s to %s: %s\n",
+                           field.getName(), actual, expected, value);
                 }
                 getFieldVarHandle(field).set(nativeObject, value.asObject());
             }

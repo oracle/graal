@@ -54,8 +54,7 @@ public abstract class InterpreterValueObject extends InterpreterValue {
                 throw new IllegalArgumentException("cannot unwind with non-Exception object");
             }
         } catch (ClassNotFoundException e) {
-            // TODO: does this ever happen for valid graphs?
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         }
         this.unwindException = true;
     }
@@ -66,8 +65,6 @@ public abstract class InterpreterValueObject extends InterpreterValue {
             throw new IllegalArgumentException("Type is not cloneable with just allocation");
         }
         throw new UnsupportedOperationException("not implemented");
-
-        // TODO: use reflection to construct actual java Object: is this doable?
     }
 
     @Override
