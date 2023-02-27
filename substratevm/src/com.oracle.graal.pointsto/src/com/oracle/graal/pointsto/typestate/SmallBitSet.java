@@ -39,8 +39,14 @@ public class SmallBitSet {
     //     return true;
     // }
 
+
+    private int lastSetBit() {
+      // Return the last set bit (the biggest) or 0, if it's empty.
+      return cardinality == 0 ? 0 : nextSetBit(cardinality-1);
+    }
+
     public BitSet asBitSet() {
-        BitSet result = new BitSet();
+        BitSet result = new BitSet(lastSetBit());
         for (int i = 0; i < cardinality(); i++) {
             result.set(set[i]);
         }
