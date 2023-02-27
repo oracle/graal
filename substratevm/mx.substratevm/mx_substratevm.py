@@ -346,12 +346,16 @@ def truffle_unittest_task(extra_build_args=None):
 
     if '--libc=musl' not in extra_build_args:
         # GR-44507
-        truffle_tests += ['com.oracle.truffle.api.test.TruffleSafepointTest']
+        if '-Ob' not in extra_build_args:
+            # GR-44492:
+            truffle_tests += ['com.oracle.truffle.api.test.TruffleSafepointTest']
 
     native_unittest(truffle_tests + truffle_args(extra_build_args))
 
     # White Box Truffle compilation tests that need access to compiler graphs.
-    native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + ['-H:-SupportCompileInIsolates']))
+    if '-Ob' not in extra_build_args:
+        # GR-44492
+        native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + ['-H:-SupportCompileInIsolates']))
 
 
 def truffle_context_pre_init_unittest_task(extra_build_args):
