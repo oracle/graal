@@ -57,7 +57,6 @@ import java.util.stream.Stream;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.SystemModuleFinders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -222,7 +221,7 @@ public final class ModuleLayerFeature implements InternalFeature {
      * as the original (via reflective invokes).
      */
     private Set<String> calculateRootModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> addModules) {
-        String mainModule = moduleLayerFeatureUtils.getMainModuleName();
+        String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
         List<Path> appModulePath = accessImpl.imageClassLoader.applicationModulePath();
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
         boolean haveUpgradeModulePath = upgradeModulePath != null;
@@ -685,9 +684,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                             .orElse(0);
         }
 
-        public String getMainModuleName() {
-            OptionValues parsedHostedOptions = imageClassLoader.classLoaderSupport.getParsedHostedOptions();
-            String mainModule = SubstrateOptions.Module.getValue(parsedHostedOptions).trim();
+        public static String getMainModuleName() {
+            String mainModule = SubstrateOptions.Module.getValue();
             return mainModule.isEmpty() ? null : mainModule;
         }
 
