@@ -57,6 +57,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         this.merged = other.merged;
     }
 
+    // TODO(max): Rename to typesBitSet like MultiTypeState
     protected BitSet bitSet() {
         return typesBitSet.asBitSet();
     }
