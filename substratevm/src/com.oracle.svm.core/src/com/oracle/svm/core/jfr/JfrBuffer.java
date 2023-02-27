@@ -88,14 +88,6 @@ public interface JfrBuffer extends PointerBase {
     @RawField
     void setFlushedPos(Pointer value);
 
-    @RawField
-    int getLocked();
-
-    @RawFieldOffset
-    static int offsetOfLocked() {
-        throw VMError.unimplemented(); // replaced
-    }
-
     /**
      * Returns the type of the buffer.
      */
