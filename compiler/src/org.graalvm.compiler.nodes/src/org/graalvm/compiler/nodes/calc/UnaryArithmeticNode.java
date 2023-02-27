@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
+import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -88,7 +89,8 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
     public InterpreterValue interpretExpr(InterpreterState interpreter) {
         InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.isPrimitive(), "value doesn't interpret to primitive");
+        PrimitiveConstant x = ((InterpreterValuePrimitive) val).asPrimitiveConstantForCalculation();
 
-        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(val.asPrimitiveConstant()));
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(x));
     }
 }

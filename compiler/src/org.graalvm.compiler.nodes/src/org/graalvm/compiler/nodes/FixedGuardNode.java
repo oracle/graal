@@ -240,8 +240,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
         GraalError.guarantee(condValue.getJavaKind() == JavaKind.Boolean, "FixedGuardNode condition didn't evaluate to boolean");
 
-        // TODO: don't think this is the way to handle this
-        boolean condResult = condValue.asPrimitiveConstant().asBoolean();
+        boolean condResult = (Boolean) condValue.asObject(JavaKind.Boolean);
         GraalError.guarantee(isNegated() ? !condResult : condResult, "FixedGuardNode condition evaluated to false");
 
         return next();

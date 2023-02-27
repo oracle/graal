@@ -125,14 +125,7 @@ public class InterpreterValueArray extends InterpreterValue {
 
     public void setAtIndex(int index, InterpreterValue value) {
         checkBounds(index);
-        // NOTE: coercion of value size (e.g. long to short) will be handled by Array.set
-        // NOTE Boolean literal values are represented as integers in IR, so
-        // we need to handle this situation.
-        if (componentType.getJavaKind() == JavaKind.Boolean && value.getJavaKind() == JavaKind.Int) {
-            ((boolean[]) contents)[index] = (int) ((Integer) value.asObject()) != 0;
-        } else {
-            Array.set(contents, index, value.asObject());
-        }
+        Array.set(contents, index, value.asObject(componentType.getJavaKind()));
     }
 
     private void checkBounds(int index) {

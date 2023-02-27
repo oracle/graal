@@ -74,6 +74,17 @@ public abstract class InterpreterValue {
 
     public abstract Object asObject();
 
+    /**
+     * Converts this value to a boxed Java object, maybe with integer size conversion.
+     *
+     * @param kind the desired kind of object (e.g. Short, Boolean, Object).
+     * @return the current value as a boxed Java object.
+     */
+    public Object asObject(JavaKind kind) {
+        // default implementation is asObject (no conversion)
+        return asObject();
+    }
+
     public static InterpreterValue createDefaultOfKind(JavaKind kind) {
         if (kind == JavaKind.Void) {
             return InterpreterValueVoid.INSTANCE;
@@ -178,5 +189,32 @@ public abstract class InterpreterValue {
             obj = Integer.valueOf(((Character) obj).charValue());
         }
         return obj;
+    }
+
+    /**
+     * Converts a numeric value to the desired size.
+     *
+     * @param resultKind
+     * @param resultValue
+     * @return resultValue as a boxed object of type resultKind.
+     */
+    public static Object coerceNumberTo(JavaKind resultKind, Object resultValue) {
+        if (resultValue instanceof Number) {
+            Number numValue = (Number) resultValue;
+            if (resultKind == JavaKind.Boolean) {
+                resultValue = (numValue.intValue() == 0) ? Boolean.FALSE : Boolean.TRUE;
+            } else if (resultKind == JavaKind.Byte) {
+                resultValue = Byte.valueOf(numValue.byteValue());
+            } else if (resultKind == JavaKind.Short) {
+                resultValue = Short.valueOf(numValue.shortValue());
+            } else if (resultKind == JavaKind.Char) {
+                resultValue = Character.valueOf((char) numValue.intValue());
+            } else if (resultKind == JavaKind.Int) {
+                resultValue = Integer.valueOf(numValue.intValue());
+            } else if (resultKind == JavaKind.Long) {
+                resultValue = Long.valueOf(numValue.longValue());
+            }
+        }
+        return resultValue;
     }
 }

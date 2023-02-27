@@ -924,26 +924,14 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return;
             }
             StructuredGraph methodGraph = parseForCompile(method, getOrCreateCompilationId(method, null), getInitialOptions());
-//            System.out.println("Method: " + method.getName());
-//            for (Node n : methodGraph.getNodes()) {
-//                System.out.println("  node: " + n);
-//            }
             GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext(), getClass().getClassLoader(), MethodHandles.lookup());
             Result interpreterResult = null;
             try {
                 Object resultValue = interpreter.executeGraph(methodGraph, args);
                 JavaKind resultKind = method.getSignature().getReturnKind();
-                // we coerce Integer results to Boolean / Byte / Short / Char if needed.
-                if (resultValue instanceof Integer) {
-                    if (resultKind == JavaKind.Boolean) {
-                        resultValue = (resultValue == Integer.valueOf(0)) ? Boolean.FALSE : Boolean.TRUE;
-                    } else if (resultKind == JavaKind.Byte) {
-                        resultValue = Byte.valueOf(((Integer) resultValue).byteValue());
-                    } else if (resultKind == JavaKind.Short) {
-                        resultValue = Short.valueOf(((Integer) resultValue).shortValue());
-                    } else if (resultKind == JavaKind.Char) {
-                        resultValue = Character.valueOf((char) ((Integer) resultValue).intValue());
-                    }
+                if (resultValue instanceof Number) {
+                    // we coerce numeric results to the desired size (including Boolean)
+                    resultValue = GraalInterpreter.coerceNumberTo(resultKind, resultValue);
                 }
                 interpreterResult = new Result(resultValue, null);
             } catch (InvocationTargetException e) {

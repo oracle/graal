@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -594,7 +595,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         GraalError.guarantee(yVal != null, "null result from y: %s", getY());
         GraalError.guarantee(xVal.isPrimitive(), "non-primitive x: %s", xVal);
         GraalError.guarantee(yVal.isPrimitive(), "non_primitive y: %s", yVal);
-
-        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant()));
+        PrimitiveConstant x = ((InterpreterValuePrimitive) xVal).asPrimitiveConstantForCalculation();
+        PrimitiveConstant y = ((InterpreterValuePrimitive) yVal).asPrimitiveConstantForCalculation();
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(x, y));
     }
 }

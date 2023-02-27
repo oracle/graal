@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.interpreter;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -107,6 +108,17 @@ public class GraalInterpreter {
         this.myState = new InterpreterStateImpl();
     }
 
+    /**
+     * Converts a numeric value to the desired size.
+     *
+     * @param kind
+     * @param obj
+     * @return obj as a boxed object of type kind.
+     */
+    public static Object coerceNumberTo(JavaKind kind, Object obj) {
+        return InterpreterValue.coerceNumberTo(kind, obj);
+    }
+
     public boolean getVerbose() {
         return this.verbose;
     }
@@ -143,8 +155,6 @@ public class GraalInterpreter {
             return null;
         }
         Object returnObject = returnValue.asObject();
-        // integer results smaller than int must be coerced up to int.
-        returnObject = InterpreterValue.coerceUpToInt(returnObject);
 
         if (returnValue.isUnwindException()) {
             GraalError.guarantee(returnObject instanceof Exception, "isException returned true but underlying interpreter value is not an Exception object");

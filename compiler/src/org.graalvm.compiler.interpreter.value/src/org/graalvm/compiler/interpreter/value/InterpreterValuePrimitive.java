@@ -85,6 +85,20 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
         return primitive;
     }
 
+    /**
+     * Similar to asPrimitiveConstant, but increases small integers up to int as required by Java operator semantics.
+     *
+     * @return Same value but Short/Byte/Char will be expanded up to Integer.
+     */
+    public PrimitiveConstant asPrimitiveConstantForCalculation() {
+        PrimitiveConstant result = primitive;
+        JavaKind kind = getJavaKind();
+        if (kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char) {
+            result = ofPrimitiveConstant(JavaConstant.forInt(primitive.asInt())).primitive;
+        }
+        return result;
+    }
+
     @Override
     public JavaKind getJavaKind() {
         return isBoxed ? JavaKind.Object : primitive.getJavaKind();
@@ -98,6 +112,11 @@ public final class InterpreterValuePrimitive extends InterpreterValue {
     @Override
     public Object asObject() {
         return primitive.asBoxedPrimitive();
+    }
+
+    @Override
+    public Object asObject(JavaKind kind) {
+        return InterpreterValue.coerceNumberTo(kind, asObject());
     }
 
     @Override
