@@ -46,15 +46,18 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.Message;
@@ -698,4 +701,57 @@ public class MessageDeprecationTest extends AbstractParametrizedLibraryTest {
 
     }
 
+    @GenerateLibrary
+    public abstract static class AbstractMessageLibrary extends Library {
+
+        @Abstract
+        public String m0(Object receiver, Object parameter) {
+            return "m0_default_deprecated";
+        }
+
+        @Deprecated
+        @Abstract
+        public String m0(Object receiver, String parameter) {
+            return "m0_default";
+        }
+
+    }
+
+    @ExportLibrary(AbstractMessageLibrary.class)
+    public static class AbstractMessageNew {
+
+        @ExportMessage
+        String m0(Object parameter) {
+            return "m0_new";
+        }
+
+    }
+
+    @ExportLibrary(AbstractMessageLibrary.class)
+    public static class AbstractMessageOld {
+
+        @ExpectError("The message with signature 'm0(Object, String)' of library 'AbstractMessageLibrary' is deprecated%")
+        @ExportMessage
+        String m0(String parameter) {
+            return "m0_old";
+        }
+
+    }
+
+    @ExportLibrary(AbstractMessageLibrary.class)
+    public static class ErrorAbstractMessageBoth {
+
+        @ExportMessage
+        @ExpectError("Duplicate exported library message m0.")
+        String m0(Object parameter) {
+            return "m0_new";
+        }
+
+        @ExportMessage
+        @ExpectError("Duplicate exported library message m0.")
+        String m0(String parameter) {
+            return "m0_old";
+        }
+
+    }
 }

@@ -435,9 +435,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (message.isAbstract() && !message.getName().equals("accepts")) {
-                    ExportMessageData exportMessage = exportLib.getExportedMessages().get(message.getName());
-
-                    if (exportMessage == null || exportMessage.getResolvedMessage() != message) {
+                    if (!exportLib.isExported(message)) {
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -453,6 +451,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                             isAbstract = false;
                         }
 
+                        if (isAbstract) {
+                            missingAbstractMessage.add(message);
+                        }
+
                         if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
                             for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
                                 if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
@@ -462,9 +464,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                             }
                         }
 
-                        if (isAbstract) {
-                            missingAbstractMessage.add(message);
-                        }
                     }
                 }
             }
