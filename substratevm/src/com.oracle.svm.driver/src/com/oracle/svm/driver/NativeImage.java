@@ -263,6 +263,7 @@ public class NativeImage {
 
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
+    private final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
@@ -473,7 +474,7 @@ public class NativeImage {
             if (useJVMCINativeLibrary == null) {
                 useJVMCINativeLibrary = false;
                 ProcessBuilder pb = new ProcessBuilder();
-                sanitizeJVMEnvironment(pb.environment());
+                sanitizeJVMEnvironment(pb.environment(), Map.of());
                 List<String> command = pb.command();
                 command.add(getJavaExecutable().toString());
                 command.add("-XX:+PrintFlagsFinal");
@@ -1469,11 +1470,11 @@ public class NativeImage {
         try {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
+            sanitizeJVMEnvironment(pb.environment(), imageBuilderEnvironment);
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
             if (OS.getCurrent() == OS.WINDOWS) {
                 WindowsBuildEnvironmentUtil.propagateEnv(pb.environment());
             }
-            sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
             return p.waitFor();
@@ -1490,11 +1491,30 @@ public class NativeImage {
         return bundleSupport != null;
     }
 
-    private static void sanitizeJVMEnvironment(Map<String, String> environment) {
-        String[] jvmAffectingEnvironmentVariables = {"JAVA_COMPILER", "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH"};
-        for (String affectingEnvironmentVariable : jvmAffectingEnvironmentVariables) {
-            environment.remove(affectingEnvironmentVariable);
+    private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
+        Map<String, String> restrictedEnvironment = new HashMap<>();
+        String[] jvmRequiredEnvironmentVariables = {"PATH", "HOME", "PWD"};
+        for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
+            String val = environment.get(requiredEnvironmentVariable);
+            if (val != null) {
+                restrictedEnvironment.put(requiredEnvironmentVariable, val);
+            }
         }
+        imageBuilderEnvironment.forEach((requiredKey, requiredValue) -> {
+            String prevValue = environment.get(requiredKey);
+            if (prevValue == null) {
+                if (requiredValue == null) {
+                    NativeImage.showWarning("Environment variable '" + requiredKey + "' undefined. It will not be available at image build-time.");
+                } else {
+                    restrictedEnvironment.put(requiredKey, requiredValue);
+                }
+            } else {
+                restrictedEnvironment.put(requiredKey, requiredValue == null ? prevValue : requiredValue);
+            }
+        });
+
+        environment.clear();
+        environment.putAll(restrictedEnvironment);
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
@@ -1627,6 +1647,10 @@ public class NativeImage {
 
     void addImageBuilderClasspath(Path classpath) {
         imageBuilderClasspath.add(canonicalize(classpath));
+    }
+
+    public void addImageBuilderEnvVar(String key, String value) {
+        imageBuilderEnvironment.put(key, value);
     }
 
     void addImageBuilderJavaArgs(String... javaArgs) {

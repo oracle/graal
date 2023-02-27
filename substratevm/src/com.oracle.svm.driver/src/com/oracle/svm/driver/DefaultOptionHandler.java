@@ -166,6 +166,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
             return true;
         }
+        String envVarArgPrefix = "-E";
+        if (headArg.startsWith(envVarArgPrefix)) {
+            args.poll();
+            String envVarSetting = headArg.substring(envVarArgPrefix.length());
+            String[] keyValue = envVarSetting.split("=", 2);
+            nativeImage.addImageBuilderEnvVar(keyValue[0], keyValue.length > 1 ? keyValue[1] : null);
+            return true;
+        }
         if (headArg.startsWith("-J")) {
             args.poll();
             if (headArg.equals("-J")) {
