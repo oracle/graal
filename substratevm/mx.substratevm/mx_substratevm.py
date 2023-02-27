@@ -342,8 +342,11 @@ def truffle_unittest_task(extra_build_args=None):
 
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
-                     'com.oracle.truffle.api.test.polyglot.ContextPolicyTest',
-                     'com.oracle.truffle.api.test.TruffleSafepointTest']
+                     'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
+
+    if '--libc=musl' not in extra_build_args:
+        # GR-44507
+        truffle_tests += ['com.oracle.truffle.api.test.TruffleSafepointTest']
 
     native_unittest(truffle_tests + truffle_args(extra_build_args))
 
