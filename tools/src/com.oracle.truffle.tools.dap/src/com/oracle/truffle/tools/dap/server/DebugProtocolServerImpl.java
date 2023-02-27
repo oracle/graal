@@ -95,6 +95,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -126,9 +127,12 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private volatile boolean launched;  // true when launched, false when attached
     private boolean disposed = false;
     private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
+    private final List<URI> sourcePath;
 
-    private DebugProtocolServerImpl(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, @SuppressWarnings("unused") final boolean inspectInitialization) {
+    private DebugProtocolServerImpl(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, @SuppressWarnings("unused") final boolean inspectInitialization,
+                    final List<URI> sourcePath) {
         this.context = context;
+        this.sourcePath = sourcePath;
         if (debugBreak) {
             debuggerSession = startDebuggerSession();
             context.initSession(debuggerSession);
@@ -196,8 +200,8 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         oh.setErrListener(errL);
     }
 
-    public static DebugProtocolServerImpl create(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, final boolean inspectInitialization) {
-        return new DebugProtocolServerImpl(context, debugBreak, waitAttached, inspectInitialization);
+    public static DebugProtocolServerImpl create(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, final boolean inspectInitialization, final List<URI> sourcePath) {
+        return new DebugProtocolServerImpl(context, debugBreak, waitAttached, inspectInitialization, sourcePath);
     }
 
     @Override
@@ -662,6 +666,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private DebuggerSession startDebuggerSession() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         DebuggerSession session = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
+        session.setSourcePath(sourcePath);
         session.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
         return session;
     }
