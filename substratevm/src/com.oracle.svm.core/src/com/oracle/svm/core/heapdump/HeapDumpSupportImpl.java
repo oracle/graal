@@ -44,6 +44,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
@@ -69,25 +70,29 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
     }
 
     public void writeHeapTo(String filename, boolean gcBefore) throws IOException {
-        RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+        RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
             throw new IOException("Could not create the heap dump file: " + filename);
         }
 
         try {
-            int size = SizeOf.get(HeapDumpVMOperationData.class);
-            HeapDumpVMOperationData data = StackValue.get(size);
-            UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
-
-            data.setGCBefore(gcBefore);
-            data.setRawFileDescriptor(fd);
-            heapDumpOperation.enqueue(data);
-
-            if (!data.getSuccess()) {
-                throw new IOException("An error occurred while writing the heap dump.");
-            }
+            writeHeapTo(fd, gcBefore);
         } finally {
             getFileSupport().close(fd);
+        }
+    }
+
+    public void writeHeapTo(RawFileDescriptor fd, boolean gcBefore) throws IOException {
+        int size = SizeOf.get(HeapDumpVMOperationData.class);
+        HeapDumpVMOperationData data = StackValue.get(size);
+        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+
+        data.setGCBefore(gcBefore);
+        data.setRawFileDescriptor(fd);
+        heapDumpOperation.enqueue(data);
+
+        if (!data.getSuccess()) {
+            throw new IOException("An error occurred while writing the heap dump.");
         }
     }
 
@@ -105,10 +110,10 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         void setGCBefore(boolean value);
 
         @RawField
-        RawFileOperationSupport.RawFileDescriptor getRawFileDescriptor();
+        RawFileDescriptor getRawFileDescriptor();
 
         @RawField
-        void setRawFileDescriptor(RawFileOperationSupport.RawFileDescriptor fd);
+        void setRawFileDescriptor(RawFileDescriptor fd);
 
         @RawField
         boolean getSuccess();

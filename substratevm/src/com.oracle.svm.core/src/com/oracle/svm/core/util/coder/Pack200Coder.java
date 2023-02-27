@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.util.coder;
 
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public class Pack200Coder {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long readUV(Pointer data) {
         ByteStream stream = StackValue.get(ByteStream.class);
         ByteStreamAccess.initialize(stream, data);
@@ -37,6 +39,7 @@ public class Pack200Coder {
     }
 
     /** This code is adapted from TypeReader.getUV(). */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long readUV(ByteStream data) {
         Pointer pos = data.getPosition();
         long result = pos.readByte(0) & 0xFF;
@@ -57,11 +60,17 @@ public class Pack200Coder {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int readUVAsInt(Pointer data) {
-        return NumUtil.safeToInt(readUV(data));
+        long result = readUV(data);
+        assert (int) result == result;
+        return (int) result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int readUVAsInt(ByteStream data) {
-        return NumUtil.safeToInt(readUV(data));
+        long result = readUV(data);
+        assert (int) result == result;
+        return (int) result;
     }
 }

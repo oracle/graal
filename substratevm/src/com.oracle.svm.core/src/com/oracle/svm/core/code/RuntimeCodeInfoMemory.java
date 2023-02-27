@@ -223,7 +223,7 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object until it is tethered.")
     public void walkRuntimeMethods(CodeInfoVisitor visitor) {
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);

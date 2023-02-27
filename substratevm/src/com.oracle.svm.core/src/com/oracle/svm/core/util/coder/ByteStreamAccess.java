@@ -26,7 +26,10 @@ package com.oracle.svm.core.util.coder;
 
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public class ByteStreamAccess {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(ByteStream stream, Pointer data) {
         stream.setPosition(data);
     }

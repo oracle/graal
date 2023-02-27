@@ -58,8 +58,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
  */
 public class BufferedFileOperationSupport {
     /**
-     * Returns a {@link BufferedFileOperationSupport} singleton that uses little endian byte
-     * ordering.
+     * Returns a {@link BufferedFileOperationSupport} singleton that uses little endian byte order.
      */
     @Fold
     public static BufferedFileOperationSupport littleEndian() {
@@ -67,7 +66,7 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Returns a {@link BufferedFileOperationSupport} singleton that uses big endian byte ordering.
+     * Returns a {@link BufferedFileOperationSupport} singleton that uses big endian byte order.
      */
     @Fold
     public static BufferedFileOperationSupport bigEndian() {
@@ -75,8 +74,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Returns a {@link BufferedFileOperationSupport} singleton that uses the native byte ordering
-     * of the underlying architecture.
+     * Returns a {@link BufferedFileOperationSupport} singleton that uses the native byte order of
+     * the underlying architecture.
      */
     @Fold
     public static BufferedFileOperationSupport nativeByteOrder() {
@@ -243,7 +242,7 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes a short value in the specified byte ordering to the current file position and advances
+     * Writes a short value in the specified byte order to the current file position and advances
      * the file position.
      *
      * @return true if the data was written, false otherwise.
@@ -261,8 +260,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes a char value in the specified byte ordering to the current file position and advances
-     * the file position.
+     * Writes a char value in the specified byte order to the current file position and advances the
+     * file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -279,8 +278,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes an integer value in the specified byte ordering to the current file position and
-     * advances the file position.
+     * Writes an integer value in the specified byte order to the current file position and advances
+     * the file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -297,8 +296,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes a long value in the specified byte ordering to the current file position and advances
-     * the file position.
+     * Writes a long value in the specified byte order to the current file position and advances the
+     * file position.
      *
      * @return true if the v was written, false otherwise.
      */
@@ -315,7 +314,7 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes a float value in the specified byte ordering to the current file position and advances
+     * Writes a float value in the specified byte order to the current file position and advances
      * the file position.
      *
      * @return true if the data was written, false otherwise.
@@ -326,8 +325,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes a double value in the specified byte ordering to the current file position and
-     * advances the file position.
+     * Writes a double value in the specified byte order to the current file position and advances
+     * the file position.
      *
      * @return true if the data was written, false otherwise.
      */

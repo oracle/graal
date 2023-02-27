@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -56,8 +55,8 @@ import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
-import com.oracle.svm.core.collections.GrowableArray;
-import com.oracle.svm.core.collections.GrowableArrayAccess;
+import com.oracle.svm.core.collections.GrowableWordArray;
+import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -452,34 +451,32 @@ public class HeapDumpWriter {
     }
 
     private void writeObjects() {
-        GrowableArray largeImageHeapObjects = StackValue.get(GrowableArray.class);
-        GrowableArrayAccess.initialize(largeImageHeapObjects);
+        GrowableWordArray largeImageHeapObjects = StackValue.get(GrowableWordArray.class);
+        GrowableWordArrayAccess.initialize(largeImageHeapObjects);
 
         dumpObjectsVisitor.initialize(true, largeImageHeapObjects);
         Heap.getHeap().walkImageHeapObjects(dumpObjectsVisitor);
 
-        GrowableArray largeCollectedHeapObjects = StackValue.get(GrowableArray.class);
-        GrowableArrayAccess.initialize(largeCollectedHeapObjects);
+        GrowableWordArray largeCollectedHeapObjects = StackValue.get(GrowableWordArray.class);
+        GrowableWordArrayAccess.initialize(largeCollectedHeapObjects);
 
         dumpObjectsVisitor.initialize(false, largeCollectedHeapObjects);
         Heap.getHeap().walkCollectedHeapObjects(dumpObjectsVisitor);
 
         /* Large objects are collected and written separately. */
         writeLargeObjects(largeImageHeapObjects, true);
-        GrowableArrayAccess.freeData(largeImageHeapObjects);
+        GrowableWordArrayAccess.freeData(largeImageHeapObjects);
         largeImageHeapObjects = WordFactory.nullPointer();
 
         writeLargeObjects(largeCollectedHeapObjects, false);
-        GrowableArrayAccess.freeData(largeCollectedHeapObjects);
+        GrowableWordArrayAccess.freeData(largeCollectedHeapObjects);
         largeCollectedHeapObjects = WordFactory.nullPointer();
     }
 
-    private void writeLargeObjects(GrowableArray largeObjects, boolean inImageHeap) {
+    private void writeLargeObjects(GrowableWordArray largeObjects, boolean inImageHeap) {
         int count = largeObjects.getSize();
-        WordPointer objects = largeObjects.getData();
-
         for (int i = 0; i < count; i++) {
-            Word rawObj = objects.addressOf(i).read();
+            Word rawObj = GrowableWordArrayAccess.get(largeObjects, i);
             writeObject(rawObj.toObject(), inImageHeap);
         }
     }
@@ -1077,14 +1074,14 @@ public class HeapDumpWriter {
 
     private class DumpObjectsVisitor implements ObjectVisitor {
         private boolean inImageHeap;
-        private GrowableArray largeObjects;
+        private GrowableWordArray largeObjects;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DumpObjectsVisitor() {
         }
 
         @SuppressWarnings("hiding")
-        public void initialize(boolean inImageHeap, GrowableArray largeObjects) {
+        public void initialize(boolean inImageHeap, GrowableWordArray largeObjects) {
             this.inImageHeap = inImageHeap;
             this.largeObjects = largeObjects;
         }
@@ -1092,7 +1089,7 @@ public class HeapDumpWriter {
         @Override
         public boolean visitObject(Object obj) {
             if (isLarge(obj)) {
-                boolean added = GrowableArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj));
+                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj));
                 if (!added) {
                     Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }

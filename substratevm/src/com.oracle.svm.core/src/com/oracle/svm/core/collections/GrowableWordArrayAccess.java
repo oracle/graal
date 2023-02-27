@@ -24,24 +24,31 @@
  */
 package com.oracle.svm.core.collections;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibC;
 
-public class GrowableArrayAccess {
-    public static void initialize(GrowableArray array) {
+public class GrowableWordArrayAccess {
+    private static final int INITIAL_CAPACITY = 10;
+
+    public static void initialize(GrowableWordArray array) {
         array.setSize(0);
         array.setCapacity(0);
         array.setData(WordFactory.nullPointer());
     }
 
-    public static boolean add(GrowableArray array, Word element) {
+    public static Word get(GrowableWordArray array, int i) {
+        assert i >= 0 && i < array.getSize();
+        return array.getData().addressOf(i).read();
+    }
+
+    public static boolean add(GrowableWordArray array, Word element) {
         if (array.getSize() == array.getCapacity() && !grow(array)) {
             return false;
         }
@@ -51,28 +58,46 @@ public class GrowableArrayAccess {
         return true;
     }
 
-    public static void freeData(GrowableArray array) {
+    public static void freeData(GrowableWordArray array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array.getData());
         array.setData(WordFactory.nullPointer());
         array.setSize(0);
         array.setCapacity(0);
     }
 
-    private static boolean grow(GrowableArray array) {
-        int newCapacity = array.getCapacity() * 2;
-        WordPointer oldData = array.getData();
+    private static boolean grow(GrowableWordArray array) {
+        int newCapacity = computeNewCapacity(array);
+        if (newCapacity < 0) {
+            /* Overflow. */
+            return false;
+        }
 
-        UnsignedWord wordSize = SizeOf.unsigned(WordPointer.class);
-        WordPointer newData = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(wordSize.multiply(newCapacity));
+        assert newCapacity >= INITIAL_CAPACITY;
+        WordPointer oldData = array.getData();
+        WordPointer newData = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(newCapacity).multiply(wordSize()));
         if (newData.isNull()) {
             return false;
         }
 
-        LibC.memcpy(newData, oldData, wordSize.multiply(array.getSize()));
+        LibC.memcpy(newData, oldData, WordFactory.unsigned(array.getSize()).multiply(wordSize()));
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(oldData);
 
         array.setData(newData);
         array.setCapacity(newCapacity);
         return true;
+    }
+
+    private static int computeNewCapacity(GrowableWordArray array) {
+        int oldCapacity = array.getCapacity();
+        if (oldCapacity == 0) {
+            return INITIAL_CAPACITY;
+        } else {
+            return oldCapacity * 2;
+        }
+    }
+
+    @Fold
+    static int wordSize() {
+        return ConfigurationValues.getTarget().wordSize;
     }
 }

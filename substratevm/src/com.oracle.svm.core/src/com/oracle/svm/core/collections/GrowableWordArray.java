@@ -30,10 +30,12 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 /**
- * Growable array with word-sized elements. The Word[] is allocated on the C heap.
+ * Growable array with word-sized elements. The {@link #getData() array elements} are allocated on
+ * the C heap. The functions in {@link GrowableWordArrayAccess} should be used to access and modify
+ * this data structure.
  */
 @RawStructure
-public interface GrowableArray extends PointerBase {
+public interface GrowableWordArray extends PointerBase {
     @RawField
     int getSize();
 

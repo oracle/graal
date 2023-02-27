@@ -40,7 +40,7 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSu
  */
 public interface RawFileOperationSupport {
     /**
-     * Returns a {@link RawFileOperationSupport} singleton that uses little endian byte ordering.
+     * Returns a {@link RawFileOperationSupport} singleton that uses little endian byte order.
      */
     @Fold
     static RawFileOperationSupport littleEndian() {
@@ -48,7 +48,7 @@ public interface RawFileOperationSupport {
     }
 
     /**
-     * Returns a {@link RawFileOperationSupport} singleton that uses big endian byte ordering.
+     * Returns a {@link RawFileOperationSupport} singleton that uses big endian byte order.
      */
     @Fold
     static RawFileOperationSupport bigEndian() {
@@ -56,7 +56,7 @@ public interface RawFileOperationSupport {
     }
 
     /**
-     * Returns a {@link RawFileOperationSupport} singleton that uses the native byte ordering of the
+     * Returns a {@link RawFileOperationSupport} singleton that uses the native byte order of the
      * underlying architecture.
      */
     @Fold
@@ -173,7 +173,7 @@ public interface RawFileOperationSupport {
     boolean writeByte(RawFileDescriptor fd, byte data);
 
     /**
-     * Writes a short value in the specified byte ordering to the current file position and advances
+     * Writes a short value in the specified byte order to the current file position and advances
      * the file position.
      *
      * @return true if the data was written, false otherwise.
@@ -182,8 +182,8 @@ public interface RawFileOperationSupport {
     boolean writeShort(RawFileDescriptor fd, short data);
 
     /**
-     * Writes a char value in the specified byte ordering to the current file position and advances
-     * the file position.
+     * Writes a char value in the specified byte order to the current file position and advances the
+     * file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -191,8 +191,8 @@ public interface RawFileOperationSupport {
     boolean writeChar(RawFileDescriptor fd, char data);
 
     /**
-     * Writes an integer value in the specified byte ordering to the current file position and
-     * advances the file position.
+     * Writes an integer value in the specified byte order to the current file position and advances
+     * the file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -200,8 +200,8 @@ public interface RawFileOperationSupport {
     boolean writeInt(RawFileDescriptor fd, int data);
 
     /**
-     * Writes a long value in the specified byte ordering to the current file position and advances
-     * the file position.
+     * Writes a long value in the specified byte order to the current file position and advances the
+     * file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -209,7 +209,7 @@ public interface RawFileOperationSupport {
     boolean writeLong(RawFileDescriptor fd, long data);
 
     /**
-     * Writes a float value in the specified byte ordering to the current file position and advances
+     * Writes a float value in the specified byte order to the current file position and advances
      * the file position.
      *
      * @return true if the data was written, false otherwise.
@@ -218,8 +218,8 @@ public interface RawFileOperationSupport {
     boolean writeFloat(RawFileDescriptor fd, float data);
 
     /**
-     * Writes a double value in the specified byte ordering to the current file position and
-     * advances the file position.
+     * Writes a double value in the specified byte order to the current file position and advances
+     * the file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -245,7 +245,9 @@ public interface RawFileOperationSupport {
     }
 
     enum FileCreationMode {
+        /** Create the file if it doesn't exist. Fail if it already exists. */
         CREATE,
+        /** Create the file if it doesn't exist. If it already exists, then truncate the file. */
         CREATE_OR_REPLACE,
     }
 
