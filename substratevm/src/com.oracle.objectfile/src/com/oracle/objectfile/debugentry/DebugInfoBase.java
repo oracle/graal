@@ -428,7 +428,7 @@ public abstract class DebugInfoBase {
     public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
         TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            throw new RuntimeException("type entry not found " + type.getName());
+            throw new RuntimeException("Type entry not found " + type.getName());
         }
         return typeEntry;
     }
@@ -439,7 +439,7 @@ public abstract class DebugInfoBase {
         // lookup target should already be included in the index
         ClassEntry classEntry = instanceClassesIndex.get(type);
         if (classEntry == null || !(classEntry.isClass())) {
-            throw new RuntimeException("class entry not found " + type.getName());
+            throw new RuntimeException("Class entry not found " + type.getName());
         }
         // lookup target should also be indexed in the types index
         assert typesIndex.get(type) != null;

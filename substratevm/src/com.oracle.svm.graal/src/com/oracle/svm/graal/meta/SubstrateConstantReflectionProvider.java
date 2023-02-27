@@ -120,7 +120,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
             case Double:
                 return false;
             default:
-                throw new IllegalArgumentException("unexpected kind " + source.getJavaKind());
+                throw new IllegalArgumentException("Unexpected kind " + source.getJavaKind());
         }
     }
 

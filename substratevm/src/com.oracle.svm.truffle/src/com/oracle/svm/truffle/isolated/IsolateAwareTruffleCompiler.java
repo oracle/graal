@@ -129,7 +129,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
 
                 String exception = client.unhand(thrownException);
                 if (exception != null) {
-                    throw new RuntimeException("doCompile threw: " + exception);
+                    throw new RuntimeException("Method doCompile threw: " + exception);
                 }
             } finally {
                 IsolatedCompileClient.set(null);

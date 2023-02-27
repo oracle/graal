@@ -109,7 +109,7 @@ public abstract class SectionName {
             case MACH_O:
                 return "__";
             default:
-                throw new IllegalStateException("unsupported format: " + f);
+                throw new IllegalStateException("Unsupported format: " + f);
         }
     }
 
