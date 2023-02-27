@@ -78,7 +78,7 @@ import java.io.OutputStream;
  *
  * <p>
  * <b> Compatibility Notice: </b> The behavior of sandbox policies is subject to incompatible
- * changes for new GraalVM versions. New presets and validations may be added in new GraalVM
+ * changes for new GraalVM major releases. New presets and validations may be added in new GraalVM
  * releases that may let configurations valid in older versions fail for newer versions. Therefore,
  * adopting a new GraalVM version with a set sandbox policy might require changes for the embedder.
  * This applies to all policies other than {@link #TRUSTED}. Changes to the policy are announced in
@@ -184,6 +184,9 @@ public enum SandboxPolicy {
      * <li>The {@code engine.SpawnIsolate} option is preset to <code>true</code> if it has not been
      * explicitly set.</li>
      * <li>The {@code engine.MaxIsolateMemory} option must be set.</li>
+     * <li>The {@code sandbox.MaxCPUTime}, {@code sandbox.MaxStackFrames} limits options must be
+     * set. Use {@code sandbox.TraceLimits} to estimate an application's optimal sandbox
+     * parameters.</li>
      * <li>If {@link HostAccess} is not specified, the {@link HostAccess#ISOLATED} is used.</li>
      * Otherwise, the specified {@link HostAccess} must meet all the constraints of the
      * {@link #CONSTRAINED} sandbox policy and must in addition use
@@ -201,6 +204,8 @@ public enum SandboxPolicy {
      *                 .out(output)  //
      *                 .err(errorOutput)  //
      *                 .option("engine.MaxIsolateMemory", "1GB")  //
+     *                 .option("sandbox.MaxCPUTime", "10s") //
+     *                 .option("sandbox.MaxStackFrames", "10") //
      *                 .build()) {
      *     context.eval(source);
      * }
