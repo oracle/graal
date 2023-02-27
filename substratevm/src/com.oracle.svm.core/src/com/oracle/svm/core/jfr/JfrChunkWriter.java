@@ -86,6 +86,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private boolean isFinal;
     private long lastMetadataId;
     private SignedWord metadataPosition;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory) {
         this.lock = new VMMutex("JfrChunkWriter");
@@ -143,7 +144,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         lastCheckpointOffset = WordFactory.signed(-1); // must reset this on new chunk
         return true;
     }
-
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public boolean write(JfrBuffer buffer) {
@@ -325,6 +325,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
         return count;
     }
+
     public void setMetadata(byte[] bytes) {
         metadata.setDescriptor(bytes);
     }
@@ -391,6 +392,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         writeCompressedLong(value & 0xFFFFFFFFL);
     }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeInt(int value) {
         assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
@@ -563,9 +565,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage(boolean flush) {
         /*
-         * Write unflushed data from the thread-local event buffers to the output file. We do
-         * *not* reinitialize the thread-local buffers as the individual threads will handle
-         * space reclamation on their own time.
+         * Write unflushed data from the thread-local event buffers to the output file. We do *not*
+         * reinitialize the thread-local buffers as the individual threads will handle space
+         * reclamation on their own time.
          */
         traverseList(getJavaBufferList(), flush);
         traverseList(getNativeBufferList(), flush);
@@ -613,15 +615,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                  */
                 JfrThreadLocal.flushNoReset(buffer);
             } else {
-                /* Buffer should not be locked when entering a safepoint.
-                 * Lock buffer here to satisfy assertion checks.
+                /*
+                 * Buffer should not be locked when entering a safepoint. Lock buffer here to
+                 * satisfy assertion checks.
                  */
-                if(!JfrBufferAccess.tryLock(buffer)) {
+                if (!JfrBufferAccess.tryLock(buffer)) {
                     assert false;
                 }
                 try {
                     write(buffer);
-                }finally {
+                } finally {
                     JfrBufferAccess.unlock(buffer);
                 }
             }

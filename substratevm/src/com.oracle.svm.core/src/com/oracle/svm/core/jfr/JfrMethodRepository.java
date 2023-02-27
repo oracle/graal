@@ -148,7 +148,7 @@ public class JfrMethodRepository implements JfrConstantPool {
         writer.writeCompressedLong(JfrType.Method.getId());
         writer.writeCompressedInt(numberOfMethods);
         writer.write(epochData.methodBuffer);
-
+        JfrBufferAccess.reinitialize(epochData.methodBuffer);
         epochData.unflushedMethodCount = 0;
         return NON_EMPTY;
     }

@@ -210,14 +210,17 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode result = javaBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
+            if (buffer.isNull()) {
+                return WordFactory.nullPointer();
+            }
             result = javaBufferList.addNode(buffer, CurrentIsolate.getCurrentThread());
+            if (result.isNull()) {
+                JfrBufferAccess.free(buffer);
+                return WordFactory.nullPointer();
+            }
             javaBufferNode.set(result);
         }
-        // result can still be null if allocation of a node or JFR buffer fails.
-        if (result.isNonNull()) {
-            return result.getValue();
-        }
-        return WordFactory.nullPointer();
+        return result.getValue();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
@@ -225,14 +228,17 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode result = nativeBufferNode.get();
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
+            if (buffer.isNull()) {
+                return WordFactory.nullPointer();
+            }
             result = nativeBufferList.addNode(buffer, CurrentIsolate.getCurrentThread());
+            if (result.isNull()) {
+                JfrBufferAccess.free(buffer);
+                return WordFactory.nullPointer();
+            }
             nativeBufferNode.set(result);
         }
-        // result can still be null if allocation of a node or JFR buffer fails.
-        if (result.isNonNull()) {
-            return result.getValue();
-        }
-        return WordFactory.nullPointer();
+        return result.getValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

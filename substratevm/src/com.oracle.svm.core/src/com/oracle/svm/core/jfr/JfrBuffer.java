@@ -37,10 +37,11 @@ import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * A {@link JfrBuffer} is a block of native memory (either thread-local or global) into which JFR
- * events are written. The flushedPos is the point up to which data has been flushed. The committedPos is the point up to
- * which data has been committed. This means that data between the flushedPos and committedPos is unflushed data that
- * is ready to be flushed. This also means that flushedPos should never exceed committedPos. New emitted events
- * are written after the commit position. The new events are committed by advancing the committedPos.
+ * events are written. The flushedPos is the point up to which data has been flushed. The
+ * committedPos is the point up to which data has been committed. This means that data between the
+ * flushedPos and committedPos is unflushed data that is ready to be flushed. This also means that
+ * flushedPos should never exceed committedPos. New emitted events are written after the commit
+ * position. The new events are committed by advancing the committedPos.
  */
 @RawStructure
 public interface JfrBuffer extends PointerBase {

@@ -25,9 +25,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 public class JfrMetadata {
     private long currentMetadataId;
@@ -46,7 +43,6 @@ public class JfrMetadata {
     public byte[] getDescriptor() {
         return metadataDescriptor;
     }
-
 
     public long getCurrentMetadataId() {
         return currentMetadataId;

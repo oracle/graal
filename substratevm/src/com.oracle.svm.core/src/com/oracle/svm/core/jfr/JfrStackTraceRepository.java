@@ -269,6 +269,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         writer.writeCompressedLong(JfrType.StackTrace.getId());
         writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);
         writer.write(epochData.stackTraceBuffer);
+        JfrBufferAccess.reinitialize(epochData.stackTraceBuffer);
         epochData.numberOfSerializedStackTraces = 0;
         return NON_EMPTY;
     }

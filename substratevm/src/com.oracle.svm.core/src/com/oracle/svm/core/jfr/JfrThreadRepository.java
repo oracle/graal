@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

@@ -35,16 +35,15 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 
 /**
- * {@link JfrBufferNodeLinkedList} is a singly linked list used to store thread local JFR buffers. Threads
- * shall only add one node to the list. Only the thread performing a flush or epoch change shall
- * iterate this list and is allowed to remove nodes. There is a list-level lock that is acquired
- * when adding nodes, and when beginning iteration at the head. Threads may access their own nodes
- * at any time up until they set the alive flag to false {@link JfrBufferNode#setAlive}.
+ * {@link JfrBufferNodeLinkedList} is a singly linked list used to store thread local JFR buffers.
+ * Threads shall only add one node to the list. Only the thread performing a flush or epoch change
+ * shall iterate this list and is allowed to remove nodes. There is a list-level lock that is
+ * acquired when adding nodes, and when beginning iteration at the head. Threads may access their
+ * own nodes at any time up until they set the alive flag to false {@link JfrBufferNode#setAlive}.
  * When entering a safepoint, the list lock must not be held by one of the blocked Java threads.
  */
 public class JfrBufferNodeLinkedList {
@@ -60,8 +59,9 @@ public class JfrBufferNodeLinkedList {
         JfrBuffer getValue();
 
         /**
-         * This field is effectively final and should always be non-null.
-         * Changing its value after the node is added to the {@link JfrBufferNodeLinkedList} can result in races.*/
+         * This field is effectively final and should always be non-null. Changing its value after
+         * the node is added to the {@link JfrBufferNodeLinkedList} can result in races.
+         */
         @RawField
         void setValue(JfrBuffer value);
 
@@ -85,9 +85,6 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
-        if (buffer.isNull()) {
-            return WordFactory.nullPointer();
-        }
         JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
         if (node.isNonNull()) {
             node.setAlive(true);
@@ -122,8 +119,10 @@ public class JfrBufferNodeLinkedList {
         }
     }
 
-    /** Removes a node from the linked list. The buffer contained in the nodes must have already been
-     *  freed by the caller.*/
+    /**
+     * Removes a node from the linked list. The buffer contained in the nodes must have already been
+     * freed by the caller.
+     */
     @Uninterruptible(reason = "Should not be interrupted while flushing.")
     public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
         assert head.isNonNull();
@@ -149,7 +148,11 @@ public class JfrBufferNodeLinkedList {
      */
     @Uninterruptible(reason = "Locking with no transition. List must not be acquired entering epoch change.")
     public JfrBufferNode addNode(JfrBuffer buffer, IsolateThread thread) {
+        assert buffer.isNonNull();
         JfrBufferNode newNode = createNode(buffer, thread);
+        if (newNode.isNull()) {
+            return WordFactory.nullPointer();
+        }
         acquireList();
         try {
             // Old head could be null
