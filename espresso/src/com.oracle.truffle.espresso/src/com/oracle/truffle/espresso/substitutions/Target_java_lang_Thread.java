@@ -26,10 +26,13 @@ package com.oracle.truffle.espresso.substitutions;
 import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
 
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -45,6 +48,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 
 // @formatter:off
 /**
@@ -296,14 +301,58 @@ public final class Target_java_lang_Thread {
     public static void setNativeName(@JavaType(Thread.class) StaticObject self, @JavaType(String.class) StaticObject name,
                     @Inject Meta meta) {
         Thread hostThread = meta.getThreadAccess().getHost(self);
+        if (hostThread == null) {
+            return;
+        }
         hostThread.setName(meta.toHostString(name));
     }
 
     @TruffleBoundary
     @SuppressWarnings({"unused"})
-    @Substitution(versionFilter = VersionFilter.Java19OrLater.class)
-    public static @JavaType(Object.class) StaticObject getStackTrace0(@JavaType(Thread.class) StaticObject self) {
-        throw EspressoError.unimplemented("async_get_stacktrace");
+    @Substitution(versionFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)
+    public static @JavaType(Object.class) StaticObject getStackTrace0(@JavaType(Thread.class) StaticObject self, @Inject EspressoContext context) {
+        // JVM_GetStackTrace
+        Thread hostThread = context.getThreadAccess().getHost(self);
+        if (hostThread == null) {
+            return StaticObject.NULL;
+        }
+        VM.StackTrace stackTrace;
+        if (hostThread == Thread.currentThread()) {
+            stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+        } else {
+            CollectStackTraceAction action = new CollectStackTraceAction();
+            Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{hostThread}, action);
+            try {
+                future.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                context.getLogger().warning("getStackTrace0: Host interrupted while waiting for stack trace future");
+                return StaticObject.NULL;
+            } catch (ExecutionException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+            stackTrace = action.result;
+        }
+
+        return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
+            StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
+            VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
+            return ste;
+        });
+    }
+
+    private static final class CollectStackTraceAction extends ThreadLocalAction {
+        VM.StackTrace result;
+
+        protected CollectStackTraceAction() {
+            super(false, false);
+        }
+
+        @Override
+        protected void perform(Access access) {
+            assert access.getThread() == Thread.currentThread();
+            result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+        }
     }
 
     @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
