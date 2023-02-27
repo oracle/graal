@@ -237,7 +237,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             return null;
         }
         int index = getThreadIndex(id, threads);
-        if (index <= 0 || index >= guestThreads.length) {
+        if (index <= 0 || index >= threads.length) {
             // no guest thread created for this host thread
             return null;
         }
