@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -56,14 +58,14 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
      * We disable the constant folding of such fields when preparing runtime graphs, so that during
      * partial evaluation the {@link TruffleConstantFieldProvider} can do the correct constant
      * folding that takes stable array dimensions into account.
+     * <p>
+     * Similar restrictions are needed for the Node's {@link Child} and {@link Children}
+     * annotations.
      */
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        /*
-         * FIXME do we care about the other Truffle criteria (Child, Children)? Verdict: yes, this
-         * should be changed
-         */
-        if (field.getAnnotation(CompilationFinal.class) != null) {
+        boolean hasTruffleFoldedAnnotation = field.isAnnotationPresent(CompilationFinal.class) || field.isAnnotationPresent(Child.class) || field.isAnnotationPresent(Children.class);
+        if (hasTruffleFoldedAnnotation) {
             if ((!SubstrateOptions.parseOnce()) && field instanceof AnalysisField) {
                 /*
                  * Without ParseOnce, this field might only be read within runtime graphs (it might
@@ -74,7 +76,7 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
                  * When using ParseOnce, this precaution is unnecessary, as runtime graphs are
                  * properly integrated into analysis.
                  */
-                ((AnalysisField) field).registerAsRead("it is annotated with " + CompilationFinal.class.getName());
+                ((AnalysisField) field).registerAsRead("it is annotated with a Truffle folded annotation (@CompilationFinal, @Children, or @Child)");
             }
             return null;
         }
