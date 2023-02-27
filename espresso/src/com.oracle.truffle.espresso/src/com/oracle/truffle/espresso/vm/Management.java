@@ -302,10 +302,9 @@ public final class Management extends NativeEnv {
                 }
             }
 
-            if (StaticObject.isNull(thread)) {
+            if (StaticObject.isNull(thread) || !getThreadAccess().isAlive(thread)) {
                 getInterpreterToVM().setArrayObject(language, StaticObject.NULL, i, infoArray);
             } else {
-
                 int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
