@@ -38,10 +38,12 @@ import java.util.List;
 /**
  * Represents the current state of a Graal IR interpreter.
  *
- * This includes a representation of a heap and a stack of Activation frames,
+ * This includes a representation of the stack of Activation frames,
  * and a factory for creating new runtime values within the interpreter.
  *
- * TODO: the heap needs more thought, as the new-instance node may not be the best key?
+ * The heap is represented using standard Java objects in the standard Java heap,
+ * but with a small wrapper around those objects when they are being used with an
+ * interpreted method.
  */
 public interface InterpreterState {
 
