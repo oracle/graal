@@ -368,7 +368,7 @@ final class PanamaSignature {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
-            PanamaNFILanguage.ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
+            ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
             try {
                 int errnoMirror = ctx.getErrno();
                 if (ctx.nativeErrnoSet()) {

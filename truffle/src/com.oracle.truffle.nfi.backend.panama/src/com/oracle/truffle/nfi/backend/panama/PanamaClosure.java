@@ -198,7 +198,7 @@ final class PanamaClosure implements TruffleObject {
             }
 
             try {
-                PanamaNFILanguage.ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
+                ErrorContext ctx = PanamaNFILanguage.get(null).errorContext.get();
                 int errnoMirror = ctx.getErrno();
                 if (ctx.nativeErrnoSet()) {
                     ctx.setErrno(ctx.getNativeErrno());
