@@ -53,7 +53,6 @@ public final class ThreadData extends UnacquiredThreadData {
             throw VMError.shouldNotReachHere(ex);
         }
     }
-
     private volatile int lock;
     private boolean detached;
     private long refCount;

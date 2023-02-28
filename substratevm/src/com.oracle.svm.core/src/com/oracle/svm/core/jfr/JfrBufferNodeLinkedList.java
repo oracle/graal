@@ -51,6 +51,7 @@ public class JfrBufferNodeLinkedList {
 
     private static final long LOCK_OFFSET = Unsafe.getUnsafe().objectFieldOffset(JfrBufferNodeLinkedList.class, "lock");
 
+    @SuppressWarnings("unused")
     private volatile int lock;
     private volatile JfrBufferNode head;
 

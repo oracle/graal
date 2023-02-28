@@ -224,13 +224,14 @@ public final class JfrThreadRepository {
                 return lastCheckpointOffset;
             }
             SignedWord start = writer.beginEvent();
-            if (lastCheckpointOffset.lessThan(0)) {
-                lastCheckpointOffset = start;
+            long delta = 0;
+            if (lastCheckpointOffset.greaterOrEqual(0)) {
+                delta = lastCheckpointOffset.subtract(start).rawValue();
             }
             writer.writeCompressedLong(JfrReservedEvent.EVENT_CHECKPOINT.getId());
             writer.writeCompressedLong(JfrTicks.elapsedTicks());
             writer.writeCompressedLong(0); // duration
-            writer.writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue());
+            writer.writeCompressedLong(delta);
             writer.writeByte(JfrCheckpointType.Threads.getId());
 
             // If only writing threads pool, count is 1

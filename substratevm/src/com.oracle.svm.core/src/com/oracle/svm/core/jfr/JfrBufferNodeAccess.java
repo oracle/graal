@@ -27,7 +27,6 @@
 package com.oracle.svm.core.jfr;
 
 import jdk.internal.misc.Unsafe;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
 import com.oracle.svm.core.Uninterruptible;
 
@@ -42,16 +41,16 @@ public final class JfrBufferNodeAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRetired(JfrBufferNode node) {
-        UNSAFE.putBooleanVolatile(null, ptrToLock(node).rawValue(), false);
+        UNSAFE.putBooleanVolatile(null, ptrToAlive(node).rawValue(), false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setAlive(JfrBufferNode node) {
-        UNSAFE.putBooleanVolatile(null, ptrToLock(node).rawValue(), true);
+        UNSAFE.putBooleanVolatile(null, ptrToAlive(node).rawValue(), true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static CIntPointer ptrToLock(JfrBufferNode node) {
-        return (CIntPointer) ((Pointer) node).add(JfrBufferNode.offsetOfAlive());
+    private static Pointer ptrToAlive(JfrBufferNode node) {
+        return ((Pointer) node).add(JfrBufferNode.offsetOfAlive());
     }
 }

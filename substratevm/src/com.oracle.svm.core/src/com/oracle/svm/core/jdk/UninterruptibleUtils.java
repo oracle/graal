@@ -527,20 +527,21 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static Pointer writeModifiedUTF8(Pointer buffer, char c, boolean replaceDotWithSlash) {
             Pointer pos = buffer;
-            if (replaceDotWithSlash && c == '.') {
-                c = '/';
+            char replacedChar = c;
+            if (replaceDotWithSlash && replacedChar == '.') {
+                replacedChar = '/';
             }
-            if (c >= 0x0001 && c <= 0x007F) {
-                pos.writeByte(0, (byte) c);
+            if (replacedChar >= 0x0001 && replacedChar <= 0x007F) {
+                pos.writeByte(0, (byte) replacedChar);
                 pos = pos.add(1);
-            } else if (c <= 0x07FF) {
-                pos.writeByte(0, (byte) (0xC0 | (c >> 6)));
-                pos.writeByte(1, (byte) (0x80 | (c & 0x3F)));
+            } else if (replacedChar <= 0x07FF) {
+                pos.writeByte(0, (byte) (0xC0 | (replacedChar >> 6)));
+                pos.writeByte(1, (byte) (0x80 | (replacedChar & 0x3F)));
                 pos = pos.add(2);
             } else {
-                pos.writeByte(0, (byte) (0xE0 | (c >> 12)));
-                pos.writeByte(1, (byte) (0x80 | ((c >> 6) & 0x3F)));
-                pos.writeByte(2, (byte) (0x80 | (c & 0x3F)));
+                pos.writeByte(0, (byte) (0xE0 | (replacedChar >> 12)));
+                pos.writeByte(1, (byte) (0x80 | ((replacedChar >> 6) & 0x3F)));
+                pos.writeByte(2, (byte) (0x80 | (replacedChar & 0x3F)));
                 pos = pos.add(3);
             }
             return pos;

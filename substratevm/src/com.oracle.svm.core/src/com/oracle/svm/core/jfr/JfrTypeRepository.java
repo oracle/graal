@@ -205,12 +205,12 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedInt(typeInfo.classLoaders.size());
 
         for (Map.Entry<ClassLoader, Long> clInfo : typeInfo.classLoaders.entrySet()) {
-            writeClassLoader(typeInfo, writer, clInfo.getKey(), clInfo.getValue(), flush);
+            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flush);
         }
         return NON_EMPTY;
     }
 
-    private void writeClassLoader(TypeInfo typeInfo, JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
+    private void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
         if (cl == null) {
