@@ -722,7 +722,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
-                    _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                    if _library_config.headers:
+                        _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)

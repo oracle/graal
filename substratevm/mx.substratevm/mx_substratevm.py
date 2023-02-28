@@ -824,6 +824,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
             ],
+            headers=False,
         ),
         mx_sdk_vm.LibraryConfig(
             use_modules='image' if not svm_java8() else None,
@@ -836,6 +837,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=[
                 '--features=com.oracle.svm.diagnosticsagent.NativeImageDiagnosticsAgent$RegistrationFeature',
             ],
+            headers=False,
         ),
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
