@@ -394,19 +394,19 @@ public final class CPUSampler implements Closeable {
             }
         }
         // Shutdown and await termination without holding a lock.
-        boolean interrupted = false;
         for (ExecutorService executorService : toShutdown) {
             executorService.shutdownNow();
-            try {
-                if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
-                    throw new RuntimeException("Failed to shutdown background threads.");
+            while (true) {
+                try {
+                    if (executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)) {
+                        break;
+                    } else {
+                        throw new RuntimeException("Failed to shutdown background threads.");
+                    }
+                } catch (InterruptedException ie) {
+                    // continue to awaitTermination
                 }
-            } catch (InterruptedException ie) {
-                interrupted = true;
             }
-        }
-        if (interrupted) {
-            Thread.currentThread().interrupt();
         }
     }
 
