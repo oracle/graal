@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ public abstract class InterpreterValueObject extends InterpreterValue {
     @Override
     public void setUnwindException() {
         try {
-            if (!Exception.class.isAssignableFrom(Class.forName(type.toClassName()))) {
+            if (!Throwable.class.isAssignableFrom(Class.forName(type.toClassName()))) {
                 throw new IllegalArgumentException("cannot unwind with non-Exception object");
             }
         } catch (ClassNotFoundException e) {

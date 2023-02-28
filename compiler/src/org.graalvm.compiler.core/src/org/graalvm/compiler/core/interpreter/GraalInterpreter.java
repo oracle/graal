@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.invoke.MethodHandles;
@@ -65,29 +64,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Interpreter for Graal Intermediate Representation (IR) graphs.
+ * Interpreter for GraalVM Intermediate Representation (IR) graphs.
  *
- * The main method is <code>executeGraph(g,args...)</code>, which interprets the graph <code>g</code>
- * of a method, with the given arguments.
+ * The main method is {@link #executeGraph(StructuredGraph, Object...)},
+ * which interprets the graph of a method, with the given arguments.
  *
- * TODO: treat Java runtime library differently?  Currently the interpreter interprets all methods
- *   and classes, including those in java.lang...  This may not be the best strategy, since some of
- *   those classes have special behavior and fields.  An alternative option might be to just use
- *   the existing classes/objects within certain packages, such as java.lang.
- *
- * TODO: the interpreter does not currently initialise all static fields - just the private static fields
- *   of the class containing the starting method, plus only the public or protected static fields of its
- *   superclasses.  Static fields of other classes are not initialised at all.
- *   Java VarHandles may be a better way of finding all static fields, rather than reflection.
- *
- * TODO: the interpreter heap representation needs reviewing and extending.
- *   1. Node pointers may not be the best index, once objects are passed between methods.
- *   2. Ideally, the interpreter heap should use weak references for its values, so that objects in that
- *      heap can be garbage collected once they are no longer accessible via any of the activation frames.
- *   3. The asObject() method, which converts the interpreter heap representation of an object into a
- *      native Java object, has not been implemented yet, and requires some tricky reflection.  Alternatively,
- *      we could try representing all objects by native Java objects and use reflection or VarHandles to
- *      read and write the fields of those objects.
+ * Objects are represented by normal Java objects so that they can be passed between
+ * interpreted and compiled code.
  */
 public class GraalInterpreter {
     private final InterpreterStateImpl myState;
@@ -100,6 +83,8 @@ public class GraalInterpreter {
      * Create a new Graal IR graph interpreter.
      *
      * @param context
+     * @param classLoader
+     * @param lookup
      */
     public GraalInterpreter(HighTierContext context, ClassLoader classLoader, MethodHandles.Lookup lookup) {
         this.context = context;
@@ -110,6 +95,8 @@ public class GraalInterpreter {
 
     /**
      * Converts a numeric value to the desired size.
+     *
+     * This leaves non-numeric values unchanged.
      *
      * @param kind
      * @param obj
@@ -135,9 +122,9 @@ public class GraalInterpreter {
     /**
      * Interprets the graph of a method, with the given arguments.
      *
-     * It will throw a GraalError exception if the graph contains any nodes that
-     * have not yet implemented the appropriate <code>interpret()</code> and/or
-     * <code>interpretExpr()</code> methods.
+     * It will throw a {@link GraalError} exception if the graph contains any nodes that
+     * have not yet implemented the appropriate {@link FixedNode#interpret(InterpreterState)} and/or
+     * {@link org.graalvm.compiler.nodes.calc.FloatingNode#interpretExpr(InterpreterState)} methods.
      *
      * @param graph
      * @param args

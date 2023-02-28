@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,22 +36,46 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class InterpreterValue {
 
+    /**
+     * @return True if this wrapped value is a primitive value, such as numeric.
+     */
     public boolean isPrimitive() {
         return false;
     }
 
+    /**
+     *
+     * @return True if the wrapped value is a Java array.
+     */
     public boolean isArray() {
         return false;
     }
 
+    /**
+     * Converts the wrapped value to a {@link PrimitiveConstant}, if possible.
+     *
+     * Note that {@link #isPrimitive()} should be true for this method to succeed.
+     *
+     * @return
+     * @throws UnsupportedOperationException if the wrapped value is not primitive.
+     */
     public PrimitiveConstant asPrimitiveConstant() {
         throw new UnsupportedOperationException("asPrimitiveConstant called on non primitive value");
     }
 
+    /**
+     * Find the type of this interpreter value.
+     *
+     * @return
+     */
     public ResolvedJavaType getObjectType() {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Find what kind of value is this interpreter value.
+     * @return
+     */
     public abstract JavaKind getJavaKind();
 
     /**
@@ -85,6 +109,15 @@ public abstract class InterpreterValue {
         return asObject();
     }
 
+    /**
+     * Create a default value for the given kind, if possible.
+     *
+     * For example, numeric kinds create a zero value, while
+     * {@link JavaKind#Object} creates a null pointer.
+     *
+     * @param kind
+     * @return
+     */
     public static InterpreterValue createDefaultOfKind(JavaKind kind) {
         if (kind == JavaKind.Void) {
             return InterpreterValueVoid.INSTANCE;

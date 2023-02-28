@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,24 +25,14 @@
 package org.graalvm.compiler.interpreter.value;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.PrimitiveConstant;
-
-import java.util.HashMap;
-import java.util.function.Function;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Array;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.InvocationTargetException;
-
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import sun.misc.Unsafe;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.HashMap;
 
 
 /**
@@ -65,7 +55,6 @@ public class InterpreterValueMutableObject extends InterpreterValueObject {
         try {
             // Load the class of the native object using the class loader of GraalInterpreterTest.
             Class<?> clazz = Class.forName(type.toJavaName(), true, jvmContext.getClassLoader());
-            // nativeObject = GraalUnsafeAccess.getUnsafe().allocateInstance(clazz);
             nativeObject = unsafe.allocateInstance(clazz);
         } catch (InstantiationException | ClassNotFoundException e) {
             throw new RuntimeException(e);
