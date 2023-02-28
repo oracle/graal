@@ -40,43 +40,21 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-import org.graalvm.wasm.predefined.wasi.types.Errno;
-
-import java.util.Random;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
- * WASI random_get for testing purposes.
+ * Used to suppress <a href="https://spotbugs.readthedocs.io">SpotBugs</a> warnings.
  */
-public class WasiConstantRandomGetNode extends WasmBuiltinRootNode {
-    private static final int SEED = 12345;
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
+    /**
+     * @see "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html"
+     */
+    String[] value();
 
-    public WasiConstantRandomGetNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
-    }
-
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final Object[] args = frame.getArguments();
-        return randomGet((int) args[0], (int) args[1]);
-    }
-
-    @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "This is a testing class only")
-    @CompilerDirectives.TruffleBoundary
-    private Object randomGet(int buf, int size) {
-        byte[] randomData = new byte[size];
-        new Random(SEED).nextBytes(randomData);
-        memory().initialize(randomData, 0, buf, size);
-        return Errno.Success.ordinal();
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_random_get";
-    }
+    /**
+     * Reason why the warning is suppressed. Use a SpotBugs issue id where appropriate.
+     */
+    String justification();
 }
