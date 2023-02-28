@@ -342,7 +342,7 @@ public final class HeapMonitor implements Closeable {
      */
     @Override
     public void close() {
-        ExecutorService toShutDown = null;
+        ExecutorService toShutDown;
         synchronized (this) {
             closed = true;
             resetMonitor();
@@ -351,12 +351,16 @@ public final class HeapMonitor implements Closeable {
         }
         if (toShutDown != null) {
             toShutDown.shutdownNow();
-            try {
-                if (!toShutDown.awaitTermination(10, TimeUnit.SECONDS)) {
-                    throw new RuntimeException("Failed to shutdown background thread.");
+            while (true) {
+                try {
+                    if (toShutDown.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)) {
+                        break;
+                    } else {
+                        throw new RuntimeException("Failed to shutdown background thread.");
+                    }
+                } catch (InterruptedException ie) {
+                    // continue to awaitTermination
                 }
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
             }
         }
     }
