@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,7 +129,8 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
 
         /* purge off exception values */
         if ((hy | ly) == 0 || (hx >= 0x7ff00000) || /* y=0,or x not finite */
-                        ((hy | ((ly | -ly) >> 31)) > 0x7ff00000)) /* or y is NaN */ {
+                        /* or y is NaN */
+                        UninterruptibleUtils.Integer.compareUnsigned(hy | ((ly | -ly) >>> 31), 0x7ff00000) > 0) {
             return (x * y) / (x * y);
         }
         if (hx <= hy) {
