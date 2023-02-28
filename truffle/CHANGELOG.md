@@ -46,6 +46,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-42539 (change of behavior) Unclosed polyglot engines are no longer closed automatically on VM shutdown. They just die with the VM. As a result, `TruffleInstrument#onDispose` is not called for active instruments on unclosed engines in the event of VM shutdown. In case an instrument is supposed to do some specific action before its disposal, e.g. print some kind of summary, it should be done in `TruffleInstrument#onFinalize`.
 * GR-42961 Added `TruffleString.ByteIndexOfCodePointSetNode`, which allows fast searching for a given set of codepoints.
 * GR-42961 Added `TruffleString.GetCodeRangeImpreciseNode`, which allows querying the currently known code range without triggering a string scan.
+* GR-42961 `TruffleString.FromJavaStringNode` no longer eagerly scans strings for their code range. To still get eager scanning of constant strings, use `fromConstant(String)`.
 
 ## Version 22.3.0
 

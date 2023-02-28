@@ -195,7 +195,7 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                 if (!isUTF(encoding) && ranges[ranges.length - 1] > 0x7f) {
                     continue;
                 }
-                TruffleString.ByteIndexOfCodePointSetNode.CodePointSet codePointSet = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(ranges, encoding);
+                TruffleString.CodePointSet codePointSet = TruffleString.CodePointSet.fromRanges(ranges, encoding);
                 for (int i = 0; i < strings.length; i++) {
                     int expected = indexOfRanges(codepoints[i], ranges, byteIndices[i]);
                     int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
@@ -226,13 +226,13 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, 0, 1, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{0, 0}, e)));
+        checkNullSE((s, e) -> node.execute(s, 0, 1, TruffleString.CodePointSet.fromRanges(new int[]{0, 0}, e)));
         expectNullPointerException(() -> node.execute(S_UTF8, 0, 1, null));
     }
 
     @Test
     public void testOutOfBounds() throws Exception {
         checkOutOfBoundsFromTo(true, 0, Encodings.PRIMARY_ENCODINGS,
-                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{0, 0}, encoding)));
+                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, TruffleString.CodePointSet.fromRanges(new int[]{0, 0}, encoding)));
     }
 }

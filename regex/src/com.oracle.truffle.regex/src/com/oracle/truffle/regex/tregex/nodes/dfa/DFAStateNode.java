@@ -183,7 +183,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link InputIndexOfNode#execute(TruffleString, int, int, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet, Encodings.Encoding)},
+     * {@link InputIndexOfNode#execute(TruffleString, int, int, TruffleString.CodePointSet, Encodings.Encoding)},
      * which we call an {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.

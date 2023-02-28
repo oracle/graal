@@ -148,7 +148,7 @@ public final class DFAGenerator implements JsonConvertible {
     private TRegexDFAExecutorNode innerLiteralPrefixMatcher = null;
 
     private final SequentialMatchers.Builder matchersBuilder;
-    private final List<TruffleString.ByteIndexOfCodePointSetNode.CodePointSet> indexOfParams = new ArrayList<>();
+    private final List<TruffleString.CodePointSet> indexOfParams = new ArrayList<>();
 
     public DFAGenerator(TRegexCompilationRequest compilationRequest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
         this.compilationRequest = compilationRequest;
@@ -338,7 +338,7 @@ public final class DFAGenerator implements JsonConvertible {
         executorProps.setSimpleCGMustCopy(simpleCGMustCopy);
         TRegexDFAExecutorDebugRecorder debugRecorder = TRegexDFAExecutorDebugRecorder.create(getOptions(), this);
         return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
-                        indexOfParams.toArray(TruffleString.ByteIndexOfCodePointSetNode.CodePointSet[]::new), states,
+                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), states,
                         debugRecorder, innerLiteralPrefixMatcher);
     }
 
@@ -861,7 +861,7 @@ public final class DFAGenerator implements JsonConvertible {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = s.getSuccessors()[i].getCodePointSet();
                     if (coversCharSpace && !loopMB.matchesEverything(getEncoding())) {
-                        TruffleString.ByteIndexOfCodePointSetNode.CodePointSet indexOfParam = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(
+                        TruffleString.CodePointSet indexOfParam = TruffleString.CodePointSet.fromRanges(
                                         loopMB.createInverse(getEncoding()).getRanges(), getEncoding().getTStringEncoding());
                         indexOfIsFast = checkIndexOfIsFast(indexOfParam);
                         if (indexOfIsFast != 0) {
@@ -907,7 +907,7 @@ public final class DFAGenerator implements JsonConvertible {
         return ret;
     }
 
-    private static byte checkIndexOfIsFast(TruffleString.ByteIndexOfCodePointSetNode.CodePointSet indexOfParam) {
+    private static byte checkIndexOfIsFast(TruffleString.CodePointSet indexOfParam) {
         byte indexOfIsFast = 0;
         for (TruffleString.CodeRange codeRange : TruffleString.CodeRange.values()) {
             if (indexOfParam.isIntrinsicCandidate(codeRange)) {

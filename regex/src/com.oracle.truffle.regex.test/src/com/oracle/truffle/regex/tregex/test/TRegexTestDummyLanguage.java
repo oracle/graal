@@ -56,7 +56,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 
 @TruffleLanguage.Registration(name = TRegexTestDummyLanguage.NAME, id = TRegexTestDummyLanguage.ID, characterMimeTypes = TRegexTestDummyLanguage.MIME_TYPE, version = "0.1", dependentLanguages = RegexLanguage.ID)
@@ -65,14 +64,15 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
     public static final String NAME = "REGEXDUMMYLANG";
     public static final String ID = "regexDummyLang";
     public static final String MIME_TYPE = "application/tregexdummy";
+    public static final String BENCH_PREFIX = "__BENCH__";
+    public static final String BENCH_CG_PREFIX = "__BENCH_CG__";
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
         String src = parsingRequest.getSource().getCharacters().toString();
-        String benchPrefix = "__BENCH__";
-        if (src.startsWith(benchPrefix)) {
+        if (src.startsWith(BENCH_PREFIX)) {
             final Object regex = DummyLanguageContext.get(null).getEnv().parseInternal(
-                            Source.newBuilder(RegexLanguage.ID, "BooleanMatch=true," + src.substring(benchPrefix.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
+                            Source.newBuilder(RegexLanguage.ID, "BooleanMatch=true," + src.substring(BENCH_PREFIX.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
             return new RootNode(this) {
 
                 private final Object compiledRegex = regex;
@@ -86,10 +86,9 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
                 }
             }.getCallTarget();
         }
-        String benchCGPrefix = "__BENCH_CG__";
-        if (src.startsWith(benchCGPrefix)) {
+        if (src.startsWith(BENCH_CG_PREFIX)) {
             final Object regex = DummyLanguageContext.get(null).getEnv().parseInternal(
-                            Source.newBuilder(RegexLanguage.ID, src.substring(benchCGPrefix.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
+                            Source.newBuilder(RegexLanguage.ID, src.substring(BENCH_CG_PREFIX.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
             return new RootNode(this) {
 
                 private final Object compiledRegex = regex;
@@ -116,10 +115,9 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
         @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
         static boolean run(Object compiledRegex, String input, int fromIndex,
-                        @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode,
                         @CachedLibrary("compiledRegex") InteropLibrary objs) {
             try {
-                return (boolean) objs.invokeMember(compiledRegex, EXEC, fromJavaStringNode.execute(input, TruffleString.Encoding.UTF_16), fromIndex);
+                return (boolean) objs.invokeMember(compiledRegex, EXEC, input, fromIndex);
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
@@ -135,14 +133,13 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
         @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
         static int run(Node node, Object compiledRegex, String input, int fromIndex,
-                        @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode,
                         @CachedLibrary("compiledRegex") InteropLibrary objs,
                         @Cached RegexBenchCGGetStartNode getStart0,
                         @Cached RegexBenchCGGetStartNode getStart1,
                         @Cached RegexBenchCGGetEndNode getEnd0,
                         @Cached RegexBenchCGGetEndNode getEnd1) {
             try {
-                Object result = objs.invokeMember(compiledRegex, EXEC, fromJavaStringNode.execute(input, TruffleString.Encoding.UTF_16), fromIndex);
+                Object result = objs.invokeMember(compiledRegex, EXEC, input, fromIndex);
                 int start0 = getStart0.execute(node, result, 0);
                 int end0 = getEnd0.execute(node, result, 0);
                 int start1 = getStart1.execute(node, result, 1);

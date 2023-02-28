@@ -139,8 +139,8 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
             context.enter();
             ParameterSet p = benchmarks.get(benchName);
             javaPattern = Pattern.compile(p.regex, toJavaFlags(p.flags));
-            tregexBool = context.parse(TRegexTestDummyLanguage.ID, "__BENCH__GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
-            tregexCG = context.parse(TRegexTestDummyLanguage.ID, "__BENCH_CG__GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            tregexBool = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            tregexCG = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_CG_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
             input = "_".repeat(200) + p.input;
         }
 

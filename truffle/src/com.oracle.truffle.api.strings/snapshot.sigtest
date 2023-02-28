@@ -41,14 +41,6 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImportStat
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ReportPolymorphism
- anno 0 java.lang.annotation.Inherited()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-innr public abstract interface static !annotation Exclude
-innr public abstract interface static !annotation Megamorphic
-intf java.lang.annotation.Annotation
-
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
 innr public abstract interface static !annotation Child
@@ -343,6 +335,7 @@ innr public final static !enum CodeRange
 innr public final static !enum CompactionLevel
 innr public final static !enum Encoding
 innr public final static !enum ErrorHandling
+innr public final static CodePointSet
 innr public final static IllegalByteArrayLengthException
 innr public final static NumberFormatException
 innr public final static WithMask
@@ -404,18 +397,10 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode
  outer com.oracle.truffle.api.strings.TruffleString
-innr public final static CodePointSet
-meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode$CodePointSet)
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$CodePointSet)
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
-
-CLSS public final static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode$CodePointSet
- outer com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode
-meth public boolean isIntrinsicCandidate(com.oracle.truffle.api.strings.TruffleString$CodeRange)
-meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode$CodePointSet fromRanges(int[],com.oracle.truffle.api.strings.TruffleString$Encoding)
-supr java.lang.Object
-hfds encoding,indexOfNodes,ranges
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringNode
  outer com.oracle.truffle.api.strings.TruffleString
@@ -476,6 +461,13 @@ meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleS
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointLengthNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointLengthNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
+
+CLSS public final static com.oracle.truffle.api.strings.TruffleString$CodePointSet
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public boolean isIntrinsicCandidate(com.oracle.truffle.api.strings.TruffleString$CodeRange)
+meth public static com.oracle.truffle.api.strings.TruffleString$CodePointSet fromRanges(int[],com.oracle.truffle.api.strings.TruffleString$Encoding)
+supr java.lang.Object
+hfds encoding,indexOfNodes,ranges
 
 CLSS public final static !enum com.oracle.truffle.api.strings.TruffleString$CodeRange
  outer com.oracle.truffle.api.strings.TruffleString
@@ -1251,12 +1243,6 @@ meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> 
 meth public abstract java.lang.String toString()
 
 CLSS public abstract interface !annotation java.lang.annotation.Documented
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
-intf java.lang.annotation.Annotation
-
-CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])

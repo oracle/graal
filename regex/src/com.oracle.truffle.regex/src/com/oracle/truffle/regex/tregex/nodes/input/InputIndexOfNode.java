@@ -49,10 +49,10 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public abstract class InputIndexOfNode extends Node {
 
-    public abstract int execute(TruffleString input, int fromIndex, int maxIndex, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet codePointSet, Encoding encoding);
+    public abstract int execute(TruffleString input, int fromIndex, int maxIndex, TruffleString.CodePointSet codePointSet, Encoding encoding);
 
     @Specialization
-    public int doTString(TruffleString input, int fromIndex, int maxIndex, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet codePointSet, Encoding encoding,
+    public int doTString(TruffleString input, int fromIndex, int maxIndex, TruffleString.CodePointSet codePointSet, Encoding encoding,
                     @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
         CompilerAsserts.partialEvaluationConstant(codePointSet);
         return indexOfNode.execute(input, fromIndex << encoding.getStride(), maxIndex << encoding.getStride(), codePointSet) >> encoding.getStride();

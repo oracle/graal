@@ -80,7 +80,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -3658,91 +3657,93 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to find the byte index of the first occurrence of a codepoint present in a given
-     * codepoint set. See {@link #execute(AbstractTruffleString, int, int, CodePointSet)} for
-     * details.
+     * A set of codepoints in a given encoding. Used in
+     * {@link ByteIndexOfCodePointSetNode#execute(AbstractTruffleString, int, int, TruffleString.CodePointSet)}.
      *
      * @since 23.0
      */
-    @ReportPolymorphism
-    public abstract static class ByteIndexOfCodePointSetNode extends AbstractPublicNode {
+    public static final class CodePointSet {
+
+        private final int[] ranges;
+        private final Encoding encoding;
+        private final IndexOfCodePointSet.IndexOfNode[] indexOfNodes;
+
+        CodePointSet(int[] ranges, Encoding encoding, IndexOfCodePointSet.IndexOfNode[] indexOfNodes) {
+            this.ranges = ranges;
+            this.encoding = encoding;
+            this.indexOfNodes = indexOfNodes;
+        }
 
         /**
-         * A set of codepoints in a given encoding. Used in
-         * {@link ByteIndexOfCodePointSetNode#execute(AbstractTruffleString, int, int, CodePointSet)}.
+         * Creates a new {@link CodePointSet} from the given list of ranges. This operation is
+         * expensive, it is recommended to cache the result.
+         *
+         * @param ranges a sorted list of non-adjacent codepoint ranges. For every two consecutive
+         *            array elements, the first is interpreted as the range's inclusive lower bound,
+         *            and the second element is the range's inclusive upper bound. Example: an array
+         *            {@code [1, 4, 8, 10]} represents the inclusive ranges {@code [1-4]} and
+         *            {@code [8-10]}.
          *
          * @since 23.0
          */
-        public static final class CodePointSet {
-
-            private final int[] ranges;
-            private final Encoding encoding;
-            private final IndexOfCodePointSet.IndexOfNode[] indexOfNodes;
-
-            CodePointSet(int[] ranges, Encoding encoding, IndexOfCodePointSet.IndexOfNode[] indexOfNodes) {
-                this.ranges = ranges;
-                this.encoding = encoding;
-                this.indexOfNodes = indexOfNodes;
-            }
-
-            /**
-             * Creates a new {@link CodePointSet} from the given list of ranges. This operation is
-             * expensive, it is recommended to cache the result.
-             *
-             * @param ranges a sorted list of non-adjacent codepoint ranges. For every two
-             *            consecutive array elements, the first is interpreted as the range's
-             *            inclusive lower bound, and the second element is the range's inclusive
-             *            upper bound. Example: an array {@code [1, 4, 8, 10]} represents the
-             *            inclusive ranges {@code [1-4]} and {@code [8-10]}.
-             *
-             * @since 23.0
-             */
-            @TruffleBoundary
-            public static CodePointSet fromRanges(int[] ranges, Encoding encoding) {
-                int[] rangesDefensiveCopy = Arrays.copyOf(ranges, ranges.length);
-                return new CodePointSet(rangesDefensiveCopy, encoding, IndexOfCodePointSet.fromRanges(rangesDefensiveCopy, encoding));
-            }
-
-            TStringInternalNodes.IndexOfCodePointSetNode createNode() {
-                IndexOfCodePointSet.IndexOfNode[] nodesCopy = new IndexOfCodePointSet.IndexOfNode[indexOfNodes.length];
-                for (int i = 0; i < indexOfNodes.length; i++) {
-                    nodesCopy[i] = indexOfNodes[i].shallowCopy();
-                }
-                return TStringInternalNodesFactory.IndexOfCodePointSetNodeGen.create(nodesCopy, encoding);
-            }
-
-            /**
-             * Returns {@code true} if {@link ByteIndexOfCodePointSetNode} may implement the search
-             * for this particular code point set in strings with the given code range by
-             * dispatching to a compiler intrinsic.
-             *
-             * @since 23.0
-             */
-            public boolean isIntrinsicCandidate(TruffleString.CodeRange codeRange) {
-                for (int i = 0; i < indexOfNodes.length - 1; i++) {
-                    IndexOfCodePointSet.IndexOfNode node = indexOfNodes[i];
-                    if (TSCodeRange.ordinal(node.maxCodeRange) >= codeRange.ordinal()) {
-                        return node.isFast();
-                    }
-                }
-                return indexOfNodes[indexOfNodes.length - 1].isFast();
-            }
+        @TruffleBoundary
+        public static CodePointSet fromRanges(int[] ranges, Encoding encoding) {
+            int[] rangesDefensiveCopy = Arrays.copyOf(ranges, ranges.length);
+            return new CodePointSet(rangesDefensiveCopy, encoding, IndexOfCodePointSet.fromRanges(rangesDefensiveCopy, encoding));
         }
+
+        TStringInternalNodes.IndexOfCodePointSetNode createNode() {
+            IndexOfCodePointSet.IndexOfNode[] nodesCopy = new IndexOfCodePointSet.IndexOfNode[indexOfNodes.length];
+            for (int i = 0; i < indexOfNodes.length; i++) {
+                nodesCopy[i] = indexOfNodes[i].shallowCopy();
+            }
+            return TStringInternalNodesFactory.IndexOfCodePointSetNodeGen.create(nodesCopy, encoding);
+        }
+
+        /**
+         * Returns {@code true} if {@link ByteIndexOfCodePointSetNode} may implement the search for
+         * this particular code point set in strings with the given code range by dispatching to a
+         * compiler intrinsic.
+         *
+         * @since 23.0
+         */
+        public boolean isIntrinsicCandidate(CodeRange codeRange) {
+            for (int i = 0; i < indexOfNodes.length - 1; i++) {
+                IndexOfCodePointSet.IndexOfNode node = indexOfNodes[i];
+                if (TSCodeRange.ordinal(node.maxCodeRange) >= codeRange.ordinal()) {
+                    return node.isFast();
+                }
+            }
+            return indexOfNodes[indexOfNodes.length - 1].isFast();
+        }
+    }
+
+    /**
+     * Node to find the byte index of the first occurrence of a codepoint present in a given
+     * codepoint set. See
+     * {@link #execute(AbstractTruffleString, int, int, TruffleString.CodePointSet)} for details.
+     *
+     * @since 23.0
+     */
+    public abstract static class ByteIndexOfCodePointSetNode extends AbstractPublicNode {
 
         ByteIndexOfCodePointSetNode() {
         }
 
         /**
-         * Returns the byte index of the first codepoint present in the given {@link CodePointSet}.
-         * {@link ByteIndexOfCodePointSetNode} will specialize on the given {@link CodePointSet}'s
-         * content. If more than one set is passed, the node will immediately fall back to a generic
-         * search loop and try to trigger method splitting via {@link ReportPolymorphism}.
+         * Returns the byte index of the first codepoint present in the given {@link CodePointSet},
+         * bounded by {@code fromByteIndex} (inclusive) and {@code toByteIndex} (exclusive).
          * <p>
-         * Usage example:
+         * {@link ByteIndexOfCodePointSetNode} will specialize on the given {@link CodePointSet}'s
+         * content, which is therefore required to be
+         * {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation constant}.
+         * <p>
+         * Usage example: A node that scans a string for a known set of code points and escapes them
+         * with '\'.
          * 
          * <pre>
          * {@code
-         * abstract static class JsonEscapeNode extends Node {
+         * abstract static class StringEscapeNode extends Node {
          *
          *     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
          *     public static final TruffleString.ByteIndexOfCodePointSetNode.CodePointSet ESCAPE_CHARS = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{
@@ -3751,29 +3752,29 @@ public final class TruffleString extends AbstractTruffleString {
          *                     // ....
          *     }, ENCODING);
          *
-         *     abstract TruffleString execute(TruffleString json);
+         *     abstract TruffleString execute(TruffleString input);
          *
          *     &#64;Specialization
-         *     static TruffleString run(TruffleString json,
+         *     static TruffleString run(TruffleString input,
          *                     &#64;Cached TruffleString.ByteIndexOfCodePointSetNode byteIndexOfCodePointSetNode,
          *                     &#64;Cached TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringByteIndexNode,
          *                     &#64;Cached TruffleString.CodePointAtByteIndexNode codePointAtByteIndexNode,
          *                     &#64;Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
          *                     &#64;Cached TruffleString.ByteLengthOfCodePointNode byteLengthOfCodePointNode,
          *                     &#64;Cached TruffleStringBuilder.ToStringNode toStringNode) {
-         *         int byteLength = json.byteLength(ENCODING);
+         *         int byteLength = input.byteLength(ENCODING);
          *         TruffleStringBuilder sb = TruffleStringBuilder.create(ENCODING, byteLength);
          *         int lastPos = 0;
          *         int pos = 0;
          *         while (pos >= 0) {
-         *             pos = byteIndexOfCodePointSetNode.execute(json, lastPos, byteLength, ESCAPE_CHARS);
+         *             pos = byteIndexOfCodePointSetNode.execute(input, lastPos, byteLength, ESCAPE_CHARS);
          *             int substringLength = (pos < 0 ? byteLength : pos) - lastPos;
-         *             appendSubstringByteIndexNode.execute(sb, json, lastPos, substringLength);
+         *             appendSubstringByteIndexNode.execute(sb, input, lastPos, substringLength);
          *             if (pos >= 0) {
-         *                 int codePoint = codePointAtByteIndexNode.execute(json, pos, ENCODING);
+         *                 int codePoint = codePointAtByteIndexNode.execute(input, pos, ENCODING);
          *                 appendCodePointNode.execute(sb, '\\');
          *                 appendCodePointNode.execute(sb, codePoint);
-         *                 int codePointLength = byteLengthOfCodePointNode.execute(json, pos, ENCODING);
+         *                 int codePointLength = byteLengthOfCodePointNode.execute(input, pos, ENCODING);
          *                 lastPos = pos + codePointLength;
          *             }
          *         }
@@ -3784,55 +3785,61 @@ public final class TruffleString extends AbstractTruffleString {
          * </code>
          * </pre>
          *
+         * @param codePointSet The set of codepoints to look for. This parameter is expected to be
+         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+         *            constant}.
+         * 
          * @since 23.0
          */
-        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSet codePointSet);
+        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet);
 
         @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1")
-        static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, @SuppressWarnings("unused") CodePointSet codePointSet,
+        static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
                         @Bind("this") Node node,
                         @Cached @Shared ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached(value = "codePointSet") CodePointSet cachedCodePointSet,
                         @Cached("cachedCodePointSet.createNode()") TStringInternalNodes.IndexOfCodePointSetNode internalNode) {
             Encoding encoding = cachedCodePointSet.encoding;
+            CompilerAsserts.partialEvaluationConstant(codePointSet);
             CompilerAsserts.partialEvaluationConstant(encoding);
             a.checkEncoding(encoding);
             if (a.isEmpty()) {
                 return -1;
             }
             int fromIndex = rawIndex(fromByteIndex, encoding);
-            int maxIndex = rawIndex(maxByteIndex, encoding);
-            a.boundsCheckRaw(fromIndex, maxIndex);
-            if (fromIndex == maxIndex) {
+            int toIndex = rawIndex(toByteIndex, encoding);
+            a.boundsCheckRaw(fromIndex, toIndex);
+            if (fromIndex == toIndex) {
                 return -1;
             }
             Object arrayA = toIndexableNode.execute(node, a, a.data());
-            return byteIndex(internalNode.execute(arrayA, a.offset(), a.length(), a.stride(), getPreciseCodeRangeNode.execute(node, a, encoding), fromIndex, maxIndex), encoding);
+            return byteIndex(internalNode.execute(arrayA, a.offset(), a.length(), a.stride(), getPreciseCodeRangeNode.execute(node, a, encoding), fromIndex, toIndex), encoding);
         }
 
-        @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "indexOfSpecialized")
-        int indexOfGeneric(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSet codePointSet,
+        int indexOfUncached(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
                         @Cached @Shared ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeNode,
                         @Cached TruffleStringIterator.InternalNextNode nextNode) {
             Encoding encoding = codePointSet.encoding;
+            CompilerAsserts.partialEvaluationConstant(codePointSet);
+            CompilerAsserts.partialEvaluationConstant(encoding);
             a.checkEncoding(encoding);
             if (a.isEmpty()) {
                 return -1;
             }
             int fromIndex = rawIndex(fromByteIndex, encoding);
-            int maxIndex = rawIndex(maxByteIndex, encoding);
-            a.boundsCheckRaw(fromIndex, maxIndex);
-            if (fromIndex == maxIndex) {
+            int toIndex = rawIndex(toByteIndex, encoding);
+            a.boundsCheckRaw(fromIndex, toIndex);
+            if (fromIndex == toIndex) {
                 return -1;
             }
             Object arrayA = toIndexableNode.execute(this, a, a.data());
             int codeRangeA = getCodeRangeNode.execute(this, a, encoding);
             TruffleStringIterator it = forwardIterator(a, arrayA, codeRangeA, encoding);
             it.setRawIndex(fromIndex);
-            while (it.getRawIndex() < maxIndex) {
+            while (it.getRawIndex() < toIndex) {
                 assert it.hasNext();
                 int index = it.getByteIndex();
                 if (IndexOfCodePointSet.IndexOfRangesNode.rangesContain(codePointSet.ranges, nextNode.execute(this, it))) {
@@ -5952,11 +5959,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         private static boolean doesNotNeedTranscoding(Node node, AbstractTruffleString a, Encoding encodingA, TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode) {
-            // The order in this check is important for string compaction:
-            // First check if the current, possibly imprecise code range is already in compaction
-            // range.
-            // Otherwise, we _must_ calculate the precise code range, to make sure the string is
-            // compacted if possible.
+            // The order in this check is important for string compaction: First check if the
+            // current, possibly imprecise code range is already in compaction range. Otherwise, we
+            // _must_ calculate the precise code range, to make sure the string is compacted if
+            // possible.
             return is7Or8Bit(a.codeRange()) || TSCodeRange.isMoreRestrictiveThan(getPreciseCodeRangeNode.execute(node, a, encodingA), Encoding.UTF_16.maxCompatibleCodeRange) || isUTF16(a.encoding());
         }
 

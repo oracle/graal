@@ -72,7 +72,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     public static final int NO_MATCH = -2;
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
-    @CompilationFinal(dimensions = 1) private final TruffleString.ByteIndexOfCodePointSetNode.CodePointSet[] indexOfParameters;
+    @CompilationFinal(dimensions = 1) private final TruffleString.CodePointSet[] indexOfParameters;
     @CompilationFinal(dimensions = 1) private final DFAAbstractStateNode[] states;
     @CompilationFinal(dimensions = 1) private final int[] cgResultOrder;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
@@ -86,7 +86,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TRegexDFAExecutorProperties props,
                     int numberOfCaptureGroups,
                     int maxNumberOfNFAStates,
-                    TruffleString.ByteIndexOfCodePointSetNode.CodePointSet[] indexOfParameters,
+                    TruffleString.CodePointSet[] indexOfParameters,
                     DFAAbstractStateNode[] states,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
@@ -101,7 +101,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     int numberOfCaptureGroups,
                     int numberOfTransitions,
                     int maxNumberOfNFAStates,
-                    TruffleString.ByteIndexOfCodePointSetNode.CodePointSet[] indexOfParameters,
+                    TruffleString.CodePointSet[] indexOfParameters,
                     DFAAbstractStateNode[] states,
                     int[] cgResultOrder,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
@@ -371,7 +371,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (injectBranchProbability(CONTINUE_PROBABILITY, isForward() && state.canDoIndexOf(codeRange) && inputHasNext(locals))) {
                         int indexOfNodeId = state.getIndexOfNodeId();
                         InputIndexOfNode indexOfNode = getIndexOfNode(indexOfNodeId);
-                        TruffleString.ByteIndexOfCodePointSetNode.CodePointSet indexOfParameter = indexOfParameters[indexOfNodeId];
+                        TruffleString.CodePointSet indexOfParameter = indexOfParameters[indexOfNodeId];
                         CompilerAsserts.partialEvaluationConstant(indexOfNodeId);
                         CompilerAsserts.partialEvaluationConstant(indexOfNode);
                         CompilerAsserts.partialEvaluationConstant(indexOfParameter);
