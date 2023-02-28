@@ -25,6 +25,7 @@
 package com.oracle.svm.core.heapdump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.UNRESTRICTED;
 
 import java.io.IOException;
 
@@ -42,6 +43,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
@@ -65,11 +67,7 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
     }
 
     @Override
-    public void dumpHeap(String outputFile, boolean live) throws IOException {
-        writeHeapTo(outputFile, live);
-    }
-
-    public void writeHeapTo(String filename, boolean gcBefore) throws IOException {
+    public void dumpHeap(String filename, boolean gcBefore) throws IOException {
         RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
             throw new IOException("Could not create the heap dump file: " + filename);
@@ -135,8 +133,19 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
             if (data.getGCBefore()) {
                 System.gc();
             }
-            boolean success = writer.dumpHeap(data.getRawFileDescriptor());
-            data.setSuccess(success);
+
+            try {
+                boolean success = writer.dumpHeap(data.getRawFileDescriptor());
+                data.setSuccess(success);
+            } catch (Throwable e) {
+                reportError(e);
+            }
+        }
+
+        @RestrictHeapAccess(access = UNRESTRICTED, reason = "Error reporting may allocate.")
+        private void reportError(Throwable e) {
+            Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt.").newline().string(e.getClass().getName()).string(": ")
+                            .string(e.getMessage());
         }
     }
 }

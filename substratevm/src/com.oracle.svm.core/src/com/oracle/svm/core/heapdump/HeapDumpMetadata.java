@@ -47,6 +47,9 @@ import com.oracle.svm.core.util.coder.ByteStreamAccess;
 import com.oracle.svm.core.util.coder.NativeCoder;
 import com.oracle.svm.core.util.coder.Pack200Coder;
 
+/**
+ * Provides access to the encoded heap dump metadata that was prepared at image build-time.
+ */
 class HeapDumpMetadata {
     private static final ComputeHubDataVisitor COMPUTE_HUB_DATA_VISITOR = new ComputeHubDataVisitor();
 
@@ -56,7 +59,7 @@ class HeapDumpMetadata {
     private static FieldInfoPointer fieldInfoTable;
     private static FieldNamePointer fieldNameTable;
 
-    public static boolean allocate(byte[] metadata) {
+    public static boolean initialize(byte[] metadata) {
         assert classInfos.isNull() && fieldInfoTable.isNull() && fieldNameTable.isNull();
 
         Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(metadata));
@@ -73,8 +76,9 @@ class HeapDumpMetadata {
         classInfoCount = maxTypeId + 1;
 
         /*
-         * Precompute some data structures so that the heap dumping can access the encoded data more
-         * efficiently.
+         * Precompute a few small data structures so that the heap dumping code can access the
+         * encoded data more efficiently. At first, we allocate some memory for those data
+         * structures so that we can abort right away in case that an allocation fails.
          */
         UnsignedWord classInfosSize = WordFactory.unsigned(classInfoCount).multiply(SizeOf.get(ClassInfo.class));
         classInfos = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(classInfosSize);
@@ -137,7 +141,7 @@ class HeapDumpMetadata {
         COMPUTE_HUB_DATA_VISITOR.initialize();
         Heap.getHeap().walkImageHeapObjects(COMPUTE_HUB_DATA_VISITOR);
 
-        /* Compute the size that the instance fields of the classes. */
+        /* Compute the size of the instance fields per class. */
         for (int i = 0; i < classInfoCount; i++) {
             ClassInfo classInfo = HeapDumpMetadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
@@ -147,7 +151,8 @@ class HeapDumpMetadata {
         return true;
     }
 
-    public static void free() {
+    /** Must always be called, regardless if {@link #initialize} returned true or false. */
+    public static void teardown() {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(classInfos);
         classInfos = WordFactory.nullPointer();
 
@@ -163,6 +168,9 @@ class HeapDumpMetadata {
     }
 
     public static ClassInfo getClassInfo(Class<?> clazz) {
+        if (clazz == null) {
+            return WordFactory.nullPointer();
+        }
         return getClassInfo(DynamicHub.fromClass(clazz));
     }
 
@@ -181,8 +189,8 @@ class HeapDumpMetadata {
         return fieldNameCount;
     }
 
-    public static FieldNamePointer getFieldNameTable() {
-        return fieldNameTable;
+    public static FieldName getFieldName(int index) {
+        return fieldNameTable.addressOf(index).read();
     }
 
     /**
@@ -213,8 +221,8 @@ class HeapDumpMetadata {
         int result = 0;
         for (int i = 0; i < fieldCount; i++) {
             FieldInfo field = fields.addressOf(i).read();
-            byte storageKind = FieldInfoAccess.getStorageKind(field);
-            result += StorageKind.getSize(storageKind);
+            HProfType type = FieldInfoAccess.getType(field);
+            result += type.getSize();
         }
         return result;
     }
@@ -269,38 +277,45 @@ class HeapDumpMetadata {
     }
 
     public static class ClassInfoAccess {
+        /**
+         * When iterating over all {@link ClassInfo} objects, it is possible to encounter invalid
+         * {@link ClassInfo} objects because {@link DynamicHub#getTypeID()} is not necessarily
+         * continuous (i.e., there may be more type ids than {@link DynamicHub}s). This method can
+         * be used to determine if a {@link ClassInfo} object is valid.
+         */
         static boolean isValid(ClassInfo classInfo) {
             return classInfo.getHub() != null;
         }
     }
 
+    /** Data structure has a variable size. */
     @RawStructure
     public interface FieldInfo extends PointerBase {
-        // u1 storageKind
+        // u1 type
         // uv fieldNameIndex
         // uv location
     }
 
     public static class FieldInfoAccess {
-        static byte getStorageKind(FieldInfo field) {
-            return ((Pointer) field).readByte(0);
+        static HProfType getType(FieldInfo field) {
+            return HProfType.get(((Pointer) field).readByte(0));
         }
 
         static FieldName getFieldName(FieldInfo field) {
             int fieldNameIndex = Pack200Coder.readUVAsInt(getFieldNameIndexAddress(field));
-            return HeapDumpMetadata.getFieldNameTable().addressOf(fieldNameIndex).read();
+            return HeapDumpMetadata.getFieldName(fieldNameIndex);
         }
 
         static int getLocation(FieldInfo field) {
-            Pointer fieldNameIndex = getFieldNameIndexAddress(field); // skip storageKind
+            Pointer fieldNameIndex = getFieldNameIndexAddress(field); // skip type
             ByteStream stream = StackValue.get(ByteStream.class);
             ByteStreamAccess.initialize(stream, fieldNameIndex);
-            Pack200Coder.readUVAsInt(stream); // skip fieldNameIndex
+            Pack200Coder.readUVAsInt(stream); // skip field name index
             return Pack200Coder.readUVAsInt(stream);
         }
 
         static void skipFieldInfo(ByteStream stream) {
-            NativeCoder.readByte(stream); // storage kind
+            NativeCoder.readByte(stream); // type
             Pack200Coder.readUVAsInt(stream); // field name index
             Pack200Coder.readUVAsInt(stream); // location
         }

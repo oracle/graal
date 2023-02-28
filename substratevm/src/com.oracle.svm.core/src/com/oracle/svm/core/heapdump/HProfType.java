@@ -27,9 +27,8 @@ package com.oracle.svm.core.heapdump;
 import org.graalvm.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
 
-/** See hprofTag in HotSpot. */
+/* Enum of all relevant HPROF types (see enum hprofTag in HotSpot). */
 public enum HProfType {
     NORMAL_OBJECT(0x2, 0),
     BOOLEAN(0x4, 1),
@@ -41,12 +40,18 @@ public enum HProfType {
     INT(0xA, 4),
     LONG(0xB, 8);
 
+    private static final HProfType[] TYPES = HProfType.values();
+
     private final byte value;
     private final int size;
 
     HProfType(int value, int size) {
         this.value = NumUtil.safeToUByte(value);
         this.size = size;
+    }
+
+    public static HProfType get(byte value) {
+        return TYPES[value];
     }
 
     public byte getValue() {
@@ -58,20 +63,5 @@ public enum HProfType {
             return ConfigurationValues.getTarget().wordSize;
         }
         return size;
-    }
-
-    public static HProfType fromStorageKind(byte storageKind) {
-        return switch (storageKind) {
-            case StorageKind.OBJECT -> HProfType.NORMAL_OBJECT;
-            case StorageKind.BOOLEAN -> HProfType.BOOLEAN;
-            case StorageKind.CHAR -> HProfType.CHAR;
-            case StorageKind.FLOAT -> HProfType.FLOAT;
-            case StorageKind.DOUBLE -> HProfType.DOUBLE;
-            case StorageKind.BYTE -> HProfType.BYTE;
-            case StorageKind.SHORT -> HProfType.SHORT;
-            case StorageKind.INT -> HProfType.INT;
-            case StorageKind.LONG -> HProfType.LONG;
-            default -> throw VMError.shouldNotReachHere("Unexpected storage kind.");
-        };
     }
 }

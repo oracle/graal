@@ -30,6 +30,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 
+/** Read Pack200 encoded values from a {@link ByteStream} or a raw {@link Pointer}. */
 public class Pack200Coder {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long readUV(Pointer data) {

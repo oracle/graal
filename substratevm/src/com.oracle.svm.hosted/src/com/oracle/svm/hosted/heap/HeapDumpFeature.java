@@ -40,22 +40,31 @@ import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heapdump.HProfType;
 import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Heap dumping on Native Image needs some extra metadata about all the classes and fields that are
+ * present in the image. The necessary information is encoded as binary data at image build time
+ * (see below). When the heap dumping is triggered at run-time, the metadata is decoded on the fly
+ * (see {@link com.oracle.svm.core.heapdump.HeapDumpMetadata}) and used for writing the heap dump
+ * (see {@link com.oracle.svm.core.heapdump.HeapDumpWriter}).
+ */
 @AutomaticallyRegisteredFeature
 public class HeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
          * Include the feature unconditionally on Linux and macOS. The code and all its data are
-         * only present in the final image if the heap dumping infrastructure is called by some
-         * code.
+         * only present in the final image if the heap dumping infrastructure is actually called by
+         * any code (e.g., VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
          */
         return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
@@ -81,7 +90,7 @@ public class HeapDumpFeature implements InternalFeature {
      *
      * <pre>
      * |----------------------------|
-     * | data in the byte[]         |
+     * | metadata byte[]            |
      * |----------------------------|
      * | s4 totalFieldCount         |
      * | s4 classCount              |
@@ -104,7 +113,7 @@ public class HeapDumpFeature implements InternalFeature {
      * |----------------------------|
      * | information per field      |
      * |----------------------------|
-     * | u1 storageKind             |
+     * | u1 type             |
      * | uv fieldNameIndex          |
      * | uv location                |
      * |----------------------------|
@@ -145,8 +154,8 @@ public class HeapDumpFeature implements InternalFeature {
         EconomicMap<String, Integer> fieldNames = EconomicMap.create();
         for (SharedType type : types) {
             if (type.isInstanceClass()) {
-                ArrayList<SharedField> instanceFields = prepareFields(type.getInstanceFields(false));
-                ArrayList<SharedField> staticFields = prepareFields(type.getStaticFields());
+                ArrayList<SharedField> instanceFields = collectFields(type.getInstanceFields(false));
+                ArrayList<SharedField> staticFields = collectFields(type.getStaticFields());
                 if (instanceFields.size() == 0 && staticFields.size() == 0) {
                     continue;
                 }
@@ -189,7 +198,7 @@ public class HeapDumpFeature implements InternalFeature {
         }
     }
 
-    private static ArrayList<SharedField> prepareFields(ResolvedJavaField[] input) {
+    private static ArrayList<SharedField> collectFields(ResolvedJavaField[] input) {
         /* Collect all fields that have a location. */
         ArrayList<SharedField> result = new ArrayList<>();
         for (ResolvedJavaField f : input) {
@@ -208,7 +217,7 @@ public class HeapDumpFeature implements InternalFeature {
     private static void writeField(SharedField field, UnsafeArrayTypeWriter output, EconomicMap<String, Integer> fieldNames) {
         int location = field.getLocation();
         assert location >= 0;
-        output.putU1(field.getStorageKind().getTypeChar());
+        output.putU1(getType(field).ordinal());
         output.putUV(addFieldName(field.getName(), fieldNames));
         output.putUV(location);
     }
@@ -222,5 +231,20 @@ public class HeapDumpFeature implements InternalFeature {
         int result = fieldNames.size();
         fieldNames.put(fieldName, result);
         return result;
+    }
+
+    private static HProfType getType(SharedField field) {
+        return switch (field.getStorageKind()) {
+            case Object -> HProfType.NORMAL_OBJECT;
+            case Boolean -> HProfType.BOOLEAN;
+            case Char -> HProfType.CHAR;
+            case Float -> HProfType.FLOAT;
+            case Double -> HProfType.DOUBLE;
+            case Byte -> HProfType.BYTE;
+            case Short -> HProfType.SHORT;
+            case Int -> HProfType.INT;
+            case Long -> HProfType.LONG;
+            default -> throw VMError.shouldNotReachHere("Unexpected storage kind.");
+        };
     }
 }

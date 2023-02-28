@@ -29,10 +29,11 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.headers.LibC;
 
 public class GrowableWordArrayAccess {
     private static final int INITIAL_CAPACITY = 10;
@@ -59,10 +60,12 @@ public class GrowableWordArrayAccess {
     }
 
     public static void freeData(GrowableWordArray array) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array.getData());
-        array.setData(WordFactory.nullPointer());
-        array.setSize(0);
-        array.setCapacity(0);
+        if (array.isNonNull()) {
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array.getData());
+            array.setData(WordFactory.nullPointer());
+            array.setSize(0);
+            array.setCapacity(0);
+        }
     }
 
     private static boolean grow(GrowableWordArray array) {
@@ -79,7 +82,7 @@ public class GrowableWordArrayAccess {
             return false;
         }
 
-        LibC.memcpy(newData, oldData, WordFactory.unsigned(array.getSize()).multiply(wordSize()));
+        UnmanagedMemoryUtil.copyForward((Pointer) oldData, (Pointer) newData, WordFactory.unsigned(array.getSize()).multiply(wordSize()));
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(oldData);
 
         array.setData(newData);

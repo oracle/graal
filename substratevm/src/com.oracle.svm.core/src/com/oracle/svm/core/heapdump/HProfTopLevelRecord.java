@@ -26,7 +26,7 @@ package com.oracle.svm.core.heapdump;
 
 import org.graalvm.compiler.core.common.NumUtil;
 
-/** See hprofTag in HotSpot. */
+/* Enum of all relevant HPROF top-level records (see enum hprofTag in HotSpot). */
 public enum HProfTopLevelRecord {
     UTF8(0x01),
     LOAD_CLASS(0x02),

@@ -83,6 +83,7 @@ public class BufferedFileOperationSupport {
     }
 
     private static final int BUFFER_SIZE = 4 * 1024;
+    private static final int LARGE_DATA_THRESHOLD = 1024;
 
     private final boolean useNativeByteOrder;
 
@@ -93,7 +94,11 @@ public class BufferedFileOperationSupport {
 
     /**
      * Allocate a {@link BufferedFile} for a {@link RawFileDescriptor}.
-     **/
+     * 
+     * @return a {@link BufferedFile} if the {@link RawFileDescriptor} was
+     *         {@link RawFileOperationSupport#isValid valid} and if the allocation was successful.
+     *         Returns a null pointer otherwise.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public BufferedFile allocate(RawFileDescriptor fd) {
         if (!rawFiles().isValid(fd)) {
@@ -118,8 +123,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Free the {@link BufferedFile} and its corresponding buffer. This operation does neither flush
-     * pending data nor close the underlying {@link RawFileDescriptor}.
+     * Free the {@link BufferedFile} and its corresponding buffer. Be aware that this operation does
+     * neither flush pending data nor close the underlying {@link RawFileDescriptor}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(BufferedFile f) {
@@ -127,9 +132,9 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Flush the buffered data to the disk.
+     * Flush the buffered data to the file.
      *
-     * @return true if the operation is successful or there was no pending data that needed
+     * @return true if the data was flushed successful or there was no pending data that needed
      *         flushing.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -143,12 +148,13 @@ public class BufferedFileOperationSupport {
         if (success) {
             f.setBufferPos(getBufferStart(f));
             f.setFilePosition(f.getFilePosition() + unflushed);
+            assert f.getFilePosition() == rawFiles().position(f.getFileDescriptor());
         }
         return success;
     }
 
     /**
-     * Gets the current file position within a file.
+     * Gets the current position within a file.
      *
      * @return If the operation is successful, it returns the current file position. Otherwise, it
      *         returns a value less than 0.
@@ -159,7 +165,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Sets the current file position within a file.
+     * Sets the current position within a file. As a side effect of this operation, pending data may
+     * be flushed.
      *
      * @return true if the file position was updated to the given value, false otherwise.
      */
@@ -179,10 +186,11 @@ public class BufferedFileOperationSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean write(BufferedFile f, Pointer data, UnsignedWord size) {
-        /* Large data may bypass the buffer and is written directly to the file. */
-        if (size.aboveOrEqual(BUFFER_SIZE)) {
+        /* Large data is written directly to the file without any buffering. */
+        if (size.aboveOrEqual(LARGE_DATA_THRESHOLD)) {
             if (flush(f) && rawFiles().write(f.getFileDescriptor(), data, size)) {
                 f.setFilePosition(f.getFilePosition() + size.rawValue());
+                assert f.getFilePosition() == rawFiles().position(f.getFileDescriptor());
                 assert f.getBufferPos() == getBufferStart(f);
                 return true;
             }
@@ -336,8 +344,8 @@ public class BufferedFileOperationSupport {
     }
 
     /**
-     * Writes the String characters UTF8 encoded to the current file position and advances the file
-     * position.
+     * Writes the String characters encoded as UTF8 to the current file position and advances the
+     * file position.
      *
      * @return true if the data was written, false otherwise.
      */
@@ -367,7 +375,7 @@ public class BufferedFileOperationSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static int getUnflushedDataSize(BufferedFile f) {
+    public int getUnflushedDataSize(BufferedFile f) {
         UnsignedWord result = f.getBufferPos().subtract(getBufferStart(f));
         assert result.belowOrEqual(BUFFER_SIZE);
         return (int) result.rawValue();
@@ -380,7 +388,7 @@ public class BufferedFileOperationSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean ensureBufferSpace(BufferedFile f, int size) {
-        assert size < BUFFER_SIZE : "only called for small data";
+        assert size <= BUFFER_SIZE : "only called for small data";
         if (getUnflushedDataSize(f) + size >= BUFFER_SIZE) {
             return flush(f);
         }

@@ -75,7 +75,6 @@ import com.oracle.svm.core.heapdump.HeapDumpMetadata.FieldInfoAccess;
 import com.oracle.svm.core.heapdump.HeapDumpMetadata.FieldInfoPointer;
 import com.oracle.svm.core.heapdump.HeapDumpMetadata.FieldName;
 import com.oracle.svm.core.heapdump.HeapDumpMetadata.FieldNameAccess;
-import com.oracle.svm.core.heapdump.HeapDumpMetadata.FieldNamePointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -94,14 +93,13 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * This class dumps the image heap and the Java heap into a file (HPROF binary format), similar to
- * the HotSpot class {@code heapDumper}. The heap dumping needs additional metadata that is encoded
- * during the image build and that is stored in the image heap in a compact binary format (see
- * {@code HeapDumpFeature}).
+ * the HotSpot classes in {@code heapDumper.cpp}. The heap dumping needs additional metadata that is
+ * encoded during the image build and that is stored in the image heap in a compact binary format
+ * (see {@code HeapDumpFeature} and {@link HeapDumpMetadata}).
  *
  * The actual heap dumping logic is executed in a VM operation, so it is safe to iterate over all
- * live threads and to, for example, access their thread local values. The heap dumper is
- * implemented as a singleton and only a single heap dumping operation can be in progress at a given
- * time.
+ * live threads. The heap dumper is implemented as a singleton and only a single heap dumping
+ * operation can be in progress at a given time.
  *
  * The heap dumping code must not modify the Java heap in any way as this would pollute or corrupt
  * the heap dump. Therefore, no Java datastructures can be used and all data structures must be
@@ -121,13 +119,16 @@ import com.oracle.svm.core.util.VMError;
  * Other relevant file format aspects:
  * <ul>
  * <li>References to objects or symbols are encoded using their word-sized address. This is done
- * regardless if compressed references are enabled or not.</li>
+ * regardless if compressed references are enabled or not. Tools (such as VisualVM) that read HPROF
+ * files, therefore use heuristics to detect if compressed references were used at run-time.</li>
  * <li>Symbols such as class or method names are encoded as UTF8.</li>
- * <li>The size of individual records is limited to {@code MAX_UINT}. So, very large arrays that
- * have a larger size than {@code MAX_UINT} need to be truncated.</li>
+ * <li>The size of individual records is limited to {@link #MAX_UNSIGNED_INT}. So, very large arrays
+ * that have a larger size than {@link #MAX_UNSIGNED_INT} need to be truncated.</li>
  * </ul>
  */
 public class HeapDumpWriter {
+    private static final long MAX_UNSIGNED_INT = (1L << 32) - 1;
+
     private static final int DUMMY_STACK_TRACE_ID = 1;
     private static final int LARGE_OBJECT_THRESHOLD = 1 * 1024 * 1024;
     private static final int HEAP_DUMP_SEGMENT_TARGET_SIZE = 1 * 1024 * 1024;
@@ -136,7 +137,7 @@ public class HeapDumpWriter {
     private final DumpStackFrameVisitor dumpStackFrameVisitor = new DumpStackFrameVisitor();
     private final DumpObjectsVisitor dumpObjectsVisitor = new DumpObjectsVisitor();
     private final CodeMetadataVisitor codeMetadataVisitor = new CodeMetadataVisitor();
-    private final ThreadLocalVisitor threadLocalVisitor = new ThreadLocalVisitor();
+    private final ThreadLocalsVisitor threadLocalsVisitor = new ThreadLocalsVisitor();
     @UnknownObjectField(types = {byte[].class}) private byte[] metadata;
 
     private BufferedFile f;
@@ -156,6 +157,7 @@ public class HeapDumpWriter {
     public boolean dumpHeap(RawFileDescriptor fd) {
         assert VMOperation.isInProgressAtSafepoint();
         assert ThreadingSupportImpl.isRecurringCallbackPaused();
+
         noAllocationVerifier.open();
         try {
             Heap.getHeap().suspendAllocation();
@@ -175,36 +177,45 @@ public class HeapDumpWriter {
                 return false;
             }
         } finally {
-            reset();
+            /* teardown must always be executed, even if the initialization failed. */
+            teardown();
         }
     }
 
     private boolean initialize(RawFileDescriptor fd) {
         assert topLevelRecordBegin == -1 && subRecordBegin == -1 && !error;
-        this.f = getFileSupport().allocate(fd);
+
+        this.f = file().allocate(fd);
         if (f.isNull()) {
             return false;
         }
-        return HeapDumpMetadata.allocate(metadata);
+        return HeapDumpMetadata.initialize(metadata);
     }
 
-    private void reset() {
-        getFileSupport().free(f);
+    private void teardown() {
+        HeapDumpMetadata.teardown();
+
+        assert f.isNull() || error || file().getUnflushedDataSize(f) == 0;
+        file().free(f);
         this.f = WordFactory.nullPointer();
+
         this.topLevelRecordBegin = -1;
         this.subRecordBegin = -1;
         this.error = false;
-        HeapDumpMetadata.free();
     }
 
     @NeverInline("Starting a stack walk in the caller frame.")
     private boolean writeHeapDump() {
+        /*
+         * Only read the stack pointer for the current thread once. This ensures consistency for all
+         * the information that we dump about the stack of the current thread.
+         */
         Pointer currentThreadSp = KnownIntrinsics.readCallerStackPointer();
 
         writeHeader();
         writeClassNames(); // UTF-8 symbols
         writeFieldNames(); // UTF-8 symbols
-        writeLoadClassRecords(); // LOAD_CLASS
+        writeLoadedClasses(); // LOAD_CLASS
         writeStackTraces(currentThreadSp); // FRAME and TRACE
 
         /* 1..n HEAP_DUMP_SEGMENT records */
@@ -231,7 +242,7 @@ public class HeapDumpWriter {
     private void writeHeader() {
         writeUTF8("JAVA PROFILE 1.0.2");
         writeByte((byte) 0);
-        writeInt(getWordSize());
+        writeInt(wordSize());
         writeLong(System.currentTimeMillis());
     }
 
@@ -244,7 +255,7 @@ public class HeapDumpWriter {
     }
 
     private void endTopLevelRecord() {
-        assert topLevelRecordBegin >= 0;
+        assert topLevelRecordBegin > 0;
         long currentPosition = getPosition();
         setPosition(topLevelRecordBegin - Integer.BYTES);
         writeInt(NumUtil.safeToUInt(currentPosition - topLevelRecordBegin));
@@ -253,7 +264,7 @@ public class HeapDumpWriter {
     }
 
     private void startSubRecord(HProfSubRecord tag, long size) {
-        assert topLevelRecordBegin >= 0 : "must be within a HEAP_DUMP_SEGMENT";
+        assert topLevelRecordBegin > 0 : "must be within a HEAP_DUMP_SEGMENT";
         long heapDumpSegmentSize = getPosition() - topLevelRecordBegin;
         if (heapDumpSegmentSize > 0 && heapDumpSegmentSize + size > HEAP_DUMP_SEGMENT_TARGET_SIZE) {
             endTopLevelRecord();
@@ -265,7 +276,7 @@ public class HeapDumpWriter {
     }
 
     private void endSubRecord(long recordSize) {
-        assert subRecordBegin >= 0;
+        assert subRecordBegin > 0;
         assert subRecordBegin + recordSize == getPosition();
         subRecordBegin = -1;
     }
@@ -294,14 +305,13 @@ public class HeapDumpWriter {
     }
 
     private void writeFieldNames() {
-        FieldNamePointer fieldNameTable = HeapDumpMetadata.getFieldNameTable();
         for (int i = 0; i < HeapDumpMetadata.getFieldNameCount(); i++) {
-            FieldName fieldName = fieldNameTable.addressOf(i).read();
+            FieldName fieldName = HeapDumpMetadata.getFieldName(i);
             writeSymbol(fieldName);
         }
     }
 
-    private void writeLoadClassRecords() {
+    private void writeLoadedClasses() {
         for (int i = 0; i < HeapDumpMetadata.getClassInfoCount(); i++) {
             ClassInfo classInfo = HeapDumpMetadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
@@ -374,12 +384,11 @@ public class HeapDumpWriter {
     }
 
     private void writeClassDumpRecord(ClassInfo classInfo) {
-        int wordSize = getWordSize();
         int staticFieldsCount = classInfo.getStaticFieldCount();
-        int staticFieldsSize = staticFieldsCount * (wordSize + 1) + HeapDumpMetadata.computeFieldsDumpSize(classInfo.getStaticFields(), classInfo.getStaticFieldCount());
+        int staticFieldsSize = staticFieldsCount * (wordSize() + 1) + HeapDumpMetadata.computeFieldsDumpSize(classInfo.getStaticFields(), classInfo.getStaticFieldCount());
         int instanceFieldsCount = classInfo.getInstanceFieldCount();
-        int instanceFieldsSize = instanceFieldsCount * (wordSize + 1);
-        int recordSize = 1 + wordSize + 4 + 6 * wordSize + 4 + 2 + 2 + staticFieldsSize + 2 + instanceFieldsSize;
+        int instanceFieldsSize = instanceFieldsCount * (wordSize() + 1);
+        int recordSize = 1 + wordSize() + 4 + 6 * wordSize() + 4 + 2 + 2 + staticFieldsSize + 2 + instanceFieldsSize;
 
         Class<?> clazz = DynamicHub.toClass(classInfo.getHub());
         startSubRecord(HProfSubRecord.GC_CLASS_DUMP, recordSize);
@@ -396,6 +405,47 @@ public class HeapDumpWriter {
         writeFieldDescriptors(staticFieldsCount, classInfo.getStaticFields(), true);
         writeFieldDescriptors(instanceFieldsCount, classInfo.getInstanceFields(), false);
         endSubRecord(recordSize);
+    }
+
+    private void writeFieldDescriptors(int fieldCount, FieldInfoPointer fieldInfos, boolean isStatic) {
+        writeShort(NumUtil.safeToUShort(fieldCount));
+        for (int i = 0; i < fieldCount; i++) {
+            FieldInfo field = fieldInfos.addressOf(i).read();
+            writeFieldNameId(FieldInfoAccess.getFieldName(field));
+            HProfType type = FieldInfoAccess.getType(field);
+            writeType(type);
+
+            if (isStatic) {
+                /* For static fields, write the field value to the heap dump as well. */
+                Object dataHolder = getStaticFieldDataHolder(type);
+                writeFieldData(dataHolder, field);
+            }
+        }
+    }
+
+    private static Object getStaticFieldDataHolder(HProfType type) {
+        if (type == HProfType.NORMAL_OBJECT) {
+            return StaticFieldsSupport.getStaticObjectFields();
+        } else {
+            return StaticFieldsSupport.getStaticPrimitiveFields();
+        }
+    }
+
+    private void writeFieldData(Object dataHolder, FieldInfo field) {
+        Pointer p = Word.objectToUntrackedPointer(dataHolder);
+        int location = FieldInfoAccess.getLocation(field);
+        HProfType type = FieldInfoAccess.getType(field);
+        switch (type) {
+            case BOOLEAN, BYTE -> writeByte(p.readByte(location));
+            case CHAR -> writeChar(p.readChar(location));
+            case SHORT -> writeShort(p.readShort(location));
+            case INT -> writeInt(p.readInt(location));
+            case LONG -> writeLong(p.readLong(location));
+            case FLOAT -> writeFloat(p.readFloat(location));
+            case DOUBLE -> writeDouble(p.readDouble(location));
+            case NORMAL_OBJECT -> writeObjectId(ReferenceAccess.singleton().readObjectAt(p.add(location), true));
+            default -> throw VMError.shouldNotReachHere("Unexpected type.");
+        }
     }
 
     private void writeThreads(Pointer currentThreadSp) {
@@ -418,7 +468,7 @@ public class HeapDumpWriter {
     }
 
     private void writeThread(Thread threadObj, int threadSerialNum, int stackTraceSerialNum) {
-        int recordSize = 1 + getWordSize() + 4 + 4;
+        int recordSize = 1 + wordSize() + 4 + 4;
         startSubRecord(HProfSubRecord.GC_ROOT_THREAD_OBJ, recordSize);
         writeObjectId(threadObj);
         writeInt(threadSerialNum);
@@ -428,8 +478,8 @@ public class HeapDumpWriter {
 
     private void writeThreadLocals(IsolateThread isolateThread, int threadSerialNum) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            threadLocalVisitor.initialize(threadSerialNum);
-            VMThreadLocalMTSupport.singleton().walk(isolateThread, threadLocalVisitor);
+            threadLocalsVisitor.initialize(threadSerialNum);
+            VMThreadLocalMTSupport.singleton().walk(isolateThread, threadLocalsVisitor);
         }
     }
 
@@ -442,7 +492,7 @@ public class HeapDumpWriter {
         for (int i = 0; i < HeapDumpMetadata.getClassInfoCount(); i++) {
             ClassInfo classInfo = HeapDumpMetadata.getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
-                int recordSize = 1 + getWordSize();
+                int recordSize = 1 + wordSize();
                 startSubRecord(HProfSubRecord.GC_ROOT_STICKY_CLASS, recordSize);
                 writeClassId(classInfo.getHub());
                 endSubRecord(recordSize);
@@ -451,33 +501,28 @@ public class HeapDumpWriter {
     }
 
     private void writeObjects() {
-        GrowableWordArray largeImageHeapObjects = StackValue.get(GrowableWordArray.class);
-        GrowableWordArrayAccess.initialize(largeImageHeapObjects);
+        GrowableWordArray largeObjects = StackValue.get(GrowableWordArray.class);
+        GrowableWordArrayAccess.initialize(largeObjects);
+        try {
+            dumpObjectsVisitor.initialize(largeObjects);
+            Heap.getHeap().walkImageHeapObjects(dumpObjectsVisitor);
 
-        dumpObjectsVisitor.initialize(true, largeImageHeapObjects);
-        Heap.getHeap().walkImageHeapObjects(dumpObjectsVisitor);
+            dumpObjectsVisitor.initialize(largeObjects);
+            Heap.getHeap().walkCollectedHeapObjects(dumpObjectsVisitor);
 
-        GrowableWordArray largeCollectedHeapObjects = StackValue.get(GrowableWordArray.class);
-        GrowableWordArrayAccess.initialize(largeCollectedHeapObjects);
-
-        dumpObjectsVisitor.initialize(false, largeCollectedHeapObjects);
-        Heap.getHeap().walkCollectedHeapObjects(dumpObjectsVisitor);
-
-        /* Large objects are collected and written separately. */
-        writeLargeObjects(largeImageHeapObjects, true);
-        GrowableWordArrayAccess.freeData(largeImageHeapObjects);
-        largeImageHeapObjects = WordFactory.nullPointer();
-
-        writeLargeObjects(largeCollectedHeapObjects, false);
-        GrowableWordArrayAccess.freeData(largeCollectedHeapObjects);
-        largeCollectedHeapObjects = WordFactory.nullPointer();
+            /* Large objects are collected and written separately. */
+            writeLargeObjects(largeObjects);
+        } finally {
+            GrowableWordArrayAccess.freeData(largeObjects);
+            largeObjects = WordFactory.nullPointer();
+        }
     }
 
-    private void writeLargeObjects(GrowableWordArray largeObjects, boolean inImageHeap) {
+    private void writeLargeObjects(GrowableWordArray largeObjects) {
         int count = largeObjects.getSize();
         for (int i = 0; i < count; i++) {
             Word rawObj = GrowableWordArrayAccess.get(largeObjects, i);
-            writeObject(rawObj.toObject(), inImageHeap);
+            writeObject(rawObj.toObject());
         }
     }
 
@@ -508,48 +553,7 @@ public class HeapDumpWriter {
         }
     }
 
-    private void writeFieldDescriptors(int fieldCount, FieldInfoPointer fieldInfos, boolean staticFields) {
-        writeShort(NumUtil.safeToUShort(fieldCount));
-        for (int i = 0; i < fieldCount; i++) {
-            FieldInfo field = fieldInfos.addressOf(i).read();
-            writeFieldNameId(FieldInfoAccess.getFieldName(field));
-            byte typeCode = FieldInfoAccess.getStorageKind(field);
-            writeType(HProfType.fromStorageKind(typeCode));
-
-            if (staticFields) {
-                /* For static fields, write the field value to the heap dump as well. */
-                boolean isObjectField = typeCode == StorageKind.OBJECT;
-                writeField(getStaticFieldData(isObjectField), field);
-            }
-        }
-    }
-
-    private static Object getStaticFieldData(boolean isObjectField) {
-        if (isObjectField) {
-            return StaticFieldsSupport.getStaticObjectFields();
-        } else {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
-        }
-    }
-
-    private void writeField(Object obj, FieldInfo field) {
-        Pointer p = Word.objectToUntrackedPointer(obj);
-        int location = FieldInfoAccess.getLocation(field);
-        byte storageKind = FieldInfoAccess.getStorageKind(field);
-        switch (storageKind) {
-            case StorageKind.BOOLEAN, StorageKind.BYTE -> writeByte(p.readByte(location));
-            case StorageKind.CHAR -> writeChar(p.readChar(location));
-            case StorageKind.SHORT -> writeShort(p.readShort(location));
-            case StorageKind.INT -> writeInt(p.readInt(location));
-            case StorageKind.LONG -> writeLong(p.readLong(location));
-            case StorageKind.FLOAT -> writeFloat(p.readFloat(location));
-            case StorageKind.DOUBLE -> writeDouble(p.readDouble(location));
-            case StorageKind.OBJECT -> writeObjectId(ReferenceAccess.singleton().readObjectAt(p.add(location), true));
-            default -> throw VMError.shouldNotReachHere("Unexpected storage kind.");
-        }
-    }
-
-    private void writeObject(Object obj, boolean inImageHeap) {
+    private void writeObject(Object obj) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int layoutEncoding = hub.getLayoutEncoding();
         if (LayoutEncoding.isArray(layoutEncoding)) {
@@ -561,20 +565,20 @@ public class HeapDumpWriter {
         } else {
             /*
              * Hybrid objects are handled here as well. This means that the array part of hybrid
-             * objects is currently skipped. It would be better to dump the array part as a separate
-             * array object.
+             * objects is currently skipped. Eventually, we should probably dump the array part as a
+             * separate object.
              */
             writeInstance(obj);
         }
 
-        if (inImageHeap) {
+        if (Heap.getHeap().isInImageHeap(obj)) {
             markImageHeapObjectAsGCRoot(obj);
         }
 
         /*
-         * Ideally, we would model Java monitors as instance fields (they are only reachable if the
-         * object that owns the monitor is reachable), however that is not possible because the
-         * synthetic monitor field may overlap or collide with a normal field of a subclass.
+         * Ideally, we would model Java monitors as instance fields as they are only reachable if
+         * the object that owns the monitor is reachable. However, that is not possible because the
+         * synthetic monitor field could overlap or collide with a normal field of a subclass.
          * Therefore, we simply mark all monitors as GC roots.
          */
         int monitorOffset = hub.getMonitorOffset();
@@ -586,48 +590,31 @@ public class HeapDumpWriter {
         }
     }
 
+    private void markMonitorAsGCRoot(Object monitor) {
+        int recordSize = 1 + wordSize();
+        startSubRecord(HProfSubRecord.GC_ROOT_MONITOR_USED, recordSize);
+        writeObjectId(monitor);
+        endSubRecord(recordSize);
+    }
+
+    /** We mark image heap objects as GC_ROOT_JNI_GLOBAL. */
     private void markImageHeapObjectAsGCRoot(Object obj) {
         assert Heap.getHeap().isInImageHeap(obj);
-        markAsGCRoot0(obj);
+        markAsJniGlobalGCRoot(obj);
     }
 
-    private void markCodeMetadataAsGCRoot(Object obj) {
-        markAsGCRoot0(obj);
-    }
-
-    /**
-     * We use GC_ROOT_JNI_GLOBAL for all concepts that don't exist on HotSpot, e.g., the image heap
-     * or {@link DeoptimizedFrame}s.
-     */
-    private void markAsGCRoot0(Object obj) {
-        int recordSize = 1 + 2 * getWordSize();
+    private void markAsJniGlobalGCRoot(Object obj) {
+        int recordSize = 1 + 2 * wordSize();
         startSubRecord(HProfSubRecord.GC_ROOT_JNI_GLOBAL, recordSize);
         writeObjectId(obj);
         writeObjectId(null); // global ref ID
         endSubRecord(recordSize);
     }
 
-    private void markMonitorAsGCRoot(Object monitor) {
-        int recordSize = 1 + getWordSize();
-        startSubRecord(HProfSubRecord.GC_ROOT_MONITOR_USED, recordSize);
-        writeObjectId(monitor);
-        endSubRecord(recordSize);
-    }
-
-    private void markThreadLocalAsGCRoot(Object obj, int threadSerialNum) {
-        int recordSize = 1 + getWordSize() + 4 + 4;
-        startSubRecord(HProfSubRecord.GC_ROOT_JNI_LOCAL, recordSize);
-        writeObjectId(obj);
-        writeInt(threadSerialNum);
-        writeInt(-1); // empty stack
-        endSubRecord(recordSize);
-    }
-
     private void writeInstance(Object obj) {
         ClassInfo classInfo = HeapDumpMetadata.getClassInfo(obj.getClass());
-        int wordSize = getWordSize();
         int instanceFieldsSize = classInfo.getInstanceFieldsDumpSize();
-        int recordSize = 1 + wordSize + 4 + wordSize + 4 + instanceFieldsSize;
+        int recordSize = 1 + wordSize() + 4 + wordSize() + 4 + instanceFieldsSize;
 
         startSubRecord(HProfSubRecord.GC_INSTANCE_DUMP, recordSize);
         writeObjectId(obj);
@@ -641,7 +628,7 @@ public class HeapDumpWriter {
             FieldInfoPointer instanceFields = classInfo.getInstanceFields();
             for (int i = 0; i < instanceFieldCount; i++) {
                 FieldInfo field = instanceFields.addressOf(i).read();
-                writeField(obj, field);
+                writeFieldData(obj, field);
             }
             classInfo = HeapDumpMetadata.getClassInfo(classInfo.getHub().getSuperHub());
         } while (classInfo.isNonNull());
@@ -653,7 +640,7 @@ public class HeapDumpWriter {
         int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
         int elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
 
-        int recordHeaderSize = 1 + getWordSize() + 2 * 4 + 1;
+        int recordHeaderSize = 1 + wordSize() + 2 * 4 + 1;
         int length = calculateMaxArrayLength(array, elementSize, recordHeaderSize);
         long recordSize = recordHeaderSize + ((long) length) * elementSize;
 
@@ -690,18 +677,17 @@ public class HeapDumpWriter {
         } else {
             /* Word arrays are primitive arrays as well */
             assert WordBase.class.isAssignableFrom(array.getClass().getComponentType());
-            assert elementSize == getWordSize();
+            assert elementSize == wordSize();
             writeWordArray(array, length, arrayBaseOffset);
         }
         endSubRecord(recordSize);
     }
 
     private void writeObjectArray(Object array) {
-        int wordSize = getWordSize();
-        int recordHeaderSize = 1 + 2 * 4 + 2 * wordSize;
+        int recordHeaderSize = 1 + 2 * 4 + 2 * wordSize();
         /* In the heap dump, object array elements are always uncompressed. */
-        int length = calculateMaxArrayLength(array, wordSize, recordHeaderSize);
-        long recordSize = recordHeaderSize + ((long) length) * wordSize;
+        int length = calculateMaxArrayLength(array, wordSize(), recordHeaderSize);
+        long recordSize = recordHeaderSize + ((long) length) * wordSize();
 
         startSubRecord(HProfSubRecord.GC_OBJ_ARRAY_DUMP, recordSize);
         writeObjectId(array);
@@ -717,13 +703,13 @@ public class HeapDumpWriter {
     }
 
     /*
-     * Hprof uses an u4 as the record length field, which means we need to truncate arrays that are
-     * too long.
+     * The size of individual HPROF records is limited to {@link #MAX_UNSIGNED_INT}, which means
+     * that very large arrays need to truncated.
      */
     private static int calculateMaxArrayLength(Object array, int elementSize, int recordHeaderSize) {
         int length = ArrayLengthNode.arrayLength(array);
         UnsignedWord lengthInBytes = WordFactory.unsigned(length).multiply(elementSize);
-        UnsignedWord maxBytes = WordFactory.unsigned((1L << 32) - 1).subtract(recordHeaderSize);
+        UnsignedWord maxBytes = WordFactory.unsigned(MAX_UNSIGNED_INT).subtract(recordHeaderSize);
 
         if (lengthInBytes.belowOrEqual(maxBytes)) {
             return length;
@@ -735,11 +721,11 @@ public class HeapDumpWriter {
     }
 
     private void writeWordArray(Object array, int length, int arrayBaseOffset) {
-        if (getWordSize() == 8) {
+        if (wordSize() == 8) {
             writeType(HProfType.LONG);
             writeU8ArrayData(array, length, arrayBaseOffset);
         } else {
-            assert getWordSize() == 4;
+            assert wordSize() == 4;
             writeType(HProfType.INT);
             writeU4ArrayData(array, length, arrayBaseOffset);
         }
@@ -779,7 +765,37 @@ public class HeapDumpWriter {
     }
 
     private void writeByte(byte value) {
-        boolean success = getFileSupport().writeByte(f, value);
+        boolean success = file().writeByte(f, value);
+        handleError(success);
+    }
+
+    private void writeShort(short value) {
+        boolean success = file().writeShort(f, value);
+        handleError(success);
+    }
+
+    private void writeChar(char value) {
+        boolean success = file().writeChar(f, value);
+        handleError(success);
+    }
+
+    private void writeInt(int value) {
+        boolean success = file().writeInt(f, value);
+        handleError(success);
+    }
+
+    private void writeLong(long value) {
+        boolean success = file().writeLong(f, value);
+        handleError(success);
+    }
+
+    private void writeFloat(float value) {
+        boolean success = file().writeFloat(f, value);
+        handleError(success);
+    }
+
+    private void writeDouble(double value) {
+        boolean success = file().writeDouble(f, value);
         handleError(success);
     }
 
@@ -787,38 +803,8 @@ public class HeapDumpWriter {
         writeByte(type.getValue());
     }
 
-    private void writeShort(short value) {
-        boolean success = getFileSupport().writeShort(f, value);
-        handleError(success);
-    }
-
-    private void writeChar(char value) {
-        boolean success = getFileSupport().writeChar(f, value);
-        handleError(success);
-    }
-
-    private void writeInt(int value) {
-        boolean success = getFileSupport().writeInt(f, value);
-        handleError(success);
-    }
-
-    private void writeLong(long value) {
-        boolean success = getFileSupport().writeLong(f, value);
-        handleError(success);
-    }
-
-    private void writeFloat(float value) {
-        boolean success = getFileSupport().writeFloat(f, value);
-        handleError(success);
-    }
-
-    private void writeDouble(double value) {
-        boolean success = getFileSupport().writeDouble(f, value);
-        handleError(success);
-    }
-
     private void writeObjectId(Object obj) {
-        writeId(Word.objectToUntrackedPointer(obj).rawValue());
+        writeId0(Word.objectToUntrackedPointer(obj).rawValue());
     }
 
     private void writeClassId(Class<?> clazz) {
@@ -840,53 +826,51 @@ public class HeapDumpWriter {
         if (hubAddress.isNonNull()) {
             hubAddress = hubAddress.add(1);
         }
-        writeId(hubAddress.rawValue());
+        writeId0(hubAddress.rawValue());
     }
 
-    private void writeId(long value) {
+    private void writeFieldNameId(FieldName fieldName) {
+        writeId0(fieldName.rawValue());
+    }
+
+    private void writeFrameId(long frameId) {
+        writeId0(frameId);
+    }
+
+    private void writeId0(long value) {
         boolean success;
-        if (getWordSize() == 8) {
-            success = getFileSupport().writeLong(f, value);
+        if (wordSize() == 8) {
+            success = file().writeLong(f, value);
         } else {
-            assert getWordSize() == 4;
-            success = getFileSupport().writeInt(f, (int) value);
+            assert wordSize() == 4;
+            success = file().writeInt(f, (int) value);
         }
         handleError(success);
     }
 
-    private void writeFieldNameId(FieldName fieldName) {
-        boolean success = getFileSupport().writeLong(f, fieldName.rawValue());
-        handleError(success);
-    }
-
-    private void writeFrameId(long frameId) {
-        boolean success = getFileSupport().writeLong(f, frameId);
-        handleError(success);
-    }
-
     private void writeUTF8(String value) {
-        boolean success = getFileSupport().writeUTF8(f, value);
+        boolean success = file().writeUTF8(f, value);
         handleError(success);
     }
 
     private void write(Pointer data, UnsignedWord size) {
-        boolean success = getFileSupport().write(f, data, size);
+        boolean success = file().write(f, data, size);
         handleError(success);
     }
 
     private long getPosition() {
-        long result = getFileSupport().position(f);
+        long result = file().position(f);
         handleError(result >= 0);
         return result;
     }
 
     private void setPosition(long newPos) {
-        boolean success = getFileSupport().seek(f, newPos);
+        boolean success = file().seek(f, newPos);
         handleError(success);
     }
 
     private void flush() {
-        boolean success = getFileSupport().flush(f);
+        boolean success = file().flush(f);
         handleError(success);
     }
 
@@ -897,12 +881,12 @@ public class HeapDumpWriter {
     }
 
     @Fold
-    static BufferedFileOperationSupport getFileSupport() {
+    static BufferedFileOperationSupport file() {
         return BufferedFileOperationSupport.bigEndian();
     }
 
     @Fold
-    static int getWordSize() {
+    static int wordSize() {
         return ConfigurationValues.getTarget().wordSize;
     }
 
@@ -911,14 +895,14 @@ public class HeapDumpWriter {
      * <ul>
      * <li>Write a {@link HProfTopLevelRecord#FRAME} top-level record for every frame on the
      * stack.</li>
-     * <li>Write a GC_ROOT sub-record for every deoptimized frame and every references that is on
+     * <li>Write a GC_ROOT sub-record for every deoptimized frame and for every reference that is on
      * the stack.</li>
      * </ul>
      *
      * Unfortunately, it is not possible to write all the information in a single pass because the
      * data needs to end up in different HPROF records (top-level vs. sub-records). The data from
-     * the different passes needs to match though, therefore we use a {@link #markGCRoots field} to
-     * determine which data should be written.
+     * the different passes needs to match, so it is easier to implement both passes in one class
+     * and to use a {@link #markGCRoots field} to determine which data should be written.
      */
     private class DumpStackFrameVisitor extends StackFrameVisitor implements ObjectReferenceVisitor {
         private static final int LINE_NUM_NATIVE_METHOD = -3;
@@ -963,10 +947,10 @@ public class HeapDumpWriter {
             } else {
                 /*
                  * All references that are on the stack need to be marked as GC roots. Our
-                 * information is not necessarily precise enough to identify to which Java-level
-                 * stack frame a reference belongs. Therefore, we just dump the data in a way that
-                 * it gets associated with the deepest inlined Java-level stack frame of each
-                 * compilation unit.
+                 * information is not necessarily precise enough to identify the exact Java-level
+                 * stack frame to which a reference belongs. Therefore, we just dump the data in a
+                 * way that it gets associated with the deepest inlined Java-level stack frame of
+                 * each compilation unit.
                  */
                 markStackValuesAsGCRoots(sp, ip, codeInfo);
 
@@ -982,7 +966,7 @@ public class HeapDumpWriter {
 
         private void markAsGCRoot(DeoptimizedFrame frame) {
             if (markGCRoots) {
-                markAsGCRoot0(frame);
+                markAsJniGlobalGCRoot(frame);
             }
         }
 
@@ -1001,12 +985,13 @@ public class HeapDumpWriter {
         }
 
         @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             assert markGCRoots;
 
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (obj != null) {
-                int recordSize = 1 + getWordSize() + 4 + 4;
+                int recordSize = 1 + wordSize() + 4 + 4;
                 startSubRecord(HProfSubRecord.GC_ROOT_JAVA_FRAME, recordSize);
                 writeObjectId(obj);
                 writeInt(threadSerialNum);
@@ -1020,40 +1005,34 @@ public class HeapDumpWriter {
             if (!markGCRoots) {
                 /*
                  * Write all UTF-8 symbols that are needed when writing the frame. Ideally, we would
-                 * de-duplicate the symbols but it is not really crucial to do so.
+                 * de-duplicate the symbols, but doing so is not crucial. We also don't support the
+                 * method signature at the moment.
                  */
-                String methodName = getMethodName(frame);
+                String methodName = frame.getSourceMethodName();
+                String methodSignature = "";
                 String sourceFileName = getSourceFileName(frame);
                 writeSymbol(methodName);
-                writeSymbol(""); // method signature
+                writeSymbol(methodSignature);
                 writeSymbol(sourceFileName);
 
                 /* Write the FRAME record. */
                 ClassInfo classInfo = HeapDumpMetadata.getClassInfo(frame.getSourceClass());
                 int lineNumber = getLineNumber(frame);
-                writeFrame(classInfo.getSerialNum(), lineNumber, methodName, sourceFileName);
+                writeFrame(classInfo.getSerialNum(), lineNumber, methodName, methodSignature, sourceFileName);
             }
         }
 
-        private void writeFrame(int classSerialNum, int lineNumber, String methodName, String sourceFileName) {
+        private void writeFrame(int classSerialNum, int lineNumber, String methodName, String methodSignature, String sourceFileName) {
             assert !markGCRoots;
 
             startTopLevelRecord(HProfTopLevelRecord.FRAME);
             writeFrameId(nextFrameId);
             writeObjectId(methodName);
-            writeObjectId(""); // method signature
+            writeObjectId(methodSignature);
             writeObjectId(sourceFileName);
             writeInt(classSerialNum);
             writeInt(lineNumber);
             endTopLevelRecord();
-        }
-
-        private String getMethodName(FrameInfoQueryResult frame) {
-            String methodName = frame.getSourceMethodName();
-            if (methodName == null || methodName.isEmpty()) {
-                methodName = "";
-            }
-            return methodName;
         }
 
         private String getSourceFileName(FrameInfoQueryResult frame) {
@@ -1073,7 +1052,6 @@ public class HeapDumpWriter {
     }
 
     private class DumpObjectsVisitor implements ObjectVisitor {
-        private boolean inImageHeap;
         private GrowableWordArray largeObjects;
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -1081,22 +1059,21 @@ public class HeapDumpWriter {
         }
 
         @SuppressWarnings("hiding")
-        public void initialize(boolean inImageHeap, GrowableWordArray largeObjects) {
-            this.inImageHeap = inImageHeap;
+        public void initialize(GrowableWordArray largeObjects) {
             this.largeObjects = largeObjects;
         }
 
         @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObject(Object obj) {
             if (isLarge(obj)) {
                 boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj));
                 if (!added) {
                     Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }
-                return true;
+            } else {
+                writeObject(obj);
             }
-
-            writeObject(obj, inImageHeap);
             return true;
         }
 
@@ -1111,7 +1088,7 @@ public class HeapDumpWriter {
                 if (LayoutEncoding.isPrimitiveArray(layoutEncoding)) {
                     elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
                 } else {
-                    elementSize = getWordSize();
+                    elementSize = wordSize();
                 }
                 int length = ArrayLengthNode.arrayLength(obj);
                 return WordFactory.unsigned(length).multiply(elementSize);
@@ -1134,20 +1111,21 @@ public class HeapDumpWriter {
         }
 
         @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (obj != null) {
-                markCodeMetadataAsGCRoot(obj);
+                markAsJniGlobalGCRoot(obj);
             }
             return true;
         }
     }
 
-    private class ThreadLocalVisitor implements ObjectReferenceVisitor {
+    private class ThreadLocalsVisitor implements ObjectReferenceVisitor {
         private int threadSerialNum;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        ThreadLocalVisitor() {
+        ThreadLocalsVisitor() {
         }
 
         @SuppressWarnings("hiding")
@@ -1156,12 +1134,22 @@ public class HeapDumpWriter {
         }
 
         @Override
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             Object obj = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (obj != null) {
                 markThreadLocalAsGCRoot(obj, threadSerialNum);
             }
             return true;
+        }
+
+        private void markThreadLocalAsGCRoot(Object obj, int threadSerialNum) {
+            int recordSize = 1 + wordSize() + 4 + 4;
+            startSubRecord(HProfSubRecord.GC_ROOT_JNI_LOCAL, recordSize);
+            writeObjectId(obj);
+            writeInt(threadSerialNum);
+            writeInt(-1); // empty stack
+            endSubRecord(recordSize);
         }
     }
 }
