@@ -13,34 +13,46 @@ local graal_suite_root = root_ci.graal_suite_root;
     targets+: ['gate'],
   },
 
-  bench:: {
-    targets+: ['bench', 'daily'],
+  daily:: {
+    targets+: ['daily'],
+    notify_groups:: ['wasm'],
   },
 
-  local linux_common = {
+  weekly:: {
+    targets+: ['weekly'],
+    notify_groups:: ['wasm'],
+  },
+
+  bench:: {
+    targets+: ['bench'],
+  },
+
+  bench_daily:: self.bench + self.daily,
+  bench_weekly:: self.bench + self.weekly,
+
+  linux_common:: {
     packages+: {
       "01:binutils": '>=2.30',
       gcc: '==8.3.0',
       'gcc-build-essentials': '==8.3.0', # GCC 4.9.0 fails on cluster
       make: '>=3.83',
       llvm: '==8.0.1',
-      nodejs: '==8.9.4',
     },
   },
 
-  linux_amd64:: common.linux_amd64 + linux_common,
-  linux_aarch64:: common.linux_aarch64 + linux_common,
+  linux_amd64:: common.linux_amd64 + self.linux_common,
+  linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
   darwin_aarch64:: common.darwin_aarch64,
   darwin_amd64:: common.darwin_amd64 + {
     capabilities+: ['darwin_catalina'],
   },
 
-  local windows_common = {
+  windows_common:: {
     packages+: $.devkits["windows-jdk" + self.jdk_version].packages,
   },
 
-  windows_amd64:: common.windows_amd64 + windows_common,
+  windows_amd64:: common.windows_amd64 + self.windows_common,
 
   wabt:: {
     downloads+: {
@@ -109,21 +121,42 @@ local graal_suite_root = root_ci.graal_suite_root;
     timelimit: '45:00',
   },
 
-  gate_graalwasm_full:: self.setup_common + {
+  gate_graalwasm_style:: self.eclipse_jdt + self.gate_graalwasm + {
+    environment+: {
+      GATE_TAGS: 'style,fullbuild',
+    },
+  },
+
+  gate_graalwasm_full:: self.wabt + self.setup_common + {
     run+: [
       gate_cmd_full
     ],
     timelimit: '1:00:00',
   },
 
-  gate_graalwasm_emsdk_full:: self.setup_emsdk + {
+  gate_graalwasm_emsdk_full:: self.wabt_emsdk + self.setup_emsdk + {
     run+: [
       gate_cmd_full
     ],
     timelimit: '45:00',
   },
 
-  bench_graalwasm_emsdk_full:: self.setup_emsdk + {
+  gate_graalwasm_ocaml_full:: self.gate_graalwasm_emsdk_full + self.ocamlbuild,
+
+  gate_graalwasm_coverage:: self.wabt_emsdk + self.setup_emsdk + {
+    environment+: {
+      GATE_TAGS: 'buildall,coverage',
+    },
+    run+: [
+      gate_cmd_full + ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage']
+    ],
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
+    ],
+    timelimit: '1:30:00',
+  },
+
+  bench_graalwasm_emsdk_full:: self.wabt_emsdk + self.setup_emsdk + {
     environment+: {
       BENCH_RESULTS_FILE_PATH : 'bench-results.json',
     },
@@ -144,12 +177,8 @@ local graal_suite_root = root_ci.graal_suite_root;
     timelimit: '1:00:00',
   },
 
-  gate_eclipse_jdt              :: self.gate  + common.deps.eclipse + common.deps.jdt,
-  gate_wabt                     :: self.gate  + self.wabt,
-  gate_wabt_emsdk               :: self.gate  + self.wabt    + self.emsdk,
-  gate_wabt_emsdk_ocamlbuild    :: self.gate  + self.wabt    + self.emsdk + self.ocamlbuild,
-
-  bench_wabt_emsdk              :: self.bench + self.wabt    + self.emsdk,
-  bench_wabt_emsdk_nodejs       :: self.bench + self.wabt    + self.emsdk + self.nodejs,
+  eclipse_jdt              :: common.deps.pylint + common.deps.eclipse + common.deps.jdt,
+  wabt_emsdk               :: self.wabt    + self.emsdk,
+  wabt_emsdk_ocamlbuild    :: self.wabt    + self.emsdk + self.ocamlbuild,
 
 }
