@@ -52,6 +52,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
 import static com.oracle.truffle.api.interop.AssertUtils.validScope;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -398,7 +399,7 @@ public abstract class InteropLibrary extends Library {
      * @since 21.3
      */
     public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
-        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
     }
 
     // Number Messages

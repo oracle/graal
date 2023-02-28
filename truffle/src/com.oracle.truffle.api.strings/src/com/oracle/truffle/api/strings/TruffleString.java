@@ -2111,7 +2111,11 @@ public final class TruffleString extends AbstractTruffleString {
      * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
      *
      * @since 22.1
+     * @deprecated use
+     *             {@link #fromJavaStringUncached(String, Encoding, SwitchEncodingNode.ErrorHandling)}
+     *             instead.
      */
+    @Deprecated(since = "23.0")
     @TruffleBoundary
     public static TruffleString fromJavaStringUncached(String s, Encoding encoding) {
         return FromJavaStringNode.getUncached().execute(s, encoding);
@@ -2120,11 +2124,49 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
      *
+     * @since 23.0
+     */
+    @TruffleBoundary
+    public static TruffleString fromJavaStringUncached(String s, Encoding encoding, SwitchEncodingNode.ErrorHandling errorHandling) {
+        return FromJavaStringNode.getUncached().execute(s, encoding, errorHandling);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
+     *
      * @since 22.1
      */
+    @Deprecated(since = "23.0")
     @TruffleBoundary
     public static TruffleString fromJavaStringUncached(String s, int charOffset, int length, Encoding encoding, boolean copy) {
         return FromJavaStringNode.getUncached().execute(s, charOffset, length, encoding, copy);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public static TruffleString fromJavaStringUncached(String s, int charOffset, int length, Encoding encoding, boolean copy, SwitchEncodingNode.ErrorHandling errorHandling) {
+        return FromJavaStringNode.getUncached().execute(s, charOffset, length, encoding, copy, errorHandling);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link FromJavaStringNode}. This variant also
+     * forces the calculation of the string's precise {@link CodeRange} and hash code.
+     *
+     * @since 23.0
+     * @deprecated use {@link #fromConstant(String, Encoding, SwitchEncodingNode.ErrorHandling)}
+     *             instead.
+     */
+    @Deprecated(since = "23.0")
+    @TruffleBoundary
+    public static TruffleString fromConstant(String s, Encoding encoding) {
+        TruffleString string = FromJavaStringNode.getUncached().execute(s, encoding);
+        string.getCodeRangeUncached(encoding);
+        string.hashCodeUncached(encoding);
+        return string;
     }
 
     /**
@@ -2134,8 +2176,8 @@ public final class TruffleString extends AbstractTruffleString {
      * @since 23.0
      */
     @TruffleBoundary
-    public static TruffleString fromConstant(String s, Encoding encoding) {
-        TruffleString string = FromJavaStringNode.getUncached().execute(s, encoding);
+    public static TruffleString fromConstant(String s, Encoding encoding, SwitchEncodingNode.ErrorHandling errorHandling) {
+        TruffleString string = FromJavaStringNode.getUncached().execute(s, encoding, errorHandling);
         string.getCodeRangeUncached(encoding);
         string.hashCodeUncached(encoding);
         return string;

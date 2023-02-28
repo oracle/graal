@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -63,7 +64,7 @@ public class TStringTests {
     }
 
     private static TruffleString fjs(String s) {
-        return TruffleString.FromJavaStringNode.getUncached().execute(s, TruffleString.Encoding.UTF_16);
+        return TruffleString.FromJavaStringNode.getUncached().execute(s, TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
     }
 
     private static TruffleString fjsLong(String s) {

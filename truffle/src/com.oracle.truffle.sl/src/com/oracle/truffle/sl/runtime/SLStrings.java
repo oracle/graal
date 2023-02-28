@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -61,7 +63,7 @@ public final class SLStrings {
     }
 
     public static TruffleString fromJavaString(String s) {
-        return TruffleString.fromJavaStringUncached(s, SLLanguage.STRING_ENCODING);
+        return TruffleString.fromJavaStringUncached(s, SLLanguage.STRING_ENCODING, KEEP_SURROGATES);
     }
 
     public static TruffleString fromObject(Object o) {

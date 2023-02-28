@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.strings.bench;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
+
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
@@ -61,8 +63,8 @@ public class IterationBenchmark extends TStringBenchmarkBase {
         // Checkstyle: stop
         String input = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        TruffleString inputTStringUTF8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8);
-        TruffleString inputTStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
+        TruffleString inputTStringUTF8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, REPLACE);
+        TruffleString inputTStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, REPLACE);
         byte[] inputBytes = input.getBytes(StandardCharsets.ISO_8859_1);
         Context context;
         final Value rawIterateBytes;

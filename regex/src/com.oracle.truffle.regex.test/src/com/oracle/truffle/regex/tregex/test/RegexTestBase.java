@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -53,6 +52,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
@@ -101,12 +102,12 @@ public abstract class RegexTestBase {
     }
 
     Value execRegex(Value compiledRegex, String input, int fromIndex) {
-        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding());
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding(), KEEP_SURROGATES);
         return compiledRegex.invokeMember("exec", tsInput, fromIndex);
     }
 
     Value execRegex(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
-        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding());
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding(), KEEP_SURROGATES);
         return compiledRegex.invokeMember("exec", tsInput, fromIndex);
     }
 

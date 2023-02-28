@@ -42,6 +42,7 @@
 package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
 import java.nio.charset.StandardCharsets;
@@ -180,8 +181,8 @@ public class TStringUTF8Tests extends TStringTestBase {
 
     @Test
     public void testIndexOf() {
-        TruffleString s1 = TruffleString.fromJavaStringUncached("aaa", UTF_8);
-        TruffleString s2 = TruffleString.fromJavaStringUncached("a", UTF_8);
+        TruffleString s1 = TruffleString.fromJavaStringUncached("aaa", UTF_8, REPLACE);
+        TruffleString s2 = TruffleString.fromJavaStringUncached("a", UTF_8, REPLACE);
         Assert.assertEquals(-1, s1.byteIndexOfStringUncached(s2, 1, 1, UTF_8));
     }
 
@@ -197,30 +198,30 @@ public class TStringUTF8Tests extends TStringTestBase {
 
     @Test
     public void testIndexOf3() {
-        TruffleString a = TruffleString.fromJavaStringUncached("aaa", UTF_8);
-        TruffleString b = TruffleString.fromJavaStringUncached("baa", UTF_8);
+        TruffleString a = TruffleString.fromJavaStringUncached("aaa", UTF_8, REPLACE);
+        TruffleString b = TruffleString.fromJavaStringUncached("baa", UTF_8, REPLACE);
         Assert.assertEquals(-1, a.lastIndexOfStringUncached(b, 3, 0, UTF_8));
     }
 
     @Test
     public void testIndexOf4() {
-        TruffleString a = TruffleString.fromJavaStringUncached("defghiabc", UTF_8);
-        TruffleString b = TruffleString.fromJavaStringUncached("def", UTF_8);
+        TruffleString a = TruffleString.fromJavaStringUncached("defghiabc", UTF_8, REPLACE);
+        TruffleString b = TruffleString.fromJavaStringUncached("def", UTF_8, REPLACE);
         Assert.assertEquals(-1, a.lastIndexOfStringUncached(b, 9, 1, UTF_8));
     }
 
     @Test
     public void testIndexOf5() {
-        TruffleString ts1 = TruffleString.fromJavaStringUncached("a\u00A3b\u00A3", UTF_8);
-        TruffleString ts2 = TruffleString.fromJavaStringUncached("a\u00A3", UTF_8);
+        TruffleString ts1 = TruffleString.fromJavaStringUncached("a\u00A3b\u00A3", UTF_8, REPLACE);
+        TruffleString ts2 = TruffleString.fromJavaStringUncached("a\u00A3", UTF_8, REPLACE);
         Assert.assertEquals(-1, ts1.lastIndexOfStringUncached(ts2, 4, 1, UTF_8));
         Assert.assertEquals(-1, ts1.lastByteIndexOfStringUncached(ts2, 6, 1, UTF_8));
     }
 
     @Test
     public void testIndexOf6() {
-        TruffleString ts1 = TruffleString.fromJavaStringUncached("<......\u043c...", UTF_8);
-        TruffleString ts2 = TruffleString.fromJavaStringUncached("<", UTF_8);
+        TruffleString ts1 = TruffleString.fromJavaStringUncached("<......\u043c...", UTF_8, REPLACE);
+        TruffleString ts2 = TruffleString.fromJavaStringUncached("<", UTF_8, REPLACE);
         Assert.assertEquals(0, ts1.lastIndexOfStringUncached(ts2, ts1.codePointLengthUncached(UTF_8), 0, UTF_8));
     }
 

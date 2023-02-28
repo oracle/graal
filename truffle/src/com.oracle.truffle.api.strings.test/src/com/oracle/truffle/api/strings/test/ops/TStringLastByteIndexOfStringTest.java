@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.toIntArray;
 import static org.junit.runners.Parameterized.Parameter;
 
@@ -76,17 +77,17 @@ public class TStringLastByteIndexOfStringTest extends TStringTestBase {
     public void testWithMask() throws Exception {
         String javaStrA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         int[] codepointsA = toIntArray(javaStrA);
-        TruffleString strA = TruffleString.fromJavaStringUncached(javaStrA, TruffleString.Encoding.UTF_16);
-        TruffleString strB = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_16);
+        TruffleString strA = TruffleString.fromJavaStringUncached(javaStrA, TruffleString.Encoding.UTF_16, REPLACE);
+        TruffleString strB = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_16, REPLACE);
         TruffleString.WithMask[] withMask = {
-                        TruffleString.WithMask.createUncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
-                        TruffleString.WithMask.createUTF16Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
-                        TruffleString.WithMask.createUTF32Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
+                        TruffleString.WithMask.createUncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8, REPLACE), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
+                        TruffleString.WithMask.createUTF16Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16, REPLACE), new char[]{0x20, 0x20, 0x20}),
+                        TruffleString.WithMask.createUTF32Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32, REPLACE), new int[]{0x20, 0x20, 0x20})
         };
         TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
         for (int i = 0; i < encodings.length; i++) {
             TruffleString.Encoding encoding = encodings[i];
-            TruffleString strASwitched = strA.switchEncodingUncached(encoding);
+            TruffleString strASwitched = strA.switchEncodingUncached(encoding, REPLACE);
             byte[] arr = new byte[strASwitched.byteLength(encoding)];
             strASwitched.copyToByteArrayUncached(0, arr, 0, arr.length, encoding);
             int iFinal = i;

@@ -42,6 +42,7 @@
 package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class TStringUTF32Tests extends TStringTestBase {
 
     @Test
     public void testBroken() {
-        TruffleString ts = TruffleString.fromJavaStringUncached("\ud803\udfff\ud800", UTF_32);
+        TruffleString ts = TruffleString.fromJavaStringUncached("\ud803\udfff\ud800", UTF_32, KEEP_SURROGATES);
         Assert.assertEquals(2, ts.codePointLengthUncached(UTF_32));
         Assert.assertEquals(TruffleString.CodeRange.BROKEN, ts.getCodeRangeUncached(UTF_32));
         Assert.assertFalse(ts.isValidUncached(UTF_32));
@@ -60,7 +61,7 @@ public class TStringUTF32Tests extends TStringTestBase {
 
     @Test
     public void testBroken2() {
-        TruffleString ts = TruffleString.fromJavaStringUncached("\ud800", UTF_32);
+        TruffleString ts = TruffleString.fromJavaStringUncached("\ud800", UTF_32, KEEP_SURROGATES);
         Assert.assertEquals(1, ts.codePointLengthUncached(UTF_32));
         Assert.assertEquals(TruffleString.CodeRange.BROKEN, ts.getCodeRangeUncached(UTF_32));
         Assert.assertFalse(ts.isValidUncached(UTF_32));

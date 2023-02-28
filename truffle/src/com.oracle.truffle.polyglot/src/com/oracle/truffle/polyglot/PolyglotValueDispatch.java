@@ -41,6 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
 
 import java.math.BigInteger;
@@ -1684,7 +1685,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
         addDefaultValue(polyglot, languageInstance, valueCache, false);
         addDefaultValue(polyglot, languageInstance, valueCache, "");
-        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16, REPLACE));
         addDefaultValue(polyglot, languageInstance, valueCache, 'a');
         addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
         addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);

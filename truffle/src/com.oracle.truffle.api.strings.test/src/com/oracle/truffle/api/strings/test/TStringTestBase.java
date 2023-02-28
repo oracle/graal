@@ -51,6 +51,8 @@ import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16LE;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.values;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import java.lang.reflect.Field;
 import java.nio.Buffer;
@@ -442,7 +444,7 @@ public class TStringTestBase {
         }
         if (encoding == UTF_16LE) {
             // check fromJavaString with lazy codeRange / codePointLength
-            TruffleString fromJavaString = TruffleString.fromJavaStringUncached(new String(TStringTestUtil.toCharArrayPunned(array)), encoding);
+            TruffleString fromJavaString = TruffleString.fromJavaStringUncached(new String(TStringTestUtil.toCharArrayPunned(array)), encoding, KEEP_SURROGATES);
             if (array.length != 2) {
                 TruffleString.CodeRange codeRangeImprecise = fromJavaString.getCodeRangeImpreciseUncached(encoding);
                 if (COMPACT_STRINGS_ENABLED) {
@@ -460,7 +462,7 @@ public class TStringTestBase {
             }
             TStringTestUtil.writeValue(bytesUTF16, 1, codepoints.length, 0xffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF16, 0, bytesUTF16.length, UTF_16, false).substringByteIndexUncached(0, bytesUTF16.length - 2, UTF_16,
-                            true).switchEncodingUncached(encoding);
+                            true).switchEncodingUncached(encoding, REPLACE);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
@@ -470,7 +472,7 @@ public class TStringTestBase {
             }
             TStringTestUtil.writeValue(bytesUTF32, 2, codepoints.length, 0x10ffff);
             TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF32, 0, bytesUTF32.length, UTF_32, false).substringByteIndexUncached(0, bytesUTF32.length - 4, UTF_32,
-                            true).switchEncodingUncached(encoding);
+                            true).switchEncodingUncached(encoding, REPLACE);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
     }
