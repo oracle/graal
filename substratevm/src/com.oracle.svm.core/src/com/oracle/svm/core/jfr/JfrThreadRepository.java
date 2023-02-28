@@ -47,7 +47,7 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Repository that collects all metadata about threads and thread groups.
  */
-public final class JfrThreadRepository implements JfrConstantPool {
+public final class JfrThreadRepository {
     private final VMMutex mutex;
     private final JfrThreadEpochData epochData0;
     private final JfrThreadEpochData epochData1;
@@ -205,7 +205,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
         }
     }
 
-    @Override
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
         JfrThreadEpochData epochData = getEpochData(!flush);
@@ -246,7 +245,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
             writer.endEvent(start);
             return start;
-
         } finally {
             maybeUnlock(flush);
             /*
@@ -270,14 +268,14 @@ public final class JfrThreadRepository implements JfrConstantPool {
         writer.write(epochData.threadBuffer);
         JfrBufferAccess.reinitialize(epochData.threadBuffer);
         epochData.unflushedThreadCount = 0;
-        return NON_EMPTY;
+        return JfrConstantPool.NON_EMPTY;
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
     private static int writeThreadGroups(JfrChunkWriter writer, JfrThreadEpochData epochData) {
         int threadGroupCount = epochData.unflushedThreadGroupCount;
         if (threadGroupCount == 0) {
-            return EMPTY;
+            return JfrConstantPool.EMPTY;
         }
 
         writer.writeCompressedLong(JfrType.ThreadGroup.getId());
@@ -285,7 +283,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         writer.write(epochData.threadGroupBuffer);
         JfrBufferAccess.reinitialize(epochData.threadGroupBuffer);
         epochData.unflushedThreadGroupCount = 0;
-        return NON_EMPTY;
+        return JfrConstantPool.NON_EMPTY;
     }
 
     @Uninterruptible(reason = "Releasing repository buffers.")

@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 
 public class JfrMetadata {
     private long currentMetadataId;
-    private volatile byte[] metadataDescriptor;
+    private byte[] metadataDescriptor;
 
     public JfrMetadata(byte[] bytes) {
         metadataDescriptor = bytes;

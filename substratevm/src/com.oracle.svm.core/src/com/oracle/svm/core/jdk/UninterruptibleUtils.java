@@ -525,8 +525,11 @@ public class UninterruptibleUtils {
          * Write a char in modified UTF8 format into the buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static Pointer writeModifiedUTF8(Pointer buffer, char c) {
+        private static Pointer writeModifiedUTF8(Pointer buffer, char c, boolean replaceDotWithSlash) {
             Pointer pos = buffer;
+            if (replaceDotWithSlash && c == '.') {
+                c = '/';
+            }
             if (c >= 0x0001 && c <= 0x007F) {
                 pos.writeByte(0, (byte) c);
                 pos = pos.add(1);
@@ -568,9 +571,15 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
+
+            return toModifiedUTF8(string, buffer, bufferEnd, addNullTerminator, false);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, boolean replaceDotWithSlash) {
             Pointer pos = buffer;
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
+                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index), replaceDotWithSlash);
             }
 
             if (addNullTerminator) {

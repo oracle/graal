@@ -239,7 +239,6 @@ public class SubstrateJVM {
         threadRepo.teardown();
         stackTraceRepo.teardown();
         methodRepo.teardown();
-        threadLocal.teardown();
 
         initialized = false;
         return true;

@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * {@link JfrBufferNodeLinkedList} is a singly linked list used to store thread local JFR buffers.
@@ -43,8 +44,8 @@ import com.oracle.svm.core.thread.JavaSpinLockUtils;
  * shall iterate this list and is allowed to remove nodes. There is a list-level lock that is
  * acquired when adding nodes, and when beginning iteration at the head. Threads may access their
  * own nodes at any time up until they set the alive flag to false
- * {@link com.oracle.svm.core.jfr.JfrBufferNodeAccess#setRetired(JfrBufferNode)}. When entering a
- * safepoint, the list lock must not be held by one of the blocked Java threads.
+ * {@link JfrBufferNodeAccess#setRetired(JfrBufferNode)}. When entering a safepoint, the list lock
+ * must not be held by one of the blocked Java threads.
  */
 public class JfrBufferNodeLinkedList {
 
@@ -69,6 +70,7 @@ public class JfrBufferNodeLinkedList {
     }
 
     public void teardown() {
+        assert VMOperation.isInProgressAtSafepoint();
         JfrBufferNode node = head;
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();

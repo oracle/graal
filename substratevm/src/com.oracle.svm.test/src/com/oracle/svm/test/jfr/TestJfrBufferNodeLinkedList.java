@@ -77,7 +77,6 @@ public class TestJfrBufferNodeLinkedList {
     private static void cleanUpList(JfrBufferNodeLinkedList list) {
         JfrBufferNode node = removeAllNodes(list);
         assertTrue("Could not remove all nodes", node.isNull());
-        list.teardown();
     }
 
     private static void addNodes(JfrBufferNodeLinkedList list, int nodeCount) {
