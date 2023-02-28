@@ -244,10 +244,10 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = SystemModuleFinders.ofSystem();
         }
 
-        Module builderModule = ModuleLayerFeature.class.getModule();
+        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
         if (builderModule.isNamed()) {
             ModuleFinder builderModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
-            ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(ModuleLayerFeature.class.getModule().getName()), Set.of());
+            ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(builderModule.getName()), Set.of());
             systemModuleFinder = ModuleFinder.compose(limitedBuilderModuleFinder, systemModuleFinder);
         }
 
@@ -335,19 +335,6 @@ public final class ModuleLayerFeature implements InternalFeature {
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
                     Collection<Module> reachableSyntheticModules, Collection<String> rootModules) {
         /*
-         * Module layer for image build contains modules from the module path that need to be
-         * included in the runtime boot module layer. Furthermore, this module layer is not needed
-         * at runtime. Because of that, we find its modules ahead of time to include it in the
-         * runtime boot module layer.
-         */
-        ModuleLayer moduleLayerForImageBuild = accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild;
-        Set<String> moduleLayerForImageBuildModules = moduleLayerForImageBuild
-                        .modules()
-                        .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
-
-        /*
          * A mapping from hosted to runtime module layers. Used when looking up runtime module layer
          * instances for hosted parent module layers.
          */
@@ -363,7 +350,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .collect(Collectors.toSet());
 
         for (ModuleLayer hostedModuleLayer : hostedModuleLayers) {
-            if (hostedModuleLayer == moduleLayerForImageBuild) {
+            if (hostedModuleLayer == accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild) {
                 continue;
             }
 
@@ -374,19 +361,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                             .stream()
                             .map(Module::getName)
                             .collect(Collectors.toSet());
-            if (hostedLayerIsBootModuleLayer) {
-                reachableModuleNamesForHostedModuleLayer.addAll(moduleLayerForImageBuildModules);
-                Module builderModule = ModuleLayerFeature.class.getModule();
-                assert builderModule != null;
-                reachableModuleNamesForHostedModuleLayer.remove(builderModule.getName());
-            }
-            Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
-            if (limitModules.isEmpty()) {
-                reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
-            } else {
-                reachableModuleNamesForHostedModuleLayer.retainAll(rootModules);
-            }
 
+            reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
             if (hostedLayerIsBootModuleLayer) {
                 reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
             }
@@ -453,7 +429,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         modulePairs.put(moduleLayerFeatureUtils.allUnnamedModule, moduleLayerFeatureUtils.allUnnamedModule);
         modulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
 
-        Module builderModule = ModuleLayerFeature.class.getModule();
+        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
         assert builderModule != null;
 
         try {
@@ -682,6 +658,10 @@ public final class ModuleLayerFeature implements InternalFeature {
                             .map(p -> 1 + ModuleLayerFeatureUtils.distanceFromBootModuleLayer(p))
                             .max(Integer::compareTo)
                             .orElse(0);
+        }
+
+        public static Module getBuilderModule() {
+            return ModuleLayerFeature.class.getModule();
         }
 
         public static String getMainModuleName() {
