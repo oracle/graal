@@ -75,7 +75,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTimeImpl(int clockId) {
         timespec time = UnsafeStackValue.get(timespec.class);
-        if (Time.clock_gettime(clockId, time) != 0) {
+        if (Time.NoTransitions.clock_gettime(clockId, time) != 0) {
             return -1;
         }
         return time.tv_sec() * TimeUtils.nanosPerSecond + time.tv_nsec();

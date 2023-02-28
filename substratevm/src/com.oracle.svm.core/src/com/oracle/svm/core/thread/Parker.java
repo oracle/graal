@@ -54,6 +54,7 @@ public abstract class Parker {
     public interface ParkerFactory {
         @Fold
         static ParkerFactory singleton() {
+            /* Need until ParkEvent is removed, see GR-44513. */
             if (ImageSingletons.contains(ParkEvent.ParkEventFactory.class)) {
                 return ImageSingletons.lookup(ParkEvent.ParkEventFactory.class);
             }
@@ -84,12 +85,13 @@ public abstract class Parker {
      * Block the calling thread (which must be the owner of this instance) from being scheduled
      * until another thread calls {@link #unpark},
      * <ul>
-     * <li>{@code time == 0}: indefinitely.</li>
-     * <li>{@code !isAbsolute}: until {@code time} nanoseconds elapse.</li>
-     * <li>{@code isAbsolute}: until a deadline of {@code time} milliseconds from the Epoch passes
-     * (see {@link System#currentTimeMillis()}.</li>
-     * <li>otherwise: return instantly without parking.</li>
+     * <li>{@code !isAbsolute && time == 0}: indefinitely.</li>
+     * <li>{@code !isAbsolute && time > 0}: until {@code time} nanoseconds elapse.</li>
+     * <li>{@code isAbsolute && time > 0}: until a deadline of {@code time} milliseconds from the
+     * Epoch passes (see {@link System#currentTimeMillis()}.</li>
+     * <li>otherwise: undefined behavior.</li>
      * </ul>
+     *
      * May also return spuriously instead (for no apparent reason).
      */
     protected abstract void park(boolean isAbsolute, long time);

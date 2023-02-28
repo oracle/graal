@@ -44,11 +44,6 @@ import org.graalvm.word.PointerBase;
  */
 @CContext(PosixDirectives.class)
 public class Time {
-    @CConstant
-    public static native int CLOCK_REALTIME();
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int clock_gettime(int clock_id, timespec tp);
 
     @CStruct(addStructKeyword = true)
     public interface timeval extends PointerBase {
@@ -108,6 +103,12 @@ public class Time {
     }
 
     public static class NoTransitions {
+        @CConstant
+        public static native int CLOCK_REALTIME();
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int clock_gettime(int clock_id, timespec tp);
+
         /**
          * @param which from {@link TimerTypeEnum#getCValue()}
          */

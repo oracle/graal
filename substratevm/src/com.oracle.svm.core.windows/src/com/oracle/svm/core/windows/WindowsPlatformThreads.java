@@ -224,7 +224,7 @@ class WindowsParker extends Parker {
 
         long millis;
         if (time == 0) {
-            millis = SynchAPI.INFINITE();
+            millis = SynchAPI.INFINITE() & 0xFFFFFFFFL;
         } else if (isAbsolute) {
             millis = time - System.currentTimeMillis();
             if (millis <= 0) {
@@ -260,7 +260,7 @@ class WindowsParker extends Parker {
     private static int toDword(long value) {
         assert value >= 0;
         if (value > MAX_DWORD) {
-            return (int)MAX_DWORD;
+            return (int) MAX_DWORD;
         }
         return (int) value;
     }

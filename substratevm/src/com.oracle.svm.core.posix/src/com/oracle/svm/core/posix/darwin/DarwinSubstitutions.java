@@ -63,7 +63,8 @@ final class DarwinTimeUtil {
     private static final long INITIALIZED_OFFSET = U.objectFieldOffset(DarwinTimeUtil.class, "initialized");
     private static final long MAX_ABS_TIME_OFFSET = U.objectFieldOffset(DarwinTimeUtil.class, "maxAbsTime");
 
-    private boolean initialized;
+    @SuppressWarnings("unused") //
+    private volatile boolean initialized;
     private int numer;
     private int denom;
     private long maxAbsTime;
@@ -78,7 +79,7 @@ final class DarwinTimeUtil {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long nanoTime() {
-        if (!initialized) {
+        if (!U.getBooleanAcquire(this, INITIALIZED_OFFSET)) {
             /* Can be called by multiple threads but they should all query the same data. */
             DarwinTime.MachTimebaseInfo timeBaseInfo = StackValue.get(DarwinTime.MachTimebaseInfo.class);
             int status = mach_timebase_info(timeBaseInfo);

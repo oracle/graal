@@ -65,6 +65,7 @@ import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_cond_t;
+import com.oracle.svm.core.posix.headers.Pthread.pthread_mutex_t;
 import com.oracle.svm.core.posix.headers.Sched;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -296,7 +297,7 @@ final class PosixParker extends Parker {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParker.class, "event");
 
-    private Pthread.pthread_mutex_t mutex;
+    private pthread_mutex_t mutex;
     private pthread_cond_t relativeCond;
     private pthread_cond_t absoluteCond;
 
@@ -308,10 +309,10 @@ final class PosixParker extends Parker {
 
     PosixParker() {
         // Allocate mutex and condition in a single step so that they are adjacent in memory.
-        UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
+        UnsignedWord mutexSize = SizeOf.unsigned(pthread_mutex_t.class);
         UnsignedWord condSize = SizeOf.unsigned(pthread_cond_t.class);
         Pointer memory = UnmanagedMemory.malloc(mutexSize.add(condSize.multiply(2)));
-        mutex = (Pthread.pthread_mutex_t) memory;
+        mutex = (pthread_mutex_t) memory;
         relativeCond = (pthread_cond_t) memory.add(mutexSize);
         absoluteCond = (pthread_cond_t) memory.add(mutexSize).add(condSize);
 

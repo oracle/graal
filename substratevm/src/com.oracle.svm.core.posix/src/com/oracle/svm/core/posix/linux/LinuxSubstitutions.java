@@ -41,7 +41,7 @@ final class Target_java_lang_System_Linux {
     @Uninterruptible(reason = "Does basic math after a simple system call")
     private static long nanoTime() {
         Time.timespec tp = StackValue.get(Time.timespec.class);
-        int status = Time.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), tp);
+        int status = Time.NoTransitions.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), tp);
         PosixUtils.checkStatusIs0(status, "System.nanoTime(): clock_gettime(CLOCK_MONOTONIC) failed.");
         return tp.tv_sec() * TimeUtils.nanosPerSecond + tp.tv_nsec();
     }

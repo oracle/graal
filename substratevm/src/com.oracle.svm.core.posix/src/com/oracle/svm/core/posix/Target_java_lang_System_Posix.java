@@ -46,7 +46,7 @@ final class Target_java_lang_System_Posix {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
         Time.timespec ts = StackValue.get(Time.timespec.class);
-        int status = Time.clock_gettime(Time.CLOCK_REALTIME(), ts);
+        int status = Time.NoTransitions.clock_gettime(Time.NoTransitions.CLOCK_REALTIME(), ts);
         PosixUtils.checkStatusIs0(status, "System.currentTimeMillis(): clock_gettime(CLOCK_REALTIME) failed.");
         return ts.tv_sec() * TimeUtils.millisPerSecond + ts.tv_nsec() / TimeUtils.nanosPerMilli;
     }

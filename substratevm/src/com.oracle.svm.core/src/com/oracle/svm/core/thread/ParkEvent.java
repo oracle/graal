@@ -26,7 +26,7 @@ package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.util.TimeUtils;
 
-/** Only used by legacy code. */
+/** Only used by legacy code (GR-44513). */
 public abstract class ParkEvent extends Parker {
     public interface ParkEventFactory extends ParkerFactory {
     }

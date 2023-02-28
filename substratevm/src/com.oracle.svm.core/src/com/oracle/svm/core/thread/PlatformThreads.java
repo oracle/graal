@@ -902,7 +902,7 @@ public abstract class PlatformThreads {
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
-             * block because Thread.interrupt() modifies the Parker.
+             * block because Thread.interrupt() notifies the Parker.
              */
             parker.park(isAbsolute, time);
         } finally {
@@ -967,7 +967,7 @@ public abstract class PlatformThreads {
             while (remainingNanos > 0) {
                 /*
                  * If another thread interrupted this thread in the meanwhile, then the call below
-                 * won't block because Thread.interrupt() modifies the Parker.
+                 * won't block because Thread.interrupt() notifies the Parker.
                  */
                 sleepEvent.park(false, remainingNanos);
                 if (JavaThreads.isInterrupted(thread)) {
