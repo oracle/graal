@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.graalvm.wasm.predefined.wasi.types.Fstflags;
 import org.graalvm.wasm.predefined.wasi.types.Lookupflags;
 import org.graalvm.wasm.predefined.wasi.types.Oflags;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
@@ -350,6 +351,219 @@ public abstract class Fd implements Closeable {
      */
     public Errno prestatDirName(Node node, WasmMemory memory, int pathAddress, int pathLength) {
         // There is no right needed to call this method.
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_create_directory"><code>path_create_directory</code></a>:
+     * create a directory.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @return {@link Errno#Success} in case of success, or anthoer {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opend directories</a>
+     */
+    public Errno pathCreateDirectory(Node node, WasmMemory memory, int pathAddress, int pathLength) {
+        if (!isSet(fsRightsBase, Rights.PathCreateDirectory)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_filestat_get"><code>path_filestat_get</code></a>:
+     * return the attributes of a file or directory.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param flags bitmap of {@link Lookupflags}
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @param resultAddress {@code filestat*}: address at which to write the <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#filestat"><code>filestat</code></a>
+     *            structure
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathFilestatGet(Node node, WasmMemory memory, int flags, int pathAddress, int pathLength, int resultAddress) {
+        if (!isSet(fsRightsBase, Rights.PathFilestatGet)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_filestat_set_times"><code>path_filestat_set_times</code></a>:
+     * adjust the timestamps of a file or directory.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param flags bitmap of {@link Lookupflags}
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @param atim the desired values of the data access timestamp
+     * @param mtim the desired values of the data modification timestamp
+     * @param fstFlags bitmap of {@link Fstflags}
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathFilestatSetTimes(Node node, WasmMemory memory, int flags, int pathAddress, int pathLength, long atim, long mtim, int fstFlags) {
+        if (!isSet(fsRightsBase, Rights.PathFilestatSetTimes)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_link"><code>path_link</code></a>:
+     * create a hard link.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param oldFlags bitmap of {@link Lookupflags} for the source
+     * @param oldPathAddress {@code u8*}: source start address from which to read the path encoded
+     *            in UTF-8
+     * @param oldPathLength length of the source path to get, in bytes, including the trailing null
+     *            character
+     * @param newFd the {@link Fd} of the target
+     * @param newPathAddress {@code u8*}: target start address from which to read the path encoded
+     *            in UTF-8
+     * @param newPathLength length of the target path to get, in bytes, including the trailing null
+     *            character
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathLink(Node node, WasmMemory memory, int oldFlags, int oldPathAddress, int oldPathLength, Fd newFd, int newPathAddress, int newPathLength) {
+        if (!isSet(fsRightsBase, Rights.PathLinkSource) || !isSet(newFd.fsRightsBase, Rights.PathLinkTarget)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_readlink"><code>path_readlink</code></a>:
+     * read the contents of a symbolic link.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @param buf the buffer to which to write the contents of the symbolic link
+     * @param bufLen the length of the buffer
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen) {
+        if (!isSet(fsRightsBase, Rights.PathReadlink)) {
+            return Errno.Notcapable.ordinal();
+        }
+        return Errno.Acces.ordinal();
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_remove_directory"><code>path_remove_directory</code></a>:
+     * remove a directory.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @return {@link Errno#Success} in case of success, {@link Errno#Notempty} if the directory is
+     *         not empty, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathRemoveDirectory(Node node, WasmMemory memory, int pathAddress, int pathLength) {
+        if (!isSet(fsRightsBase, Rights.PathRemoveDirectory)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_rename"><code>path_rename</code></a>:
+     * rename a file or directory.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param oldPathAddress {@code u8*}: source start address from which to read the path encoded
+     *            in UTF-8
+     * @param oldPathLength length of the source path to get, in bytes, including the trailing null
+     *            character
+     * @param newFd the {@link Fd} of the target
+     * @param newPathAddress {@code u8*}: target start address from which to read the path encoded
+     *            in UTF-8
+     * @param newPathLength length of the target path to get, in bytes, including the trailing null
+     *            character
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathRename(Node node, WasmMemory memory, int oldPathAddress, int oldPathLength, Fd newFd, int newPathAddress, int newPathLength) {
+        if (!isSet(fsRightsBase, Rights.PathRenameSource) || !isSet(newFd.fsRightsBase, Rights.PathRenameTarget)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_symlink"><code>path_symlink</code></a>:
+     * create a symbolic link.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param oldPathAddress {@code u8*}: source start address from which to read the path encoded
+     *            in UTF-8
+     * @param oldPathLength length of the source path to get, in bytes, including the trailing null
+     *            character
+     * @param newPathAddress {@code u8*}: target start address from which to read the path encoded
+     *            in UTF-8
+     * @param newPathLength length of the target path to get, in bytes, including the trailing null
+     *            character
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathSymlink(Node node, WasmMemory memory, int oldPathAddress, int oldPathLength, int newPathAddress, int newPathLength) {
+        if (!isSet(fsRightsBase, Rights.PathSymlink)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/phases/snapshot/docs.md#path_unlink_file"><code>path_unlink_file</code></a>:
+     * Unlink a file.
+     * 
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param pathAddress {@code u8*}: start address from which to read the path encoded in UTF-8
+     * @param pathLength length of the path to get, in bytes, including the trailing null character
+     * @return {@link Errno#Success} in case of success, {@link Errno#Isdir} in case the specified
+     *         path points to a directory, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     * @see <a href="#preopened">Pre-opened directories</a>
+     */
+    public Errno pathUnlinkFile(Node node, WasmMemory memory, int pathAddress, int pathLength) {
+        if (!isSet(fsRightsBase, Rights.PathUnlinkFile)) {
+            return Errno.Notcapable;
+        }
         return Errno.Acces;
     }
 

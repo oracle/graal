@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,9 @@ package org.graalvm.wasm.predefined.wasi.fd;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -57,11 +56,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 
 public final class FdManager implements Closeable {
 
-    private final Map<Integer, Fd> handles;
+    private final EconomicMap<Integer, Fd> handles;
 
     public FdManager(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        handles = new HashMap<>();
+        handles = EconomicMap.create(3);
 
         put(0, new InputStreamFd(env.in()));
         put(1, new OutputStreamFd(env.out()));
@@ -82,9 +81,15 @@ public final class FdManager implements Closeable {
             final String virtualDirPath = parts[0];
             final String hostDirPath = parts.length == 2 ? parts[1] : parts[0];
 
-            final TruffleFile virtualDir = env.getPublicTruffleFile(virtualDirPath).normalize();
+            final TruffleFile virtualDir;
             final TruffleFile hostDir;
             try {
+                if (virtualDirPath.startsWith(".")) {
+                    // Get canonical name if path is relative.
+                    virtualDir = env.getPublicTruffleFile(virtualDirPath).getCanonicalFile();
+                } else {
+                    virtualDir = env.getPublicTruffleFile(virtualDirPath).normalize();
+                }
                 // Currently, we follow symbolic links.
                 hostDir = env.getPublicTruffleFile(hostDirPath).getCanonicalFile();
             } catch (IOException | SecurityException e) {
@@ -122,7 +127,7 @@ public final class FdManager implements Closeable {
     }
 
     public synchronized void remove(int fd) {
-        handles.remove(fd);
+        handles.removeKey(fd);
     }
 
     /**
@@ -134,7 +139,7 @@ public final class FdManager implements Closeable {
 
     @Override
     public synchronized void close() throws IOException {
-        for (final Fd handle : handles.values()) {
+        for (final Fd handle : handles.getValues()) {
             handle.close();
         }
         handles.clear();
