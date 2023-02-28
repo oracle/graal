@@ -54,6 +54,6 @@ public class OptimizationUtility {
      * pure heuristical value.
      */
     public static boolean hotGlobalSelfTime(StructuredGraph graph) {
-        return graph.getSelfTimePercent() > Options.HotCodeMinSelfTime.getValue(graph.getOptions());
+        return graph.globalProfileProvider().getGlobalSelfTimePercent() > Options.HotCodeMinSelfTime.getValue(graph.getOptions());
     }
 }
