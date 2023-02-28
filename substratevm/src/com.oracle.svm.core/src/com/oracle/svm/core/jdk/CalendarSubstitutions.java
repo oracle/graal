@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
@@ -59,6 +58,8 @@ final class Target_sun_util_calendar_CalendarSystem {
     private static CalendarSystem forName(String calendarName) {
         if ("gregorian".equals(calendarName)) {
             return Util_sun_util_calendar_CalendarSystem.GREGORIAN;
+        } else if ("japanese".equals(calendarName)) {
+            return Util_sun_util_calendar_CalendarSystem.JAPANESE;
         } else if ("julian".equals(calendarName)) {
             return Util_sun_util_calendar_CalendarSystem.JULIAN;
         } else {
@@ -71,17 +72,8 @@ final class Util_sun_util_calendar_CalendarSystem {
 
     // The static fields are initialized during native image generation.
     static final CalendarSystem GREGORIAN = CalendarSystem.forName("gregorian");
+    static final CalendarSystem JAPANESE = CalendarSystem.forName("japanese");
     static final CalendarSystem JULIAN = CalendarSystem.forName("julian");
-}
-
-@TargetClass(sun.util.BuddhistCalendar.class)
-@Delete
-final class Target_sun_util_BuddhistCalendar {
-}
-
-@TargetClass(className = "java.util.JapaneseImperialCalendar")
-@Delete
-final class Target_java_util_JapaneseImperialCalendar {
 }
 
 /** Dummy class to have a class with the file's name. */

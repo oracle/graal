@@ -150,7 +150,7 @@ public class ProgressReporter {
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
         LAYOUTING("Layouting methods", true, true),
-        CREATING("Creating image");
+        CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
 
