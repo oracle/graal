@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -263,7 +264,7 @@ public class NativeImage {
 
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
-    private final Map<String, String> imageBuilderEnvironment = new HashMap<>();
+    final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
@@ -1446,12 +1447,24 @@ public class NativeImage {
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
-        command.add(canonicalize(config.getJavaExecutable()).toString());
-        List<String> completeCommandList = new ArrayList<>(command);
+        String javaExecutable = canonicalize(config.getJavaExecutable()).toString();
+        command.add(javaExecutable);
         command.add(createVMInvocationArgumentFile(arguments));
         command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
+        ProcessBuilder pb = new ProcessBuilder();
+        pb.command(command);
+        Map<String, String> environment = pb.environment();
+        sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
+        if (OS.WINDOWS.isCurrent()) {
+            WindowsBuildEnvironmentUtil.propagateEnv(environment);
+        }
+        environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
 
-        completeCommandList.addAll(Stream.concat(arguments.stream(), finalImageBuilderArgs.stream()).collect(Collectors.toList()));
+        List<String> completeCommandList = new ArrayList<>();
+        completeCommandList.addAll(environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
+        completeCommandList.add(javaExecutable);
+        completeCommandList.addAll(arguments);
+        completeCommandList.addAll(finalImageBuilderArgs);
         final String commandLine = SubstrateUtil.getShellCommandString(completeCommandList, true);
         if (isDiagnostics()) {
             // write to the diagnostics dir
@@ -1468,13 +1481,6 @@ public class NativeImage {
 
         Process p = null;
         try {
-            ProcessBuilder pb = new ProcessBuilder();
-            pb.command(command);
-            sanitizeJVMEnvironment(pb.environment(), imageBuilderEnvironment);
-            pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
-            if (OS.getCurrent() == OS.WINDOWS) {
-                WindowsBuildEnvironmentUtil.propagateEnv(pb.environment());
-            }
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
             return p.waitFor();
@@ -1493,26 +1499,32 @@ public class NativeImage {
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
         Map<String, String> restrictedEnvironment = new HashMap<>();
-        String[] jvmRequiredEnvironmentVariables = {"PATH", "HOME", "PWD"};
+        List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
         for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
             String val = environment.get(requiredEnvironmentVariable);
             if (val != null) {
                 restrictedEnvironment.put(requiredEnvironmentVariable, val);
             }
         }
-        imageBuilderEnvironment.forEach((requiredKey, requiredValue) -> {
-            String prevValue = environment.get(requiredKey);
-            if (prevValue == null) {
-                if (requiredValue == null) {
-                    NativeImage.showWarning("Environment variable '" + requiredKey + "' undefined. It will not be available at image build-time.");
-                } else {
-                    restrictedEnvironment.put(requiredKey, requiredValue);
-                }
+        for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
+            Map.Entry<String, String> entry = iterator.next();
+            String requiredKey = entry.getKey();
+            String requiredValue = entry.getValue();
+            if (requiredValue != null) {
+                restrictedEnvironment.put(requiredKey, requiredValue);
             } else {
-                restrictedEnvironment.put(requiredKey, requiredValue == null ? prevValue : requiredValue);
+                String existingValue = environment.get(requiredKey);
+                if (existingValue != null) {
+                    restrictedEnvironment.put(requiredKey, existingValue);
+                    /* Capture found existingValue for storing vars in bundle */
+                    entry.setValue(existingValue);
+                } else {
+                    NativeImage.showWarning("Environment variable '" + requiredKey + "' is undefined and therefore not available during image build-time.");
+                    /* Remove undefined environment for storing vars in bundle */
+                    iterator.remove();
+                }
             }
-        });
-
+        }
         environment.clear();
         environment.putAll(restrictedEnvironment);
     }
@@ -1647,10 +1659,6 @@ public class NativeImage {
 
     void addImageBuilderClasspath(Path classpath) {
         imageBuilderClasspath.add(canonicalize(classpath));
-    }
-
-    public void addImageBuilderEnvVar(String key, String value) {
-        imageBuilderEnvironment.put(key, value);
     }
 
     void addImageBuilderJavaArgs(String... javaArgs) {

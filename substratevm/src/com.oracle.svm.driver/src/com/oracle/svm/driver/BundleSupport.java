@@ -279,13 +279,20 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
+        Path environmentFile = stageDir.resolve("environment.json");
+        try (Reader reader = Files.newBufferedReader(environmentFile)) {
+            new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+        }
+
         Path buildArgsFile = stageDir.resolve("build.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
             List<String> buildArgsFromFile = new ArrayList<>();
             new BuildArgsParser(buildArgsFromFile).parseAndRegister(reader);
             buildArgs = Collections.unmodifiableList(buildArgsFromFile);
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
+            throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
         }
     }
 
@@ -567,6 +574,13 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
+        Path environmentFile = stageDir.resolve("environment.json");
+        try (JsonWriter writer = new JsonWriter(environmentFile)) {
+            /* Printing as list with defined sort-order ensures useful diffs are possible */
+            JsonPrinter.printCollection(writer, nativeImage.imageBuilderEnvironment.entrySet(), Map.Entry.comparingByKey(), BundleSupport::printEnvironmentVariable);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + environmentFile, e);
+        }
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
@@ -599,7 +613,7 @@ final class BundleSupport {
             /* Printing as list with defined sort-order ensures useful diffs are possible */
             JsonPrinter.printCollection(writer, cleanBuildArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
+            throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
         }
 
         bundleProperties.write();
@@ -648,6 +662,18 @@ final class BundleSupport {
         w.quote(entry);
     }
 
+    private static final String environmentKeyField = "key";
+    private static final String environmentValueField = "val";
+
+    private static void printEnvironmentVariable(Map.Entry<String, String> entry, JsonWriter w) throws IOException {
+        if (entry.getValue() == null) {
+            throw NativeImage.showError("Storing environment variable '" + entry.getKey() + "' in bundle requires to have its value defined.");
+        }
+        w.append('{').quote(environmentKeyField).append(':').quote(entry.getKey());
+        w.append(',').quote(environmentValueField).append(':').quote(entry.getValue());
+        w.append('}');
+    }
+
     private static final class PathMapParser extends ConfigurationParser {
 
         private final Map<Path, Path> pathMap;
@@ -670,6 +696,33 @@ final class BundleSupport {
                     throw new JSONParserException("Expected " + substitutionMapDstField + "-field in substitution object");
                 }
                 pathMap.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
+            }
+        }
+    }
+
+    private static final class EnvironmentParser extends ConfigurationParser {
+
+        private final Map<String, String> environment;
+
+        private EnvironmentParser(Map<String, String> environment) {
+            super(true);
+            environment.clear();
+            this.environment = environment;
+        }
+
+        @Override
+        public void parseAndRegister(Object json, URI origin) {
+            for (var rawEntry : asList(json, "Expected a list of environment variable objects")) {
+                var entry = asMap(rawEntry, "Expected a environment variable object");
+                Object envVarKeyString = entry.get(environmentKeyField);
+                if (envVarKeyString == null) {
+                    throw new JSONParserException("Expected " + environmentKeyField + "-field in environment variable object");
+                }
+                Object envVarValueString = entry.get(environmentValueField);
+                if (envVarValueString == null) {
+                    throw new JSONParserException("Expected " + environmentValueField + "-field in environment variable object");
+                }
+                environment.put(envVarKeyString.toString(), envVarValueString.toString());
             }
         }
     }
