@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.snippets;
 
-import java.awt.GraphicsEnvironment;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -116,7 +115,6 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -201,7 +199,6 @@ public class SubstrateGraphBuilderPlugins {
         registerEdgesPlugins(metaAccess, plugins);
         registerVMConfigurationPlugins(snippetReflection, plugins);
         registerPlatformPlugins(snippetReflection, plugins);
-        registerAWTPlugins(plugins);
         registerSizeOfPlugins(snippetReflection, plugins);
         registerReferencePlugins(plugins, parsingReason);
         registerReferenceAccessPlugins(plugins);
@@ -1057,25 +1054,6 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-    }
-
-    /**
-     * To prevent AWT linkage error on {@link OS#LINUX} that happens with 'awt_headless' in headless
-     * mode, we eliminate native methods that depend on 'awt_xawt' library in the call-tree.
-     */
-    private static void registerAWTPlugins(InvocationPlugins plugins) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            Registration r = new Registration(plugins, GraphicsEnvironment.class);
-            r.register(new RequiredInvocationPlugin("isHeadless") {
-                @SuppressWarnings("unchecked")
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    boolean isHeadless = GraphicsEnvironment.isHeadless();
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isHeadless));
-                    return true;
-                }
-            });
-        }
     }
 
     private static void registerSizeOfPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
