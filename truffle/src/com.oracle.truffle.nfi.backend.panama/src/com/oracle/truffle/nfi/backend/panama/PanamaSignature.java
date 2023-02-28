@@ -173,13 +173,13 @@ final class PanamaSignature {
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
             MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO
-                                                                                                   // check
-                                                                                                   // if
-                                                                                                   // this
-                                                                                                   // can
-                                                                                                   // also
-                                                                                                   // be
-                                                                                                   // cached
+                                                                                 // check
+                                                                                 // if
+                                                                                 // this
+                                                                                 // can
+                                                                                 // also
+                                                                                 // be
+                                                                                 // cached
             return new PanamaClosure(ret);
         }
 
