@@ -45,12 +45,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+import java.lang.foreign.MemorySegment;
+
 @ExportLibrary(InteropLibrary.class)
 final class PanamaSymbol implements TruffleObject {
 
-    @SuppressWarnings("preview") final java.lang.foreign.MemorySegment symbol;
+    @SuppressWarnings("preview") final MemorySegment symbol;
 
-    PanamaSymbol(@SuppressWarnings("preview") java.lang.foreign.MemorySegment symbol) {
+    PanamaSymbol(@SuppressWarnings("preview") MemorySegment symbol) {
         this.symbol = symbol;
     }
 

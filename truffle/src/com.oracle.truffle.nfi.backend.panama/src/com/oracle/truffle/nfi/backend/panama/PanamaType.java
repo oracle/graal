@@ -45,9 +45,13 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
 
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 class PanamaType {
 
-    @SuppressWarnings("preview") final java.lang.foreign.MemoryLayout nativeLayout;
+    @SuppressWarnings("preview") final MemoryLayout nativeLayout;
     final Class<?> javaType;
     final Class<?> javaRetType;
     final NativeSimpleType type;
@@ -63,45 +67,45 @@ class PanamaType {
                 break;
             case UINT8:
             case SINT8:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_BYTE;
+                nativeLayout = ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
                 javaRetType = javaType;
                 break;
             case UINT16:
             case SINT16:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_SHORT;
+                nativeLayout = ValueLayout.JAVA_SHORT;
                 javaType = short.class;
                 javaRetType = javaType;
                 break;
             case UINT32:
             case SINT32:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_INT;
+                nativeLayout = ValueLayout.JAVA_INT;
                 javaType = int.class;
                 javaRetType = javaType;
                 break;
             case UINT64:
             case SINT64:
             case POINTER:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_LONG;
+                nativeLayout = ValueLayout.JAVA_LONG;
                 javaType = long.class;
                 javaRetType = javaType;
                 break;
             case FP80:
                 throw new UnsupportedOperationException("Did not impl FP80");
             case FLOAT:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_FLOAT;
+                nativeLayout = ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
                 javaRetType = javaType;
                 break;
             case DOUBLE:
-                nativeLayout = java.lang.foreign.ValueLayout.JAVA_DOUBLE;
+                nativeLayout = ValueLayout.JAVA_DOUBLE;
                 javaType = double.class;
                 javaRetType = javaType;
                 break;
             case STRING:
-                javaType = java.lang.foreign.MemorySegment.class;
-                javaRetType = java.lang.foreign.MemorySegment.class;
-                nativeLayout = java.lang.foreign.ValueLayout.ADDRESS;
+                javaType = MemorySegment.class;
+                javaRetType = MemorySegment.class;
+                nativeLayout = ValueLayout.ADDRESS;
                 break;
             case OBJECT:
                 javaType = Object.class;

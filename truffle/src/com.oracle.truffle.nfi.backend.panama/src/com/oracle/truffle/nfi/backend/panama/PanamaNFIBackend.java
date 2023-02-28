@@ -61,6 +61,8 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
+
+import java.lang.foreign.SymbolLookup;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -109,10 +111,10 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @TruffleBoundary
         @SuppressWarnings("preview")
-        private java.lang.foreign.SymbolLookup doLoad() {
+        private SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return java.lang.foreign.SymbolLookup.libraryLookup(name, ctx.getScope());
+                return SymbolLookup.libraryLookup(name, ctx.getScope());
             } catch (IllegalArgumentException ex) {
                 throw new NFIError("Library lookup returned null. Library likely does not exist on the provided location.", this);
             }

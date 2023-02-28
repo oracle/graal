@@ -68,6 +68,10 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentScope;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
@@ -79,15 +83,15 @@ final class PanamaSignature {
         return new PanamaSignature(info.functionDescriptor, upcallType, info, context.getScope());
     }
 
-    private final @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor;
+    private final @SuppressWarnings("preview") FunctionDescriptor functionDescriptor;
 
-    final @SuppressWarnings("preview") java.lang.foreign.SegmentScope scope;
+    final @SuppressWarnings("preview") SegmentScope scope;
     final CachedSignatureInfo signatureInfo;
 
     private final MethodType upcallType;
 
-    PanamaSignature(@SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo,
-                    @SuppressWarnings("preview") java.lang.foreign.SegmentScope scope) {
+    PanamaSignature(@SuppressWarnings("preview") FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo,
+                    @SuppressWarnings("preview") SegmentScope scope) {
         this.functionDescriptor = functionDescriptor;
         this.upcallType = upcallType;
 
@@ -147,11 +151,11 @@ final class PanamaSignature {
 
     @TruffleBoundary
     @SuppressWarnings("preview")
-    java.lang.foreign.MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
+    MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
-        java.lang.foreign.SegmentScope scope = PanamaNFIContext.get(null).getScope();
-        return java.lang.foreign.Linker.nativeLinker().upcallStub(bound, functionDescriptor, scope);
+        SegmentScope scope = PanamaNFIContext.get(null).getScope();
+        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, scope);
     }
 
     @ExportMessage
@@ -168,7 +172,7 @@ final class PanamaSignature {
             // the NFI frontend is taking care of that already
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
-            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO
+            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO
                                                                                                    // check
                                                                                                    // if
                                                                                                    // this
@@ -186,7 +190,7 @@ final class PanamaSignature {
             assert signature.signatureInfo == cachedSignatureInfo;
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
-            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
 
@@ -196,7 +200,7 @@ final class PanamaSignature {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
-            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
     }
@@ -293,14 +297,14 @@ final class PanamaSignature {
             curState = curState.prev;
         }
         @SuppressWarnings("preview")
-        java.lang.foreign.FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
+        FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
         MethodHandle downcallHandle = createDowncallHandle(descriptor);
         return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, descriptor, downcallHandle);
     }
 
-    private static @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor createDescriptor(PanamaType[] argTypes, PanamaType retType) {
+    private static @SuppressWarnings("preview") FunctionDescriptor createDescriptor(PanamaType[] argTypes, PanamaType retType) {
         @SuppressWarnings("preview")
-        java.lang.foreign.FunctionDescriptor descriptor = java.lang.foreign.FunctionDescriptor.ofVoid();
+        FunctionDescriptor descriptor = FunctionDescriptor.ofVoid();
         if (retType.nativeLayout == null) {
             descriptor = descriptor.dropReturnLayout();
         } else {
@@ -312,11 +316,11 @@ final class PanamaSignature {
         return descriptor;
     }
 
-    static MethodHandle createDowncallHandle(@SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor descriptor) {
+    static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor) {
         int parameterCount = descriptor.argumentLayouts().size();
         @SuppressWarnings("preview")
-        MethodHandle handle = java.lang.foreign.Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
-                        MethodType.methodType(Object.class, new Class<?>[]{java.lang.foreign.MemorySegment.class, Object[].class}));
+        MethodHandle handle = Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
+                        MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
         return handle;
     }
 
@@ -343,11 +347,11 @@ final class PanamaSignature {
     static final class CachedSignatureInfo {
         final PanamaType retType;
         final PanamaType[] argTypes;
-        final @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor;
+        final @SuppressWarnings("preview") FunctionDescriptor functionDescriptor;
         final CallTarget callTarget;
         final MethodHandle downcallHandle;
 
-        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor,
+        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, @SuppressWarnings("preview") FunctionDescriptor functionDescriptor,
                         MethodHandle downcallHandle) {
             this.retType = retType;
             this.argTypes = argTypes;
@@ -364,7 +368,7 @@ final class PanamaSignature {
             return retType;
         }
 
-        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") java.lang.foreign.MemorySegment segment) {
+        Object execute(PanamaSignature signature, Object[] args, @SuppressWarnings("preview") MemorySegment segment) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
@@ -383,7 +387,7 @@ final class PanamaSignature {
                     return NativePointer.NULL;
                 } else if (retType.type == NativeSimpleType.STRING) {
                     @SuppressWarnings("preview")
-                    long pointer = ((java.lang.foreign.MemorySegment) result).address();
+                    long pointer = ((MemorySegment) result).address();
                     return new NativeString(pointer);
                 } else if (retType.type == NativeSimpleType.POINTER) {
                     return NativePointer.create((long) result);

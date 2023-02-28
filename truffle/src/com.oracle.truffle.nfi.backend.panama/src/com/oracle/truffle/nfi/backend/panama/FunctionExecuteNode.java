@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.ref.Reference;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -123,8 +124,8 @@ abstract class FunctionExecuteNode extends Node {
         public abstract Object execute(VirtualFrame frame);
 
         @SuppressWarnings("preview")
-        java.lang.foreign.MemorySegment getAddress(VirtualFrame frame) {
-            return java.lang.foreign.MemorySegment.ofAddress((long) frame.getArguments()[0]);
+        MemorySegment getAddress(VirtualFrame frame) {
+            return MemorySegment.ofAddress((long) frame.getArguments()[0]);
         }
 
         Object[] getArgs(VirtualFrame frame) {
@@ -140,7 +141,7 @@ abstract class FunctionExecuteNode extends Node {
         public Object doGeneric(VirtualFrame frame) {
             Object[] args = getArgs(frame);
             @SuppressWarnings("preview")
-            java.lang.foreign.MemorySegment address = getAddress(frame);
+            MemorySegment address = getAddress(frame);
             PanamaSignature signature = getSig(frame);
 
             if (args.length != argNodes.length) {

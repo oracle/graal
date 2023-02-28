@@ -53,6 +53,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
 import java.util.Optional;
 
 @ExportLibrary(InteropLibrary.class)
@@ -60,20 +63,20 @@ final class PanamaLibrary implements TruffleObject {
 
     private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
-    private final @SuppressWarnings("preview") java.lang.foreign.SymbolLookup library;
+    private final @SuppressWarnings("preview") SymbolLookup library;
 
     static PanamaLibrary createDefault() {
         @SuppressWarnings("preview")
-        java.lang.foreign.SymbolLookup lookup = java.lang.foreign.Linker.nativeLinker().defaultLookup();
+        SymbolLookup lookup = Linker.nativeLinker().defaultLookup();
         return new PanamaLibrary(lookup);
     }
 
-    static PanamaLibrary create(@SuppressWarnings("preview") java.lang.foreign.SymbolLookup library) {
+    static PanamaLibrary create(@SuppressWarnings("preview") SymbolLookup library) {
         assert library != null;
         return new PanamaLibrary(library);
     }
 
-    private PanamaLibrary(@SuppressWarnings("preview") java.lang.foreign.SymbolLookup library) {
+    private PanamaLibrary(@SuppressWarnings("preview") SymbolLookup library) {
         this.library = library;
     }
 
@@ -97,7 +100,7 @@ final class PanamaLibrary implements TruffleObject {
 
     @TruffleBoundary
     @SuppressWarnings("preview")
-    Optional<java.lang.foreign.MemorySegment> doLookup(String name) {
+    Optional<MemorySegment> doLookup(String name) {
         return library.find(name);
     }
 
@@ -106,7 +109,7 @@ final class PanamaLibrary implements TruffleObject {
                     @Bind("$node") Node node,
                     @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
         @SuppressWarnings("preview")
-        Optional<java.lang.foreign.MemorySegment> ret = doLookup(symbol);
+        Optional<MemorySegment> ret = doLookup(symbol);
         if (ret.isEmpty()) {
             exception.enter(node);
             throw UnknownIdentifierException.create(symbol);
