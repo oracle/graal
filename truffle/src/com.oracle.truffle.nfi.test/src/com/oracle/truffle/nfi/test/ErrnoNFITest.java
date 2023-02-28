@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.FileReader;
 
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -56,9 +55,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
 
 @RunWith(TruffleRunner.class)
 public class ErrnoNFITest extends NFITest {
