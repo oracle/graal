@@ -40,7 +40,7 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(WordPointer spinLock) {
-        JavaSpinLockUtils.initialize(null, spinLock.rawValue());
+        JavaOwnedSpinLockUtils.initialize(null, spinLock.rawValue());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -50,7 +50,7 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isLocked(WordPointer spinLock) {
-        return JavaSpinLockUtils.isLocked(null, spinLock.rawValue());
+        return JavaOwnedSpinLockUtils.isLocked(null, spinLock.rawValue());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -60,7 +60,7 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean tryLock(WordPointer spinLock) {
-        return JavaSpinLockUtils.tryLock(null, spinLock.rawValue());
+        return JavaOwnedSpinLockUtils.tryLock(null, spinLock.rawValue());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -70,7 +70,7 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean tryLock(WordPointer spinLock, int retries) {
-        return JavaSpinLockUtils.tryLock(null, spinLock.rawValue(), retries);
+        return JavaOwnedSpinLockUtils.tryLock(null, spinLock.rawValue(), retries);
     }
 
     @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
@@ -80,7 +80,7 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
     public static void lockNoTransition(WordPointer spinLock) {
-        JavaSpinLockUtils.lockNoTransition(null, spinLock.rawValue());
+        JavaOwnedSpinLockUtils.lockNoTransition(null, spinLock.rawValue());
     }
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
@@ -90,6 +90,6 @@ public class NativeSpinLockUtils {
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static void unlock(WordPointer spinLock) {
-        JavaSpinLockUtils.unlock(null, spinLock.rawValue());
+        JavaOwnedSpinLockUtils.unlock(null, spinLock.rawValue());
     }
 }

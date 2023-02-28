@@ -31,12 +31,12 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
 import com.oracle.svm.core.Uninterruptible;
 
-
 /**
  * Used to access the raw memory of a {@link com.oracle.svm.core.jfr.JfrBufferNode}.
  */
 public final class JfrBufferNodeAccess {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     private JfrBufferNodeAccess() {
     }
 

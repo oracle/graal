@@ -45,8 +45,8 @@ public interface JfrBufferNode extends PointerBase {
     JfrBuffer getValue();
 
     /**
-     * This field is effectively final and should always be non-null. Changing its value after
-     * the node is added to the {@link JfrBufferNodeLinkedList} can result in races.
+     * This field is effectively final and should always be non-null. Changing its value after the
+     * node is added to the {@link JfrBufferNodeLinkedList} can result in races.
      */
     @RawField
     void setValue(JfrBuffer value);
