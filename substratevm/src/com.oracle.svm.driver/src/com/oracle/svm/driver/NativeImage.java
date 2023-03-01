@@ -1501,7 +1501,7 @@ public class NativeImage {
         Map<String, String> restrictedEnvironment = new HashMap<>();
         List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
         if (OS.WINDOWS.isCurrent()) {
-            jvmRequiredEnvironmentVariables.addAll(List.of("INCLUDE", "LIB"));
+            jvmRequiredEnvironmentVariables.addAll(List.of("TEMP", "INCLUDE", "LIB"));
         }
         for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
             String val = environment.get(requiredEnvironmentVariable);
