@@ -239,6 +239,7 @@ class GraalVmComponent(object):
                  installable=None,
                  post_install_msg=None,
                  installable_id=None,
+                 standalone=None,
                  dependencies=None,
                  supported=None,
                  early_adopter=False,
@@ -273,6 +274,7 @@ class GraalVmComponent(object):
         :param int priority: priority with a higher value means higher priority
         :type installable: bool
         :type installable_id: str
+        :type standalone: bool
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
@@ -305,6 +307,9 @@ class GraalVmComponent(object):
         if installable is None:
             installable = isinstance(self, GraalVmLanguage)
         self.installable = installable
+        if standalone is None:
+            standalone = installable
+        self.standalone = standalone
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []

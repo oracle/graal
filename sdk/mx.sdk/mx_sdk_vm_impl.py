@@ -3037,18 +3037,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Create standalones
     for components in installables.values():
         main_component = _get_main_component(components)
-        only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
-        only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
-        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and only_native_launchers and only_native_libraries:
-            dependencies = main_component.standalone_dependencies.keys()
-            missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not _get_svm_support().is_supported())]
-            if missing_dependencies:
-                if mx.get_opts().verbose:
-                    mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
-            else:
-                standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution)
-                register_distribution(standalone)
-                with_debuginfo.append(standalone)
+        if main_component.standalone and isinstance(main_component, mx_sdk.GraalVmTruffleComponent):
+            only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
+            only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
+            if only_native_launchers and only_native_libraries:
+                dependencies = main_component.standalone_dependencies.keys()
+                missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not _get_svm_support().is_supported())]
+                if missing_dependencies:
+                    if mx.get_opts().verbose:
+                        mx.warn("Skipping standalone {} because the components {} are excluded".format(main_component.name, missing_dependencies))
+                else:
+                    standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution)
+                    register_distribution(standalone)
+                    with_debuginfo.append(standalone)
 
     if needs_stage1:
         if register_project:
