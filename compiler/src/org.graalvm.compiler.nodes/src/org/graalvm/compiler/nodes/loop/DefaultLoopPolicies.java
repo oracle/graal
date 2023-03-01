@@ -88,8 +88,10 @@ public class DefaultLoopPolicies implements LoopPolicies {
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
         @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Expert)
         public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);
-        @Option(help = "Default unswitching factor for control split node with unkown profile data", type = OptionType.Expert)
+        @Option(help = "Default unswitching factor for control split node with unkown profile data.", type = OptionType.Expert)
         public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
+        @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Expert)
+        public static final OptionKey<Integer> MaxUnswitchSuccessors = new OptionKey<>(64);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
@@ -293,6 +295,13 @@ public class DefaultLoopPolicies implements LoopPolicies {
         StructuredGraph graph = loop.loopBegin().graph();
         NodeBitMap branchNodes = graph.createNodeBitMap();
         for (ControlSplitNode controlSplit : controlSplits) {
+            if (controlSplit.getSuccessorCount() > Options.MaxUnswitchSuccessors.getValue(graph.getOptions())) {
+                /*
+                 * Computing the code size increase can result in complexity issues already, abort
+                 * this split.
+                 */
+                return Integer.MAX_VALUE;
+            }
             for (Node successor : controlSplit.successors()) {
                 AbstractBeginNode branch = (AbstractBeginNode) successor;
                 // this may count twice because of fall-through in switches

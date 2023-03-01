@@ -389,7 +389,7 @@ public class FileDownloaderTest extends NetworkTestBase {
 
         t.start();
 
-        assertTrue(conn.reachedSem.tryAcquire(1, TimeUnit.SECONDS));
+        assertTrue(conn.reachedSem.tryAcquire(2, TimeUnit.SECONDS));
         // conn.reachedSem.acquire();
         conn.readException = new SocketException();
         conn.nextSem.release();

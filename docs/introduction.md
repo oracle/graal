@@ -55,7 +55,7 @@ It is a complete Java VM that includes all core components, implements the same 
 GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 11 and Java 17.
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
-GraalVM is available for Linux and macOS on x86 64-bit and ARM 64-bit systems, and for Windows on x86 64-bit systems.
+GraalVM is available for Linux and macOS on x86 64-bit and AArch64 systems, and for Windows on x86 64-bit architecture.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
@@ -105,7 +105,7 @@ The development team welcomes feedback on experimental features, but users shoul
 
 The following table lists production-ready and experimental features in GraalVM Community Edition 22.1 by platform.
 
-| Feature         | Linux AMD64  | Linux ARM64   | macOS        | macOS ARM64   | Windows       |
+| Feature         | Linux AMD64  | Linux AArch64 | macOS AMD64  | macOS AArch64 | Windows AMD64 |
 |-----------------|--------------|---------------|--------------|---------------|---------------|
 | Native Image    | stable       | stable        | stable       | experimental  | stable        |
 | LLVM runtime    | stable       | stable        | stable       | experimental  | not available |
@@ -116,7 +116,7 @@ The following table lists production-ready and experimental features in GraalVM 
 | Python          | experimental | not available | experimental | not available | not available |
 | Ruby            | experimental | experimental  | experimental | experimental  | not available |
 | R               | experimental | not available | experimental | not available | not available |
-| WebAssembly     | experimental | experimental  | experimental | experimental  | experimental  |
+| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
 
 ## What to Read Next
 

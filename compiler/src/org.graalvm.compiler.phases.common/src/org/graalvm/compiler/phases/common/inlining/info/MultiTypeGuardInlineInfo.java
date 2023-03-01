@@ -337,15 +337,23 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private EconomicSet<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection, String reason) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
-        AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
-
-        AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-        AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, false, stampProvider, constantReflection);
-
-        calleeEntryNode.setNext(invoke.asFixedNode());
-
+        dispatchToTarget(graph, stampProvider, constantReflection, methodAt(0), false);
         return inline(invoke, methodAt(0), inlineableElementAt(0), false, reason);
+    }
+
+    /**
+     * Build a type switch dispatch to a single invoke.
+     */
+    private void dispatchToTarget(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ResolvedJavaMethod target, boolean invokeIsOnlySuccessor) {
+        AbstractBeginNode invocationEntry = graph.add(new BeginNode());
+        AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
+        AbstractBeginNode[] successors = {invocationEntry, unknownTypeSux};
+        createDispatchOnTypeBeforeInvoke(graph, successors, invokeIsOnlySuccessor, stampProvider, constantReflection);
+
+        invocationEntry.setNext(invoke.asFixedNode());
+        ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
+        PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
+        invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
     }
 
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, StampProvider stampProvider,
@@ -460,15 +468,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
-        AbstractBeginNode invocationEntry = graph.add(new BeginNode());
-        AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-        AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
-        createDispatchOnTypeBeforeInvoke(graph, successors, true, stampProvider, constantReflection);
-
-        invocationEntry.setNext(invoke.asFixedNode());
-        ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
-        PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
-        invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
+        dispatchToTarget(graph, stampProvider, constantReflection, target, true);
         InliningUtil.replaceInvokeCallTarget(invoke, graph, kind, target);
     }
 

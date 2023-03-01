@@ -73,11 +73,11 @@ The C application takes a string as its argument, passes it to the shared librar
 
 #### Prerequisites
 
-You have set the `GRAALVM_HOME` environment variable to the location of the GraalVM installation.
+You have set the `JAVA_HOME` environment variable to the location of the GraalVM installation.
 
 You have have installed LLVM toolchain support to GraalVM, as follows:
 ```shell
-$GRAALVM_HOME/bin/gu install llvm-toolchain
+$JAVA_HOME/bin/gu install llvm-toolchain
 ```
 
 >Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
@@ -115,8 +115,8 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 2. Compile the Java code and build a native shared library, as follows:
 
     ```shell
-    $GRAALVM_HOME/bin/javac LibEnvMap.java
-    $GRAALVM_HOME/bin/native-image -H:Name=libenvmap --shared 
+    $JAVA_HOME/bin/javac LibEnvMap.java
+    $JAVA_HOME/bin/native-image -H:Name=libenvmap --shared 
     ```
 
     It will produce the following artifacts:
@@ -168,7 +168,7 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 5. Compile the C application using `clang`. 
 
      ```shell
-    $GRAALVM_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
+    $JAVA_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
     ```
 
 6. Run the C application by passing a string as an argument. For example:
