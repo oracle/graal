@@ -41,8 +41,8 @@ public class SmallBitSet {
 
 
     private int lastSetBit() {
-      // Return the last set bit (the biggest) or 0, if it's empty.
-      return cardinality == 0 ? 0 : nextSetBit(cardinality-1);
+      assert cardinality > 0 : "SmallBitSet should never be empty";
+      return nextSetBit(cardinality-1);
     }
 
     public BitSet asBitSet() {
