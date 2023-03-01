@@ -37,13 +37,16 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
@@ -107,7 +110,7 @@ public final class UninterruptibleAnnotationChecker {
     }
 
     private void checkSpecifiedOptions(HostedMethod method, Uninterruptible annotation) {
-        if (annotation == null) {
+        if (annotation == null || !useStrictChecking()) {
             return;
         }
 
@@ -147,6 +150,17 @@ public final class UninterruptibleAnnotationChecker {
             violations.add("Method " + method.format("%H.%n(%p)") +
                             " is annotated with @Uninterruptible and @AlwaysInline. If the method may be inlined into interruptible code, please specify 'mayBeInlined = true'. Otherwise, specify 'callerMustBe = true'.");
         }
+    }
+
+    private static boolean useStrictChecking() {
+        if (SubstrateOptions.AllowVMInternalThreads.getValue()) {
+            return true;
+        }
+        /*
+         * Use less strict checking for certain legacy code. The strict checking activates once a
+         * custom RawFileOperationSupport is implemented (see GR-44538).
+         */
+        return RawFileOperationSupport.isPresent() && !Platform.includedIn(Platform.LINUX.class);
     }
 
     /**
