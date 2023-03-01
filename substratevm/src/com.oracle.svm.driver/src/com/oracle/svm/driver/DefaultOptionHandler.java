@@ -45,6 +45,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     static final String addModulesOption = "--add-modules";
     private static final String addModulesErrorMessage = " requires modules to be specified";
 
+    static final String envVarArgPrefix = "-E";
+
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String noServerOption = "--no-server";
 
@@ -166,7 +168,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
             return true;
         }
-        String envVarArgPrefix = "-E";
         if (headArg.startsWith(envVarArgPrefix)) {
             args.poll();
             String envVarSetting = headArg.substring(envVarArgPrefix.length());

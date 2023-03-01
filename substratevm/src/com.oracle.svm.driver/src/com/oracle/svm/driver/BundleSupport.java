@@ -595,6 +595,9 @@ final class BundleSupport {
                 if (buildArg.startsWith(nativeImage.oHPath)) {
                     continue;
                 }
+                if (buildArg.startsWith(DefaultOptionHandler.envVarArgPrefix)) {
+                    continue;
+                }
                 if (buildArg.equals(CmdLineOptionHandler.VERBOSE_OPTION)) {
                     continue;
                 }
