@@ -30,6 +30,7 @@ import java.lang.module.ModuleReference;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Optional;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
@@ -56,7 +57,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(mn, name);
+        Module module = ModuleLayer.boot().findModule(mn).orElse(null);
+        return ResourcesHelper.nameToResourceURL(module, name);
     }
 
     @Substitute
@@ -81,7 +83,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     private URL findResource(ModuleReference mref, String name) {
-        return ResourcesHelper.nameToResourceURL(mref.descriptor().name(), name);
+        Module module = ModuleLayer.boot().findModule(mref.descriptor().name()).orElse(null);
+        return ResourcesHelper.nameToResourceURL(module, name);
     }
 
     @Substitute

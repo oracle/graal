@@ -100,12 +100,32 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return false;
     }
 
+    private static class ResourceLookupInfo {
+        ResolvedModule resolvedModule;
+        Module module;
+
+        public ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
+            this.resolvedModule = resolvedModule;
+            this.module = module;
+        }
+    }
+
+    private static Stream<ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
+        List<ResourceLookupInfo> data = new ArrayList<>(layer.configuration().modules().size());
+        for (ResolvedModule m : layer.configuration().modules()) {
+            Module module = layer.findModule(m.name()).orElse(null);
+            ResourceLookupInfo info = new ResourceLookupInfo(m, module);
+            data.add(info);
+        }
+        return data.stream();
+    }
+
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
-                        .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
-                        .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
+                        .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
+                        .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
 
         /* Collect remaining resources from classpath */
         for (Path classpathFile : classLoaderSupport.classpath()) {
@@ -121,12 +141,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
-        ModuleReference moduleReference = resolvedModule.reference();
+    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
+        ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            String moduleName = resolvedModule.name();
+            String moduleName = info.resolvedModule.name();
             List<String> foundResources = moduleReader.list()
-                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName, moduleReference.location().orElse(null)))
+                            .filter(resourceName -> resourceCollector.isIncluded(info.module, resourceName, moduleReference.location().orElse(null)))
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
@@ -135,7 +155,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     continue;
                 }
                 try (InputStream is = content.get()) {
-                    resourceCollector.addResource(moduleName, resName, is, false);
+                    resourceCollector.addResource(info.module, resName, is, false);
                 }
             }
         } catch (IOException e) {

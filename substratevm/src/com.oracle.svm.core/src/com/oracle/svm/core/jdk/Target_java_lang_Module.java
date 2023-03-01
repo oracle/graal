@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -39,9 +40,6 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 @TargetClass(value = java.lang.Module.class)
 final class Target_java_lang_Module {
 
-    @Alias //
-    private String name;
-
     @SuppressWarnings("static-method")
     @Substitute
     private InputStream getResourceAsStream(String resourceName) {
@@ -49,7 +47,7 @@ final class Target_java_lang_Module {
         if (resName.startsWith("/")) {
             resName = resName.substring(1);
         }
-        ResourceStorageEntry res = Resources.get(name, resName);
+        ResourceStorageEntry res = Resources.get(SubstrateUtil.cast(this, Module.class), resName);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 
