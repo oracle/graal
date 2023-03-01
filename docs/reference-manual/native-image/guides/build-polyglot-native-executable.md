@@ -39,12 +39,13 @@ public class PrettyPrintJSON {
     bash <(curl -sL https://get.graalvm.org/jdk) -c 'js'
     ```
 
-1. Save it in the _PrettyPrintJSON.java_ file and compile:
+2. Save it in the _PrettyPrintJSON.java_ file and compile:
 
     ```shell
     javac PrettyPrintJSON.java
     ```
-2. Build a native executable by enabling the JavaScript interoperability:
+    
+3. Build a native executable by enabling the JavaScript interoperability:
 
     ```shell
     native-image --language:js PrettyPrintJSON
@@ -54,7 +55,7 @@ public class PrettyPrintJSON {
 
     > Note: Building a polyglot native executable requires more physical memory because the Truffle framework is included.
 
-3. Run the resulting executable and perform some pretty-printing:
+4. Run the resulting executable and perform some pretty-printing:
 
     ```shell
     ./prettyprintjson <<EOF
