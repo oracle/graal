@@ -24,7 +24,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  Version info: 'GraalVM dev Java 19+36-jvmci-23.0-b01 CE'
  Java version info: '19+36-jvmci-23.0-b01'
  C compiler: gcc (linux, x86_64, 11.3.0)
- Garbage collector: Serial GC (max heap size: unlimited)
+ Garbage collector: Serial GC (max heap size: 80% of RAM)
 [2/8] Performing analysis...  [****]                             (6.2s @ 0.47GB)
    2,880 (71.50%) of  4,028 types reachable
    3,519 (51.06%) of  6,892 fields reachable
@@ -95,7 +95,7 @@ The garbage collector used within the generated executable:
 For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
 
 #### <a name="glossary-gc-max-heap-size"></a>Maximum Heap Size
-By default, the heap size is *unlimited*, allowing the garbage collector to freely allocate memory according to its policy.
+By default, the heap size is limited to a certain percentage of your system memory, allowing the garbage collector to freely allocate memory according to its policy.
 Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
 This can also improve latency in some cases.
 Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
