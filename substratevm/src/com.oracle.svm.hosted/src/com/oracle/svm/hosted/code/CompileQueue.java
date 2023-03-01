@@ -1197,7 +1197,7 @@ public class CompileQueue {
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
-            customizeGraph(graph);
+            customizeGraph(graph, reason);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
                             "Hosted compilations must have explicit exceptions [guard stage] %s=%s", graph, graph.getGraphState().getGuardsStage());
@@ -1264,8 +1264,9 @@ public class CompileQueue {
      *
      * @param graph A newly created {@link StructuredGraph graph} for one particular compilation
      *            unit.
+     * @param reason The reason for compiling this compilation unit.
      */
-    protected void customizeGraph(StructuredGraph graph) {
+    protected void customizeGraph(StructuredGraph graph, CompileReason reason) {
         // Hook for subclasses
     }
 
