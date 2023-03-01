@@ -50,7 +50,8 @@ public class SmallBitSet {
         for (int i = 0; i < cardinality(); i++) {
             result.set(set[i]);
         }
-        return result;
+        // Clone will trim to size
+        return (BitSet) result.clone();
     }
 
     public int nextSetBit(int fromIndex) {
