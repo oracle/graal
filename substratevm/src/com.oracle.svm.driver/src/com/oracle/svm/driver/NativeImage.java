@@ -262,8 +262,6 @@ public class NativeImage {
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
 
-    private static final String pKeyNativeImageArgs = "NativeImageArgs";
-
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
@@ -785,17 +783,18 @@ public class NativeImage {
         optionHandlers.add(handler);
     }
 
-    protected Map<String, String> getUserConfigProperties() {
-        return userConfigProperties;
-    }
-
-    protected Path getUserConfigDir() {
-        String envVarKey = "NATIVE_IMAGE_USER_HOME";
-        String userHomeStr = System.getenv(envVarKey);
-        if (userHomeStr == null || userHomeStr.isEmpty()) {
-            return Paths.get(System.getProperty("user.home"), ".native-image");
+    private List<String> getDefaultNativeImageArgs() {
+        String defaultNativeImageArgs = userConfigProperties.get("NativeImageArgs");
+        if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
+            String optionName = BundleSupport.BundleOptionVariants.apply.optionName();
+            if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(optionName + "="))) {
+                return List.of(defaultNativeImageArgs.split(" "));
+            } else {
+                showWarning(String.format("Option %s in use. Ignoring args from file specified with environment variable %s.",
+                                optionName, NativeImage.CONFIG_FILE_ENV_VAR_KEY));
+            }
         }
-        return Paths.get(userHomeStr);
+        return List.of();
     }
 
     static void ensureDirectoryExists(Path dir) {
@@ -2006,16 +2005,14 @@ public class NativeImage {
 
     private List<String> processNativeImageArgs() {
         NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor(null);
-        String defaultNativeImageArgs = getUserConfigProperties().get(pKeyNativeImageArgs);
-        if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
-            for (String defaultArg : defaultNativeImageArgs.split(" ")) {
-                argsProcessor.accept(defaultArg);
-            }
-        }
-        for (String arg : config.getBuildArgs()) {
+        for (String arg : getNativeImageArgs()) {
             argsProcessor.accept(arg);
         }
         return argsProcessor.apply(false);
+    }
+
+    List<String> getNativeImageArgs() {
+        return Stream.concat(getDefaultNativeImageArgs().stream(), config.getBuildArgs().stream()).toList();
     }
 
     protected String getXmsValue() {
