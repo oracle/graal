@@ -1499,6 +1499,7 @@ public class NativeImage {
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
         Map<String, String> restrictedEnvironment = new HashMap<>();
         List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
+        jvmRequiredEnvironmentVariables.add("SRCHOME"); // FIXME
         if (OS.WINDOWS.isCurrent()) {
             jvmRequiredEnvironmentVariables.addAll(List.of("TEMP", "INCLUDE", "LIB"));
         }
