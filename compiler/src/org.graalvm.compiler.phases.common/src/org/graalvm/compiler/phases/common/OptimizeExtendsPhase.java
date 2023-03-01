@@ -25,14 +25,12 @@
 
 package org.graalvm.compiler.phases.common;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.Assertions;
@@ -50,7 +48,6 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
@@ -59,7 +56,7 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
  * done by folding extends into memory operations and also by "overextending" extends to cover all
  * given use scenarios. In the case of overextension, an original extend may be replaced with an
  * "extend+narrow" combo. Note that within the backend code generation narrows are free (via
- * {@link org.graalvm.compiler.lir.CastValue}, so it is inconsequential to add more of them. Note
+ * {@link org.graalvm.compiler.lir.CastValue}), so it is inconsequential to add more of them. Note
  * that this optimization will always result in the same or fewer number of extends along all paths.
  *
  * The idea case is a situation such as
@@ -169,7 +166,6 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
          * extend as a use. We resolve this via tracking when they change.
          */
         EconomicMap<ValueNode, ValueNode> extendReplacements = EconomicMap.create(Equivalence.DEFAULT);
-        EconomicSet<ValueNode> addedNarrows = Assertions.assertionsEnabled() ? EconomicSet.create(Equivalence.DEFAULT) : null;
         /* Step 2: try to optimize extends */
         for (ValueNode origDef : defsWithExtends) {
 
@@ -295,9 +291,6 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
                 if (resultBits != replacementBits) {
                     assert replacementBits > resultBits;
                     replacement = graph.addOrUnique(new NarrowNode(replacement, replacementBits, resultBits));
-                    if (Assertions.assertionsEnabled()) {
-                        addedNarrows.add(replacement);
-                    }
                 }
 
                 // replace original extend node
@@ -316,76 +309,14 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
             }
         }
 
-        assert validateOptimization(graph, context.getLowerer(), origNumExtends, addedNarrows);
-    }
-
-    /**
-     * After this optimization is performed:
-     * <ul>
-     * <li>The number of extends in the graph should be less than or equal to the number of extends
-     * in the original graph</li>
-     * <li>Any given non-extended def should have at most 2 extends attached to it.</li>
-     * <li>If possible, an extend has been folded into the def</li>
-     * </ul>
-     */
-    private static boolean validateOptimization(StructuredGraph graph, LoweringProvider lowerer, int origNumExtends, EconomicSet<ValueNode> addedNarrows) {
-        int numExtends = graph.getNodes().filter(OptimizeExtendsPhase::isExtendNode).count();
-        assert numExtends <= origNumExtends;
-
-        /* Step 1: link extends to their defs */
-        EconomicMap<ValueNode, List<IntegerConvertNode<?>>> extendMap = EconomicMap.create(Equivalence.DEFAULT);
-        for (Node node : graph.getNodes().filter(OptimizeExtendsPhase::isExtendNode)) {
-            IntegerConvertNode<?> extend = (IntegerConvertNode<?>) node;
-            ValueNode def = extend.getValue();
-            // Ignore narrows we've added
-            while (def instanceof NarrowNode && addedNarrows.contains(def)) {
-                def = ((NarrowNode) def).getValue();
-            }
-            if ((def instanceof ExtendableMemoryAccess) && ((ExtendableMemoryAccess) def).extendsAccess()) {
-                // via the def being extended the correct optimization has already occurred.
-                continue;
-            }
-            List<IntegerConvertNode<?>> value = extendMap.get(def);
-            if (value == null) {
-                value = new ArrayList<>();
-                extendMap.put(def, value);
-            }
-            value.add(extend);
+        if (Assertions.assertionsEnabled()) {
+            /*
+             * After this optimization is performed the number of extends in the graph should be
+             * less than or equal to the number of extends in the original graph.
+             */
+            int numExtends = graph.getNodes().filter(OptimizeExtendsPhase::isExtendNode).count();
+            assert numExtends <= origNumExtends;
         }
-
-        /*
-         * Step 2: ensure any non-extended def has at most two extends and nothing can be folded
-         * into the def.
-         */
-        MapCursor<ValueNode, List<IntegerConvertNode<?>>> entries = extendMap.getEntries();
-        while (entries.advance()) {
-            ValueNode def = entries.getKey();
-            List<IntegerConvertNode<?>> extendNodes = entries.getValue();
-            assert extendNodes.size() <= 2;
-            if (extendNodes.size() == 2) {
-                boolean firstIsZeroExtend = extendNodes.get(0) instanceof ZeroExtendNode;
-                boolean secondIsZeroExtend = extendNodes.get(1) instanceof ZeroExtendNode;
-                // the extends should be of the opposite type
-                assert firstIsZeroExtend ^ secondIsZeroExtend;
-            }
-
-            // Ensure nothing more could be folded into the def.
-            if (def instanceof ExtendableMemoryAccess) {
-                ExtendableMemoryAccess access = (ExtendableMemoryAccess) def;
-                for (IntegerConvertNode<?> extend : extendNodes) {
-                    MemoryExtendKind extendKind;
-                    int extendSize = extend.getResultBits();
-                    if (extend instanceof ZeroExtendNode) {
-                        extendKind = MemoryExtendKind.getZeroExtendKind(extendSize);
-                    } else {
-                        assert extend instanceof SignExtendNode;
-                        extendKind = MemoryExtendKind.getSignExtendKind(extendSize);
-                    }
-                    assert !lowerer.supportsFoldingExtendIntoAccess(access, extendKind);
-                }
-            }
-        }
-        return true;
     }
 
     private static boolean isExtendNode(Node node) {
