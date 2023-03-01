@@ -35,9 +35,10 @@ import java.util.Locale;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -106,10 +107,11 @@ public final class CPUSampler implements Closeable {
     private int stackLimit = 10000;
     private boolean sampleContextInitialization = false;
     private SourceSectionFilter filter = DEFAULT_FILTER;
-    private Timer samplerThread;
-    private SamplingTimerTask samplerTask;
-    private Thread processingThread;
+    private ScheduledExecutorService samplerExecutionService;
+    private ExecutorService processingExecutionService;
     private ResultProcessingRunnable processingThreadRunnable;
+    private Future<?> processingThreadFuture;
+    private Future<?> samplerFuture;
 
     private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
     private boolean gatherSelfHitTimes = false;
@@ -378,10 +380,34 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     @Override
-    public synchronized void close() {
-        closed = true;
-        resetSampling();
-        clearData();
+    public void close() {
+        List<ExecutorService> toShutdown = new ArrayList<>(2);
+        synchronized (this) {
+            closed = true;
+            resetSampling();
+            clearData();
+            if (samplerExecutionService != null) {
+                toShutdown.add(samplerExecutionService);
+            }
+            if (processingExecutionService != null) {
+                toShutdown.add(processingExecutionService);
+            }
+        }
+        // Shutdown and await termination without holding a lock.
+        for (ExecutorService executorService : toShutdown) {
+            executorService.shutdownNow();
+            while (true) {
+                try {
+                    if (executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)) {
+                        break;
+                    } else {
+                        throw new RuntimeException("Failed to shutdown background threads.");
+                    }
+                } catch (InterruptedException ie) {
+                    // continue to awaitTermination
+                }
+            }
+        }
     }
 
     /**
@@ -458,35 +484,43 @@ public final class CPUSampler implements Closeable {
         if (!collecting || closed) {
             return;
         }
-        if (processingThread == null) {
-            processingThreadRunnable = new ResultProcessingRunnable();
-            processingThread = new Thread(processingThreadRunnable, "Sampling Processing Thread");
-            processingThread.setDaemon(true);
+        if (processingExecutionService == null) {
+            processingExecutionService = JoinableExecutors.newSingleThreadExecutor((r) -> {
+                Thread t = env.createSystemThread(r);
+                t.setDaemon(true);
+                t.setName("Sampling Processing Thread");
+                return t;
+            });
         }
-        this.processingThread.start();
-        if (samplerThread == null) {
-            samplerThread = new Timer("Sampling thread", true);
+        assert processingThreadRunnable == null;
+        assert processingThreadFuture == null;
+        processingThreadRunnable = new ResultProcessingRunnable();
+        processingThreadFuture = processingExecutionService.submit(processingThreadRunnable, null);
+
+        if (samplerExecutionService == null) {
+            samplerExecutionService = JoinableExecutors.newSingleThreadScheduledExecutor((r) -> {
+                Thread t = env.createSystemThread(r);
+                t.setDaemon(true);
+                t.setName("Sampling thread");
+                return t;
+            });
         }
         this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
-        this.samplerTask = new SamplingTimerTask();
-        this.samplerThread.scheduleAtFixedRate(samplerTask, delay, period);
-
+        assert samplerFuture == null;
+        samplerFuture = samplerExecutionService.scheduleAtFixedRate(new SamplingTask(), delay, period, TimeUnit.MILLISECONDS);
     }
 
     private void cleanup() {
         assert Thread.holdsLock(this);
-        if (samplerTask != null) {
-            samplerTask.cancel();
-            samplerTask = null;
+        if (samplerFuture != null) {
+            samplerFuture.cancel(false);
+            samplerFuture = null;
         }
-        if (samplerThread != null) {
-            samplerThread.cancel();
-            samplerThread = null;
-        }
-        if (processingThread != null) {
+        if (processingThreadFuture != null) {
             processingThreadRunnable.cancelled = true;
-            processingThread.interrupt();
-            processingThread = null;
+            processingThreadFuture.cancel(true);
+            processingThreadRunnable = null;
+            processingThreadFuture = null;
         }
     }
 
@@ -707,7 +741,7 @@ public final class CPUSampler implements Closeable {
 
     }
 
-    private class SamplingTimerTask extends TimerTask {
+    private class SamplingTask implements Runnable {
 
         @Override
         public void run() {

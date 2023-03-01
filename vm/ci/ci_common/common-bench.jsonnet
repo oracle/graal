@@ -15,7 +15,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_20 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
-    config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
       ['set-export', 'VM_ENV', '$VM_ENV-js'],
       vm_common.mx_vm_common + ['build'],
@@ -62,16 +62,25 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit:      if (is_gate) then '1:00:00' else '1:30:00',
   },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + {
+  local wabt = {
+    packages+: {
+      gcc: '==8.3.0',
+    },
+    downloads+: {
+      WABT_DIR: {name: 'wabt', version: '1.0.32', platformspecific: true},
+    },
+    environment+: {
+      WABT_DIR: '$WABT_DIR/bin',
+    },
+  },
+
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + wabt {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
-    interpreter_bench_cmd:: self.bench_cmd + ['polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    compiler_bench_cmd:: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    interpreter_bench_cmd:: self.bench_cmd + ['polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}'],
+    compiler_bench_cmd:: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}'],
+    warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}'],
 
-    downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
-    },
     setup+: [
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
@@ -120,7 +129,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   },
 
   vm_bench_polybench_linux_context_init: self.vm_bench_polybench_linux_common() + vm.vm_java_20 + {
-    bench_cmd:: super.base_cmd + ['benchmark', '--fork-count-file', 'ci/ci_common/benchmark-forks.json', 'polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]', '--results-file', self.result_file, '--', '-w', '0', '-i', '0', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    bench_cmd:: super.base_cmd + ['benchmark', '--fork-count-file', 'ci/ci_common/benchmark-forks.json', 'polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]', '--results-file', self.result_file, '--', '-w', '0', '-i', '0', '--polybench-vm=graalvm-${VM_ENV}'],
     run+: [
       self.bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=none'],
       self.upload,
@@ -172,7 +181,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_polybench_nfi: {
     base_cmd:: ['mx', '--env', 'polybench-nfi-${VM_ENV}'],
-    bench_cmd:: self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    bench_cmd:: self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}'],
     setup+: [
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
@@ -257,9 +266,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64() + {
       # Override `self.vm_bench_js_linux_amd64.run`
       run: [
-        vm_common.mx_vm_common + ['benchmark', '--results-file', self.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}-java20', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', self.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
-        vm_common.mx_vm_common + ['benchmark', '--results-file', self.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}-java20', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', self.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
       ],
       timelimit: '45:00',

@@ -37,7 +37,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [5/8] Inlining methods...     [***]                              (0.8s @ 0.99GB)
 [6/8] Compiling methods...    [***]                              (6.4s @ 4.86GB)
 [7/8] Layouting methods...    [**]                               (4.2s @ 3.98GB)
-[8/8] Creating image...                                          (4.0s @ 2.04GB)
+[8/8] Creating image...       [*]                                (4.0s @ 2.04GB)
    4.52MB (22.97%) for code area:     7,470 compilation units
    7.06MB (35.87%) for image heap:  101,764 objects and 5 resources
    7.52MB (38.24%) for debug info generated in 1.8s

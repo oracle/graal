@@ -73,15 +73,14 @@ import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
 
 /**
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
  * {@link ControlSplitNode ControlSplitNodes} with {@link FixedGuardNode FixedGuardNodes}.
- *
+ * <p>
  * This is useful because {@link FixedGuardNode FixedGuardNodes} will be lowered to {@link GuardNode
  * GuardNodes} which can later be optimized more aggressively than control-flow constructs.
- *
+ * <p>
  * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
@@ -108,7 +107,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            if (d.getAction() == DeoptimizationAction.None) {
+            if (!d.canFloat()) {
                 continue;
             }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {

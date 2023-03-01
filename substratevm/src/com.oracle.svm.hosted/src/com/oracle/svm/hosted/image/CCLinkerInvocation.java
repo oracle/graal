@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -269,9 +270,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
                 exportedSymbols.append("global:\n");
-                for (String symbol : getImageSymbols(true)) {
-                    exportedSymbols.append('\"').append(symbol).append("\";\n");
-                }
+                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
+                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");

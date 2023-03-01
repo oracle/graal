@@ -462,6 +462,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> toLocalDate = StaticSymbols.putName("toLocalDate");
         public static final Symbol<Name> toLocalTime = StaticSymbols.putName("toLocalTime");
         public static final Symbol<Name> toInstant = StaticSymbols.putName("toInstant");
+        public static final Symbol<Name> from = StaticSymbols.putName("from");
+        public static final Symbol<Name> ofInstant = StaticSymbols.putName("ofInstant");
         public static final Symbol<Name> getZone = StaticSymbols.putName("getZone");
         public static final Symbol<Name> getId = StaticSymbols.putName("getId");
         public static final Symbol<Name> of = StaticSymbols.putName("of");
@@ -472,6 +474,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> second = StaticSymbols.putName("second");
         public static final Symbol<Name> nano = StaticSymbols.putName("nano");
         public static final Symbol<Name> atZone = StaticSymbols.putName("atZone");
+        public static final Symbol<Name> ofEpochSecond = StaticSymbols.putName("ofEpochSecond");
 
         // Map / List / Iterator
         public static final Symbol<Name> get = StaticSymbols.putName("get");
@@ -912,9 +915,15 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> Class = StaticSymbols.putSignature(Type.java_lang_Class);
         public static final Symbol<Signature> LocalDate = StaticSymbols.putSignature(Type.java_time_LocalDate);
+        public static final Symbol<Signature> LocalDate_int_int_int = StaticSymbols.putSignature(Type.java_time_LocalDate, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> LocalTime = StaticSymbols.putSignature(Type.java_time_LocalTime);
+        public static final Symbol<Signature> LocalDateTime_LocalDate_LocalTime = StaticSymbols.putSignature(Type.java_time_LocalDateTime, Type.java_time_LocalDate, Type.java_time_LocalTime);
+        public static final Symbol<Signature> LocalTime_int_int_int_int = StaticSymbols.putSignature(Type.java_time_LocalTime, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Instant = StaticSymbols.putSignature(Type.java_time_Instant);
+        public static final Symbol<Signature> Date_Instant = StaticSymbols.putSignature(Type.java_util_Date, Type.java_time_Instant);
+        public static final Symbol<Signature> Instant_long_long = StaticSymbols.putSignature(Type.java_time_Instant, Type._long, Type._long);
         public static final Symbol<Signature> ZoneId = StaticSymbols.putSignature(Type.java_time_ZoneId);
+        public static final Symbol<Signature> ZonedDateTime_Instant_ZoneId = StaticSymbols.putSignature(Type.java_time_ZonedDateTime, Type.java_time_Instant, Type.java_time_ZoneId);
         public static final Symbol<Signature> ZonedDateTime_ZoneId = StaticSymbols.putSignature(Type.java_time_ZonedDateTime, Type.java_time_ZoneId);
         public static final Symbol<Signature> ZoneId_String = StaticSymbols.putSignature(Type.java_time_ZoneId, Type.java_lang_String);
 

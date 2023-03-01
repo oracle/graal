@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,46 +29,26 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
-import java.nio.ByteOrder;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.memory.ByteArraySupport;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension.WellKnownNativeFunctionNode;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.nfi.api.SignatureLibrary;
-import com.oracle.truffle.nfi.api.SerializableLibrary;
-
-import java.util.Arrays;
-
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatUnaryNativeCallNodeGen;
+import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
+
+import java.nio.ByteOrder;
+import java.util.Arrays;
 
 @ValueType
 @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
-public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
+public final class LLVM80BitFloat extends LLVMLongDoubleFloatingPoint {
 
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
@@ -527,7 +507,8 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
         }
     }
 
-    public double getDoubleValue() {
+    @Override
+    public double toDoubleValue() {
         if (isPositiveZero()) {
             return DoubleHelper.POSITIVE_ZERO;
         } else if (isNegativeZero()) {
@@ -600,173 +581,5 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
         } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
             throw CompilerDirectives.shouldNotReachHere(ex);
         }
-    }
-
-    public abstract static class FP80Node extends LLVMExpressionNode {
-
-        final String name;
-
-        private final String functionName;
-        private final String signature;
-
-        final ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
-
-        public abstract LLVM80BitFloat execute(Object... args);
-
-        FP80Node(String name, String signature) {
-            this.name = name;
-            this.functionName = "__sulong_fp80_" + name;
-            this.signature = signature;
-            this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
-        }
-
-        protected WellKnownNativeFunctionNode createFunction() {
-            LLVMContext context = LLVMContext.get(this);
-            NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
-            if (nativeContextExtension == null) {
-                return null;
-            } else {
-                return nativeContextExtension.getWellKnownNativeFunction(functionName, signature);
-            }
-        }
-
-        protected NativeContextExtension.WellKnownNativeFunctionAndSignature getFunction() {
-            NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
-            return nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, signature);
-        }
-
-        protected LLVMNativeConvertNode createToFP80() {
-            return LLVMNativeConvertNode.createFromNative(PrimitiveType.X86_FP80);
-        }
-
-    }
-
-    @NodeChild(value = "x", type = LLVMExpressionNode.class)
-    @NodeChild(value = "y", type = LLVMExpressionNode.class)
-    abstract static class LLVM80BitFloatNativeCallNode extends FP80Node {
-
-        LLVM80BitFloatNativeCallNode(String name) {
-            super(name, "(FP80,FP80):FP80");
-        }
-
-        @Specialization(guards = "function != null")
-        protected LLVM80BitFloat doCall(Object x, Object y,
-                        @Cached("createFunction()") WellKnownNativeFunctionNode function,
-                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
-            try {
-                Object ret = function.execute(x, y);
-                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
-            } catch (InteropException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
-        protected LLVM80BitFloat doCallAOT(Object x, Object y,
-                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
-                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
-            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
-            try {
-                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x, y);
-                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
-            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = "nativeCtxExtKey == null")
-        protected LLVM80BitFloat doCallNoNative(LLVM80BitFloat x, LLVM80BitFloat y) {
-            // imprecise workaround for cases in which NFI isn't available
-            double xDouble = x.getDoubleValue();
-            double yDouble = y.getDoubleValue();
-            double result;
-            switch (name) {
-                case "add":
-                    result = xDouble + yDouble;
-                    break;
-                case "sub":
-                    result = xDouble - yDouble;
-                    break;
-                case "mul":
-                    result = xDouble * yDouble;
-                    break;
-                case "div":
-                    result = xDouble / yDouble;
-                    break;
-                case "mod":
-                    result = xDouble % yDouble;
-                    break;
-                default:
-                    throw new AssertionError("unexpected 80 bit float operation: " + name);
-            }
-            return LLVM80BitFloat.fromDouble(result);
-        }
-
-        @Override
-        public String toString() {
-            return "fp80 " + name;
-        }
-    }
-
-    @NodeChild(value = "x", type = LLVMExpressionNode.class)
-    abstract static class LLVM80BitFloatUnaryNativeCallNode extends FP80Node {
-
-        LLVM80BitFloatUnaryNativeCallNode(String name) {
-            super(name, "(FP80):FP80");
-        }
-
-        @Specialization(guards = "function != null")
-        protected LLVM80BitFloat doCall(Object x,
-                        @Cached("createFunction()") WellKnownNativeFunctionNode function,
-                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
-            try {
-                Object ret = function.execute(x);
-                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
-            } catch (InteropException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
-        protected LLVM80BitFloat doCallAOT(Object x,
-                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
-                        @Cached("createToFP80()") LLVMNativeConvertNode nativeConvert) {
-            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
-            try {
-                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x);
-                return (LLVM80BitFloat) nativeConvert.executeConvert(ret);
-            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-    }
-
-    public static FP80Node createAddNode() {
-        return LLVM80BitFloatNativeCallNodeGen.create("add", null, null);
-    }
-
-    public static FP80Node createSubNode() {
-        return LLVM80BitFloatNativeCallNodeGen.create("sub", null, null);
-    }
-
-    public static FP80Node createMulNode() {
-        return LLVM80BitFloatNativeCallNodeGen.create("mul", null, null);
-    }
-
-    public static FP80Node createDivNode() {
-        return LLVM80BitFloatNativeCallNodeGen.create("div", null, null);
-    }
-
-    public static FP80Node createRemNode() {
-        return LLVM80BitFloatNativeCallNodeGen.create("mod", null, null);
-    }
-
-    public static FP80Node createPowNode(LLVMExpressionNode x, LLVMExpressionNode y) {
-        return LLVM80BitFloatNativeCallNodeGen.create("pow", x, y);
-    }
-
-    public static FP80Node createUnary(String name, LLVMExpressionNode x) {
-        return LLVM80BitFloatUnaryNativeCallNodeGen.create(name, x);
     }
 }

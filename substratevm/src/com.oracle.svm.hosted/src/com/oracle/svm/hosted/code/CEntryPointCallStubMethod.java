@@ -143,7 +143,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         JavaType[] parameterTypes = method.toParameterTypes();
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
@@ -243,7 +243,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "@%s method declared as built-in must not have a custom exception handler: %s", CEntryPoint.class.getSimpleName(), universeTargetMethod);
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(providers, universeTargetMethod.toParameterTypes(), universeTargetMethod.getParameterAnnotations());
 

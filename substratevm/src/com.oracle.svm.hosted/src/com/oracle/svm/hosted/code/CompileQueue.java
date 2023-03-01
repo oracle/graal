@@ -352,12 +352,12 @@ public class CompileQueue {
         }
     }
 
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, SharedRuntimeConfigurationBuilder runtimeConfigBuilder, Boolean deoptimizeAll,
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
                     SnippetReflectionProvider snippetReflection, ForkJoinPool executorService) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
-        this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
-        this.metaAccess = runtimeConfigBuilder.metaAccess;
+        this.runtimeConfig = runtimeConfiguration;
+        this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
@@ -475,6 +475,15 @@ public class CompileQueue {
     }
 
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
+    }
+
+    /**
+     * Get suites for the compilation of {@code graph}. Parameter {@code suites} can be used to
+     * create new suites, they must not be modified directly as this code is called concurrently by
+     * multiple threads. Rather implementors can copy suites and modify them.
+     */
+    protected Suites createSuitesForRegularCompile(@SuppressWarnings("unused") StructuredGraph graph, Suites originalSuites) {
+        return originalSuites;
     }
 
     protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
@@ -942,7 +951,7 @@ public class CompileQueue {
             }
             if (graph == null && method.isNative() &&
                             NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE);
+                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE, Purpose.AOT_COMPILATION);
             }
             if (graph == null) {
                 needParsing = true;
@@ -1219,7 +1228,7 @@ public class CompileQueue {
                 method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream().map(MethodCallTargetNode::invoke).filter(
                                 invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false)).count();
 
-                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
+                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : createSuitesForRegularCompile(graph, regularSuites);
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());

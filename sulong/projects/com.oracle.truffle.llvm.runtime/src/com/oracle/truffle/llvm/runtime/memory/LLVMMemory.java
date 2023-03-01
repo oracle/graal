@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -113,6 +114,8 @@ public abstract class LLVMMemory implements LLVMCapability {
 
     public abstract LLVM80BitFloat get80BitFloat(Node location, LLVMNativePointer addr);
 
+    public abstract LLVM128BitFloat get128BitFloat(Node location, LLVMNativePointer addr);
+
     public final LLVMNativePointer getPointer(Node location, LLVMNativePointer addr) {
         return getPointer(location, addr.asNative());
     }
@@ -172,6 +175,12 @@ public abstract class LLVMMemory implements LLVMCapability {
     }
 
     public abstract void put80BitFloat(Node location, long ptr, LLVM80BitFloat value);
+
+    public abstract void put128BitFloat(Node location, long ptr, LLVM128BitFloat value);
+
+    public final void put128BitFloat(Node location, LLVMNativePointer addr, LLVM128BitFloat value) {
+        put128BitFloat(location, addr.asNative(), value);
+    }
 
     public final void putPointer(Node location, LLVMNativePointer addr, LLVMNativePointer value) {
         putPointer(location, addr.asNative(), value.asNative());

@@ -111,7 +111,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
 
         InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();

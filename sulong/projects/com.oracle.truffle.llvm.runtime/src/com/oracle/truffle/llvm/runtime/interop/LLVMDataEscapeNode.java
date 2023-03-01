@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,9 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVM128BitFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVM80BitFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
@@ -87,6 +89,8 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                     return LLVMDoubleDataEscapeNodeGen.create();
                 case X86_FP80:
                     return LLVM80BitFloatDataEscapeNodeGen.create();
+                case F128:
+                    return LLVM128BitFloatDataEscapeNodeGen.create();
                 default:
                     throw new AssertionError("unexpected type in LLVMDataEscapeNode: " + type);
             }
@@ -284,6 +288,20 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
              */
             byte[] value = escapingValue.getBytes();
             return LLVMManagedPointer.create(value).export(new Buffer(false, 10));
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LLVM128BitFloatDataEscapeNode extends LLVMDataEscapeNode {
+
+        @Specialization
+        static LLVMPointer escaping128BitFloat(LLVM128BitFloat escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            /*
+             * Currently there is no way to represent FP128 values as interop values, except via the
+             * Truffle NFI. The NFI expects an interop "buffer" to be able to deserialize it.
+             */
+            byte[] value = escapingValue.getBytes();
+            return LLVMManagedPointer.create(value).export(new Buffer(false, 16));
         }
     }
 

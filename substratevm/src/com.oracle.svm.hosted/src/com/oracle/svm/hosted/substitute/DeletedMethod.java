@@ -81,11 +81,11 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return buildGraph(debug, method, providers, message);
+        return buildGraph(debug, method, providers, message, purpose);
     }
 
-    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message, Purpose purpose) {
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());

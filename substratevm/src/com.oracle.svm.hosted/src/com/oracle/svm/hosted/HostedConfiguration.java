@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.annotation.Annotation;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -57,12 +58,12 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
@@ -74,12 +75,15 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class HostedConfiguration {
+    @SuppressWarnings("unchecked") private static final Class<? extends Annotation> VALUE_BASED_ANNOTATION = //
+                    (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.internal.ValueBased");
 
     public HostedConfiguration() {
     }
@@ -171,9 +175,9 @@ public class HostedConfiguration {
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
-                    SharedRuntimeConfigurationBuilder runtime, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
+                    RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
 
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection, executor);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -230,7 +234,10 @@ public class HostedConfiguration {
 
     public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
         /* First set the monitor field for types that always need it. */
-        getForceMonitorSlotTypes(bb).forEach(type -> setMonitorField(hUniverse, type));
+        for (AnalysisType type : getForceMonitorSlotTypes(bb)) {
+            assert !immutableTypes.contains(type);
+            setMonitorField(hUniverse, type);
+        }
 
         /* Then decide what other types may need it. */
         processedSynchronizedTypes(bb, hUniverse, immutableTypes);
@@ -253,11 +260,16 @@ public class HostedConfiguration {
     }
 
     /**
-     * Monitor fields on arrays would increase the array header too much. Also, types that must be
-     * immutable cannot have a monitor field.
+     * Monitor fields on arrays would enlarge the array header too much.
+     *
+     * Also, never burden @ValueBased classes with a monitor field, which in particular reduces
+     * sizes of boxed primitives. Using monitors with those types is discouraged (instances are
+     * often cached) and not guaranteed to work in the future.
+     *
+     * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, Set<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type)) {
+        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(VALUE_BASED_ANNOTATION)) {
             setMonitorField(hUniverse, type);
         }
     }

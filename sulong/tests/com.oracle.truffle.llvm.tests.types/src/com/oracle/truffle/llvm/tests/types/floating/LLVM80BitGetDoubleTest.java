@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,12 +37,12 @@ public class LLVM80BitGetDoubleTest extends LLVM80BitTest {
 
     @Test
     public void testZero() {
-        assertBitEquals(0, zero().getDoubleValue());
+        assertBitEquals(0, zero().toDoubleValue());
     }
 
     @Test
     public void testMinusZero() {
-        assertBitEquals(-0.0, minusZero().getDoubleValue());
+        assertBitEquals(-0.0, minusZero().toDoubleValue());
     }
 
     @Test
@@ -53,22 +53,22 @@ public class LLVM80BitGetDoubleTest extends LLVM80BitTest {
 
     @Test
     public void testValue() {
-        double val = val(3.5).getDoubleValue();
+        double val = val(3.5).toDoubleValue();
         assertBitEquals(3.5, val);
     }
 
     @Test
     public void testPositiveInfinity() {
-        assertBitEquals(Double.POSITIVE_INFINITY, positiveInfinity().getDoubleValue());
+        assertBitEquals(Double.POSITIVE_INFINITY, positiveInfinity().toDoubleValue());
     }
 
     @Test
     public void testNegativeInfinity() {
-        assertBitEquals(Double.NEGATIVE_INFINITY, negativeInfinity().getDoubleValue());
+        assertBitEquals(Double.NEGATIVE_INFINITY, negativeInfinity().toDoubleValue());
     }
 
     @Test
     public void testQNaN() {
-        assertBitEquals(Double.NaN, nan().getDoubleValue());
+        assertBitEquals(Double.NaN, nan().toDoubleValue());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,19 +138,21 @@ final class FdUtils {
         try {
             Filestat.writeFiletype(node, memory, address, getType(file));
             Filestat.writeSize(node, memory, address, file.getAttribute(TruffleFile.SIZE));
-            Filestat.writeAtim(node, memory, address, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.SECONDS));
-            Filestat.writeMtim(node, memory, address, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.SECONDS));
+            Filestat.writeAtim(node, memory, address, file.getAttribute(TruffleFile.LAST_ACCESS_TIME).to(TimeUnit.NANOSECONDS));
+            Filestat.writeMtim(node, memory, address, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME).to(TimeUnit.NANOSECONDS));
 
             try {
                 Filestat.writeDev(node, memory, address, file.getAttribute(TruffleFile.UNIX_DEV));
                 Filestat.writeIno(node, memory, address, file.getAttribute(TruffleFile.UNIX_INODE));
                 Filestat.writeNlink(node, memory, address, file.getAttribute(TruffleFile.UNIX_NLINK));
-                Filestat.writeCtim(node, memory, address, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.SECONDS));
+                Filestat.writeCtim(node, memory, address, file.getAttribute(TruffleFile.UNIX_CTIME).to(TimeUnit.NANOSECONDS));
             } catch (UnsupportedOperationException e) {
                 // GR-29297: these attributes are currently not supported on non-Unix platforms.
             }
         } catch (IOException e) {
             return Errno.Io;
+        } catch (SecurityException e) {
+            return Errno.Acces;
         }
         return Errno.Success;
     }

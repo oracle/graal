@@ -542,7 +542,7 @@ public class ELFObjectFile extends ObjectFile {
 
                 @Override
                 public String toString() {
-                    return String.format("ELF Ident:\n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
+                    return String.format("ELF Ident:%n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
                 }
             }
 
@@ -886,12 +886,12 @@ public class ELFObjectFile extends ObjectFile {
                 return "SHT NULL Entry";
             }
             return new StringBuilder("SHT Entry: ")
-                            .append(String.format("\n  %s", type))
-                            .append(String.format("\n  flags %#x", flags))
-                            .append(String.format("\n  virtual address %#x", virtualAddress))
-                            .append(String.format("\n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
-                            .append(String.format("\n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
-                            .append("\n").toString();
+                            .append(String.format("%n  %s", type))
+                            .append(String.format("%n  flags %#x", flags))
+                            .append(String.format("%n  virtual address %#x", virtualAddress))
+                            .append(String.format("%n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
+                            .append(String.format("%n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
+                            .append(String.format("%n")).toString();
         }
 
         public boolean isNullEntry() {

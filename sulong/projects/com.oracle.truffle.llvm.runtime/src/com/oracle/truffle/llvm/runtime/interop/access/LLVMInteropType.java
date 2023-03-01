@@ -29,19 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,6 +45,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
@@ -72,11 +60,23 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -163,7 +163,8 @@ public abstract class LLVMInteropType implements TruffleObject {
         FLOAT(ForeignToLLVMType.FLOAT),
         DOUBLE(ForeignToLLVMType.DOUBLE),
         FP80(ForeignToLLVMType.FP80),
-        POINTER(ForeignToLLVMType.POINTER);
+        POINTER(ForeignToLLVMType.POINTER),
+        FP128(ForeignToLLVMType.FP128);
 
         public final LLVMInteropType.Value type;
         public final ForeignToLLVMType foreignToLLVMType;
@@ -1087,7 +1088,11 @@ public abstract class LLVMInteropType implements TruffleObject {
                         case 64:
                             return ValueKind.DOUBLE.type;
                         case 128:
-                            return ValueKind.FP80.type;
+                            if (LLVMLanguage.get(null).getCapability(PlatformCapability.class).getDoubleLongSize() == 80) {
+                                return ValueKind.FP80.type;
+                            } else if (LLVMLanguage.get(null).getCapability(PlatformCapability.class).getDoubleLongSize() == 128) {
+                                return ValueKind.FP128.type;
+                            }
                     }
                     break;
                 case SIGNED:

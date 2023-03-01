@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
@@ -1082,6 +1083,10 @@ public final class DebuggerController implements ContextsListener {
 
     public void severe(Supplier<String> supplier) {
         jdwpLogger.severe(supplier);
+    }
+
+    public void severe(String message, Throwable error) {
+        jdwpLogger.log(Level.SEVERE, message, error);
     }
 
     @Override

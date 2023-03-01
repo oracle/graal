@@ -160,6 +160,8 @@ public abstract class StaticShape<T> {
 
     abstract Object getStorage(Object obj, boolean primitive);
 
+    abstract Class<T> getFactoryInterface();
+
     final <U> U cast(Object obj, Class<U> type, boolean checkCondition) {
         if (safetyChecks) {
             return checkedCast(obj, type);
@@ -167,13 +169,6 @@ public abstract class StaticShape<T> {
             assert checkedCast(obj, type) != null;
             return SomAccessor.RUNTIME.unsafeCast(obj, type, !checkCondition || type.isInstance(obj), false, false);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    final Class<T> getFactoryInterface() {
-        // Builder.validate() makes sure that the factory class implements a single interface
-        assert factory.getClass().getInterfaces().length == 1;
-        return (Class<T>) factory.getClass().getInterfaces()[0];
     }
 
     private static <U> U checkedCast(Object obj, Class<U> type) {

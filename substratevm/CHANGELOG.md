@@ -23,6 +23,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-44105) A warning is displayed when trying to generate debug info on macOS since that is not supported. It is now an error to use `-H:+StripDebugInfo` on macOS or `-H:-StripDebugInfo` on Windows since those values are not supported.
 * (GR-43966) Remove analysis options -H:AnalysisStatisticsFile and -H:ImageBuildStatisticsFile. Output files are now written to fixed subdirectories relative to image location (reports/image_build_statistics.json). 
 * (GR-38414) BellSoft implemented the `MemoryPoolMXBean` for the serial and epsilon GCs.
+* (GR-40641) Dynamic linking of AWT libraries on Linux.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

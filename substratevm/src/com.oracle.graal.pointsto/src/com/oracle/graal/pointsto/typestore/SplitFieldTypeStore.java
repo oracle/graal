@@ -71,7 +71,7 @@ public class SplitFieldTypeStore extends FieldTypeStore {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("SplitFieldStore<").append(field.format("%h.%n")).append("\n").append(object).append(">");
+        str.append("SplitFieldStore<").append(field.format("%h.%n")).append(System.lineSeparator()).append(object).append(">");
         return str.toString();
     }
 
