@@ -344,13 +344,11 @@ def truffle_unittest_task(extra_build_args=None):
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
                      'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
 
-    if '--libc=musl' not in extra_build_args:
-        # GR-44507
-        if '-Ob' not in extra_build_args:
-            # GR-44492:
-            truffle_tests += ['com.oracle.truffle.api.test.TruffleSafepointTest']
+    if '-Ob' not in extra_build_args:
+        # GR-44492:
+        truffle_tests += ['com.oracle.truffle.api.test.TruffleSafepointTest']
 
-    native_unittest(truffle_tests + truffle_args(extra_build_args))
+    native_unittest(truffle_tests + truffle_args(extra_build_args) + (['-Xss1m'] if '--libc=musl' in extra_build_args else []))
 
     # White Box Truffle compilation tests that need access to compiler graphs.
     if '-Ob' not in extra_build_args:
