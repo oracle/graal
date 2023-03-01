@@ -203,7 +203,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .sorted(Comparator.comparingInt(ModuleLayerFeatureUtils::distanceFromBootModuleLayer))
                         .collect(Collectors.toList());
 
-        Set<String> rootModules = calculateRootModules(accessImpl, extraModules);
+        Set<String> rootModules = calculateRootModules(extraModules);
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -220,13 +220,12 @@ public final class ModuleLayerFeature implements InternalFeature {
      * compute the root module set that should be seen at image runtime. It reuses the same methods
      * as the original (via reflective invokes).
      */
-    private Set<String> calculateRootModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> addModules) {
+    private Set<String> calculateRootModules(Collection<String> addModules) {
         String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
-        List<Path> appModulePath = accessImpl.imageClassLoader.applicationModulePath();
+        ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
         boolean haveUpgradeModulePath = upgradeModulePath != null;
-        boolean haveSVMLibrarySupportOnAppModulePath = appModulePath.stream().anyMatch(p -> p.endsWith("/lib/svm/library-support.jar"));
-        boolean haveModulePath = (!appModulePath.isEmpty() && !haveSVMLibrarySupportOnAppModulePath) || haveUpgradeModulePath;
+        boolean haveModulePath = appModulePath != null || haveUpgradeModulePath;
         Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
@@ -244,22 +243,18 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = SystemModuleFinders.ofSystem();
         }
 
-        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
-        if (builderModule.isNamed()) {
-            ModuleFinder builderModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
-            ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(builderModule.getName()), Set.of());
-            systemModuleFinder = ModuleFinder.compose(limitedBuilderModuleFinder, systemModuleFinder);
-        }
+        /*
+         * We need to include module roots required for Native Image to work at runtime.
+         */
+        systemModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.getBuilderModuleFinder(), systemModuleFinder);
 
         if (haveUpgradeModulePath) {
             systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
         }
 
         ModuleFinder finder;
-        ModuleFinder appModulePathFinder = null;
         if (haveModulePath) {
-            appModulePathFinder = ModuleFinder.of(appModulePath.toArray(new Path[0]));
-            finder = ModuleFinder.compose(systemModuleFinder, appModulePathFinder);
+            finder = ModuleFinder.compose(systemModuleFinder, appModulePath);
         } else {
             finder = systemModuleFinder;
         }
@@ -307,9 +302,9 @@ public final class ModuleLayerFeature implements InternalFeature {
                             .forEach(roots::add);
         }
 
-        if (appModulePathFinder != null && addAllApplicationModules) {
+        if (appModulePath != null && addAllApplicationModules) {
             ModuleFinder f = finder;
-            appModulePathFinder.findAll()
+            appModulePath.findAll()
                             .stream()
                             .map(ModuleReference::descriptor)
                             .map(ModuleDescriptor::name)
@@ -667,6 +662,28 @@ public final class ModuleLayerFeature implements InternalFeature {
         public static String getMainModuleName() {
             String mainModule = SubstrateOptions.Module.getValue();
             return mainModule.isEmpty() ? null : mainModule;
+        }
+
+        public ModuleFinder getAppModuleFinder() {
+            List<Path> appModulePath = imageClassLoader.applicationModulePath()
+                            .stream()
+                            .filter(p -> !p.endsWith("/lib/svm/library-support.jar"))
+                            .collect(Collectors.toList());
+            if (appModulePath.isEmpty()) {
+                return null;
+            } else {
+                return ModuleFinder.of(appModulePath.toArray(new Path[0]));
+            }
+        }
+
+        public ModuleFinder getBuilderModuleFinder() {
+            Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
+            if (ModuleSupport.modulePathBuild) {
+                ModuleFinder builderModuleFinder = ModuleFinder.compose(imageClassLoader.classLoaderSupport.modulepathModuleFinder, ModuleFinder.ofSystem());
+                return invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(builderModule.getName()), Set.of());
+            } else {
+                return ModuleFinder.of();
+            }
         }
 
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
