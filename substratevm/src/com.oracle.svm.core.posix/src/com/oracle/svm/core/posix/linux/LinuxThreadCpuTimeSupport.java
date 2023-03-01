@@ -31,7 +31,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
@@ -75,7 +74,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTimeImpl(int clockId) {
         timespec time = UnsafeStackValue.get(timespec.class);
-        if (Time.NoTransitions.clock_gettime(clockId, time) != 0) {
+        if (LinuxTime.NoTransitions.clock_gettime(clockId, time) != 0) {
             return -1;
         }
         return time.tv_sec() * TimeUtils.nanosPerSecond + time.tv_nsec();

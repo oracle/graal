@@ -26,6 +26,8 @@ package com.oracle.svm.core.posix.headers.linux;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CLibrary;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Time;
@@ -42,4 +44,11 @@ public class LinuxTime extends Time {
 
     @CConstant
     public static native int CLOCK_THREAD_CPUTIME_ID();
+
+    public static class NoTransitions {
+        /* We still need to support glibc 2.12, where clock_gettime is located in librt. */
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        @CLibrary("rt")
+        public static native int clock_gettime(int clock_id, timespec tp);
+    }
 }

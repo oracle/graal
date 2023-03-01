@@ -102,13 +102,10 @@ public class Time {
         public native int getCValue();
     }
 
+    @CConstant
+    public static native int CLOCK_REALTIME();
+
     public static class NoTransitions {
-        @CConstant
-        public static native int CLOCK_REALTIME();
-
-        @CFunction(transition = Transition.NO_TRANSITION)
-        public static native int clock_gettime(int clock_id, timespec tp);
-
         /**
          * @param which from {@link TimerTypeEnum#getCValue()}
          */

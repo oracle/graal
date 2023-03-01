@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.mach_absolute_time;
-import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.mach_timebase_info;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_absolute_time;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_timebase_info;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -65,9 +65,10 @@ final class DarwinTimeUtil {
 
     @SuppressWarnings("unused") //
     private volatile boolean initialized;
+    @SuppressWarnings("unused") //
+    private volatile long maxAbsTime;
     private int numer;
     private int denom;
-    private long maxAbsTime;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DarwinTimeUtil() {
@@ -93,7 +94,7 @@ final class DarwinTimeUtil {
 
         long tm = mach_absolute_time();
         long now = (tm * numer) / denom;
-        long prev = maxAbsTime;
+        long prev = U.getLongOpaque(this, MAX_ABS_TIME_OFFSET);
         if (now <= prev) {
             return prev; // same or retrograde time;
         }
