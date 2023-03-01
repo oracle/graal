@@ -431,8 +431,7 @@ public abstract class LoopTransformations {
             updatePreLoopLimit(preCounted);
         }
 
-	graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After updating preloop limit");
-
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After updating preloop limit");
 
         double originalFrequency = loop.loopBegin().loopFrequency();
         preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
