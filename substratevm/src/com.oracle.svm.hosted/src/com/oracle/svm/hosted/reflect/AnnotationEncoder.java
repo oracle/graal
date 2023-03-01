@@ -42,6 +42,10 @@ import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 
 public class AnnotationEncoder {
     static void encodeAnnotation(UnsafeArrayTypeWriter buf, AnnotationValue value, Encoders encoders) {
+        if (value.isAnnotationFormatException()) {
+            buf.putS4(-1);
+            return;
+        }
         buf.putS4(encoders.sourceClasses.getIndex(value.getType()));
         buf.putU2(value.getMemberCount());
         value.forEachMember((memberName, memberValue) -> {
@@ -103,10 +107,10 @@ public class AnnotationEncoder {
 
     static void encodeTypeAnnotation(UnsafeArrayTypeWriter buf, TypeAnnotationValue value, Encoders encoders) {
         for (byte b : value.getTargetInfo()) {
-            buf.putU1(b);
+            buf.putS1(b);
         }
         for (byte b : value.getLocationInfo()) {
-            buf.putU1(b);
+            buf.putS1(b);
         }
         encodeAnnotation(buf, value.getAnnotationData(), encoders);
     }
