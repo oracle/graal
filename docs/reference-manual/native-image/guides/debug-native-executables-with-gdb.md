@@ -27,7 +27,12 @@ This enables source-level debugging, and the debugger (GDB) then correlates mach
 
 Follow the steps to test debugging a native executable with GDB. The below workflow is known to work on Linux with GDB 10.1.
 
-1. Save the following code to the file named _GDBDemo.java_.
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Save the following code to the file named _GDBDemo.java_.
 
     ```java
     public class GDBDemo {
@@ -76,7 +81,7 @@ Follow the steps to test debugging a native executable with GDB. The below workf
     }
     ```
 
-2. Compile it and generate a native executable with debug information:
+3. Compile it and generate a native executable with debug information:
 
     ```shell 
     $JAVA_HOME/bin/javac -g GDBDemo.java
@@ -88,14 +93,14 @@ Follow the steps to test debugging a native executable with GDB. The below workf
 
     Notice that you can also pass `-O0` which specifies that no compiler optimizations should be performed. Disabling all optimizations is not required, but in general it makes the debugging experience better.
 
-3. Launch the debugger and run your native executable:
+4. Launch the debugger and run your native executable:
 
     ```shell
     gdb ./gdbdemo
     ```
     The `gdb` prompt will open.
  
-4. Set a breakpoint: type `breakpoint <java method>` to set a breakpoint and `run <arg>` to run the native executable. You can put breakpoints configured by file and line, or by method name. See below the example of a debugging session.
+5. Set a breakpoint: type `breakpoint <java method>` to set a breakpoint and `run <arg>` to run the native executable. You can put breakpoints configured by file and line, or by method name. See below the example of a debugging session.
 
     ```shell
     $ gdb ./gdbdemo

@@ -34,6 +34,10 @@ public class PrettyPrintJSON {
   }
 } 
 ```
+1. Download and install the latest GraalVM JDK with JavaScript support using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk) -c 'js'
+    ```
 
 1. Save it in the _PrettyPrintJSON.java_ file and compile:
 

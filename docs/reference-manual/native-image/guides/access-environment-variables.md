@@ -30,23 +30,30 @@ public class EnvMap {
 
 This code iterates over your environment variables and prints out the ones that contain the String of characters passed as the command-line argument.
 
-1. Compile the file and build a native executable, as follows:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ```
 
+2. Compile the file and build a native executable, as follows:
     ```shell
     javac EnvMap.java
+    ```
+    ```shell
     native-image EnvMap
     ```
 
-2. Run the resulting native executable and pass a command-line argument, such as "HELLO". There should be no output, because there is no environment variable with a matching name. 
+3. Run the resulting native executable and pass a command-line argument, such as "HELLO". There should be no output, because there is no environment variable with a matching name. 
     ```shell
     ./envmap HELLO
     <no output>
     ```
 
 3. Create a new environment variable named "HELLOWORLD" and give it the value "Hello World!". (If you are using a `bash` shell, follow the example below.) Now, run the native executable again--it will correctly print out the name and value of the matching environment variable(s).
-
     ```shell
     export HELLOWORLD='Hello World!'
+    ```
+    ```shell
     ./envmap HELLO
     ```
     You should receive the expected output:
