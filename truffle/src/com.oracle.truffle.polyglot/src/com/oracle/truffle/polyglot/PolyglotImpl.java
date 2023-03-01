@@ -258,7 +258,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             LogConfig logConfig = new LogConfig();
             OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, sandboxPolicy, useAllowExperimentalOptions);
 
-            LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr);
+            LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr, sandboxPolicy);
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(useHandler, logConfig.logLevels);
 
             AbstractPolyglotHostService usePolyglotHostService;
@@ -375,7 +375,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, sandboxPolicy, true);
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
-        LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err);
+        LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err, sandboxPolicy);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, sandboxPolicy, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));

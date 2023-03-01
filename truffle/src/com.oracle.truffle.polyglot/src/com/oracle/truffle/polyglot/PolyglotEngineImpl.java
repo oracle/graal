@@ -673,7 +673,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         validateSandbox();
     }
 
-    static LogHandler createLogHandler(AbstractPolyglotImpl polyglot, LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
+    static LogHandler createLogHandler(AbstractPolyglotImpl polyglot, LogConfig logConfig, DispatchOutputStream errDispatchOutputStream, SandboxPolicy sandboxPolicy) {
         if (logConfig.logFile != null) {
             if (ALLOW_IO) {
                 return PolyglotLoggers.getFileHandler(polyglot, logConfig.logFile);
@@ -681,7 +681,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotEngineException.illegalState("The `log.file` option is not allowed when the allowIO() privilege is removed at image build time.");
             }
         } else {
-            return PolyglotLoggers.createDefaultHandler(polyglot, INSTRUMENT.getOut(errDispatchOutputStream));
+            return PolyglotLoggers.createDefaultHandler(polyglot, INSTRUMENT.getOut(errDispatchOutputStream), sandboxPolicy);
         }
     }
 
@@ -1750,7 +1750,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             LogHandler useHandler = handler != null ? handler : logHandler;
             useHandler = useHandler != null ? useHandler
                             : PolyglotLoggers.createDefaultHandler(getImpl(),
-                                            configErr == null ? INSTRUMENT.getOut(this.err) : configErr);
+                                            configErr == null ? INSTRUMENT.getOut(this.err) : configErr, contextSandboxPolicy);
             final InputStream useIn = configIn == null ? this.in : configIn;
             final ProcessHandler useProcessHandler;
             if (allowCreateProcess) {
