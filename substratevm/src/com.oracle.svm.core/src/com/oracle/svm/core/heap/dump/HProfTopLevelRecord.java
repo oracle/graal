@@ -22,29 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package com.oracle.svm.core.heap.dump;
 
 import org.graalvm.compiler.core.common.NumUtil;
 
-/* Enum of all relevant HPROF sub-records (see enum hprofTag in HotSpot). */
-public enum HProfSubRecord {
-    GC_ROOT_UNKNOWN(0xFF),
-    GC_ROOT_JNI_GLOBAL(0x01),
-    GC_ROOT_JNI_LOCAL(0x02),
-    GC_ROOT_JAVA_FRAME(0x03),
-    GC_ROOT_NATIVE_STACK(0x04),
-    GC_ROOT_STICKY_CLASS(0x05),
-    GC_ROOT_THREAD_BLOCK(0x06),
-    GC_ROOT_MONITOR_USED(0x07),
-    GC_ROOT_THREAD_OBJ(0x08),
-    GC_CLASS_DUMP(0x20),
-    GC_INSTANCE_DUMP(0x21),
-    GC_OBJ_ARRAY_DUMP(0x22),
-    GC_PRIM_ARRAY_DUMP(0x23);
+/* Enum of all relevant HPROF top-level records (see enum hprofTag in HotSpot). */
+public enum HProfTopLevelRecord {
+    UTF8(0x01),
+    LOAD_CLASS(0x02),
+    UNLOAD_CLASS(0x03),
+    FRAME(0x04),
+    TRACE(0x05),
+    ALLOC_SITES(0x06),
+    HEAP_SUMMARY(0x07),
+    START_THREAD(0x0A),
+    END_THREAD(0x0B),
+    HEAP_DUMP(0x0C),
+    CPU_SAMPLES(0x0D),
+    CONTROL_SETTINGS(0x0E),
+    HEAP_DUMP_SEGMENT(0x1C),
+    HEAP_DUMP_END(0x2C);
 
     private final byte value;
 
-    HProfSubRecord(int value) {
+    HProfTopLevelRecord(int value) {
         this.value = NumUtil.safeToUByte(value);
     }
 

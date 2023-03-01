@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package com.oracle.svm.core.heap.dump;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.util.coder.Pack200Coder;
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.
  */
-class HeapDumpMetadata {
+public class HeapDumpMetadata {
     private static final ComputeHubDataVisitor COMPUTE_HUB_DATA_VISITOR = new ComputeHubDataVisitor();
 
     private static int fieldNameCount;

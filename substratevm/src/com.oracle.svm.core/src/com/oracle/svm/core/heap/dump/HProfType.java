@@ -22,34 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package com.oracle.svm.core.heap.dump;
 
 import org.graalvm.compiler.core.common.NumUtil;
 
-/* Enum of all relevant HPROF top-level records (see enum hprofTag in HotSpot). */
-public enum HProfTopLevelRecord {
-    UTF8(0x01),
-    LOAD_CLASS(0x02),
-    UNLOAD_CLASS(0x03),
-    FRAME(0x04),
-    TRACE(0x05),
-    ALLOC_SITES(0x06),
-    HEAP_SUMMARY(0x07),
-    START_THREAD(0x0A),
-    END_THREAD(0x0B),
-    HEAP_DUMP(0x0C),
-    CPU_SAMPLES(0x0D),
-    CONTROL_SETTINGS(0x0E),
-    HEAP_DUMP_SEGMENT(0x1C),
-    HEAP_DUMP_END(0x2C);
+import com.oracle.svm.core.config.ConfigurationValues;
+
+/* Enum of all relevant HPROF types (see enum hprofTag in HotSpot). */
+public enum HProfType {
+    NORMAL_OBJECT(0x2, 0),
+    BOOLEAN(0x4, 1),
+    CHAR(0x5, 2),
+    FLOAT(0x6, 4),
+    DOUBLE(0x7, 8),
+    BYTE(0x8, 1),
+    SHORT(0x9, 2),
+    INT(0xA, 4),
+    LONG(0xB, 8);
+
+    private static final HProfType[] TYPES = HProfType.values();
 
     private final byte value;
+    private final int size;
 
-    HProfTopLevelRecord(int value) {
+    HProfType(int value, int size) {
         this.value = NumUtil.safeToUByte(value);
+        this.size = size;
+    }
+
+    public static HProfType get(byte value) {
+        return TYPES[value];
     }
 
     public byte getValue() {
         return value;
+    }
+
+    public int getSize() {
+        if (size == 0) {
+            return ConfigurationValues.getTarget().wordSize;
+        }
+        return size;
     }
 }

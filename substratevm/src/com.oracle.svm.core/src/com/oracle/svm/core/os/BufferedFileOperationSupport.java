@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions;
-import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -448,7 +447,7 @@ public class BufferedFileOperationSupport {
 class BufferedFileOperationFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (ImageSingletons.contains(RawFileOperationSupportHolder.class)) {
+        if (RawFileOperationSupport.isPresent()) {
             ImageSingletons.add(BufferedFileOperationSupportHolder.class, new BufferedFileOperationSupportHolder());
         }
     }

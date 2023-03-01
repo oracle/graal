@@ -27,6 +27,7 @@ package com.oracle.svm.core.os;
 import java.io.File;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -39,6 +40,11 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSu
  * that it can be used from uninterruptible code.
  */
 public interface RawFileOperationSupport {
+    @Fold
+    static boolean isPresent() {
+        return ImageSingletons.contains(RawFileOperationSupportHolder.class);
+    }
+
     /**
      * Returns a {@link RawFileOperationSupport} singleton that uses little endian byte order.
      */

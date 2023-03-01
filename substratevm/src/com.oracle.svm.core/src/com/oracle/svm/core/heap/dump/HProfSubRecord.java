@@ -22,18 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package com.oracle.svm.core.heap.dump;
 
-import java.io.FileOutputStream;
+import org.graalvm.compiler.core.common.NumUtil;
 
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
+/* Enum of all relevant HPROF sub-records (see enum hprofTag in HotSpot). */
+public enum HProfSubRecord {
+    GC_ROOT_UNKNOWN(0xFF),
+    GC_ROOT_JNI_GLOBAL(0x01),
+    GC_ROOT_JNI_LOCAL(0x02),
+    GC_ROOT_JAVA_FRAME(0x03),
+    GC_ROOT_NATIVE_STACK(0x04),
+    GC_ROOT_STICKY_CLASS(0x05),
+    GC_ROOT_THREAD_BLOCK(0x06),
+    GC_ROOT_MONITOR_USED(0x07),
+    GC_ROOT_THREAD_OBJ(0x08),
+    GC_CLASS_DUMP(0x20),
+    GC_INSTANCE_DUMP(0x21),
+    GC_OBJ_ARRAY_DUMP(0x22),
+    GC_PRIM_ARRAY_DUMP(0x23);
 
-/* Legacy implementation, only used by other legacy code (see GR-44538). */
-public class HeapDumpSupportImpl implements HeapDumpSupport {
-    @Override
-    public void dumpHeap(String outputFile, boolean live) throws java.io.IOException {
-        try (FileOutputStream fileOutputStream = new FileOutputStream(outputFile)) {
-            com.oracle.svm.core.heapdump.HeapDumpWriter.singleton().writeHeapTo(fileOutputStream, live);
-        }
+    private final byte value;
+
+    HProfSubRecord(int value) {
+        this.value = NumUtil.safeToUByte(value);
+    }
+
+    public byte getValue() {
+        return value;
     }
 }

@@ -40,10 +40,14 @@ import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heapdump.HProfType;
-import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
+import com.oracle.svm.core.heap.dump.HProfType;
+import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
+import com.oracle.svm.core.heap.dump.HeapDumpWriter;
+import com.oracle.svm.core.heapdump.HeapDumpUtils;
+import com.oracle.svm.core.heapdump.HeapDumpWriterImpl;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
@@ -54,8 +58,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Heap dumping on Native Image needs some extra metadata about all the classes and fields that are
  * present in the image. The necessary information is encoded as binary data at image build time
  * (see below). When the heap dumping is triggered at run-time, the metadata is decoded on the fly
- * (see {@link com.oracle.svm.core.heapdump.HeapDumpMetadata}) and used for writing the heap dump
- * (see {@link com.oracle.svm.core.heapdump.HeapDumpWriter}).
+ * (see {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata}) and used for writing the heap dump
+ * (see {@link HeapDumpWriter}).
  */
 @AutomaticallyRegisteredFeature
 public class HeapDumpFeature implements InternalFeature {
@@ -70,18 +74,36 @@ public class HeapDumpFeature implements InternalFeature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl());
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (useLegacyImplementation()) {
+            ImageSingletons.add(HeapDumpSupport.class, new com.oracle.svm.core.heapdump.HeapDumpSupportImpl());
+            ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
+            ImageSingletons.add(com.oracle.svm.core.heapdump.HeapDumpWriter.class, new HeapDumpWriterImpl());
+        } else {
+            ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl());
+        }
+    }
+
+    public static boolean useLegacyImplementation() {
+        /* See GR-44538. */
+        return !RawFileOperationSupport.isPresent() && !Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override
     public void afterCompilation(Feature.AfterCompilationAccess access) {
         AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
-        byte[] metadata = computeMetadata(accessImpl.getTypes());
+        if (useLegacyImplementation()) {
+            byte[] fieldMap = HeapDumpHostedUtils.dumpFieldsMap(accessImpl.getTypes());
 
-        HeapDumpSupportImpl support = (HeapDumpSupportImpl) ImageSingletons.lookup(HeapDumpSupport.class);
-        support.setMetadata(metadata);
-        access.registerAsImmutable(metadata);
+            HeapDumpUtils.getHeapDumpUtils().setFieldsMap(fieldMap);
+            access.registerAsImmutable(fieldMap);
+        } else {
+            byte[] metadata = computeMetadata(accessImpl.getTypes());
+
+            HeapDumpSupportImpl support = (HeapDumpSupportImpl) ImageSingletons.lookup(HeapDumpSupport.class);
+            support.setMetadata(metadata);
+            access.registerAsImmutable(metadata);
+        }
     }
 
     /**
