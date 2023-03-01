@@ -57,6 +57,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     2. For each option, the instrument must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
     3.  If an instrument needs additional validation, it can use `TruffleInstrument.Env#getSandboxPolicy()` to obtain the engine's sandbox policy.
   * Added `TruffleOptionDescriptors` extending `OptionDescriptors` by the ability to provide the option's `SandboxPolicy`.
+* GR-44340 GraalVM support for ICU4J is now available as an installable component (`gu install icu4j`).
 
 ## Version 22.3.0
 

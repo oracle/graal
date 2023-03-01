@@ -11,6 +11,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Added support for conditional back-references (e.g. `(foo)(?(1)bar|no_foo)`) in Python and Ruby regular expressions.
 * Added support for case-insensitive back-references in Python and Ruby regular expressions.
 * Added support for locale-sensitive Python regular expressions.
+* TRegex is now an installable component (`gu install regex`).
 
 ## Version 22.2.0
 
