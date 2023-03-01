@@ -170,7 +170,7 @@ final class NumberConversion {
     private static long parseNum7Bit(Node node, AbstractTruffleString a, Object arrayA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
                     throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
-        assert TStringGuards.is7Bit(TStringInternalNodes.GetCodeRangeNode.getUncached().execute(null, a));
+        assert TStringGuards.is7Bit(a.codeRange());
         checkRadix(node, a, radix, errorProfile);
         checkEmptyStr(node, a, errorProfile);
         long result = 0;

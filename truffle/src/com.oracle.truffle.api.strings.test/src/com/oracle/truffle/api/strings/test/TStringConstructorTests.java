@@ -193,10 +193,7 @@ public class TStringConstructorTests extends TStringTestBase {
                 strings[6] = strings[2].asMutableTruffleStringUncached(encoding);
                 strings[7] = strings[4].asTruffleStringUncached(encoding);
                 if (isUTF16(encoding)) {
-                    char[] charArray = new char[array.length / 2];
-                    for (int i = 0; i < charArray.length; i++) {
-                        charArray[i] = (char) TStringTestUtil.readValue(array, 1, i);
-                    }
+                    char[] charArray = TStringTestUtil.toCharArrayPunned(array);
                     strings[8] = fromCharArrayUTF16Uncached(charArray, 0, charArray.length);
                 } else if (isUTF32(encoding)) {
                     strings[8] = fromIntArrayUTF32Uncached(codepoints, 0, codepoints.length);

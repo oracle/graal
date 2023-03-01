@@ -43,8 +43,8 @@ package com.oracle.truffle.api.strings;
 import static com.oracle.truffle.api.strings.AbstractTruffleString.boundsCheckRegionI;
 import static com.oracle.truffle.api.strings.TStringGuards.is7Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is7BitCompatible;
-import static com.oracle.truffle.api.strings.TStringGuards.isBrokenFixedWidth;
-import static com.oracle.truffle.api.strings.TStringGuards.isBrokenMultiByteOrUnknown;
+import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
+import static com.oracle.truffle.api.strings.TStringGuards.isBrokenMultiByte;
 import static com.oracle.truffle.api.strings.TStringGuards.isFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
@@ -87,7 +87,7 @@ public final class TruffleStringBuilder {
     private TruffleStringBuilder(Encoding encoding, int initialSize) {
         this.encoding = encoding;
         buf = new byte[initialSize];
-        codeRange = is7BitCompatible(encoding) ? TSCodeRange.get7Bit() : TSCodeRange.getUnknown();
+        codeRange = is7BitCompatible(encoding) ? TSCodeRange.get7Bit() : TSCodeRange.getUnknownCodeRangeForEncoding(encoding.id);
     }
 
     private int bufferLength() {
@@ -296,7 +296,7 @@ public final class TruffleStringBuilder {
             return TSCodeRange.get8Bit();
         }
         if (Encodings.isUTF16Surrogate(value)) {
-            return TSCodeRange.getBrokenMultiByte();
+            return TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
         }
         if (value <= 0xffff) {
             return TSCodeRange.get16Bit();
@@ -515,7 +515,7 @@ public final class TruffleStringBuilder {
             JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(enc);
             int length = JCodings.getInstance().getCodePointLength(jCodingsEnc, c);
             if (!(enc.is7BitCompatible() && c <= 0x7f)) {
-                sb.updateCodeRange(JCodings.getInstance().isSingleByte(jCodingsEnc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte());
+                sb.updateCodeRange(TSCodeRange.getValid(JCodings.getInstance().isSingleByte(jCodingsEnc)));
             }
             if (length < 1) {
                 throw InternalErrors.invalidCodePoint(c);
@@ -524,7 +524,7 @@ public final class TruffleStringBuilder {
             for (int i = 0; i < n; i++) {
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, sb.buf, sb.length);
                 if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||
-                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length) != c) {
+                                JCodings.getInstance().readCodePoint(jCodingsEnc, sb.buf, sb.length, sb.length + length, TruffleString.ErrorHandling.RETURN_NEGATIVE) != c) {
                     throw InternalErrors.invalidCodePoint(c);
                 }
                 sb.length += length;
@@ -725,18 +725,18 @@ public final class TruffleStringBuilder {
         void append(TruffleStringBuilder sb, AbstractTruffleString a,
                         @Cached TruffleString.ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached AppendArrayIntlNode appendArrayIntlNode) {
             if (a.length() == 0) {
                 return;
             }
             a.checkEncoding(sb.encoding);
             Object arrayA = toIndexableNode.execute(this, a, a.data());
-            int codeRangeA = getCodeRangeNode.execute(this, a);
+            int codeRangeA = getPreciseCodeRangeNode.execute(this, a, sb.encoding);
             sb.updateCodeRange(codeRangeA);
-            int newStride = Math.max(sb.stride, Stride.fromCodeRange(codeRangeA, sb.encoding));
+            int newStride = Math.max(sb.stride, Stride.fromCodeRangeAllowImprecise(codeRangeA, sb.encoding));
             appendArrayIntlNode.execute(this, sb, arrayA, a.offset(), a.length(), a.stride(), newStride);
-            sb.appendLength(a.length(), getCodePointLengthNode.execute(this, a));
+            sb.appendLength(a.length(), getCodePointLengthNode.execute(this, a, sb.encoding));
         }
 
         /**
@@ -793,7 +793,7 @@ public final class TruffleStringBuilder {
         final void append(TruffleStringBuilder sb, AbstractTruffleString a, int fromByteIndex, int byteLength,
                         @Cached TruffleString.ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached AppendArrayIntlNode appendArrayIntlNode,
                         @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
                         @Cached InlinedConditionProfile calcAttrsProfile) {
@@ -805,25 +805,25 @@ public final class TruffleStringBuilder {
             final int length = TruffleString.rawIndex(byteLength, sb.encoding);
             a.boundsCheckRegionRaw(fromIndex, length);
             Object arrayA = toIndexableNode.execute(this, a, a.data());
-            final int codeRangeA = getCodeRangeNode.execute(this, a);
+            final int codeRangeA = getPreciseCodeRangeNode.execute(this, a, sb.encoding);
             final int codeRange;
             final int codePointLength;
             if (fromIndex == 0 && length == a.length()) {
                 codeRange = codeRangeA;
-                codePointLength = getCodePointLengthNode.execute(this, a);
+                codePointLength = getCodePointLengthNode.execute(this, a, sb.encoding);
             } else if (isFixedWidth(codeRangeA) && !TSCodeRange.isMoreGeneralThan(codeRangeA, sb.codeRange)) {
                 codeRange = codeRangeA;
                 codePointLength = length;
-            } else if (calcAttrsProfile.profile(this, !(isBrokenMultiByteOrUnknown(sb.codeRange) || isBrokenFixedWidth(sb.codeRange)))) {
+            } else if (calcAttrsProfile.profile(this, !isBroken(sb.codeRange))) {
                 long attrs = calcAttributesNode.execute(this, a, arrayA, a.offset(), length, a.stride(), sb.encoding, fromIndex, codeRangeA);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
-                codeRange = TSCodeRange.getUnknown();
+                codeRange = TSCodeRange.getUnknownCodeRangeForEncoding(sb.encoding.id);
                 codePointLength = 0;
             }
             sb.updateCodeRange(codeRange);
-            appendArrayIntlNode.execute(this, sb, arrayA, a.offset() + (fromIndex << a.stride()), length, a.stride(), Stride.fromCodeRange(sb.codeRange, sb.encoding));
+            appendArrayIntlNode.execute(this, sb, arrayA, a.offset() + (fromIndex << a.stride()), length, a.stride(), Stride.fromCodeRangeAllowImprecise(sb.codeRange, sb.encoding));
             sb.appendLength(length, codePointLength);
         }
 
@@ -908,7 +908,7 @@ public final class TruffleStringBuilder {
                 }
                 appendCodePointLength = lengthStr;
             } else {
-                if (!isBrokenMultiByteOrUnknown(sb.codeRange)) {
+                if (!isBrokenMultiByte(sb.codeRange)) {
                     long attrs = TStringOps.calcStringAttributesUTF16(this, arrayStr, offsetStr, lengthStr, false);
                     sb.updateCodeRange(StringAttributes.getCodeRange(attrs));
                     appendCodePointLength = StringAttributes.getCodePointLength(attrs);
@@ -916,7 +916,7 @@ public final class TruffleStringBuilder {
                     appendCodePointLength = 0;
                 }
             }
-            appendArrayIntlNode.execute(this, sb, arrayStr, offsetStr, lengthStr, strideStr, Stride.fromCodeRangeUTF16(sb.codeRange));
+            appendArrayIntlNode.execute(this, sb, arrayStr, offsetStr, lengthStr, strideStr, Stride.fromCodeRangeUTF16AllowImprecise(sb.codeRange));
             sb.appendLength(lengthStr, appendCodePointLength);
         }
 
@@ -1001,8 +1001,8 @@ public final class TruffleStringBuilder {
             }
             final int codeRange;
             final int codePointLength;
-            if (calcAttributesProfile.profile(this, isBrokenMultiByteOrUnknown(sb.codeRange))) {
-                long attrs = calcAttributesNode.execute(this, null, sb.buf, 0, sb.length, sb.stride, sb.encoding, 0, TSCodeRange.getUnknown());
+            if (calcAttributesProfile.profile(this, !TSCodeRange.isPrecise(sb.codeRange) || TSCodeRange.isBrokenMultiByte(sb.codeRange))) {
+                long attrs = calcAttributesNode.execute(this, null, sb.buf, 0, sb.length, sb.stride, sb.encoding, 0, sb.codeRange);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {

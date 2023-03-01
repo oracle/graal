@@ -31,6 +31,7 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
@@ -61,6 +62,7 @@ public final class Stubs {
     @Platforms(Platform.AMD64.class)
     public static class AMD64Features {
         public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
+                        SSE2,
                         SSE3,
                         SSSE3,
                         SSE4_1,

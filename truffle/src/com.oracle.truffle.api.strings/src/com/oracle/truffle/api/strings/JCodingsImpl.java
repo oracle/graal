@@ -128,7 +128,7 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public boolean isFixedWidth(Encoding jCoding) {
-        return unwrap(jCoding).isFixedWidth();
+        return unwrap(jCoding).isFixedWidth() && isSingleByte(jCoding);
     }
 
     @Override
@@ -156,8 +156,13 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd) {
-        return unwrap(jCoding).mbcToCode(array, index, arrayEnd);
+    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, ErrorHandling errorHandling) {
+        org.graalvm.shadowed.org.jcodings.Encoding jc = unwrap(jCoding);
+        int codePoint = jc.mbcToCode(array, index, arrayEnd);
+        if (jc.isUnicode() && Encodings.isUTF16Surrogate(codePoint)) {
+            return Encodings.invalidCodepointReturnValue(errorHandling);
+        }
+        return codePoint;
     }
 
     @Override
@@ -169,7 +174,7 @@ final class JCodingsImpl implements JCodings {
     @Override
     @TruffleBoundary
     public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding) {
-        if (isFixedWidth(jCoding)) {
+        if (unwrap(jCoding).isFixedWidth()) {
             return index * minLength(jCoding);
         }
         int offset = a.byteArrayOffset() + extraOffsetRaw;
@@ -190,7 +195,7 @@ final class JCodingsImpl implements JCodings {
                         throw InternalErrors.indexOutOfBounds();
                     }
                 } else {
-                    i++;
+                    i += unwrap(jCoding).minLength();
                 }
             } else {
                 i += length;
@@ -209,7 +214,7 @@ final class JCodingsImpl implements JCodings {
         if (length < 1) {
             return Encodings.invalidCodepointReturnValue(errorHandling);
         }
-        return readCodePoint(jCoding, arrayA, p, end);
+        return readCodePoint(jCoding, arrayA, p, end, errorHandling);
     }
 
     @Override
@@ -221,7 +226,7 @@ final class JCodingsImpl implements JCodings {
         byte[] bytes = JCodings.asByteArray(array);
         int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? fromIndex : offset + fromIndex;
         Encoding enc = get(encoding);
-        int codeRange = isSingleByte(enc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte();
+        int codeRange = TSCodeRange.getValid(isSingleByte(enc));
         int characters = 0;
         int p = offsetBytes;
         final int end = offsetBytes + length;
@@ -231,10 +236,10 @@ final class JCodingsImpl implements JCodings {
             if (validCharacterProfile.profile(location, lengthOfCurrentCharacter > 0 && p + lengthOfCurrentCharacter <= end)) {
                 p += lengthOfCurrentCharacter;
             } else {
-                codeRange = isSingleByte(enc) ? TSCodeRange.getBrokenFixedWidth() : TSCodeRange.getBrokenMultiByte();
+                codeRange = TSCodeRange.getBroken(isSingleByte(enc));
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, there's no value in visiting any more ptr.
-                if (fixedWidthProfile.profile(location, isFixedWidth(enc))) {
+                if (fixedWidthProfile.profile(location, unwrap(enc).isFixedWidth())) {
                     characters = (length + minLength(enc) - 1) / minLength(enc);
                     return StringAttributes.create(characters, codeRange);
                 } else {
