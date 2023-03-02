@@ -172,7 +172,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             String envVarSetting = headArg.substring(ADD_ENV_VAR_OPTION.length());
             String[] keyValue = envVarSetting.split("=", 2);
-            nativeImage.imageBuilderEnvironment.put(keyValue[0], keyValue.length > 1 ? keyValue[1] : null);
+            String valueDefinedOrInherited = keyValue.length > 1 ? keyValue[1] : null;
+            nativeImage.imageBuilderEnvironment.put(keyValue[0], valueDefinedOrInherited);
             return true;
         }
         if (headArg.startsWith("-J")) {
