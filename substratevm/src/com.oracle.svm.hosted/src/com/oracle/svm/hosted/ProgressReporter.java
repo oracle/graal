@@ -49,6 +49,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -451,7 +452,12 @@ public class ProgressReporter {
             return;
         }
         calculateCodeBreakdown(compilationTasks);
-        calculateHeapBreakdown(metaAccess, heapObjects);
+        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
+    }
+
+    public void createHTMLHeapBreakDown(Map<String, Long> heapBreakdown, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(heapBreakdown, new HtmlStrategy(), metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
+        });
     }
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
@@ -495,7 +501,8 @@ public class ProgressReporter {
         return qualifier;
     }
 
-    private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+    private static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
+                    boolean reportStringBytes, long graphEncodingByteLength, BiConsumer<JsonMetric, Object> jsonMetricAction) {
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
@@ -528,13 +535,13 @@ public class ProgressReporter {
                     resourcesByteLength += resource.length;
                 }
             }
-            recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
+            jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
             if (resourcesByteLength > 0) {
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
                 remainingBytes -= resourcesByteLength;
             }
             if (graphEncodingByteLength >= 0) {
-                recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
+                jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }
@@ -954,7 +961,9 @@ public class ProgressReporter {
         }
     }
 
-    /** Start printing a new line. */
+    /**
+     * Start printing a new line.
+     */
     private DirectPrinter l() {
         return linePrinter.a(outputPrefix);
     }
@@ -1338,7 +1347,7 @@ public class ProgressReporter {
         }
     }
 
-    final class LinklessStrategy implements LinkStrategy {
+    static final class LinklessStrategy implements LinkStrategy {
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(text);
@@ -1350,8 +1359,10 @@ public class ProgressReporter {
         }
     }
 
-    final class LinkyStrategy implements LinkStrategy {
-        /** Adding link part individually for {@link LinePrinter#getCurrentTextLength()}. */
+    static final class LinkyStrategy implements LinkStrategy {
+        /**
+         * Adding link part individually for {@link LinePrinter#getCurrentTextLength()}.
+         */
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(ANSI.LINK_START + url).a(ANSI.LINK_TEXT).a(text).a(ANSI.LINK_END);
@@ -1360,6 +1371,18 @@ public class ProgressReporter {
         @Override
         public String asDocLink(String text, String htmlAnchor) {
             return String.format(ANSI.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
+        }
+    }
+
+    static final class HtmlStrategy implements LinkStrategy {
+        @Override
+        public void link(AbstractPrinter<?> printer, String text, String url) {
+            printer.a("<a href=\"" + url + "\" target=\"_blank\">").a(text).a("</a>");
+        }
+
+        @Override
+        public String asDocLink(String text, String htmlAnchor) {
+            return String.format(HTML.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
         }
     }
 
@@ -1387,6 +1410,10 @@ public class ProgressReporter {
         public static String strip(String string) {
             return string.replaceAll(STRIP_COLORS, "").replaceAll(STRIP_LINKS, "$1");
         }
+    }
+
+    static class HTML {
+        static final String LINK_FORMAT = "<a href=\"%s\" target=\"_blank\">%s</a>";
     }
 }
 
