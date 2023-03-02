@@ -229,7 +229,9 @@ public abstract class AbstractTruffleString {
      */
     @TruffleBoundary
     public final boolean isCompatibleToUncached(TruffleString.Encoding expectedEncoding) {
-        getCodeRangeUncached(Encoding.get(encoding));
+        if (isImmutable() && !isCompatibleToIntl(expectedEncoding)) {
+            getCodeRangeUncached(Encoding.get(encoding));
+        }
         return isCompatibleToIntl(expectedEncoding);
     }
 
