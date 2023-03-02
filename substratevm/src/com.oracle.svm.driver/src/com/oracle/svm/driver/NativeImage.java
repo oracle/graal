@@ -971,14 +971,27 @@ public class NativeImage {
         String classPathValue = mainAttributes.getValue("Class-Path");
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
+            /* Cache expensive reverse lookup in bundle-case */
+            Path origJarFilePath = null;
             for (String cp : classPathValue.split(" +")) {
                 Path manifestClassPath = Path.of(cp);
                 if (!manifestClassPath.isAbsolute()) {
                     /* Resolve relative manifestClassPath against directory containing jar */
-                    manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
+                    Path relativeManifestClassPath = manifestClassPath;
+                    manifestClassPath = jarFilePath.getParent().resolve(relativeManifestClassPath);
+                    if (useBundle() && !Files.exists(manifestClassPath)) {
+                        if (origJarFilePath == null) {
+                            origJarFilePath = bundleSupport.originalPath(jarFilePath);
+                        }
+                        if (origJarFilePath == null) {
+                            assert false : "Manifest Class-Path handling failed. No original path for " + jarFilePath + " available.";
+                            break;
+                        }
+                        manifestClassPath = origJarFilePath.getParent().resolve(relativeManifestClassPath);
+                    }
                 }
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
-                addImageClasspathEntry(destination, manifestClassPath, false);
+                addImageClasspathEntry(destination, manifestClassPath.normalize(), false);
             }
         }
     }

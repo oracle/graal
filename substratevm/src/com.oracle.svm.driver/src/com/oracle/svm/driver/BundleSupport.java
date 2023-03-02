@@ -416,8 +416,8 @@ final class BundleSupport {
             return origPath;
         }
 
-        // TODO Report error if overlapping dir-trees are passed in
-        // TODO add .endsWith(ClasspathUtils.cpWildcardSubstitute) handling (copy whole directory)
+        // TODO: Report error if overlapping dir-trees are passed in
+
         String origFileName = origPath.getFileName().toString();
         int extensionPos = origFileName.lastIndexOf('.');
         String baseName;
@@ -445,6 +445,16 @@ final class BundleSupport {
         nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
         pathSubstitutions.put(origPath, relativeSubstitutedPath);
         return substitutedPath;
+    }
+
+    Path originalPath(Path substitutedPath) {
+        Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
+        for (Map.Entry<Path, Path> entry : pathSubstitutions.entrySet()) {
+            if (entry.getValue().equals(relativeSubstitutedPath)) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 
     private void copyFiles(Path source, Path target, boolean overwrite) {
