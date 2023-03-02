@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,9 +89,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
     private static final int VARARGS = 0x00000080;
 
-    /* name of the superclass of proxy classes */
-    private static final String superclassName = "java/lang/Object";
-
     private Meta meta;
 
     /* name of proxy class */
@@ -162,7 +159,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      */
     private byte[] generateClassFile() {
         visit(V1_8, accessFlags, dotToSlash(className), null,
-                        superclassName, typeNames(interfaces));
+                        meta.sun_reflect_MagicAccessorImpl.getNameAsString(), typeNames(interfaces));
 
         // toString is implemented by interop protocol by means of
         // toDisplayString and asString
@@ -272,7 +269,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         ctor.visitParameter(null, 0);
         ctor.visitCode();
         ctor.visitVarInsn(ALOAD, 0);
-        ctor.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>",
+        ctor.visitMethodInsn(INVOKESPECIAL, meta.sun_reflect_MagicAccessorImpl.getNameAsString(), "<init>",
                         "()V", false);
         ctor.visitInsn(RETURN);
 
