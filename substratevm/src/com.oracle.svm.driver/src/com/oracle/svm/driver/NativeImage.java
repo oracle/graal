@@ -1453,7 +1453,20 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
-        sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
+        String sloppySanitationKey = "NATIVE_IMAGE_SLOPPY_BUILDER_SANITATION";
+        String sloppySanitationValue = System.getenv().getOrDefault(sloppySanitationKey, "false");
+        if (Boolean.parseBoolean(sloppySanitationValue)) {
+            if (useBundle()) {
+                bundleSupport = null;
+                throw showError("Bundle support is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+            }
+            if (!imageBuilderEnvironment.isEmpty()) {
+                throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+            }
+            sloppySanitizeJVMEnvironment(environment);
+        } else {
+            sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
+        }
         if (OS.WINDOWS.isCurrent()) {
             WindowsBuildEnvironmentUtil.propagateEnv(environment);
         }
@@ -1494,6 +1507,14 @@ public class NativeImage {
 
     boolean useBundle() {
         return bundleSupport != null;
+    }
+
+    @Deprecated
+    private static void sloppySanitizeJVMEnvironment(Map<String, String> environment) {
+        String[] jvmAffectingEnvironmentVariables = {"JAVA_COMPILER", "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH"};
+        for (String affectingEnvironmentVariable : jvmAffectingEnvironmentVariables) {
+            environment.remove(affectingEnvironmentVariable);
+        }
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {

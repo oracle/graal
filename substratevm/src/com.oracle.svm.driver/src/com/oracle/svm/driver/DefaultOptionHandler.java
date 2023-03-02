@@ -230,7 +230,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private List<String> readArgFile(Path file) {
+    private static List<String> readArgFile(Path file) {
         List<String> arguments = new ArrayList<>();
         // Use of the at sign (@) to recursively interpret files isn't supported.
         arguments.add("--disable-@files");
