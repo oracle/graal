@@ -280,6 +280,7 @@ suite = {
                     "jdk.internal.perf",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
+                    "jdk.internal.vm",
                     "jdk.internal.util",
                 ],
                 "java.management": [
@@ -288,6 +289,12 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
+                ],
+                "jdk.management.agent": [
+                    "jdk.internal.agent",
+                ],
+                "jdk.management.jfr": [
+                    "jdk.management.jfr"
                 ],
                 "jdk.httpserver@19+": [
                     "sun.net.httpserver.simpleserver",
@@ -853,6 +860,9 @@ suite = {
             "requires": [
                 "java.compiler",
                 "jdk.jfr",
+                "java.management",
+                "jdk.management.jfr",
+                "java.rmi",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1342,6 +1352,8 @@ suite = {
                     "java.net.http",
                     "jdk.sctp",
                     "jdk.scripting.nashorn@11..14",
+                    "jdk.management.agent",
+                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
