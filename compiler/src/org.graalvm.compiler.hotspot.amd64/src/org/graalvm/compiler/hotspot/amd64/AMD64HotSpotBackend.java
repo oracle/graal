@@ -290,7 +290,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             } else {
                 before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
             }
-            AMD64Call.recordDirectCall(crb, asm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), before);
+            crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
         }
 
         asm.align(config.codeEntryAlignment);

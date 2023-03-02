@@ -24,32 +24,28 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
-@Platforms(Platform.WINDOWS.class)
+@Platforms({Platform.WINDOWS.class, Platform.LINUX.class})
 @AutomaticallyRegisteredFeature
-public class JNIRegistrationAWTSupport implements InternalFeature {
+public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
-                            "JVM_CurrentTimeMillis",
-                            "JVM_RaiseSignal",
                             "jio_snprintf");
             jniRegistrationSupport.addJavaShimExports(
-                            "JDK_LoadSystemLibrary",
                             "JNU_CallMethodByName",
-                            "JNU_CallMethodByNameV",
                             "JNU_CallStaticMethodByName",
-                            "JNU_ClassString",
                             "JNU_GetEnv",
-                            "JNU_GetFieldByName",
                             "JNU_GetStaticFieldByName",
                             "JNU_IsInstanceOfByName",
                             "JNU_NewObjectByName",
@@ -57,13 +53,36 @@ public class JNIRegistrationAWTSupport implements InternalFeature {
                             "JNU_SetFieldByName",
                             "JNU_ThrowArrayIndexOutOfBoundsException",
                             "JNU_ThrowByName",
-                            "JNU_ThrowIOException",
                             "JNU_ThrowIllegalArgumentException",
                             "JNU_ThrowInternalError",
                             "JNU_ThrowNullPointerException",
-                            "JNU_ThrowOutOfMemoryError",
-                            "getEncodingFromLangID",
-                            "getJavaIDFromLangID");
+                            "JNU_ThrowOutOfMemoryError");
+            if (isWindows()) {
+                jniRegistrationSupport.addJvmShimExports(
+                                "JVM_CurrentTimeMillis",
+                                "JVM_RaiseSignal");
+                jniRegistrationSupport.addJavaShimExports(
+                                "JDK_LoadSystemLibrary",
+                                "JNU_CallMethodByNameV",
+                                "JNU_ClassString",
+                                "JNU_GetFieldByName",
+                                "JNU_ThrowIOException",
+                                "getEncodingFromLangID",
+                                "getJavaIDFromLangID");
+            } else {
+                jniRegistrationSupport.addJvmShimExports(
+                                "jio_fprintf");
+                jniRegistrationSupport.addJavaShimExports(
+                                "JNU_GetStringPlatformChars",
+                                "JNU_ReleaseStringPlatformChars");
+                if (JavaVersionUtil.JAVA_SPEC == 11) {
+                    jniRegistrationSupport.addJavaShimExports(
+                                    "JNU_ThrowNoSuchFieldError");
+                }
+                /* Since `awt` loads either `awt_headless` or `awt_xawt`, we register them both. */
+                jniRegistrationSupport.registerLibrary("awt_headless");
+                jniRegistrationSupport.registerLibrary("awt_xawt");
+            }
         }
         if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
@@ -73,14 +92,20 @@ public class JNIRegistrationAWTSupport implements InternalFeature {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
-                            "JNU_ThrowNullPointerException",
-                            "jio_snprintf");
+                            "JNU_ThrowNullPointerException");
+            if (isWindows()) {
+                jniRegistrationSupport.addJavaShimExports(
+                                "jio_snprintf");
+            } else {
+                jniRegistrationSupport.addJvmShimExports(
+                                "jio_snprintf");
+            }
         }
     }
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+        if (isWindows() && JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
             ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
                 /*
                  * Add a Windows library that is pulled in as a side effect of exporting the

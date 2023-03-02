@@ -75,7 +75,7 @@ public class ProcessorContext implements AutoCloseable {
 
     public ProcessorContext(ProcessingEnvironment env) {
         this.environment = env;
-        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false")) || TruffleProcessorOptions.suppressAllWarnings(env);
+        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false")) && !TruffleProcessorOptions.suppressAllWarnings(env);
 
         String[] suppressWarnings = null;
         if (emitWarnings) {

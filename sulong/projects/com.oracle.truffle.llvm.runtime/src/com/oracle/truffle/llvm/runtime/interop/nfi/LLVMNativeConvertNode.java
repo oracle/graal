@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,8 +38,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.FP80FromNativeToLLVMNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.FP128FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.IdNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
@@ -82,6 +84,8 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
                     return I1FromNativeToLLVMNodeGen.create();
                 case X86_FP80:
                     return FP80FromNativeToLLVMNodeGen.create();
+                case F128:
+                    return FP128FromNativeToLLVMNodeGen.create();
             }
         }
         return IdNodeGen.create();
@@ -177,6 +181,22 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
                 long fraction = interop.readBufferLong(value, ByteOrder.LITTLE_ENDIAN, 0);
                 short expSign = interop.readBufferShort(value, ByteOrder.LITTLE_ENDIAN, 8);
                 return new LLVM80BitFloat(expSign, fraction);
+            } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+    }
+
+    abstract static class FP128FromNativeToLLVMNode extends LLVMNativeConvertNode {
+
+        @Specialization(limit = "1")
+        @GenerateAOT.Exclude
+        protected LLVM128BitFloat convert(Object value,
+                        @CachedLibrary("value") InteropLibrary interop) {
+            try {
+                long fraction = interop.readBufferLong(value, ByteOrder.LITTLE_ENDIAN, 0);
+                long expSign = interop.readBufferLong(value, ByteOrder.LITTLE_ENDIAN, 8);
+                return new LLVM128BitFloat(expSign, fraction);
             } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
                 throw CompilerDirectives.shouldNotReachHere(ex);
             }

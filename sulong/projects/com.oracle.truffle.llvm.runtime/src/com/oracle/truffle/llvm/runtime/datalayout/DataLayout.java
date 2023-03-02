@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -160,6 +160,8 @@ public final class DataLayout {
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 64);
                 case X86_FP80:
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 80);
+                case F128:
+                    return getDataTypeSpecification(DataLayoutType.FLOAT, 128);
             }
         } else if (baseType instanceof VariableBitWidthType) {
             int bits = ((VariableBitWidthType) baseType).getBitSizeInt();

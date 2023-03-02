@@ -117,7 +117,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    @CompilationFinal public boolean singleContext;
+    @CompilationFinal public boolean singleContext = true;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -159,7 +159,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
-
         final String path;
         final WeakReference<BitcodeID> id;
 

@@ -57,7 +57,7 @@ public class UnifiedFieldTypeStore extends FieldTypeStore {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("UnifiedFieldStore<").append(field.format("%h.%n")).append("\n").append(object).append(">");
+        str.append("UnifiedFieldStore<").append(field.format("%h.%n")).append(System.lineSeparator()).append(object).append(">");
         return str.toString();
     }
 

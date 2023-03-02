@@ -207,6 +207,9 @@ public final class NFATraceFinderGenerator {
         dummyInitialState.setPredecessors(new NFAStateTransition[]{newAnchoredEntry, newUnAnchoredEntry});
         ArrayList<PathElement> graphPath = new ArrayList<>();
         for (NFAStateTransition entry : new NFAStateTransition[]{originalNFA.getAnchoredEntry()[0], originalNFA.getUnAnchoredEntry()[0]}) {
+            if (entry == null) {
+                continue;
+            }
             for (NFAStateTransition t : entry.getTarget().getSuccessors()) {
                 // All paths start from the original initial states, which will be duplicated and
                 // become leaf nodes in the tree.
