@@ -198,6 +198,7 @@ class LibraryConfig(AbstractNativeImageConfig):
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
         self.jvm_library = jvm_library
+        self.headers = headers
 
 
 class GraalVmComponent(object):
