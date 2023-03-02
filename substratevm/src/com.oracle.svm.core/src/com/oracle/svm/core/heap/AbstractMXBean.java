@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +23,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.heap;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+public abstract class AbstractMXBean implements NotificationEmitter {
 
-/**
- * Holds all JFR Java-level event classes.
- */
-public class JfrJavaEvents {
-    private static final List<Class<? extends jdk.internal.event.Event>> EVENT_CLASSES = new ArrayList<>();
-    private static final List<Class<? extends jdk.jfr.Event>> JFR_EVENT_CLASSES = new ArrayList<>();
+    protected static final long UNDEFINED_MEMORY_USAGE = -1L;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @SuppressWarnings("unchecked")
-    public static synchronized void registerEventClass(Class<? extends jdk.internal.event.Event> eventClass) {
-        EVENT_CLASSES.add(eventClass);
-        if (jdk.jfr.Event.class.isAssignableFrom(eventClass)) {
-            JFR_EVENT_CLASSES.add((Class<? extends jdk.jfr.Event>) eventClass);
-        }
+    @Override
+    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
     }
 
-    public static List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
-        return EVENT_CLASSES;
+    @Override
+    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
     }
 
-    public static List<Class<? extends jdk.jfr.Event>> getJfrEventClasses() {
-        return JFR_EVENT_CLASSES;
+    @Override
+    public void removeNotificationListener(NotificationListener listener) {
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+        return new MBeanNotificationInfo[0];
     }
 }

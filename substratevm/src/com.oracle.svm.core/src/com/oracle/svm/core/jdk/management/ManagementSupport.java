@@ -142,12 +142,6 @@ public final class ManagementSupport implements ThreadListener {
         addPlatformManagedObjectSingleton(java.lang.management.RuntimeMXBean.class, runtimeMXBean);
         addPlatformManagedObjectSingleton(com.sun.management.ThreadMXBean.class, threadMXBean);
         /*
-         * The following platform objects must be registered as existing and valid, even though we
-         * do not have an implementation yet.
-         */
-        addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Collections.emptyList());
-        addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
-        /*
          * Register the platform object for the OS using a supplier that lazily initializes it at
          * run time.
          */
