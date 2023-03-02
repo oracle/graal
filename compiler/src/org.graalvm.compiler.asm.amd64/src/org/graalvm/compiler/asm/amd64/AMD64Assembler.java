@@ -2377,6 +2377,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ADD.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void adcl(Register dst, int imm32) {
+        ADC.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
+    }
+
     public final void addpd(Register dst, Register src) {
         SSEOp.ADD.emit(this, PD, dst, src);
     }
@@ -2433,6 +2437,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void andl(Register dst, Register src) {
         AND.rmOp.emit(this, DWORD, dst, src);
+    }
+
+    public final void mull(Register src) {
+        MUL.emit(this, DWORD, src);
     }
 
     public final void andpd(Register dst, Register src) {

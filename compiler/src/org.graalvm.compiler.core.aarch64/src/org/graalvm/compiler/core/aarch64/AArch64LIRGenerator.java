@@ -59,6 +59,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMulAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
@@ -700,6 +701,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
         append(new AArch64BigIntegerMultiplyToLenOp(asAllocatable(x), asAllocatable(xlen), asAllocatable(y), asAllocatable(ylen), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public Variable emitBigIntegerMulAdd(Value out, Value in, Value offset, Value len, Value k) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64BigIntegerMulAddOp(this, asAllocatable(out), asAllocatable(in), asAllocatable(offset), asAllocatable(len), asAllocatable(k), asAllocatable(result)));
+        return result;
     }
 
     @Override
