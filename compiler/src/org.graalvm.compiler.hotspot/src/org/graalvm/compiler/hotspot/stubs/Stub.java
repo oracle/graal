@@ -60,6 +60,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -313,10 +314,13 @@ public abstract class Stub {
     }
 
     protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch).copy();
 
         PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
         emptyHighTier.appendPhase(new EmptyHighTier());
+
+        defaultSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        defaultSuites.getLowTier().removeSubTypePhases(Speculative.class);
 
         return new Suites(emptyHighTier, defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }
