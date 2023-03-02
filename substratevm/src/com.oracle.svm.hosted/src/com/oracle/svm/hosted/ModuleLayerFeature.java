@@ -330,6 +330,19 @@ public final class ModuleLayerFeature implements InternalFeature {
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
                     Collection<Module> reachableSyntheticModules, Collection<String> rootModules) {
         /*
+         * Module layer for image build contains modules from the module path that need to be
+         * included in the runtime boot module layer. Furthermore, this module layer is not needed
+         * at runtime. Because of that, we find its modules ahead of time to include it in the
+         * runtime boot module layer.
+         */
+        ModuleLayer moduleLayerForImageBuild = accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild;
+        Set<String> moduleLayerForImageBuildModules = moduleLayerForImageBuild
+                        .modules()
+                        .stream()
+                        .map(Module::getName)
+                        .collect(Collectors.toSet());
+
+        /*
          * A mapping from hosted to runtime module layers. Used when looking up runtime module layer
          * instances for hosted parent module layers.
          */
@@ -359,6 +372,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
             if (hostedLayerIsBootModuleLayer) {
+                reachableModuleNamesForHostedModuleLayer.addAll(moduleLayerForImageBuildModules);
                 reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
             }
 
@@ -665,6 +679,9 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         public ModuleFinder getAppModuleFinder() {
+            /*
+             * Remove the filtering of library-support.jar once GR-44584 is merged.
+             */
             List<Path> appModulePath = imageClassLoader.applicationModulePath()
                             .stream()
                             .filter(p -> !p.endsWith("/lib/svm/library-support.jar"))
