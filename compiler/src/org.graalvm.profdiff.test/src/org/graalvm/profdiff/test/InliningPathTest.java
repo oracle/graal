@@ -30,32 +30,18 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
-import org.graalvm.profdiff.core.optimization.Optimization;
 import org.junit.Test;
 
 public class InliningPathTest {
     @Test
-    public void pathToEnclosingMethod() {
-        EconomicMap<String, Integer> position = EconomicMap.create();
-        position.put("c", 3); // the position starts with the innermost method
-        position.put("b", 2);
-        position.put("a", 1);
-        Optimization optimization = new Optimization("foo", "bar", position, null);
-        InliningPath actual = InliningPath.ofEnclosingMethod(optimization);
+    public void factoryMethodWorks() {
         InliningPath expected = new InliningPath(List.of(
-                        new InliningPath.PathElement("a", Optimization.UNKNOWN_BCI),
-                        new InliningPath.PathElement("b", 1),
-                        new InliningPath.PathElement("c", 2)));
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    public void emptyPathToEnclosingMethod() {
-        Optimization optimization = new Optimization("foo", "bar", null, null);
-        assertEquals(InliningPath.EMPTY, InliningPath.ofEnclosingMethod(optimization));
+                        new InliningPath.PathElement("a()", -1),
+                        new InliningPath.PathElement("b()", 2),
+                        new InliningPath.PathElement("c()", 3)));
+        assertEquals(expected, InliningPath.of("a()", -1, "b()", 2, "c()", 3));
     }
 
     /**
@@ -68,7 +54,7 @@ public class InliningPathTest {
      * Inlining tree
      *     a() at bci -1
      *         b() at bci 1
-     *             (abstract) c() at bci 2
+     *             (indirect) c() at bci 2
      *                 d() at bci 3
      * </pre>
      */
