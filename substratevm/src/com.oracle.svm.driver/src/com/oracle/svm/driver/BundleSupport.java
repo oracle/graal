@@ -40,11 +40,11 @@ import java.time.format.DateTimeParseException;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -87,7 +87,7 @@ final class BundleSupport {
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
     private final List<String> nativeImageArgs;
-    private Collection<String> updatedNativeImageArgs;
+    private List<String> updatedNativeImageArgs;
 
     boolean loadBundle;
     boolean writeBundle;
@@ -584,37 +584,24 @@ final class BundleSupport {
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
-            ArrayList<String> cleanBuildArgs = new ArrayList<>();
-            for (String buildArg : updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs) {
-                if (buildArg.equals(UNLOCK_BUNDLE_SUPPORT_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith(BUNDLE_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith(nativeImage.oHPath)) {
-                    continue;
-                }
-                if (buildArg.startsWith(DefaultOptionHandler.envVarArgPrefix)) {
-                    continue;
-                }
-                if (buildArg.equals(CmdLineOptionHandler.VERBOSE_OPTION)) {
-                    continue;
-                }
-                if (buildArg.equals(CmdLineOptionHandler.DRY_RUN_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith("-Dllvm.bin.dir=")) {
-                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(arg -> arg.startsWith("-Dllvm.bin.dir=")).findFirst();
-                    if (existing.isPresent() && !existing.get().equals(buildArg)) {
-                        throw NativeImage.showError("Bundle native-image argument '" + buildArg + "' conflicts with existing '" + existing.get() + "'.");
+            List<String> equalsNonBundleOptions = List.of(UNLOCK_BUNDLE_SUPPORT_OPTION, CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
+            List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
+            ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
+            ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
+            while (bundleArgsIterator.hasNext()) {
+                String arg = bundleArgsIterator.next();
+                if (equalsNonBundleOptions.contains(arg) || startsWithNonBundleOptions.stream().anyMatch(arg::startsWith)) {
+                    bundleArgsIterator.remove();
+                } else if (arg.startsWith("-Dllvm.bin.dir=")) {
+                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(a -> a.startsWith("-Dllvm.bin.dir=")).findFirst();
+                    if (existing.isPresent() && !existing.get().equals(arg)) {
+                        throw NativeImage.showError("Bundle native-image argument '" + arg + "' conflicts with existing '" + existing.get() + "'.");
                     }
-                    continue;
+                    bundleArgsIterator.remove();
                 }
-                cleanBuildArgs.add(buildArg);
             }
             /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, cleanBuildArgs, null, BundleSupport::printBuildArg);
+            JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
         }
