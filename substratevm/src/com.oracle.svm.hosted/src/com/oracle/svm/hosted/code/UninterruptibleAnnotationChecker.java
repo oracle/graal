@@ -47,7 +47,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -105,7 +105,7 @@ public final class UninterruptibleAnnotationChecker {
             for (String violation : violations) {
                 message = message + System.lineSeparator() + "- " + violation;
             }
-            throw UserError.abort("%s", message);
+            throw VMError.shouldNotReachHere("%s", message);
         }
     }
 
@@ -132,7 +132,7 @@ public final class UninterruptibleAnnotationChecker {
             if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
                                 "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, please remove 'mayBeInlined = true'. " +
-                                "Otherwise, used the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
+                                "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
             }
 
             if (AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
@@ -253,7 +253,7 @@ public final class UninterruptibleAnnotationChecker {
     private void checkNoAllocation(ResolvedJavaMethod method, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (isAllocationNode(node)) {
-                violations.add("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
+                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to allocate.");
             }
         }
     }
@@ -261,7 +261,7 @@ public final class UninterruptibleAnnotationChecker {
     private void checkNoSynchronization(ResolvedJavaMethod method, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (node instanceof MonitorEnterNode) {
-                violations.add("Annotated method: " + method.format("%H.%n(%p)") + " uses 'synchronized'.");
+                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to use 'synchronized'.");
             }
         }
     }
