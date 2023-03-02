@@ -525,23 +525,19 @@ public class UninterruptibleUtils {
          * Write a char in modified UTF8 format into the buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static Pointer writeModifiedUTF8(Pointer buffer, char c, boolean replaceDotWithSlash) {
+        private static Pointer writeModifiedUTF8(Pointer buffer, char c) {
             Pointer pos = buffer;
-            char replacedChar = c;
-            if (replaceDotWithSlash && replacedChar == '.') {
-                replacedChar = '/';
-            }
-            if (replacedChar >= 0x0001 && replacedChar <= 0x007F) {
-                pos.writeByte(0, (byte) replacedChar);
+            if (c >= 0x0001 && c <= 0x007F) {
+                pos.writeByte(0, (byte) c);
                 pos = pos.add(1);
-            } else if (replacedChar <= 0x07FF) {
-                pos.writeByte(0, (byte) (0xC0 | (replacedChar >> 6)));
-                pos.writeByte(1, (byte) (0x80 | (replacedChar & 0x3F)));
+            } else if (c <= 0x07FF) {
+                pos.writeByte(0, (byte) (0xC0 | (c >> 6)));
+                pos.writeByte(1, (byte) (0x80 | (c & 0x3F)));
                 pos = pos.add(2);
             } else {
-                pos.writeByte(0, (byte) (0xE0 | (replacedChar >> 12)));
-                pos.writeByte(1, (byte) (0x80 | ((replacedChar >> 6) & 0x3F)));
-                pos.writeByte(2, (byte) (0x80 | (replacedChar & 0x3F)));
+                pos.writeByte(0, (byte) (0xE0 | (c >> 12)));
+                pos.writeByte(1, (byte) (0x80 | ((c >> 6) & 0x3F)));
+                pos.writeByte(2, (byte) (0x80 | (c & 0x3F)));
                 pos = pos.add(3);
             }
             return pos;
@@ -554,9 +550,17 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
+            return modifiedUTF8Length(string, addNullTerminator, null);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator, CharReplacer replacer) {
             int result = 0;
             for (int index = 0; index < string.length(); index++) {
                 char ch = StringUtil.charAt(string, index);
+                if (replacer != null) {
+                    ch = replacer.replace(ch);
+                }
                 result += modifiedUTF8Length(ch);
             }
 
@@ -572,15 +576,18 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
-
-            return toModifiedUTF8(string, buffer, bufferEnd, addNullTerminator, false);
+            return toModifiedUTF8(string, buffer, bufferEnd, addNullTerminator, null);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, boolean replaceDotWithSlash) {
+        public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
             Pointer pos = buffer;
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index), replaceDotWithSlash);
+                char ch = StringUtil.charAt(string, index);
+                if (replacer != null) {
+                    ch = replacer.replace(ch);
+                }
+                pos = writeModifiedUTF8(pos, ch);
             }
 
             if (addNullTerminator) {
@@ -590,5 +597,10 @@ public class UninterruptibleUtils {
             VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
             return pos;
         }
+    }
+
+    @FunctionalInterface
+    public interface CharReplacer {
+        char replace(char val);
     }
 }

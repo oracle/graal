@@ -31,6 +31,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
@@ -191,16 +192,21 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putString(JfrNativeEventWriterData data, String string) {
+        putString(data, string, null);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putString(JfrNativeEventWriterData data, String string, CharReplacer replacer) {
         if (string == null) {
             putByte(data, JfrChunkWriter.StringEncoding.NULL.byteValue);
         } else if (string.isEmpty()) {
             putByte(data, JfrChunkWriter.StringEncoding.EMPTY_STRING.byteValue);
         } else {
-            int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false);
+            int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false, replacer);
             putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             putInt(data, mUTF8Length);
             if (ensureSize(data, mUTF8Length)) {
-                Pointer newPosition = UninterruptibleUtils.String.toModifiedUTF8(string, data.getCurrentPos(), data.getEndPos(), false);
+                Pointer newPosition = UninterruptibleUtils.String.toModifiedUTF8(string, data.getCurrentPos(), data.getEndPos(), false, replacer);
                 data.setCurrentPos(newPosition);
             }
         }

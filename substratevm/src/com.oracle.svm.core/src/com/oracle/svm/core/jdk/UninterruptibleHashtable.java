@@ -60,6 +60,14 @@ public interface UninterruptibleHashtable {
     boolean putIfAbsent(UninterruptibleEntry valueOnStack);
 
     /**
+     * Inserts {@code valueOnStack} into the hashtable. May only be called if it is guaranteed that
+     * there is no matching entry in the table. Returns the inserted entry. If an error occurred
+     * while inserting the entry, a null pointer is returned instead.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UninterruptibleEntry putNew(UninterruptibleEntry valueOnStack);
+
+    /**
      * If the hashtable contains an existing entry that matches {@code valueOnStack}, then this
      * existing entry will be returned and no value will be inserted.
      * 
