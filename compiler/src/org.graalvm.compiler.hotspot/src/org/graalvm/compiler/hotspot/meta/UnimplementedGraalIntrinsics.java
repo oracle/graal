@@ -257,12 +257,6 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         // BigInteger intrinsics
-        if (!config.useMultiplyToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
-        }
-        if (!config.useMulAddIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
-        }
         if (!config.useMontgomeryMultiplyIntrinsic()) {
             add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
         }

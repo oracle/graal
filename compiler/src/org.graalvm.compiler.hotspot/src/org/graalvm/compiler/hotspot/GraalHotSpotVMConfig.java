@@ -101,18 +101,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class, false, JDK < 18);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
     public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
-    public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
-    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
-    private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
-    private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
-    private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class);
     private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
@@ -126,10 +121,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
      * been exported, so we have to check both if the flag is on and if we have the stub.
      */
-    public boolean useMultiplyToLenIntrinsic() {
-        return useMultiplyToLenIntrinsic && multiplyToLen != 0;
-    }
-
     public boolean useSHA1Intrinsics() {
         return useSHA1Intrinsics && sha1ImplCompress != 0 && sha1ImplCompressMultiBlock != 0;
     }
@@ -142,20 +133,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return useSHA512Intrinsics && sha512ImplCompress != 0 && sha512ImplCompressMultiBlock != 0;
     }
 
-    public boolean useGHASHIntrinsics() {
-        return useGHASHIntrinsics && ghashProcessBlocks != 0;
-    }
-
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
     }
 
     public boolean useMontgomerySquareIntrinsic() {
         return useMontgomerySquareIntrinsic && montgomerySquare != 0;
-    }
-
-    public boolean useMulAddIntrinsic() {
-        return useMulAddIntrinsic && mulAdd != 0;
     }
 
     public boolean useSquareToLenIntrinsic() {
@@ -176,14 +159,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean useCRC32CIntrinsics() {
         return useCRC32CIntrinsics && updateBytesCRC32C != 0;
-    }
-
-    public boolean useAESCTRIntrinsics() {
-        return useAESCTRIntrinsics && counterModeAESCrypt != 0;
-    }
-
-    public boolean useVectorizedMismatchIntrinsic() {
-        return useVectorizedMismatchIntrinsic && vectorizedMismatch != 0;
     }
 
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
@@ -527,10 +502,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long codeCacheLowBound = getFieldValue("CodeCache::_low_bound", Long.class, "address");
     public final long codeCacheHighBound = getFieldValue("CodeCache::_high_bound", Long.class, "address");
 
-    public final long aescryptEncryptBlockStub = getFieldValue("StubRoutines::_aescrypt_encryptBlock", Long.class, "address");
-    public final long aescryptDecryptBlockStub = getFieldValue("StubRoutines::_aescrypt_decryptBlock", Long.class, "address");
-    public final long cipherBlockChainingEncryptAESCryptStub = getFieldValue("StubRoutines::_cipherBlockChaining_encryptAESCrypt", Long.class, "address");
-    public final long cipherBlockChainingDecryptAESCryptStub = getFieldValue("StubRoutines::_cipherBlockChaining_decryptAESCrypt", Long.class, "address");
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
@@ -545,10 +516,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long sha3ImplCompress = getFieldValue("StubRoutines::_sha3_implCompress", Long.class, "address", 0L, JVMCI ? JDK >= 17 : JDK >= 19);
     public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address", 0L, JVMCI ? JDK >= 17 : JDK >= 19);
 
-    public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address");
-
-    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
-    public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
     public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address");
 
@@ -565,10 +532,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
     public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address");
-    public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address");
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
-    public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address");
 
     public final long bigIntegerLeftShiftWorker = getFieldValue("StubRoutines::_bigIntegerLeftShiftWorker", Long.class, "address");
     public final long bigIntegerRightShiftWorker = getFieldValue("StubRoutines::_bigIntegerRightShiftWorker", Long.class, "address");
