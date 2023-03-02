@@ -246,7 +246,10 @@ public final class ModuleLayerFeature implements InternalFeature {
         /*
          * We need to include module roots required for Native Image to work at runtime.
          */
-        systemModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.getBuilderModuleFinder(), systemModuleFinder);
+        ModuleFinder builderModuleFinder = NativeImageClassLoaderSupport.finderFor("jdk.module.path");
+        if (builderModuleFinder != null) {
+            systemModuleFinder = ModuleFinder.compose(builderModuleFinder, systemModuleFinder);
+        }
 
         if (haveUpgradeModulePath) {
             systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
@@ -328,20 +331,7 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
-                    Collection<Module> reachableSyntheticModules, Collection<String> rootModules) {
-        /*
-         * Module layer for image build contains modules from the module path that need to be
-         * included in the runtime boot module layer. Furthermore, this module layer is not needed
-         * at runtime. Because of that, we find its modules ahead of time to include it in the
-         * runtime boot module layer.
-         */
-        ModuleLayer moduleLayerForImageBuild = accessImpl.imageClassLoader.classLoaderSupport.moduleLayerForImageBuild;
-        Set<String> moduleLayerForImageBuildModules = moduleLayerForImageBuild
-                        .modules()
-                        .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
-
+                    Collection<Module> reachableSyntheticModules, Collection<String> rootModuleNames) {
         /*
          * A mapping from hosted to runtime module layers. Used when looking up runtime module layer
          * instances for hosted parent module layers.
@@ -362,34 +352,27 @@ public final class ModuleLayerFeature implements InternalFeature {
                 continue;
             }
 
-            boolean hostedLayerIsBootModuleLayer = hostedModuleLayer == ModuleLayer.boot();
+            boolean isBootModuleLayer = hostedModuleLayer == ModuleLayer.boot();
 
-            Set<String> reachableModuleNamesForHostedModuleLayer = hostedModuleLayer
+            Set<String> moduleNames = hostedModuleLayer
                             .modules()
                             .stream()
                             .map(Module::getName)
                             .collect(Collectors.toSet());
 
-            reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
-            if (hostedLayerIsBootModuleLayer) {
-                reachableModuleNamesForHostedModuleLayer.addAll(moduleLayerForImageBuildModules);
-                reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
-            }
-
-            Function<String, ClassLoader> clf = name -> moduleLayerFeatureUtils.getClassLoaderForModuleInModuleLayer(hostedModuleLayer, name);
-
             Set<Module> syntheticModules = new HashSet<>();
-            if (hostedLayerIsBootModuleLayer) {
+            moduleNames.retainAll(allReachableAndRequiredModuleNames);
+            if (isBootModuleLayer) {
+                moduleNames.addAll(rootModuleNames);
                 syntheticModules.addAll(reachableSyntheticModules);
             }
 
             List<ModuleLayer> parents = hostedModuleLayer.parents().stream().map(moduleLayerPairs::get).collect(Collectors.toList());
 
-            Configuration cf = null;
-            if (!hostedLayerIsBootModuleLayer) {
-                cf = hostedModuleLayer.configuration();
-            }
-            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl.imageClassLoader, reachableModuleNamesForHostedModuleLayer, syntheticModules, clf, cf);
+            Configuration cf = isBootModuleLayer ? null : hostedModuleLayer.configuration();
+            Function<String, ClassLoader> clf = name -> moduleLayerFeatureUtils.getClassLoaderForModuleInModuleLayer(hostedModuleLayer, name);
+
+            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl.imageClassLoader, moduleNames, syntheticModules, clf, cf);
             moduleLayerPairs.put(hostedModuleLayer, runtimeModuleLayer);
         }
 
@@ -693,16 +676,6 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        public ModuleFinder getBuilderModuleFinder() {
-            Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
-            if (ModuleSupport.modulePathBuild) {
-                ModuleFinder builderModuleFinder = ModuleFinder.compose(imageClassLoader.classLoaderSupport.modulepathModuleFinder, ModuleFinder.ofSystem());
-                return invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(builderModule.getName()), Set.of());
-            } else {
-                return ModuleFinder.of();
-            }
-        }
-
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
             if (hostedModule.isNamed()) {
                 return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
@@ -733,7 +706,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 if (optional) {
                     return null;
                 } else {
-                    throw VMError.shouldNotReachHere("No runtime modules registered for class loader: " + loader);
+                    throw VMError.shouldNotReachHere("Failed to find runtime module for hosted module " + hostedModuleName + ". No runtime modules have been registered for class loader: " + loader);
                 }
             }
             Module runtimeModule = loaderRuntimeModules.get(hostedModuleName);
