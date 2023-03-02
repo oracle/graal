@@ -1584,7 +1584,10 @@ public class NativeImage {
         try {
             build(config, nativeImageProvider);
         } catch (NativeImageError e) {
-            NativeImage.show(System.err::println, "Error: " + e.getMessage());
+            String message = e.getMessage();
+            if (message != null) {
+                NativeImage.show(System.err::println, "Error: " + message);
+            }
             Throwable cause = e.getCause();
             while (cause != null) {
                 NativeImage.show(System.err::println, "Caused by: " + cause);
@@ -1620,8 +1623,7 @@ public class NativeImage {
                         break;
                     case BUILDER_ERROR:
                         /* Exit, builder has handled error reporting. */
-                        System.exit(exitStatusCode);
-                        break;
+                        throw showError(null, null, exitStatusCode);
                     case FALLBACK_IMAGE:
                         nativeImage.showMessage("Generating fallback image...");
                         build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
@@ -1632,8 +1634,7 @@ public class NativeImage {
                         break;
                     case OUT_OF_MEMORY:
                         nativeImage.showOutOfMemoryWarning();
-                        System.exit(exitStatusCode);
-                        break;
+                        throw showError(null, null, exitStatusCode);
                     default:
                         String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
                                         nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, exitStatusCode);
