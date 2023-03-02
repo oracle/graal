@@ -191,12 +191,14 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, headers=True, **kwargs):
         """
         :param bool jvm_library
+        :param bool headers: whether headers produced by the native image build should be placed next to the native image.
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
         self.jvm_library = jvm_library
+        self.headers = headers
 
 
 class GraalVmComponent(object):
