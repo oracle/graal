@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.IsolateThread;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
@@ -53,7 +55,7 @@ public final class ThreadData extends UnacquiredThreadData {
             throw VMError.shouldNotReachHere(ex);
         }
     }
-    private volatile int lock;
+    private volatile IsolateThread lock;
     private boolean detached;
     private long refCount;
 

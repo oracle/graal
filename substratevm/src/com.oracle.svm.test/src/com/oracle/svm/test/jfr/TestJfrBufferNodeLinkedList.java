@@ -26,38 +26,39 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList;
-import com.oracle.svm.core.jfr.JfrBufferNode;
-import org.graalvm.word.WordFactory;
-import com.oracle.svm.core.jfr.JfrBufferType;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrBuffer;
 import com.oracle.svm.core.jfr.JfrBufferAccess;
+import com.oracle.svm.core.jfr.JfrBufferList;
+import com.oracle.svm.core.jfr.JfrBufferNode;
 import com.oracle.svm.core.jfr.JfrBufferNodeAccess;
-import org.graalvm.nativeimage.CurrentIsolate;
-import static org.junit.Assert.assertTrue;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrBufferType;
 
 public class TestJfrBufferNodeLinkedList {
 
     @Test
     public void testBasicAdditionAndRemoval() {
         final int nodeCount = 10;
-        final JfrBufferNodeLinkedList list = new JfrBufferNodeLinkedList();
+        final JfrBufferList list = new JfrBufferList();
         addNodes(list, nodeCount);
         int count = countNodes(list);
-        assertTrue("Number of nodes in list does not match nodes added.", count == nodeCount);
+        assertEquals("Number of nodes in list does not match nodes added.", count, nodeCount);
         cleanUpList(list);
     }
 
     @Test
     public void testMiddleRemoval() {
         final int nodeCount = 10;
-        JfrBufferNodeLinkedList list = new JfrBufferNodeLinkedList();
+        JfrBufferList list = new JfrBufferList();
         addNodes(list, nodeCount);
         removeNthNode(list, nodeCount / 2);
-        assertTrue("Removal from middle failed", countNodes(list) == nodeCount - 1);
+        assertEquals("Removal from middle failed", countNodes(list), nodeCount - 1);
         cleanUpList(list);
     }
 
@@ -65,29 +66,29 @@ public class TestJfrBufferNodeLinkedList {
     public void testConcurrentAddition() throws Exception {
         final int nodeCountPerThread = 10;
         final int threads = 10;
-        JfrBufferNodeLinkedList list = new JfrBufferNodeLinkedList();
+        JfrBufferList list = new JfrBufferList();
         Runnable r = () -> {
             addNodes(list, nodeCountPerThread);
         };
         Stressor.execute(threads, r);
-        assertTrue("Incorrect number of nodes added", countNodes(list) == nodeCountPerThread * threads);
+        assertEquals("Incorrect number of nodes added", countNodes(list), nodeCountPerThread * threads);
         cleanUpList(list);
     }
 
-    private static void cleanUpList(JfrBufferNodeLinkedList list) {
+    private static void cleanUpList(JfrBufferList list) {
         JfrBufferNode node = removeAllNodes(list);
         assertTrue("Could not remove all nodes", node.isNull());
     }
 
-    private static void addNodes(JfrBufferNodeLinkedList list, int nodeCount) {
+    private static void addNodes(JfrBufferList list, int nodeCount) {
         for (int i = 0; i < nodeCount; i++) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(32), JfrBufferType.THREAD_LOCAL_NATIVE);
-            list.addNode(buffer, CurrentIsolate.getCurrentThread());
+            list.addNode(buffer);
         }
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private static int countNodes(JfrBufferNodeLinkedList list) {
+    private static int countNodes(JfrBufferList list) {
         int count = 0;
         JfrBufferNode node = list.getHead();
         while (node.isNonNull()) {
@@ -98,12 +99,12 @@ public class TestJfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private static JfrBufferNode removeAllNodes(JfrBufferNodeLinkedList list) {
+    private static JfrBufferNode removeAllNodes(JfrBufferList list) {
         // Try removing the nodes
         JfrBufferNode node = list.getHead();
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
-            JfrBufferAccess.free(node.getValue());
+            JfrBufferAccess.free(node.getBuffer());
             /*
              * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the node
              * at any time.
@@ -116,14 +117,14 @@ public class TestJfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private static void removeNthNode(JfrBufferNodeLinkedList list, int target) {
+    private static void removeNthNode(JfrBufferList list, int target) {
         JfrBufferNode prev = WordFactory.nullPointer();
         JfrBufferNode node = list.getHead();
         int count = 0;
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
             if (count == target) {
-                JfrBufferAccess.free(node.getValue());
+                JfrBufferAccess.free(node.getBuffer());
                 /*
                  * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the
                  * node at any time.

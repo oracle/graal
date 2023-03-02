@@ -24,32 +24,32 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
+import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
+
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
-import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.locks.VMMutex;
-
-import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
-import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except
@@ -128,7 +128,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    public boolean openFile(String outputFile) {
+    public void openFile(String outputFile) {
         assert lock.isOwner();
         isFinal = false;
         generation = 1;
@@ -141,23 +141,22 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         fd = getFileSupport().open(filename, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         writeFileHeader();
         lastCheckpointOffset = WordFactory.signed(-1); // must reset this on new chunk
-        return true;
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public boolean write(JfrBuffer buffer) {
-        assert JfrBufferAccess.isLockedByCurrentThread(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
+        assert buffer.isNonNull();
+        assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
             return false;
         }
 
         boolean success = getFileSupport().write(fd, JfrBufferAccess.getFlushedPos(buffer), unflushedSize);
-
         JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
 
         if (!success) {
-            // We lost some data because the write failed.
+            /* We lost some data because the write failed. */
             return false;
         }
         return getFileSupport().position(fd).greaterThan(WordFactory.signed(notificationThreshold));
@@ -571,64 +570,59 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         traverseList(getJavaBufferList(), flush);
         traverseList(getNativeBufferList(), flush);
 
-        JfrBuffers buffers = globalMemory.getBuffers();
-        for (int i = 0; i < globalMemory.getBufferCount(); i++) {
-            JfrBuffer buffer = buffers.addressOf(i).read();
-            if (!JfrBufferAccess.tryLock(buffer)) { // one attempt
-                assert flush;
-                continue;
+        JfrBufferList buffers = globalMemory.getBuffers();
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            boolean locked = JfrBufferNodeAccess.tryLock(node);
+            if (locked) {
+                try {
+                    JfrBuffer buffer = node.getBuffer();
+                    write(buffer);
+                    JfrBufferAccess.reinitialize(buffer);
+                } finally {
+                    JfrBufferNodeAccess.unlock(node);
+                }
             }
-            write(buffer);
-            JfrBufferAccess.reinitialize(buffer);
-            JfrBufferAccess.unlock(buffer);
+            assert locked || flush;
+            node = node.getNext();
         }
     }
 
-    @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer. Locks linked list with no transition. ")
-    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean flush) {
-
-        // hold onto lock until done with the head node.
+    @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
+    private void traverseList(JfrBufferList linkedList, boolean flush) {
         JfrBufferNode node = linkedList.getHead();
         JfrBufferNode prev = WordFactory.nullPointer();
 
+        // TEMP (chaeubl): node.getBuffer() should be accessed if the node is locked -> add an
+        // accessor method.
         while (node.isNonNull()) {
-            JfrBufferNode next = node.getNext();
-            JfrBuffer buffer = node.getValue();
-            assert buffer.isNonNull();
-
-            if (!node.getAlive()) {
-                // It is safe to free without acquiring because the owning thread is gone.
-                assert !JfrBufferAccess.isLockedByCurrentThread(buffer);
-                JfrBufferAccess.free(buffer);
-                linkedList.removeNode(node, prev);
-                // if removed current node, should not update prev.
-                node = next;
-                continue;
-            }
-
-            if (flush) {
-                /*
-                 * I/O operations may be slow, so this flushes to the global buffers instead of
-                 * writing to disk directly. This mitigates the risk of acquiring the TLBs for too
-                 * long.
-                 */
-                JfrThreadLocal.flushNoReset(buffer);
-            } else {
-                /*
-                 * Buffer should not be locked when entering a safepoint. Lock buffer here to
-                 * satisfy assertion checks.
-                 */
-                if (!JfrBufferAccess.tryLock(buffer)) {
-                    assert false;
-                }
+            boolean locked = JfrBufferNodeAccess.tryLock(node);
+            if (locked) {
                 try {
-                    write(buffer);
+                    JfrBuffer buffer = node.getBuffer();
+                    if (buffer.isNull()) {
+                        linkedList.removeNode(node, prev);
+                        /* Don't update prev if we removed the node. */
+                    } else {
+                        if (flush) {
+                            /*
+                             * I/O operations may be slow, so this flushes to the global buffers
+                             * instead of writing to disk directly. This mitigates the risk of
+                             * acquiring the thread-local buffers for too long.
+                             */
+                            SubstrateJVM.getGlobalMemory().write(buffer, true);
+                        } else {
+                            write(buffer);
+                        }
+                        prev = node;
+                    }
                 } finally {
-                    JfrBufferAccess.unlock(buffer);
+                    JfrBufferNodeAccess.unlock(node);
                 }
             }
-            prev = node;
-            node = next;
+
+            assert locked || flush;
+            node = node.getNext();
         }
     }
 

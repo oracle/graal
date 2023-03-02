@@ -26,13 +26,20 @@
 
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.RawFieldOffset;
-import org.graalvm.word.PointerBase;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.util.VMError;
+
+/**
+ * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and have a longer lifetime than the
+ * {@link JfrBuffer} that they reference. With this concept and the providing locking mechanism,
+ * threads can iterate over the thread-local JFR buffers of other threads. This enables use cases,
+ * such as JFR event streaming.
+ */
 @RawStructure
 public interface JfrBufferNode extends PointerBase {
     @RawField
@@ -42,26 +49,16 @@ public interface JfrBufferNode extends PointerBase {
     void setNext(JfrBufferNode value);
 
     @RawField
-    JfrBuffer getValue();
-
-    /**
-     * This field is effectively final and should always be non-null. Changing its value after the
-     * node is added to the {@link JfrBufferNodeLinkedList} can result in races.
-     */
-    @RawField
-    void setValue(JfrBuffer value);
+    JfrBuffer getBuffer();
 
     @RawField
-    IsolateThread getThread();
+    void setBuffer(JfrBuffer value);
 
     @RawField
-    void setThread(IsolateThread thread);
-
-    @RawField
-    boolean getAlive();
+    IsolateThread getLockOwner();
 
     @RawFieldOffset
-    static int offsetOfAlive() {
+    static int offsetOfLockOwner() {
         throw VMError.unimplemented(); // replaced
     }
 }

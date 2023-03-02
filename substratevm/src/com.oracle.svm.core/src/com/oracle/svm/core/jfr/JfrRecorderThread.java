@@ -122,18 +122,28 @@ public class JfrRecorderThread extends Thread {
 
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "state change is in native buffer")
     private void persistBuffers(JfrChunkWriter chunkWriter) {
-        JfrBuffers buffers = globalMemory.getBuffers();
-        for (int i = 0; i < globalMemory.getBufferCount(); i++) {
-            JfrBuffer buffer = buffers.addressOf(i).read();
-            if (isFullEnough(buffer)) {
-                boolean shouldNotify = persistBuffer(chunkWriter, buffer);
-                if (shouldNotify) {
-                    Object chunkRotationMonitor = getChunkRotationMonitor();
-                    synchronized (chunkRotationMonitor) {
-                        chunkRotationMonitor.notifyAll();
+        JfrBufferList buffers = globalMemory.getBuffers();
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            if (JfrBufferNodeAccess.tryLock(node)) {
+                try {
+                    JfrBuffer buffer = node.getBuffer();
+                    if (isFullEnough(buffer)) {
+                        boolean shouldNotify = chunkWriter.write(buffer);
+                        JfrBufferAccess.reinitialize(buffer);
+
+                        if (shouldNotify) {
+                            Object chunkRotationMonitor = getChunkRotationMonitor();
+                            synchronized (chunkRotationMonitor) {
+                                chunkRotationMonitor.notifyAll();
+                            }
+                        }
                     }
+                } finally {
+                    JfrBufferNodeAccess.unlock(node);
                 }
             }
+            node = node.getNext();
         }
     }
 
@@ -143,20 +153,6 @@ public class JfrRecorderThread extends Thread {
         } else {
             return Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
         }
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static boolean persistBuffer(JfrChunkWriter chunkWriter, JfrBuffer buffer) {
-        if (JfrBufferAccess.tryLock(buffer)) {
-            try {
-                boolean shouldNotify = chunkWriter.write(buffer);
-                JfrBufferAccess.reinitialize(buffer);
-                return shouldNotify;
-            } finally {
-                JfrBufferAccess.unlock(buffer);
-            }
-        }
-        return false;
     }
 
     /**

@@ -33,17 +33,25 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * A {@link JfrBuffer} is a block of native memory (either thread-local or global) into which JFR
- * events are written. {@link JfrBuffer#getFlushedPos()} returns the point up to which data has been
- * flushed. {@link JfrBuffer#getCommittedPos()} returns the point up to which data has been
- * committed. This means that data between the these two positions is unflushed data that is ready
- * to be flushed. This also means that {@link JfrBuffer#getFlushedPos()} should never exceed
- * {@link JfrBuffer#getCommittedPos()}. New emitted events are written after the
- * {@link JfrBuffer#getCommittedPos()}. The new events are committed by advancing the committed
- * position.
+ * events are written. It has the following layout:
+ *
+ * <pre>
+ * Buffer: ---------------------------------------------------------------------
+ *         | header | flushed data | committed data | unflushed data | unused  |
+ *         ---------------------------------------------------------------------
+ *                  |              |                |                          |
+ *              data start    flushed pos     committed pos                 data end
+ * </pre>
+ *
+ * <ul>
+ * <li>Flushed data has already been flushed to the {@link JfrGlobalMemory global memory} or to the
+ * disk.</li>
+ * <li>Committed data refers to valid and fully written event data that could be flushed at any
+ * time.</li>
+ * <li>Unflushed data refers to the data of a JFR event that is currently being written.</li>
  */
 @RawStructure
 public interface JfrBuffer extends PointerBase {
@@ -61,7 +69,7 @@ public interface JfrBuffer extends PointerBase {
     void setSize(UnsignedWord value);
 
     /**
-     * Returns the committed position. Any data before this position is valid event data.
+     * Any data before this position was committed and is therefore valid event data.
      */
     @RawField
     Pointer getCommittedPos();
@@ -78,14 +86,13 @@ public interface JfrBuffer extends PointerBase {
     }
 
     /**
-     * Returns the position of unflushed data. Any data before this position was already flushed to
-     * some other buffer or to the disk.
+     * Any data before this position was already flushed to some other buffer or to the disk.
      */
     @RawField
     Pointer getFlushedPos();
 
     /**
-     * Sets the position of unflushed data.
+     * Sets the flushed position.
      */
     @RawField
     void setFlushedPos(Pointer value);
@@ -102,16 +109,18 @@ public interface JfrBuffer extends PointerBase {
      */
     @RawField
     @PinnedObjectField
-    void setBufferType(JfrBufferType bufferType);
+    void setBufferType(JfrBufferType value);
 
+    /**
+     * Returns the {@link JfrBufferNode} that references this {@link JfrBuffer}. This value may be
+     * null for {@link JfrBufferType#C_HEAP} buffers.
+     */
     @RawField
-    void setLockOwner(IsolateThread thread);
+    JfrBufferNode getNode();
 
+    /**
+     * Sets the {@link JfrBufferNode}.
+     */
     @RawField
-    IsolateThread getLockOwner();
-
-    @RawFieldOffset
-    static int offsetOfLockOwner() {
-        throw VMError.unimplemented(); // replaced
-    }
+    void setNode(JfrBufferNode value);
 }

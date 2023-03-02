@@ -44,7 +44,6 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -143,7 +142,7 @@ public class SubstrateJVM {
     }
 
     @Fold
-    public static ThreadListener getThreadLocal() {
+    public static JfrThreadLocal getThreadLocal() {
         return get().threadLocal;
     }
 
@@ -479,27 +478,29 @@ public class SubstrateJVM {
         assert uncommittedSize >= 0;
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
-        assert oldBuffer.isNonNull();
-        JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
-        if (newBuffer.isNull()) {
-            // The flush failed for some reason, so mark the EventWriter as invalid for this write
-            // attempt.
-            JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getCommittedPos().rawValue());
-            JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getCommittedPos().rawValue());
-            JfrEventWriterAccess.setValid(writer, false);
-        } else {
-            // Update the EventWriter so that it uses the correct buffer and positions.
-            Pointer newCurrentPos = newBuffer.getCommittedPos().add(uncommittedSize);
-            JfrEventWriterAccess.setStartPosition(writer, newBuffer.getCommittedPos().rawValue());
-            JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
-            if (newBuffer.notEqual(oldBuffer)) {
-                JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfCommittedPos(newBuffer).rawValue());
-                JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
+        if (oldBuffer.isNonNull()) {
+            JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+            if (newBuffer.isNull()) {
+                /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
+                JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getCommittedPos().rawValue());
+                JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getCommittedPos().rawValue());
+                JfrEventWriterAccess.setValid(writer, false);
+            } else {
+                /* Update the EventWriter so that it uses the correct buffer and positions. */
+                Pointer newCurrentPos = newBuffer.getCommittedPos().add(uncommittedSize);
+                JfrEventWriterAccess.setStartPosition(writer, newBuffer.getCommittedPos().rawValue());
+                JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
+                if (newBuffer.notEqual(oldBuffer)) {
+                    JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfCommittedPos(newBuffer).rawValue());
+                    JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
+                }
             }
         }
 
-        // Return false to signal that there is no need to do another flush at the end of the
-        // current event.
+        /*
+         * Return false to signal that there is no need to do another flush at the end of the
+         * current event.
+         */
         return false;
     }
 
@@ -673,8 +674,7 @@ public class SubstrateJVM {
     }
 
     public void setExcluded(Thread thread, boolean excluded) {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
-        jfrThreadLocal.setExcluded(thread, excluded);
+        getThreadLocal().setExcluded(thread, excluded);
     }
 
     public boolean isExcluded(Thread thread) {
@@ -730,7 +730,7 @@ public class SubstrateJVM {
              * If JFR recording is restarted later on, then it needs to start with a clean state.
              * Therefore, we clear all data that is still pending.
              */
-            ((JfrThreadLocal) SubstrateJVM.getThreadLocal()).teardown();
+            SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
         }

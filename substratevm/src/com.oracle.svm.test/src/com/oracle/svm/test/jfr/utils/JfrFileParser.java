@@ -118,8 +118,7 @@ public class JfrFileParser {
     private static void parseMetadataHeader(RecordingInput input, long metadataPosition) throws IOException {
         input.position(metadataPosition); // Seek to starting position of metadata region.
         assertTrue("Metadata size is invalid!", input.readInt() > 0); // Size of metadata.
-        assertEquals(JfrReservedEvent.EVENT_METADATA.getId(), input.readLong()); // Metadata region
-                                                                                 // ID.
+        assertEquals(JfrReservedEvent.EVENT_METADATA.getId(), input.readLong());
         assertTrue("Metadata timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         input.readLong(); // Metadata ID.
@@ -150,9 +149,9 @@ public class JfrFileParser {
     }
 
     /**
-     * Must verify constant pools in order that they were written because event streaming can write
-     * pools before the chunk is finished. This means that a given pool may reference constants from
-     * another pool written previously (within the same chunk).
+     * Must verify constant pools in the order that they were written because event streaming can
+     * write pools before the chunk is finished. This means that a given pool may reference
+     * constants from another pool written previously (within the same chunk).
      */
     private static void verifyConstantPools(RecordingInput input, long constantPoolPosition) throws IOException {
         List<Long> poolPositions = new ArrayList<>();

@@ -26,31 +26,74 @@
 
 package com.oracle.svm.core.jfr;
 
-import jdk.internal.misc.Unsafe;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.NativeSpinLockUtils;
 
 /**
  * Used to access the raw memory of a {@link com.oracle.svm.core.jfr.JfrBufferNode}.
  */
 public final class JfrBufferNodeAccess {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-
     private JfrBufferNodeAccess() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setRetired(JfrBufferNode node) {
-        UNSAFE.putBooleanVolatile(null, ptrToAlive(node).rawValue(), false);
+    public static JfrBufferNode allocate(JfrBuffer buffer) {
+        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
+        if (node.isNonNull()) {
+            node.setBuffer(buffer);
+            node.setNext(WordFactory.nullPointer());
+            NativeSpinLockUtils.initialize(ptrToLock(node));
+        }
+        return node;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setAlive(JfrBufferNode node) {
-        UNSAFE.putBooleanVolatile(null, ptrToAlive(node).rawValue(), true);
+    public static void free(JfrBufferNode node) {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+    }
+
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    public static boolean tryLock(JfrBufferNode node) {
+        assert node.isNonNull();
+        return NativeSpinLockUtils.tryLock(ptrToLock(node));
+    }
+
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    public static boolean tryLock(JfrBufferNode node, int retries) {
+        assert node.isNonNull();
+        return NativeSpinLockUtils.tryLock(ptrToLock(node), retries);
+    }
+
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    public static void lock(JfrBufferNode node) {
+        assert node.isNonNull();
+        NativeSpinLockUtils.lockNoTransition(ptrToLock(node));
+    }
+
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    public static void unlock(JfrBufferNode node) {
+        assert node.isNonNull();
+        assert isLockedByCurrentThread(node);
+        NativeSpinLockUtils.unlock(ptrToLock(node));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer ptrToAlive(JfrBufferNode node) {
-        return ((Pointer) node).add(JfrBufferNode.offsetOfAlive());
+    public static boolean isLockedByCurrentThread(JfrBufferNode node) {
+        assert node.isNonNull();
+        assert CurrentIsolate.getCurrentThread().isNonNull();
+        return node.getLockOwner() == CurrentIsolate.getCurrentThread();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static WordPointer ptrToLock(JfrBufferNode node) {
+        return (WordPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLockOwner());
     }
 }

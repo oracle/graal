@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
@@ -61,8 +62,7 @@ public final class JfrNativeEventWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
     public static void initializeThreadLocalNativeBuffer(JfrNativeEventWriterData data) {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        JfrBuffer nativeBuffer = jfrThreadLocal.getNativeBuffer();
+        JfrBuffer nativeBuffer = SubstrateJVM.getThreadLocal().getNativeBuffer();
         initialize(data, nativeBuffer);
     }
 
