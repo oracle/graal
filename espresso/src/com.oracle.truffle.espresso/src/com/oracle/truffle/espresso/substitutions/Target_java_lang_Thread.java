@@ -307,38 +307,49 @@ public final class Target_java_lang_Thread {
         hostThread.setName(meta.toHostString(name));
     }
 
-    @TruffleBoundary
-    @SuppressWarnings({"unused"})
     @Substitution(versionFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)
-    public static @JavaType(Object.class) StaticObject getStackTrace0(@JavaType(Thread.class) StaticObject self, @Inject EspressoContext context) {
-        // JVM_GetStackTrace
-        Thread hostThread = context.getThreadAccess().getHost(self);
-        if (hostThread == null) {
-            return StaticObject.NULL;
+    abstract static class GetStackTrace0 extends SubstitutionNode {
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Thread.class) StaticObject self);
+
+        @Specialization
+        public @JavaType(Object.class) StaticObject doGetStackTrace(@JavaType(Thread.class) StaticObject self) {
+            // JVM_GetStackTrace
+            EspressoContext context = EspressoContext.get(this);
+            Thread hostThread = context.getThreadAccess().getHost(self);
+            if (hostThread == null) {
+                return StaticObject.NULL;
+            }
+            VM.StackTrace stackTrace;
+            if (hostThread == Thread.currentThread()) {
+                stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+            } else {
+                stackTrace = asyncGetStackTrace(hostThread, context);
+                if (stackTrace == null) {
+                    return StaticObject.NULL;
+                }
+            }
+
+            return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
+                StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
+                VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
+                return ste;
+            });
         }
-        VM.StackTrace stackTrace;
-        if (hostThread == Thread.currentThread()) {
-            stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
-        } else {
+
+        @TruffleBoundary
+        private static VM.StackTrace asyncGetStackTrace(Thread thread, EspressoContext context) {
             CollectStackTraceAction action = new CollectStackTraceAction();
-            Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{hostThread}, action);
+            Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{thread}, action);
             try {
                 future.get();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 context.getLogger().warning("getStackTrace0: Host interrupted while waiting for stack trace future");
-                return StaticObject.NULL;
             } catch (ExecutionException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
-            stackTrace = action.result;
+            return action.result;
         }
-
-        return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
-            StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
-            VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
-            return ste;
-        });
     }
 
     private static final class CollectStackTraceAction extends ThreadLocalAction {
