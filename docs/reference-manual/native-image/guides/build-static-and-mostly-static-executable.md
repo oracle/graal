@@ -42,7 +42,7 @@ The following prerequisites should be met:
     bash <(curl -sL https://get.graalvm.org/jdk)
     ```
     
-Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain.
+    Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain.
 
 2. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
 
