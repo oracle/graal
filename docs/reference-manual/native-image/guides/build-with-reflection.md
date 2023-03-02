@@ -21,7 +21,12 @@ The example application in this guide uses Java reflection. The `native-image` t
 
 The following application demonstrates the use of Java reflection.
 
-1. Save the following source code in a file named _ReflectionExample.java_:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Save the following source code in a file named _ReflectionExample.java_:
     ```java
     import java.lang.reflect.Method;
     
@@ -56,26 +61,30 @@ The following application demonstrates the use of Java reflection.
     ```
     This Java application uses command-line arguments to determine the operation to be performed.
 
-2. Compile the example and then run each command below.
+3. Compile the example and then run each command below.
     ```shell
     $JAVA_HOME/bin/javac ReflectionExample.java
+    ```
+    ```shell
     $JAVA_HOME/bin/java ReflectionExample StringReverser reverse "hello"
+    ```
+    ```shell
     $JAVA_HOME/bin/java ReflectionExample StringCapitalizer capitalize "hello"
     ```
     The output of each command should be `"olleh"` and `"HELLO"`, respectively. (An exception is thrown if you provide any other string to identify the class or method.)
 
-3. Use the `native-image` utility to create a native executable, as follows:
+4. Use the `native-image` utility to create a native executable, as follows:
     ```shell
     $JAVA_HOME/bin/native-image --no-fallback ReflectionExample
     ```
     > **NOTE:** The `--no-fallback` option to `native-image` causes the utility to fail if it can not create an executable file.
 
-4. Run the resulting native executable, using the following command:
+5. Run the resulting native executable, using the following command:
     ```bash
     ./reflectionexample StringReverser reverse "hello"
     ```
-    You'll see an exception, similar to 
-    ```shell
+    You'll see an exception, similar to:
+    ```
     Exception in thread "main" java.lang.ClassNotFoundException: StringReverser
         at java.lang.Class.forName(DynamicHub.java:1338)
         at java.lang.Class.forName(DynamicHub.java:1313)
@@ -118,7 +127,13 @@ The following steps demonstrate how to use the agent, and its output, to create 
     ```shell
     ./reflectionexample StringReverser reverse "hello"
     olleh
+    ```
+    ```shell
     ./reflectionexample StringCapitalizer capitalize "hello"
+    ```
+
+    You'll see again an exception, similar to:
+    ```
     Exception in thread "main" java.lang.ClassNotFoundException: StringCapitalizer
         at java.lang.Class.forName(DynamicHub.java:1338)
 	    at java.lang.Class.forName(DynamicHub.java:1313)
@@ -132,6 +147,7 @@ The following steps demonstrate how to use the agent, and its output, to create 
     ```shell
     $JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
     ```
+
     This command updates the _reflection-config.json_ file to include the name of the class `StringCapitalizer` and its `capitalize()` method.
     ```json
     [
@@ -149,6 +165,8 @@ The following steps demonstrate how to use the agent, and its output, to create 
 6. Rebuild the native executable and run it.
     ```shell
     $JAVA_HOME/bin/native-image ReflectionExample
+    ```
+    ```shell
     ./reflectionexample StringCapitalizer capitalize "hello"
     ```
    

@@ -27,9 +27,14 @@ We recommend that you follow the instructions and create the application step-by
 
 ## Prepare a Demo Application
 
-1. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``
 
-2. Rename the default `app` directory to `H2Example`, then rename the default filename `App.java` to `H2Example.java` and replace its contents with the following: 
+2. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
+
+3. Rename the default `app` directory to `H2Example`, then rename the default filename `App.java` to `H2Example.java` and replace its contents with the following: 
 
     ```java
     package org.graalvm.example;
@@ -113,17 +118,16 @@ We recommend that you follow the instructions and create the application step-by
     }
     ```
 
-3. Delete the `H2Example/src/test/java` directory.
+4. Delete the `H2Example/src/test/java` directory.
 
-4. Open the Gradle configuration file _build.gradle_, and update the main class in the `application` section:
-
+5. Open the Gradle configuration file _build.gradle_, and update the main class in the `application` section:
     ```xml
     application {
         mainClass.set('org.graalvm.example.H2Example')
     }
     ```
-5. Add explicit dependency on [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver. Insert the following line in the `dependencies` section of _build.gradle_:
 
+6. Add explicit dependency on [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver. Insert the following line in the `dependencies` section of _build.gradle_:
     ```xml
     dependencies {
         implementation("com.h2database:h2:2.1.210")
@@ -133,8 +137,8 @@ We recommend that you follow the instructions and create the application step-by
 
     The next steps will be focused what you should do to enable the Native Image Gradle plugin.
 
-6. Register the Native Image Gradle plugin. Add the following to `plugins` section of your project’s _build.gradle_ file:
 
+7. Register the Native Image Gradle plugin. Add the following to `plugins` section of your project’s _build.gradle_ file:
     ```xml
     plugins {
     // ...
@@ -142,8 +146,9 @@ We recommend that you follow the instructions and create the application step-by
     }
     ```
     The plugin discovers which JAR files it needs to pass to the `native-image` builder and what the executable main class should be.
+    
 
-7. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
+8. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
 
     ```xml
     pluginManagement {
