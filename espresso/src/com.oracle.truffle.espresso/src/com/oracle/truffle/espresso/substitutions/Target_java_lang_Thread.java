@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -337,17 +338,16 @@ public final class Target_java_lang_Thread {
         }
 
         @TruffleBoundary
-        private static VM.StackTrace asyncGetStackTrace(Thread thread, EspressoContext context) {
+        private VM.StackTrace asyncGetStackTrace(Thread thread, EspressoContext context) {
             CollectStackTraceAction action = new CollectStackTraceAction();
             Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{thread}, action);
-            try {
-                future.get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                context.getLogger().warning("getStackTrace0: Host interrupted while waiting for stack trace future");
-            } catch (ExecutionException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
+            TruffleSafepoint.setBlockedThreadInterruptible(this, f -> {
+                try {
+                    future.get();
+                } catch (ExecutionException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }, future);
             return action.result;
         }
     }
