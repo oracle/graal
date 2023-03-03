@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,7 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
@@ -44,17 +42,11 @@ public class BigIntegerSnippets implements Snippets {
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
         public final SnippetTemplate.SnippetInfo implMultiplyToLen;
-        public final SnippetTemplate.SnippetInfo implMulAdd;
-
-        public final SnippetTemplate.SnippetInfo implSquareToLen;
 
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 
             this.implMultiplyToLen = snippet(providers, BigIntegerSnippets.class, "implMultiplyToLen");
-            this.implMulAdd = snippet(providers, BigIntegerSnippets.class, "implMulAdd");
-
-            this.implSquareToLen = snippet(providers, BigIntegerSnippets.class, "implSquareToLen");
         }
     }
 
@@ -71,17 +63,6 @@ public class BigIntegerSnippets implements Snippets {
 
         BigIntegerMultiplyToLenNode.apply(arrayStart(x), xlen, arrayStart(y), ylen, arrayStart(zResult), zLen);
         return zResult;
-    }
-
-    @Snippet
-    public static int implMulAdd(int[] out, int[] in, int offset, int len, int k) {
-        return BigIntegerMulAddNode.apply(arrayStart(out), arrayStart(in), out.length - offset, len, k);
-    }
-
-    @Snippet
-    public static int[] implSquareToLen(int[] x, int len, int[] z, int zlen) {
-        BigIntegerSquareToLenNode.apply(arrayStart(x), len, arrayStart(z), zlen);
-        return z;
     }
 
     private static Word arrayStart(int[] a) {

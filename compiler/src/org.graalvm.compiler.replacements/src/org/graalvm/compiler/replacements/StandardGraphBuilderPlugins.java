@@ -166,6 +166,8 @@ import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -2282,18 +2284,25 @@ public class StandardGraphBuilderPlugins {
                 return templates.implMultiplyToLen;
             }
         });
-        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
-                        "implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
+        r.register(new InvocationPlugin("implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
-                return templates.implMulAdd;
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode outLength = helper.length(out);
+                    ValueNode newOffset = b.add(SubNode.create(outLength, offset, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Int, new BigIntegerMulAddNode(helper.arrayStart(out, JavaKind.Int), helper.arrayStart(in, JavaKind.Int), newOffset, len, k));
+                    return true;
+                }
             }
         });
-        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
-                        "implSquareToLen", int[].class, int.class, int[].class, int.class) {
+        r.register(new InvocationPlugin("implSquareToLen", int[].class, int.class, int[].class, int.class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
-                return templates.implSquareToLen;
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    b.add(new BigIntegerSquareToLenNode(helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
+                    b.push(JavaKind.Object, z);
+                    return true;
+                }
             }
         });
     }
