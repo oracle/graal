@@ -112,7 +112,7 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory);
+        unlockedChunkWriter = new JfrChunkWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo);
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
@@ -479,7 +479,7 @@ public class SubstrateJVM {
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
         if (oldBuffer.isNonNull()) {
-            JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+            JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
             if (newBuffer.isNull()) {
                 /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
                 JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getCommittedPos().rawValue());

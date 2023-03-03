@@ -302,7 +302,7 @@ public final class JfrNativeEventWriter {
         JfrBuffer oldBuffer = data.getJfrBuffer();
         switch (oldBuffer.getBufferType()) {
             case THREAD_LOCAL_NATIVE:
-                return JfrThreadLocal.flush(oldBuffer, uncommitted, requested);
+                return JfrThreadLocal.flushToGlobalMemory(oldBuffer, uncommitted, requested);
             case C_HEAP:
                 return reuseOrReallocateBuffer(oldBuffer, uncommitted, requested);
             default:

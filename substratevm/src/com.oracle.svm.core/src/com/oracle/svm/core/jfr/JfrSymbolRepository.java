@@ -39,6 +39,7 @@ import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
@@ -46,7 +47,7 @@ import com.oracle.svm.core.locks.VMMutex;
 /**
  * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.
  */
-public class JfrSymbolRepository implements JfrConstantPool {
+public class JfrSymbolRepository implements JfrRepository {
     private final VMMutex mutex;
     private final JfrSymbolEpochData epochData0;
     private final JfrSymbolEpochData epochData1;
@@ -83,8 +84,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         symbol.setReplaceDotWithSlash(replaceDotWithSlash);
 
         long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
-        int hashcode = (int) (rawPointerValue ^ (rawPointerValue >>> 32));
-        symbol.setHash(hashcode);
+        symbol.setHash(UninterruptibleUtils.Long.hashCode(rawPointerValue));
 
         /*
          * Get an existing entry from the hashtable or insert a new entry. This needs to be atomic
@@ -104,9 +104,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
                 return 0L;
             }
 
-            /* We have a new entry, so serialize it to the buffer. */
-            epochData.unflushedEntries++;
-
+            /* New entry, so serialize it to the buffer. */
             if (epochData.buffer.isNull()) {
                 epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
             }
@@ -118,8 +116,11 @@ public class JfrSymbolRepository implements JfrConstantPool {
             JfrNativeEventWriter.putLong(data, newEntry.getId());
             JfrNativeEventWriter.putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             JfrNativeEventWriter.putString(data, newEntry.getValue(), charReplacer);
-            JfrNativeEventWriter.commit(data);
+            if (!JfrNativeEventWriter.commit(data)) {
+                return 0L;
+            }
 
+            epochData.unflushedEntries++;
             /* The buffer may have been replaced with a new one. */
             epochData.buffer = data.getJfrBuffer();
             return newEntry.getId();
@@ -244,7 +245,6 @@ public class JfrSymbolRepository implements JfrConstantPool {
             JfrBufferAccess.reinitialize(buffer);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void teardown() {
             table.teardown();
             unflushedEntries = 0;

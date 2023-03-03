@@ -74,6 +74,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private final VMMutex lock;
     private final JfrGlobalMemory globalMemory;
     private final JfrMetadata metadata;
+    private final JfrRepository[] flushCheckpointRepos;
+    private final JfrRepository[] threadCheckpointRepos;
     private final boolean compressedInts;
 
     private long notificationThreshold;
@@ -90,11 +92,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private SignedWord lastCheckpointOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrChunkWriter(JfrGlobalMemory globalMemory) {
+    public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrStackTraceRepository stackTraceRepo, JfrMethodRepository methodRepo, JfrTypeRepository typeRepo, JfrSymbolRepository symbolRepo,
+                    JfrThreadRepository threadRepo) {
         this.lock = new VMMutex("jfrChunkWriter");
         this.globalMemory = globalMemory;
         this.metadata = new JfrMetadata(null);
         this.compressedInts = true;
+
+        /*
+         * Repositories earlier in the write order may reference entries of repositories later in
+         * the write order. This ordering is required to prevent races during flushing without
+         * changing epoch.
+         */
+        this.flushCheckpointRepos = new JfrRepository[]{stackTraceRepo, methodRepo, typeRepo, symbolRepo};
+        this.threadCheckpointRepos = new JfrRepository[]{threadRepo};
     }
 
     @Override
@@ -177,10 +188,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isOwner();
         flushStorage(true);
 
-        lastCheckpointOffset = SubstrateJVM.getThreadRepo().maybeWrite(this, true, lastCheckpointOffset);
-        SignedWord constantPoolPosition = writeCheckpointEvent(true);
+        writeThreadCheckpoint(true);
+        writeFlushCheckpoint(true);
         writeMetadataEvent();
-        patchFileHeader(constantPoolPosition, true);
+        patchFileHeader(true);
 
         newChunk = false;
     }
@@ -208,10 +219,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * persisted to a file without a safepoint.
          */
 
-        lastCheckpointOffset = SubstrateJVM.getThreadRepo().maybeWrite(this, false, lastCheckpointOffset);
-        SignedWord constantPoolPosition = writeCheckpointEvent(false);
+        writeThreadCheckpoint(false);
+        writeFlushCheckpoint(false);
         writeMetadataEvent();
-        patchFileHeader(constantPoolPosition, false);
+        patchFileHeader(false);
 
         getFileSupport().close(fd);
         filename = null;
@@ -237,9 +248,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeShort(fd, computeHeaderFlags());
     }
 
-    private void patchFileHeader(SignedWord constantPoolPosition, boolean flush) {
+    private void patchFileHeader(boolean flush) {
         assert lock.isOwner();
         assert metadataPosition.greaterThan(0);
+        assert lastCheckpointOffset.greaterThan(0);
 
         byte generation = flush ? getAndIncrementGeneration() : COMPLETE;
         SignedWord currentPos = getFileSupport().position(fd);
@@ -248,7 +260,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         getFileSupport().seek(fd, WordFactory.signed(CHUNK_SIZE_OFFSET));
         getFileSupport().writeLong(fd, chunkSize);
-        getFileSupport().writeLong(fd, constantPoolPosition.rawValue());
+        getFileSupport().writeLong(fd, lastCheckpointOffset.rawValue());
         getFileSupport().writeLong(fd, metadataPosition.rawValue());
         getFileSupport().writeLong(fd, chunkStartNanos);
         getFileSupport().writeLong(fd, durationNanos);
@@ -282,25 +294,33 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return generation++;
     }
 
-    private SignedWord writeCheckpointEvent(boolean flush) {
-        assert lock.isOwner();
-        SignedWord start = beginEvent();
-        long deltaToNextCheckpoint = getDeltaToNextCheckpoint(start);
+    private void writeFlushCheckpoint(boolean flush) {
+        // TEMP (chaeubl): this should also check if there is any data.
+        writeCheckpointEvent(JfrCheckpointType.Flush, flushCheckpointRepos, newChunk, flush);
+    }
 
+    private void writeThreadCheckpoint(boolean flush) {
+        assert threadCheckpointRepos.length == 1 && threadCheckpointRepos[0] == SubstrateJVM.getThreadRepo();
+        if (SubstrateJVM.getThreadRepo().hasUnflushedData()) {
+            writeCheckpointEvent(JfrCheckpointType.Threads, threadCheckpointRepos, false, flush);
+        }
+    }
+
+    private void writeCheckpointEvent(JfrCheckpointType type, JfrRepository[] repositories, boolean writeSerializers, boolean flush) {
+        assert lock.isOwner();
+
+        SignedWord start = beginEvent();
         writeCompressedLong(JfrReservedEvent.CHECKPOINT.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
-        writeCompressedLong(deltaToNextCheckpoint);
-        writeByte(JfrCheckpointType.Flush.getId());
+        writeCompressedLong(getDeltaToLastCheckpoint(start));
+        writeByte(type.getId());
 
         SignedWord poolCountPos = getFileSupport().position(fd);
-        getFileSupport().writeInt(fd, 0); // pool count (patched later)
+        getFileSupport().writeInt(fd, 0); // pool count (patched below)
 
-        int poolCount = 0;
-        if (newChunk) {
-            poolCount += writeSerializers(flush);
-        }
-        poolCount += writeRepositories(flush);
+        int poolCount = writeSerializers ? writeSerializers() : 0;
+        poolCount += writeConstantPools(repositories, flush);
 
         SignedWord currentPos = getFileSupport().position(fd);
         getFileSupport().seek(fd, poolCountPos);
@@ -310,35 +330,27 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         endEvent(start);
 
         lastCheckpointOffset = start;
-        return start;
     }
 
-    private long getDeltaToNextCheckpoint(SignedWord startOfNewCheckpoint) {
+    private long getDeltaToLastCheckpoint(SignedWord startOfNewCheckpoint) {
         if (lastCheckpointOffset.lessThan(0)) {
             return 0L;
-        } else {
-            return lastCheckpointOffset.subtract(startOfNewCheckpoint).rawValue();
         }
+        return lastCheckpointOffset.subtract(startOfNewCheckpoint).rawValue();
     }
 
-    /**
-     * Repositories earlier in the write order may reference entries of repositories later in the
-     * write order. This ordering is required to prevent races during flushing without changing
-     * epoch.
-     */
-    private int writeRepositories(boolean flush) {
-        int count = 0;
-        count += SubstrateJVM.getStackTraceRepo().write(this, flush);
-        count += SubstrateJVM.getMethodRepo().write(this, flush);
-        count += SubstrateJVM.getTypeRepository().write(this, flush);
-        count += SubstrateJVM.getSymbolRepository().write(this, flush);
-        return count;
+    private int writeSerializers() {
+        JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
+        for (JfrSerializer serializer : serializers) {
+            serializer.write(this);
+        }
+        return serializers.length;
     }
 
-    private int writeSerializers(boolean flush) {
+    private int writeConstantPools(JfrRepository[] repositories, boolean flush) {
         int poolCount = 0;
-        for (JfrConstantPool constantPool : JfrSerializerSupport.get().getSerializers()) {
-            poolCount += constantPool.write(this, flush);
+        for (JfrRepository repo : repositories) {
+            poolCount += repo.write(this, flush);
         }
         return poolCount;
     }

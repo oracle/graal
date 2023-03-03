@@ -38,7 +38,7 @@ import com.oracle.svm.core.locks.VMMutex;
 /**
  * Repository that collects and writes used methods.
  */
-public class JfrMethodRepository implements JfrConstantPool {
+public class JfrMethodRepository implements JfrRepository {
     private final VMMutex mutex;
     private final JfrMethodEpochData epochData0;
     private final JfrMethodEpochData epochData1;
@@ -73,9 +73,7 @@ public class JfrMethodRepository implements JfrConstantPool {
                 return methodId;
             }
 
-            /* We have a new entry, so serialize it to the buffer. */
-            epochData.unflushedEntries++;
-
+            /* New entry, so serialize it to the buffer. */
             if (epochData.buffer.isNull()) {
                 epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
             }
@@ -94,8 +92,11 @@ public class JfrMethodRepository implements JfrConstantPool {
             JfrNativeEventWriter.putShort(data, (short) 0);
             /* Dummy value for isHidden. */
             JfrNativeEventWriter.putBoolean(data, false);
-            JfrNativeEventWriter.commit(data);
+            if (!JfrNativeEventWriter.commit(data)) {
+                return methodId;
+            }
 
+            epochData.unflushedEntries++;
             /* The buffer may have been replaced with a new one. */
             epochData.buffer = data.getJfrBuffer();
             return methodId;

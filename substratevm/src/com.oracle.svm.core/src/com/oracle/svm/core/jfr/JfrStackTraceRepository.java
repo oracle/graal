@@ -61,7 +61,7 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 /**
  * Repository that collects all metadata about stacktraces.
  */
-public class JfrStackTraceRepository implements JfrConstantPool {
+public class JfrStackTraceRepository implements JfrRepository {
     private static final int DEFAULT_STACK_DEPTH = 64;
     private static final int MIN_STACK_DEPTH = 1;
     private static final int MAX_STACK_DEPTH = 2048;
@@ -219,6 +219,8 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         mutex.lockNoTransition();
         try {
             entry.setSerialized(true);
+            // TEMP (chaeubl): doesn't this cause issues? the buffer is written elsewhere ->
+            // reinitialize would destroy data
             getEpochData(false).unflushedEntries++;
         } finally {
             mutex.unlock();

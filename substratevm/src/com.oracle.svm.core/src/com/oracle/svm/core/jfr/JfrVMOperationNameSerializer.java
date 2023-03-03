@@ -29,22 +29,19 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
 
-public class JfrVMOperationNameSerializer implements JfrConstantPool {
+public class JfrVMOperationNameSerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrVMOperationNameSerializer() {
     }
 
     @Override
-    public int write(JfrChunkWriter writer, boolean flush) {
+    public void write(JfrChunkWriter writer) {
         String[] vmOperationNames = VMOperationInfos.getNames();
-        assert vmOperationNames.length > 0;
         writer.writeCompressedLong(JfrType.VMOperation.getId());
         writer.writeCompressedLong(vmOperationNames.length);
         for (int id = 0; id < vmOperationNames.length; id++) {
             writer.writeCompressedLong(id + 1); // id starts with 1
             writer.writeString(vmOperationNames[id]);
         }
-
-        return NON_EMPTY;
     }
 }

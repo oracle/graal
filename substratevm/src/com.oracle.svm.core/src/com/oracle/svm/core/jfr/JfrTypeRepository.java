@@ -46,7 +46,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
  *
  * The "epoch" maps hold records with respect to a specific epoch and are reset at an epoch change.
  */
-public class JfrTypeRepository implements JfrConstantPool {
+public class JfrTypeRepository implements JfrRepository {
     private final Set<Class<?>> epochClasses = new HashSet<>();
     private final Map<String, PackageInfo> epochPackages = new HashMap<>();
     private final Map<Module, Long> epochModules = new HashMap<>();

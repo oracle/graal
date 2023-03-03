@@ -31,13 +31,13 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
-public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
+public class JfrMonitorInflationCauseSerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrMonitorInflationCauseSerializer() {
     }
 
     @Override
-    public int write(JfrChunkWriter writer, boolean flush) {
+    public void write(JfrChunkWriter writer) {
         writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
 
         MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();
@@ -46,7 +46,5 @@ public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
             writer.writeCompressedInt(i);
             writer.writeString(inflationCauses[i].getText());
         }
-
-        return NON_EMPTY;
     }
 }

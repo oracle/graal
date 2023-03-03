@@ -451,6 +451,10 @@ public class UninterruptibleUtils {
            // @formatter:on
         }
         // Checkstyle: resume
+
+        public static int hashCode(long value) {
+            return (int) (value ^ (value >>> 32));
+        }
     }
 
     public static class Integer {

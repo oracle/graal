@@ -37,7 +37,6 @@ import com.oracle.svm.core.jfr.JfrBuffer;
 import com.oracle.svm.core.jfr.JfrBufferAccess;
 import com.oracle.svm.core.jfr.JfrBufferList;
 import com.oracle.svm.core.jfr.JfrBufferNode;
-import com.oracle.svm.core.jfr.JfrBufferNodeAccess;
 import com.oracle.svm.core.jfr.JfrBufferType;
 
 public class TestJfrBufferNodeLinkedList {
@@ -105,11 +104,6 @@ public class TestJfrBufferNodeLinkedList {
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
             JfrBufferAccess.free(node.getBuffer());
-            /*
-             * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the node
-             * at any time.
-             */
-            JfrBufferNodeAccess.setRetired(node);
             list.removeNode(node, WordFactory.nullPointer());
             node = next;
         }
@@ -125,11 +119,6 @@ public class TestJfrBufferNodeLinkedList {
             JfrBufferNode next = node.getNext();
             if (count == target) {
                 JfrBufferAccess.free(node.getBuffer());
-                /*
-                 * Once JfrBufferNodeAccess.setRetired(node) is called, another thread may free the
-                 * node at any time.
-                 */
-                JfrBufferNodeAccess.setRetired(node);
                 list.removeNode(node, prev);
                 break;
             }

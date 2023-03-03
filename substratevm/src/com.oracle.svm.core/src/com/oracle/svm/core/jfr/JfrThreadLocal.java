@@ -109,6 +109,16 @@ public class JfrThreadLocal implements ThreadListener {
         this.threadLocalBufferSize = bufferSize;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadLocalBufferSize() {
+        return threadLocalBufferSize;
+    }
+
+    public void teardown() {
+        getNativeBufferList().teardown();
+        getJavaBufferList().teardown();
+    }
+
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
@@ -136,8 +146,8 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode nativeNode = nativeBufferNode.get(isolateThread);
         nativeBufferNode.set(isolateThread, WordFactory.nullPointer());
 
-        flushAndFreeBuffer(javaNode);
-        flushAndFreeBuffer(nativeNode);
+        flushToGlobalMemoryAndFreeBuffer(javaNode);
+        flushToGlobalMemoryAndFreeBuffer(nativeNode);
 
         /* Clear the other event-related thread-locals. */
         dataLost.set(isolateThread, WordFactory.unsigned(0));
@@ -156,32 +166,46 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void flushAndFreeBuffer(JfrBufferNode node) {
+    private static void flushToGlobalMemoryAndFreeBuffer(JfrBufferNode node) {
         if (node.isNull()) {
             return;
         }
 
-        /* Free the JFRBuffer but leave the node alive as it still needed. */
+        /* Free the buffer but leave the node alive as it still needed. */
         JfrBufferNodeAccess.lock(node);
         try {
             JfrBuffer buffer = node.getBuffer();
             node.setBuffer(WordFactory.nullPointer());
 
-            flush0(buffer, WordFactory.unsigned(0), 0);
+            flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);
             JfrBufferAccess.free(buffer);
         } finally {
             JfrBufferNodeAccess.unlock(node);
         }
     }
 
-    public void teardown() {
-        getNativeBufferList().teardown();
-        getJavaBufferList().teardown();
+    /**
+     * This method excludes/includes a thread from JFR (emitting events and sampling). At the
+     * moment, only the current thread may be excluded/included. This is a difference to HotSpot
+     * that we will need to address at some point.
+     */
+    public void setExcluded(Thread thread, boolean excluded) {
+        if (!thread.equals(Thread.currentThread())) {
+            return;
+        }
+        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        tjlt.jfrExcluded = excluded;
+
+        if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
+            javaEventWriter.get(currentIsolateThread).excluded = excluded;
+        }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadLocalBufferSize() {
-        return threadLocalBufferSize;
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public boolean isCurrentThreadExcluded() {
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+        return tjlt.jfrExcluded;
     }
 
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {
@@ -264,22 +288,26 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static JfrBuffer flush(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
+    public static JfrBuffer flushToGlobalMemory(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
         assert buffer.isNonNull();
         assert JfrBufferAccess.isThreadLocal(buffer);
+        assert buffer.getNode().isNonNull();
 
         /* Acquire the buffer because a streaming flush could be in progress. */
         JfrBufferNode node = buffer.getNode();
         JfrBufferNodeAccess.lock(node);
         try {
-            return flush0(buffer, uncommitted, requested);
+            return flushToGlobalMemory0(buffer, uncommitted, requested);
         } finally {
             JfrBufferNodeAccess.unlock(node);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static JfrBuffer flush0(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
+    private static JfrBuffer flushToGlobalMemory0(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
+        assert buffer.isNonNull();
+        assert JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.aboveThan(0)) {
             if (!SubstrateJVM.getGlobalMemory().write(buffer, unflushedSize, false)) {
@@ -324,30 +352,6 @@ public class JfrThreadLocal implements ThreadListener {
         UnsignedWord result = dataLost.get().add(delta);
         dataLost.set(result);
         return result;
-    }
-
-    /**
-     * This method excludes/includes a thread from JFR (emitting events and sampling). Unlike in
-     * hotspot, only the current thread may be excluded/included. TODO: possibly modify this method
-     * to match hotspot behaviour.
-     */
-    public void setExcluded(Thread thread, boolean excluded) {
-        if (!thread.equals(Thread.currentThread())) {
-            return;
-        }
-        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        tjlt.jfrExcluded = excluded;
-
-        if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
-            javaEventWriter.get(currentIsolateThread).excluded = excluded;
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public boolean isCurrentThreadExcluded() {
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
-        return tjlt.jfrExcluded;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)

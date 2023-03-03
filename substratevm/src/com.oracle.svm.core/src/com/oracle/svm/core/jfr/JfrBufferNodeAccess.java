@@ -81,9 +81,8 @@ public final class JfrBufferNodeAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isLockedByCurrentThread(JfrBufferNode node) {
-        assert node.isNonNull();
         assert CurrentIsolate.getCurrentThread().isNonNull();
-        return node.getLockOwner() == CurrentIsolate.getCurrentThread();
+        return node != null && node.getLockOwner() == CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
