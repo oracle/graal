@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -100,7 +100,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             field.setAccessible(true);
             LIRInstructionClass<T> result = (LIRInstructionClass<T>) field.get(null);
             if (result == null) {
-                throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName());
+                throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName()); // ExcludeFromJacocoGeneratedReport
             }
             return result;
         } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
@@ -142,7 +142,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             } else if (field.isAnnotationPresent(LIRInstruction.Def.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(LIRInstruction.Def.class).value()));
             } else {
-                GraalError.shouldNotReachHere();
+                GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
             return result;
         }

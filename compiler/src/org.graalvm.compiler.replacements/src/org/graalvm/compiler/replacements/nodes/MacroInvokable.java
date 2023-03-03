@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
     @Override
     default void setBci(int bci) {
         // nothing to do here, macro nodes get bci during construction
-        GraalError.shouldNotReachHere("macro nodes get bci during construction");
+        GraalError.shouldNotReachHere("macro nodes get bci during construction"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -129,7 +129,7 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
                     new LowTierLoweringPhase(CanonicalizerPhase.create()).apply(replacementGraph, tool);
                     break;
                 default:
-                    GraalError.shouldNotReachHere("Unexpected lowering stage.");
+                    GraalError.shouldNotReachHere("Unexpected lowering stage."); // ExcludeFromJacocoGeneratedReport
             }
         } catch (Throwable e) {
             throw debug.handle(e);

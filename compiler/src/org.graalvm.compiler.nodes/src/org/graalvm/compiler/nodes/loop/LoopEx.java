@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,13 +137,13 @@ public class LoopEx {
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        GraalError.unimplemented();
+        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
         return null;
     }
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        GraalError.unimplemented();
+        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
         return null;
     }
 
@@ -377,7 +377,7 @@ public class LoopEx {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(condition.toString());
+                    throw GraalError.shouldNotReachHere(condition.toString()); // ExcludeFromJacocoGeneratedReport
             }
             counted = new CountedLoopInfo(this, iv, ifNode, limit, isLimitIncluded, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
             return true;

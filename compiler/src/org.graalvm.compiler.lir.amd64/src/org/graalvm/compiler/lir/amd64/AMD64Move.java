@@ -447,7 +447,7 @@ public class AMD64Move {
                     masm.cmpxchgq(asRegister(newValue), address.toAddress());
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -490,7 +490,7 @@ public class AMD64Move {
                     masm.xaddq(address.toAddress(), asRegister(result));
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -530,7 +530,7 @@ public class AMD64Move {
                     masm.xchgq(asRegister(result), address.toAddress());
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -562,7 +562,7 @@ public class AMD64Move {
                 return;
             }
         }
-        throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName() + " " + "result=" + result + " result.class=" + result.getClass().getName());
+        throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName() + " " + "result=" + result + " result.class=" + result.getClass().getName()); // ExcludeFromJacocoGeneratedReport
     }
 
     private static void reg2reg(AMD64Kind kind, AMD64MacroAssembler masm, Value result, Value input) {
@@ -605,7 +605,7 @@ public class AMD64Move {
                 masm.kmovq(asRegister(result), asRegister(input));
                 break;
             default:
-                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -652,7 +652,7 @@ public class AMD64Move {
                 masm.kmovq(dest, input);
                 break;
             default:
-                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -720,7 +720,7 @@ public class AMD64Move {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
+                throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -802,7 +802,7 @@ public class AMD64Move {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -852,11 +852,11 @@ public class AMD64Move {
                     }
                     imm = 0;
                 } else {
-                    throw GraalError.shouldNotReachHere("Non-null object constants must be in a register");
+                    throw GraalError.shouldNotReachHere("Non-null object constants must be in a register"); // ExcludeFromJacocoGeneratedReport
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         switch ((AMD64Kind) result.getPlatformKind()) {
@@ -878,7 +878,7 @@ public class AMD64Move {
                 masm.movlong(dest, imm);
                 break;
             default:
-                throw GraalError.shouldNotReachHere("Unknown result Kind: " + result.getPlatformKind());
+                throw GraalError.shouldNotReachHere("Unknown result Kind: " + result.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -960,7 +960,7 @@ public class AMD64Move {
                 masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, stride));
             } else {
                 if (preserveFlagsRegister) {
-                    throw GraalError.shouldNotReachHere("No valid flag-effect-free instruction available to uncompress oop");
+                    throw GraalError.shouldNotReachHere("No valid flag-effect-free instruction available to uncompress oop"); // ExcludeFromJacocoGeneratedReport
                 }
                 if (!resultReg.equals(inputReg)) {
                     masm.movq(resultReg, inputReg);

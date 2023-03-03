@@ -385,7 +385,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PD, asAllocatable(left), right, state));
                 append(new FloatBranchOp(cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
             } else {
-                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind);
+                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             OperandSize size = OperandSize.get(cmpKind);

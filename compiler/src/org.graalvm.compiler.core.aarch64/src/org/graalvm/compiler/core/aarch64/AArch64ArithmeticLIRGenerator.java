@@ -158,7 +158,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                     ForeignCallLinkage dremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_DREM);
                     return getLIRGen().emitForeignCall(dremCall, state, a, b);
                 default:
-                    GraalError.shouldNotReachHere("emitRem on unexpected kind " + a.getPlatformKind());
+                    GraalError.shouldNotReachHere("emitRem on unexpected kind " + a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
                     return null;
             }
         }
@@ -298,7 +298,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case F2D:
                 return AArch64Kind.DOUBLE;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -425,7 +425,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case NONE:
                 return false;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -437,7 +437,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case QWORD:
                 return AArch64MacroAssembler.isLogicalImmediate(64, value);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -449,7 +449,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case Object:
                 return constValue.isNull();
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -518,7 +518,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Variable emitBitScanForward(Value value) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -596,7 +596,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere("Unexpected memory order");
+                throw GraalError.shouldNotReachHere("Unexpected memory order"); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -625,7 +625,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                 getLIRGen().append(new AArch64Move.StoreReleaseOp(kind, storeAddress, input, state));
                 break;
             default:
-                throw GraalError.shouldNotReachHere("Unexpected memory order");
+                throw GraalError.shouldNotReachHere("Unexpected memory order"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -646,7 +646,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                 op = AArch64ArithmeticOp.FRINTZ;
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         return emitUnary(op, value);

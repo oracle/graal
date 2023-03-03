@@ -103,7 +103,7 @@ public final class AArch64AddressValue extends CompositeValue {
                 int scalingFactor = isImmediateScaled(mode) ? byteMemoryTransferSize : 1;
                 return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, displacement, scalingFactor, mode);
             } else {
-                throw GraalError.shouldNotReachHere("Could not create AddressValue with requested displacement.");
+                throw GraalError.shouldNotReachHere("Could not create AddressValue with requested displacement."); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

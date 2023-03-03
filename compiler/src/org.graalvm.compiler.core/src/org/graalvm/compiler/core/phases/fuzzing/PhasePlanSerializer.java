@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ public final class PhasePlanSerializer {
             String key = in.readUTF();
             BasePhase<? super C> phase = lookup.get(key);
             if (phase == null) {
-                GraalError.shouldNotReachHere("No phase could be found matching " + key);
+                GraalError.shouldNotReachHere("No phase could be found matching " + key); // ExcludeFromJacocoGeneratedReport
             }
             phaseSuite.appendPhase(phase);
         }
@@ -106,7 +106,7 @@ public final class PhasePlanSerializer {
             }
             Files.write(Paths.get(fileName), baos.toByteArray());
         } catch (IOException e) {
-            GraalError.shouldNotReachHere(e, "Error saving phase plan to " + fileName);
+            GraalError.shouldNotReachHere(e, "Error saving phase plan to " + fileName); // ExcludeFromJacocoGeneratedReport
         }
     }
 

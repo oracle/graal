@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case DOUBLE:
                 return OperandSize.SD;
             default:
-                throw GraalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
+                throw GraalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -264,7 +264,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                     op = MOVSXD;
                     break;
                 default:
-                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)"); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             kind = AMD64Kind.DWORD;
@@ -280,7 +280,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 case 32:
                     return null;
                 default:
-                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)"); // ExcludeFromJacocoGeneratedReport
             }
         }
         if (kind != null && op != null) {
@@ -699,7 +699,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case L2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSI2SS, QWORD, access);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

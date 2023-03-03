@@ -46,7 +46,7 @@ public abstract class InductionVariable {
                 case Down:
                     return Up;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

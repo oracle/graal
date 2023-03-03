@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -387,7 +387,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         } else {
             return super.forwardEndIndex((EndNode) pred);
         }
-        throw GraalError.shouldNotReachHere("unknown pred : " + pred);
+        throw GraalError.shouldNotReachHere("unknown pred : " + pred); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -402,7 +402,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 return end;
             }
         }
-        throw GraalError.shouldNotReachHere("unknown index: " + index);
+        throw GraalError.shouldNotReachHere("unknown index: " + index); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

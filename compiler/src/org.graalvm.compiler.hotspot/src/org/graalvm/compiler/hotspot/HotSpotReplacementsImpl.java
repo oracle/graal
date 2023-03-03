@@ -161,7 +161,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     public static EncodedSnippets getEncodedSnippets() {
         if (encodedSnippets == null) {
-            throw GraalError.shouldNotReachHere("encoded snippets not found");
+            throw GraalError.shouldNotReachHere("encoded snippets not found"); // ExcludeFromJacocoGeneratedReport
         }
         return encodedSnippets;
     }
@@ -201,7 +201,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             try (CompilationContext scope = HotSpotGraalServices.enterGlobalCompilationContext()) {
                 StructuredGraph graph = getEncodedSnippets().getEncodedSnippet(method, original, this, args, AllowAssumptions.NO, options);
                 if (graph == null) {
-                    throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
+                    throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
                 }
                 return graph;
             }

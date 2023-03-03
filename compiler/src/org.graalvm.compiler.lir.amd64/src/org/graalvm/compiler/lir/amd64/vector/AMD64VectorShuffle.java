@@ -311,7 +311,7 @@ public class AMD64VectorShuffle {
                     op = VSHUFPD;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(source2)) {
@@ -374,7 +374,7 @@ public class AMD64VectorShuffle {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size);
+                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(result)) {
@@ -489,7 +489,7 @@ public class AMD64VectorShuffle {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size);
+                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(source2)) {

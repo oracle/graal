@@ -89,7 +89,7 @@ public interface CompilationResultBuilderFactory {
                     }
                 }
             } catch (MalformedURLException e) {
-                throw GraalError.shouldNotReachHere(e, "Malformed URL encountered.");
+                throw GraalError.shouldNotReachHere(e, "Malformed URL encountered."); // ExcludeFromJacocoGeneratedReport
             }
         }
 

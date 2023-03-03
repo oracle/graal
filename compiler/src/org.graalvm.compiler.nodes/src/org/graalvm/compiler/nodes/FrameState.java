@@ -654,7 +654,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
 
         if (pushedVirtualObjectMappings == null) {
-            throw GraalError.shouldNotReachHere("Pushing a virtual object, but no virtual object mapping provided: " + pushedValue);
+            throw GraalError.shouldNotReachHere("Pushing a virtual object, but no virtual object mapping provided: " + pushedValue); // ExcludeFromJacocoGeneratedReport
         }
         for (EscapeObjectState pushedEscapeObjectState : pushedVirtualObjectMappings) {
             if (pushedEscapeObjectState.object() == pushedValue) {

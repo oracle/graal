@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,7 +83,7 @@ public final class SubstrateCompressionNode extends CompressionNode {
         } else if (c instanceof CompressibleConstant) {
             return ((CompressibleConstant) c).compress();
         }
-        throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c);
+        throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -91,7 +91,7 @@ public final class SubstrateCompressionNode extends CompressionNode {
         if (c instanceof CompressibleConstant) {
             return ((CompressibleConstant) c).uncompress();
         }
-        throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
+        throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -102,7 +102,7 @@ public final class SubstrateCompressionNode extends CompressionNode {
             case Uncompress:
                 return compress(input, encoding);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

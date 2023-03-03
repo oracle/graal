@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,7 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
                     return IntegerStamp.stampForMask(64, Long.reverseBytes(valueStamp.downMask()), Long.reverseBytes(valueStamp.upMask()));
                 }
                 default:
-                    throw GraalError.unimplemented("Unsupported bit size " + valueStamp.getBits());
+                    throw GraalError.unimplemented("Unsupported bit size " + valueStamp.getBits()); // ExcludeFromJacocoGeneratedReport
             }
         }
         return stamp(NodeView.DEFAULT);
@@ -100,7 +100,7 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
                 case Long:
                     return ConstantNode.forLong(Long.reverseBytes(c.asLong()));
                 default:
-                    throw GraalError.unimplemented("Unhandled byte reverse on constant of kind " + c.getJavaKind());
+                    throw GraalError.unimplemented("Unhandled byte reverse on constant of kind " + c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
         return this;

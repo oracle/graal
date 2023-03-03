@@ -118,7 +118,7 @@ public final class Stubs {
         if (arch instanceof AArch64) {
             return AArch64Features.getRequiredCPUFeatures(klass);
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Fold

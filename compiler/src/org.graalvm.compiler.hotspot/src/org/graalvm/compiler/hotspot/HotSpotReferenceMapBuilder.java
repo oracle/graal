@@ -109,7 +109,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             LIRKind kind = (LIRKind) obj.getValueKind();
             int bytes = bytesPerElement(kind);
             if (kind.isUnknownReference()) {
-                throw GraalError.shouldNotReachHere(String.format("unknown reference alive across safepoint: %s", obj));
+                throw GraalError.shouldNotReachHere(String.format("unknown reference alive across safepoint: %s", obj)); // ExcludeFromJacocoGeneratedReport
             } else {
                 Location base = null;
                 if (kind.isDerivedReference()) {

@@ -86,7 +86,7 @@ public final class ClassLoaderSupport {
         try {
             packageGetPackageInfo.invoke(packageValue);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
 
         ConcurrentMap<String, Package> classPackages = singleton().registeredPackages.computeIfAbsent(classLoader, k -> new ConcurrentHashMap<>());

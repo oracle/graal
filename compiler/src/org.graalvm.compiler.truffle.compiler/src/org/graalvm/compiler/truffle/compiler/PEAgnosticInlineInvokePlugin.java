@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
         if (original.equals(partialEvaluator.callDirectMethod)) {
             ValueNode arg0 = arguments[1];
             if (!arg0.isConstant()) {
-                GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!"); // ExcludeFromJacocoGeneratedReport
             }
             lastDirectCallNode = (JavaConstant) arg0.asConstant();
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;

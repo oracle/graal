@@ -545,7 +545,7 @@ public class InliningLog {
 
         public void activate() {
             if (currentUpdateScope != null) {
-                throw GraalError.shouldNotReachHere("InliningLog updating already set.");
+                throw GraalError.shouldNotReachHere("InliningLog updating already set."); // ExcludeFromJacocoGeneratedReport
             }
             currentUpdateScope = this;
         }
@@ -710,7 +710,7 @@ public class InliningLog {
 
         @Override
         public void setBci(int bci) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

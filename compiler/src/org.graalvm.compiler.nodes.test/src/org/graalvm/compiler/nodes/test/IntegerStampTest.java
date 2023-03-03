@@ -653,7 +653,7 @@ public class IntegerStampTest extends GraphTest {
             f.setAccessible(true);
             return (boolean) f.get(s);
         } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
+            throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -928,7 +928,7 @@ public class StandardGraphBuilderPlugins {
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
         return b.add(new FixedGuardNode(overflowCheck, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateRecompile, true));
     }
@@ -944,7 +944,7 @@ public class StandardGraphBuilderPlugins {
             case INTEGER_MULTIPLY_EXACT:
                 return new IntegerMulExactNode(x, y, createIntegerExactArithmeticGuardNode(b, x, y, op));
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -959,7 +959,7 @@ public class StandardGraphBuilderPlugins {
             case INTEGER_MULTIPLY_EXACT:
                 return new IntegerMulExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge);
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1746,7 +1746,7 @@ public class StandardGraphBuilderPlugins {
                 throw GraalError.shouldNotReachHere("Illegal usage of stable array intrinsic assumeStableDimension(array, dimension): " +
                                 "This compiler intrinsic can only be used iff array is a constant node (i.e., constant field) and iff " +
                                 "dimension is a constant int. It will replace the constant array with a new constant that additionally sets the stable" +
-                                "dimensions to the int parameter supplied.");
+                                "dimensions to the int parameter supplied."); // ExcludeFromJacocoGeneratedReport
             }
         });
         r.register(new RequiredInlineOnlyInvocationPlugin("injectBranchProbability", double.class, boolean.class) {
