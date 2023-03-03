@@ -154,13 +154,17 @@ public abstract class StaticShape<T> {
         return factory;
     }
 
-    final Class<?> getStorageClass() {
-        return storageClass;
+    @SuppressWarnings("unchecked")
+    final Class<T> getFactoryInterface() {
+        assert factory.getClass().getInterfaces().length == 1;
+        return (Class<T>) factory.getClass().getInterfaces()[0];
     }
 
     abstract Object getStorage(Object obj, boolean primitive);
 
-    abstract Class<T> getFactoryInterface();
+    final Class<?> getStorageClass() {
+        return storageClass;
+    }
 
     final <U> U cast(Object obj, Class<U> type, boolean checkCondition) {
         if (safetyChecks) {

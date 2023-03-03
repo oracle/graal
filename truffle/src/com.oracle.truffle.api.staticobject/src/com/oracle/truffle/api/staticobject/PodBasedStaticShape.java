@@ -61,11 +61,4 @@ final class PodBasedStaticShape<T> extends StaticShape<T> {
     Object getStorage(Object obj, boolean primitive) {
         return cast(obj, storageClass, true);
     }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    Class<T> getFactoryInterface() {
-        assert factory.getClass().getInterfaces().length == 1;
-        return (Class<T>) factory.getClass().getInterfaces()[0];
-    }
 }

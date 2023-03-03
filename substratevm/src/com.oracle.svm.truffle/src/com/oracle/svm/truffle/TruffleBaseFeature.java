@@ -60,6 +60,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -783,7 +784,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
             private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
 
-            private static final Class<?> ARRAY_BASED_FACTORY = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory");
+            private static final Class<?> ARRAY_BASED_STATIC_SHAPE = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape");
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
                             GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
@@ -808,15 +809,18 @@ public final class TruffleBaseFeature implements InternalFeature {
 
             static void duringSetup(DuringSetupAccess access) {
                 if (ALIGNMENT_CORRECTION != 0) {
-                    ConcurrentHashMap<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
+                    // Identity-based map to avoid running `hashCode()` and `equals()` on generated
+                    // static objects, that extend user-defined objects
+                    ConcurrentIdentityHashMap<Object, Object> replacements = new ConcurrentIdentityHashMap<>();
+                    ReflectionUtil.setStaticField(ARRAY_BASED_STATIC_SHAPE, "replacements", replacements);
+                    Class<?> generatorClassLoader = ReflectionUtil.lookupClass(false, "com.oracle.truffle.api.staticobject.GeneratorClassLoader");
+
                     access.registerObjectReplacer(obj -> {
                         if (!replacements.isEmpty()) {
                             boolean isByteArray = obj instanceof byte[];
-                            if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
-
+                            if (isByteArray || generatorClassLoader.isInstance(obj.getClass().getClassLoader())) {
                                 Object replacement = replacements.get(obj);
                                 if (replacement != null) {
-
                                     // The `replacements` map is populated by the generated
                                     // factories. The keys of this map are the primitive byte arrays
                                     // and the factory instances that must be replaced, and the
@@ -824,7 +828,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                                     // computed, the value is identical to the key.
                                     if (replacement == obj) {
                                         // on first access: generate the replacement and register it
-                                        if (isByteArray) {
+                                        if (obj instanceof byte[]) {
                                             // primitive storage array
                                             byte[] oldArray = (byte[]) obj;
                                             byte[] newArray = new byte[oldArray.length + ALIGNMENT_CORRECTION];
@@ -1090,10 +1094,26 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
     static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
 }
 
-@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape_ArrayBasedFactory {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    static ConcurrentHashMap<Object, Object> replacements;
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class) //
+    static Map<Object, Object> replacements;
+
+    private static class MapCleaner implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterCompilation;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object transform(Object receiver, Object originalValue) {
+            if (originalValue != null) {
+                ((Map<Object, Object>) originalValue).clear();
+            }
+            return null;
+        }
+    }
 }
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
