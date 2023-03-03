@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.hotspot.HotSpotMarkId;
-import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
@@ -83,30 +80,6 @@ public class AArch64HotSpotMove {
         public Constant getConstant() {
             return constant;
         }
-    }
-
-    public static final class BaseMove extends AArch64LIRInstruction {
-        public static final LIRInstructionClass<BaseMove> TYPE = LIRInstructionClass.create(BaseMove.class);
-
-        @LIRInstruction.Def({REG, HINT}) protected AllocatableValue result;
-
-        public BaseMove(AllocatableValue result) {
-            super(TYPE);
-            this.result = result;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                masm.adrp(scratch);
-                masm.add(64, scratch, scratch, 1);
-                masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
-                masm.nop();
-                crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
-            }
-        }
-
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,6 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -791,8 +790,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
         return new AArch64ZapStackOp(zappedStack, zapValues);
     }
-
-    public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);
 
     @Override
     public void emitSpeculationFence() {
