@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -177,7 +176,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
         }
 
         for (PthreadVMCondition condition : support.conditions) {
-            if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
+            if (PthreadConditionUtils.initConditionWithRelativeTime(condition.getStructPointer()) != 0) {
                 return false;
             }
         }
@@ -319,37 +318,57 @@ final class PthreadVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
-        Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
-        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
+        if (waitNanos <= 0) {
+            return 0L;
+        }
+
+        long startTime = System.nanoTime();
+        Time.timespec absTime = UnsafeStackValue.get(Time.timespec.class);
+        PthreadConditionUtils.fillTimespec(absTime, waitNanos);
 
         mutex.clearCurrentThreadOwner();
-        final int timedWaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
+        int timedWaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), absTime);
         mutex.setOwnerToCurrentThread();
+
         /* If the timed wait timed out, then I am done blocking. */
         if (timedWaitResult == Errno.ETIMEDOUT()) {
             return 0L;
         }
+
         /* Check for other errors from the timed wait. */
-        PthreadVMLockSupport.checkResult(timedWaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
+        PthreadVMLockSupport.checkResult(timedWaitResult, "PthreadVMLockSupport.block(long): pthread_cond_timedwait");
+        return remainingNanos(waitNanos, startTime);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
-        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
-
-        mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
-        mutex.setOwnerToCurrentThread();
-        /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult == Errno.ETIMEDOUT()) {
+        if (waitNanos <= 0) {
             return 0L;
         }
+
+        long startTime = System.nanoTime();
+        Time.timespec absTime = UnsafeStackValue.get(Time.timespec.class);
+        PthreadConditionUtils.fillTimespec(absTime, waitNanos);
+
+        mutex.clearCurrentThreadOwner();
+        int timedWaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), absTime);
+        mutex.setOwnerToCurrentThread();
+
+        /* If the timed wait timed out, then I am done blocking. */
+        if (timedWaitResult == Errno.ETIMEDOUT()) {
+            return 0L;
+        }
+
         /* Check for other errors from the timed wait. */
-        PthreadVMLockSupport.checkResult(timedwaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
+        PthreadVMLockSupport.checkResult(timedWaitResult, "PthreadVMLockSupport.blockNoTransition(long): pthread_cond_timedwait");
+        return remainingNanos(waitNanos, startTime);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    private static long remainingNanos(long waitNanos, long startNanos) {
+        long actual = System.nanoTime() - startNanos;
+        return Math.max(0, waitNanos - actual);
     }
 
     @Override

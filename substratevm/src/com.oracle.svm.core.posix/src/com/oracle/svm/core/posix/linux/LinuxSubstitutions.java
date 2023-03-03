@@ -24,19 +24,15 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.posix.headers.linux.LinuxTime.CLOCK_MONOTONIC;
-import static com.oracle.svm.core.posix.headers.linux.LinuxTime.clock_gettime;
-
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Time.timespec;
-import com.oracle.svm.core.posix.headers.Time.timeval;
-import com.oracle.svm.core.posix.headers.Time.timezone;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
+import com.oracle.svm.core.util.TimeUtils;
 
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System_Linux {
@@ -44,17 +40,10 @@ final class Target_java_lang_System_Linux {
     @Substitute
     @Uninterruptible(reason = "Does basic math after a simple system call")
     private static long nanoTime() {
-        timespec timespec = StackValue.get(timespec.class);
-        if (clock_gettime(CLOCK_MONOTONIC(), timespec) == 0) {
-            return timespec.tv_sec() * 1_000_000_000L + timespec.tv_nsec();
-
-        } else {
-            /* High precision time is not available, fall back to low precision. */
-            timeval timeval = StackValue.get(timeval.class);
-            timezone timezone = WordFactory.nullPointer();
-            Time.NoTransitions.gettimeofday(timeval, timezone);
-            return timeval.tv_sec() * 1_000_000_000L + timeval.tv_usec() * 1_000L;
-        }
+        Time.timespec tp = StackValue.get(Time.timespec.class);
+        int status = LinuxTime.NoTransitions.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), tp);
+        PosixUtils.checkStatusIs0(status, "System.nanoTime(): clock_gettime(CLOCK_MONOTONIC) failed.");
+        return tp.tv_sec() * TimeUtils.nanosPerSecond + tp.tv_nsec();
     }
 
     @Substitute
