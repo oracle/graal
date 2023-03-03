@@ -51,8 +51,11 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Signal;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
+import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -270,4 +273,16 @@ public class PosixUtils {
         }
         return old.sa_handler();
     }
+
+    // Checkstyle: stop
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int clock_gettime(int clock_id, Time.timespec ts) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return DarwinTime.NoTransitions.clock_gettime(clock_id, ts);
+        } else {
+            assert Platform.includedIn(Platform.LINUX.class);
+            return LinuxTime.NoTransitions.clock_gettime(clock_id, ts);
+        }
+    }
+    // Checkstyle: resume
 }

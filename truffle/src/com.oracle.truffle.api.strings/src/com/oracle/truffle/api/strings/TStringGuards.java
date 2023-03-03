@@ -71,6 +71,14 @@ final class TStringGuards {
         return TSCodeRange.is16Bit(codeRange);
     }
 
+    static boolean isValid(int codeRange) {
+        return TSCodeRange.isValid(codeRange);
+    }
+
+    static boolean isBroken(int codeRange) {
+        return TSCodeRange.isBroken(codeRange);
+    }
+
     static boolean isValidFixedWidth(int codeRange) {
         return TSCodeRange.isValidFixedWidth(codeRange);
     }
@@ -95,16 +103,8 @@ final class TStringGuards {
         return TSCodeRange.isBrokenMultiByte(sb.getCodeRange());
     }
 
-    static boolean isUnknown(int codeRange) {
-        return TSCodeRange.isUnknown(codeRange);
-    }
-
-    static boolean isBrokenMultiByteOrUnknown(int codeRange) {
-        return TSCodeRange.isBrokenMultiByteOrUnknown(codeRange);
-    }
-
-    public static boolean isValidBrokenOrUnknownMultiByte(int codeRange) {
-        return TSCodeRange.isValidBrokenOrUnknownMultiByte(codeRange);
+    public static boolean isValidOrBrokenMultiByte(int codeRange) {
+        return TSCodeRange.isValidOrBrokenMultiByte(codeRange);
     }
 
     static boolean isFixedWidth(int codeRange) {
@@ -112,11 +112,12 @@ final class TStringGuards {
     }
 
     static boolean isFixedWidth(int codeRangeA, int codeRangeB) {
-        return isFixedWidth(codeRangeA) && isFixedWidth(codeRangeB);
+        return TSCodeRange.isFixedWidth(codeRangeA, codeRangeB);
     }
 
-    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(node, b) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, Encoding encoding,
+                    TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
+        return regionLength < getCodePointLengthNodeB.execute(node, b, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {
@@ -125,8 +126,9 @@ final class TStringGuards {
 
     private static boolean codeRangesCannotMatch(int codeRangeA, int codeRangeB, byte[] mask) {
         return mask == null &&
-                        !TSCodeRange.isBrokenMultiByteOrUnknown(codeRangeA) &&
-                        !TSCodeRange.isBrokenMultiByteOrUnknown(codeRangeB) &&
+                        TSCodeRange.isPrecise(codeRangeA, codeRangeB) &&
+                        !TSCodeRange.isBroken(codeRangeA) &&
+                        !TSCodeRange.isBroken(codeRangeB) &&
                         TSCodeRange.isMoreRestrictiveThan(codeRangeA, codeRangeB);
     }
 
@@ -218,10 +220,6 @@ final class TStringGuards {
 
     static boolean isUnsupportedEncoding(Encoding encoding) {
         return encoding.isUnsupported();
-    }
-
-    static int stride(AbstractTruffleString a) {
-        return a.stride();
     }
 
     static int length(AbstractTruffleString a) {

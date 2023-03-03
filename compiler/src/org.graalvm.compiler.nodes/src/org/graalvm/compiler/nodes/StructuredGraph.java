@@ -1142,6 +1142,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * Unlike the {@link ProfileProvider} which represents the profile in isolation and relating to
      * a single method, implementers of this interface provide data in the context of a global
      * system and relating to a compilation unit (including e.g. inlined methods).
+     *
+     * This source of this information could, for example, be gathered through profiling the
+     * application with a sampling based profiler, or just a heuristic-based estimation.
+     *
+     * This data can be used for aggressive optimizations, applying more or less optimization budget
+     * to individual compilation units based on estimates of how much run time is spent in that
+     * particular compilation unit.
      */
     public interface GlobalProfileProvider {
 
@@ -1157,6 +1164,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             public double getGlobalSelfTimePercent() {
                 return DEFAULT_TIME;
             }
+
+            /**
+             * The default time provider always returns false, i.e. no methods are hot callers by
+             * default.
+             */
+            @Override
+            public boolean hotCaller() {
+                return false;
+            }
         };
 
         /**
@@ -1168,16 +1184,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
          * compilation units that are known to have a self time of 0 and compilation units for which
          * the data is not present.
          *
-         * This source of this information could, for example, be gathered through profiling the
-         * application with a sampling based profiler, or just a heuristic-based estimation.
-         *
-         * This data can be used for aggressive optimizations, applying more or less optimization
-         * budget to individual compilation units based on this estimate of how much run time is
-         * spent in that particular compilation unit.
-         *
          * @return A value between 0 and 1 If self time data is available, -1 otherwise.
          */
         double getGlobalSelfTimePercent();
+
+        /**
+         * We define a "hot caller" as any method that is frequently contained in the call stack
+         * during execution. Note that "contained in the call stack" means that it is not
+         * necessarily on top of the stack.
+         *
+         * @return Is this {@link StructuredGraph graph} considered a "hot caller".
+         */
+        boolean hotCaller();
 
     }
 
@@ -1193,12 +1211,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * See {@link GlobalProfileProvider#getGlobalSelfTimePercent()}.
-     *
-     * @return The current {@link GlobalProfileProvider#getGlobalSelfTimePercent() global self time}
+     * @return The current {@link GlobalProfileProvider} for this graph.
      */
-    public double getSelfTimePercent() {
-        return globalProfileProvider.getGlobalSelfTimePercent();
+    public GlobalProfileProvider globalProfileProvider() {
+        return globalProfileProvider;
     }
 
     /**

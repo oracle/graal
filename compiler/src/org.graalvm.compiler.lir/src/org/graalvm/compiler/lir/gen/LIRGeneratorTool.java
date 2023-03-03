@@ -316,6 +316,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /*
          * RETURN VALUES
          */
+        private static final int FLAG_MULTIBYTE = 1 << 3;
 
         // NOTE:
         // The following fields must be kept in sync with
@@ -336,19 +337,19 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /**
          * The string is encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_VALID_FIXED_WIDTH = 3;
+        public static final int CR_VALID = 3;
         /**
          * The string is not encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_BROKEN_FIXED_WIDTH = 4;
+        public static final int CR_BROKEN = 4;
         /**
          * The string is encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_VALID_MULTIBYTE = 5;
+        public static final int CR_VALID_MULTIBYTE = CR_VALID | FLAG_MULTIBYTE;
         /**
          * The string is not encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_BROKEN_MULTIBYTE = 6;
+        public static final int CR_BROKEN_MULTIBYTE = CR_BROKEN | FLAG_MULTIBYTE;
     }
 
     @SuppressWarnings("unused")
@@ -357,8 +358,66 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
     }
 
+    /**
+     * Supported variants of
+     * {@link #emitArrayIndexOf(Stride, ArrayIndexOfVariant, EnumSet, Value, Value, Value, Value, Value...)}.
+     */
+    enum ArrayIndexOfVariant {
+        /**
+         * Find index {@code i} where for any index {@code j} {@code array[i] == searchValues[j]}.
+         * Supports up to four search values.
+         */
+        MatchAny,
+        /**
+         * Find index {@code i} where for any index {@code j}
+         * {@code searchValues[j * 2] <= array[i] && array[i] <= searchValues[j * 2 + 1]}. Supports
+         * up to two ranges.
+         */
+        MatchRange,
+        /**
+         * Find index {@code i} where {@code (array[i] | searchValues[1]) == searchValues[0]}.
+         */
+        WithMask,
+        /**
+         * Find index {@code i} where
+         * {@code array[i] == searchValues[0] && array[i + 1] == searchValues[1]}.
+         */
+        FindTwoConsecutive,
+        /**
+         * Find index {@code i} where
+         * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.
+         */
+        FindTwoConsecutiveWithMask,
+        /**
+         * Find index {@code i} where
+         *
+         * <pre>
+         * {@code
+         * RawBytePointer lut = searchValues[0];
+         * int v = array[i] & 0xff;
+         * array[i] == v && (lut[v >> 4] & lut[16 + (v & 0xf)]) != 0
+         * }
+         * </pre>
+         *
+         * This variant can match a larger set of byte values simultaneously, e.g. to match the set
+         * {@code {0x01, 0x03, 0x11, 0x12, 0x14}}, the following lookup table would suffice:
+         *
+         * <pre>
+         * {@code
+         * index:    0x0  0x1  0x2  0x3  0x4  0x5  0x6  0x7  0x8  0x9  0xa  0xb  0xc  0xd  0xe  0xf
+         * tableHi: 0x01 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+         * tableLo: 0x00 0x03 0x02 0x01 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+         * }
+         * </pre>
+         *
+         * Note that this variant expects {@code searchValue[0]} to be a <b>direct pointer</b> into
+         * a 32-byte memory region.
+         */
+        Table
+    }
+
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+    default Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, Value fromIndex, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
@@ -430,6 +489,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitBigIntegerMulAdd(Value out, Value in, Value offset, Value len, Value k) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

@@ -95,12 +95,12 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
         // This allows the fixed registers to be reused for hosting temporary values.
-        assert asRegister(xValue).equals(rdi);
-        assert asRegister(xlenValue).equals(rax);
-        assert asRegister(yValue).equals(rsi);
-        assert asRegister(ylenValue).equals(rcx);
-        assert asRegister(zValue).equals(r8);
-        assert asRegister(zlenValue).equals(r11);
+        GraalError.guarantee(asRegister(xValue).equals(rdi), "expect xValue at rdi, but was %s", xValue);
+        GraalError.guarantee(asRegister(xlenValue).equals(rax), "expect xlenValue at rax, but was %s", xlenValue);
+        GraalError.guarantee(asRegister(yValue).equals(rsi), "expect yValue at rsi, but was %s", yValue);
+        GraalError.guarantee(asRegister(ylenValue).equals(rcx), "expect ylenValue at rcx, but was %s", ylenValue);
+        GraalError.guarantee(asRegister(zValue).equals(r8), "expect zValue at r8, but was %s", zValue);
+        GraalError.guarantee(asRegister(zlenValue).equals(r9), "expect zlenValue at r9, but was %s", zlenValue);
 
         this.xValue = xValue;
         this.xlenValue = xlenValue;
@@ -143,7 +143,7 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         Register tmp1 = asRegister(tmp1Value);
         Register tmp2 = r13;
-        Register tmp3 = r9;
+        Register tmp3 = r11;
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
@@ -351,7 +351,7 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
                     Register tmp,
                     Register tmp3,
                     Register tmp4) {
-        assert masm.supports(BMI2) && masm.supports(AVX) : "should be used only when BMI2 is available";
+        GraalError.guarantee(masm.supports(BMI2) && masm.supports(AVX), "should be used only when BMI2 is available");
 
         // @formatter:off
         //   jlong carry, x[], y[], z[];

@@ -75,7 +75,7 @@ public class HeapHistogram {
     };
 
     public void add(ObjectInfo objectInfo, long size) {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
 
         HistogramEntry entry = data.get(objectInfo.getClazz());
         if (entry == null) {
@@ -96,13 +96,13 @@ public class HeapHistogram {
     }
 
     public void printHeadings(final String title) {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
         out.format("%s%n", title);
         out.format(headerFormat, "Count", "Size", "Size%", "Cum%", "Class");
     }
 
     public void print() {
-        assert NativeImageOptions.PrintHeapHistogram.getValue();
+        assert NativeImageOptions.PrintHeapHistogram.getValue() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue();
 
         HistogramEntry[] entries = data.values().toArray(new HistogramEntry[data.size()]);
         Arrays.sort(entries, SIZE_COMPARATOR);

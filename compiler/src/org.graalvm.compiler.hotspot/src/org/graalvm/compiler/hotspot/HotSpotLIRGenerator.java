@@ -40,14 +40,6 @@ import jdk.vm.ci.meta.Value;
 public interface HotSpotLIRGenerator extends LIRGeneratorTool {
 
     /**
-     * Emits an operation to make a tail call.
-     *
-     * @param args the arguments of the call
-     * @param address the target address of the call
-     */
-    void emitTailcall(Value[] args, Value address);
-
-    /**
      * Emits code that jumps to the deopt blob uncommon_trap entry point with {@code action} and
      * {@code reason}.
      */

@@ -57,17 +57,22 @@ import com.oracle.truffle.api.strings.test.TStringTestBase;
 @RunWith(Parameterized.class)
 public class TStringCodeRangeTest extends TStringTestBase {
 
-    @Parameter public TruffleString.GetCodeRangeNode node;
+    @Parameter(0) public TruffleString.GetCodeRangeNode node;
+    @Parameter(1) public TruffleString.GetCodeRangeImpreciseNode nodeImprecise;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.GetCodeRangeNode> data() {
-        return Arrays.asList(TruffleString.GetCodeRangeNode.create(), TruffleString.GetCodeRangeNode.getUncached());
+    public static Iterable<Object[]> data() {
+        return Arrays.asList(new Object[]{TruffleString.GetCodeRangeNode.create(), TruffleString.GetCodeRangeImpreciseNode.create()},
+                        new Object[]{TruffleString.GetCodeRangeNode.getUncached(), TruffleString.GetCodeRangeImpreciseNode.getUncached()});
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            Assert.assertEquals(codeRange, node.execute(a, encoding));
+            TruffleString.CodeRange imprecise = nodeImprecise.execute(a, encoding);
+            TruffleString.CodeRange precise = node.execute(a, encoding);
+            Assert.assertTrue(imprecise.isSupersetOf(precise));
+            Assert.assertEquals(codeRange, precise);
         });
     }
 

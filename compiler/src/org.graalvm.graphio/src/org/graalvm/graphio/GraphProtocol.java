@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -242,8 +242,6 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract Edges findClassEdges(NodeClass nodeClass, boolean dumpInputs);
 
     protected abstract int findNodeId(Node n);
-
-    protected abstract void findExtraNodes(Node node, Collection<? super Node> extraNodes);
 
     protected abstract boolean hasPredecessor(Node node);
 

@@ -456,7 +456,7 @@ public final class Target_java_lang_Thread {
     /**
      * Marks the thread as interrupted and wakes it up.
      *
-     * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread()},
+     * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread},
      * {@link PlatformThreads#unpark} and {@link JavaThreads#sleep} for vital aspects of the
      * underlying mechanisms.
      */
@@ -477,7 +477,7 @@ public final class Target_java_lang_Thread {
         }
 
         Thread thread = JavaThreads.fromTarget(this);
-        PlatformThreads.interrupt(thread);
+        PlatformThreads.interruptSleep(thread);
         /*
          * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
          * resumed the thread execution, so the thread could now be parked for some other reason).

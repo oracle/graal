@@ -157,6 +157,16 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
                         Object.class, int.class, int.class, int.class, int.class, int[].class);
     }
 
+    protected ResolvedJavaMethod getIndexOfAnyIntRangeIntl() {
+        return getTStringOpsMethod("indexOfAnyIntRangeIntl",
+                        Object.class, int.class, int.class, int.class, int.class, int[].class);
+    }
+
+    protected ResolvedJavaMethod getIndexOfTableIntl() {
+        return getTStringOpsMethod("indexOfTableIntl",
+                        Object.class, int.class, int.class, int.class, int.class, byte[].class);
+    }
+
     protected ResolvedJavaMethod getIndexOf2ConsecutiveWithStrideIntl() {
         return getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
                         Object.class, int.class, int.class, int.class, int.class, int.class, int.class);

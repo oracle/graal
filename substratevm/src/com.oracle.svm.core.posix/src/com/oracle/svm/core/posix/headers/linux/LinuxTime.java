@@ -39,14 +39,16 @@ import com.oracle.svm.core.posix.headers.Time;
  */
 @CContext(PosixDirectives.class)
 public class LinuxTime extends Time {
-
     @CConstant
     public static native int CLOCK_MONOTONIC();
 
     @CConstant
     public static native int CLOCK_THREAD_CPUTIME_ID();
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    @CLibrary("rt")
-    public static native int clock_gettime(int clock_id, timespec tp);
+    public static class NoTransitions {
+        /* We still need to support glibc 2.12, where clock_gettime is located in librt. */
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        @CLibrary("rt")
+        public static native int clock_gettime(int clock_id, timespec tp);
+    }
 }

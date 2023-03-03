@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.svm.core.heap.GCCause;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +35,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -193,13 +193,21 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
          * but we must still ensure that computations can handle it (for example, no overflows).
          */
         survivorSize = UnsignedUtils.min(survivorSize, params.maxSurvivorSize());
-        edenSize = UnsignedUtils.min(edenSize, maxEdenSize());
+        edenSize = UnsignedUtils.min(edenSize, getMaximumEdenSize());
         oldSize = UnsignedUtils.min(oldSize, params.maxOldSize());
         promoSize = UnsignedUtils.min(promoSize, params.maxOldSize());
     }
 
+    @Override
+    public UnsignedWord getInitialEdenSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialEdenSize;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord maxEdenSize() {
+    public UnsignedWord getMaximumEdenSize() {
+        guaranteeSizeParametersInitialized();
         return alignDown(sizes.maxYoungSize.subtract(survivorSize.multiply(2)));
     }
 
@@ -213,6 +221,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public UnsignedWord getMaximumYoungGenerationSize() {
         guaranteeSizeParametersInitialized();
         return sizes.maxYoungSize;
+    }
+
+    @Override
+    public UnsignedWord getInitialSurvivorSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialSurvivorSize;
+    }
+
+    @Override
+    public UnsignedWord getMaximumSurvivorSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.maxSurvivorSize();
     }
 
     @Override
@@ -234,6 +254,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public UnsignedWord getYoungGenerationCapacity() {
         guaranteeSizeParametersInitialized();
         return edenSize.add(survivorSize);
+    }
+
+    @Override
+    public UnsignedWord getInitialOldSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.initialOldSize();
+    }
+
+    @Override
+    public UnsignedWord getMaximumOldSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.maxOldSize();
     }
 
     @Override

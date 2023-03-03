@@ -247,6 +247,12 @@ public abstract class Heap {
     public abstract void dirtyAllReferencesOf(Object obj);
 
     /**
+     * Returns the longest time (in ms) that has elapsed since the last time that the whole heap has
+     * been examined by a garbage collection.
+     */
+    public abstract long getMillisSinceLastWholeHeapExamined();
+
+    /**
      * Retrieves a salt value for computing the {@linkplain System#identityHashCode identity hash
      * code} of the passed object (and potentially other objects) from its address. The same salt
      * value will be returned for this object at least until the next garbage collection.
