@@ -1008,15 +1008,15 @@ public class NativeImage {
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
         imageBuilderArgs.add(0, clibrariesBuilderArg);
 
-        String printFlagsDummyImage = "dummy-image-";
+        boolean printFlags = false;
         if (printFlagsOptionQuery != null) {
+            printFlags = true;
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + "=" + printFlagsOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + "=" + printFlagsOptionQuery);
-            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsOptionQuery");
         } else if (printFlagsWithExtraHelpOptionQuery != null) {
+            printFlags = true;
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
-            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsWithExtraHelpOptionQuery");
         }
 
         if (shouldAddCWDToCP()) {
@@ -1062,9 +1062,12 @@ public class NativeImage {
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
         boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(oHEnableSharedLibraryFlag));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
-        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
+        printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.contains("-march=list"));
 
-        if (!printFlags) {
+        if (printFlags) {
+            /* Ensure name for bundle support */
+            addPlainImageBuilderArg(oHName + "dummy-image");
+        } else {
             List<String> extraImageArgs = new ArrayList<>();
             ListIterator<String> leftoverArgsItr = leftoverArgs.listIterator();
             while (leftoverArgsItr.hasNext()) {
@@ -1133,7 +1136,7 @@ public class NativeImage {
         Path imageNamePath = Path.of(imageName);
         Path imageNamePathParent = imageNamePath.getParent();
         if (imageNamePathParent != null) {
-            /* Readjust imageName & imagePath so that imageName is just a simple fileName */
+            /* Read just imageName & imagePath so that imageName is just a simple fileName */
             imageName = imageNamePath.getFileName().toString();
             if (!imageNamePathParent.isAbsolute()) {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
