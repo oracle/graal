@@ -304,7 +304,8 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod && this.pythonLocale.equals(other.pythonLocale);
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod &&
+                        this.pythonLocale.equals(other.pythonLocale);
     }
 
     @Override

@@ -93,16 +93,16 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
     }
 
     /**
-     * Appends a new codepoint. It can be adjacent to the last range, in which case the last range
+     * Adds a new value. The value can be adjacent to the last range, in which case the last range
      * is extended.
      */
-    public void appendCodePoint(int codePoint) {
-        assert isEmpty() || leftOf(size() - 1, codePoint, codePoint);
-        if (!isEmpty() && adjacent(size() - 1, codePoint, codePoint)) {
-            buf[(size() - 1) * 2 + 1] = codePoint;
+    public void addSingleValue(int newValue) {
+        assert isEmpty() || leftOf(size() - 1, newValue, newValue);
+        if (!isEmpty() && adjacent(size() - 1, newValue, newValue)) {
+            buf[(size() - 1) * 2 + 1] = newValue;
         } else {
-            add(codePoint);
-            add(codePoint);
+            add(newValue);
+            add(newValue);
         }
     }
 

@@ -55,6 +55,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +68,7 @@ public final class PythonLocaleData {
 
     private final CodePointSet wordChars;
     private final CodePointSet nonWordChars;
-    private final List<Byte> caseFolding;
+    private final byte[] caseFolding;
 
     public static PythonLocaleData getLocaleData(String locale) {
         if (locale.equals("C")) {
@@ -104,15 +105,15 @@ public final class PythonLocaleData {
     }
 
     private int caseFoldingFrom(int index) {
-        return caseFolding.get(index << 1) & 0xFF;
+        return caseFolding[index << 1] & 0xFF;
     }
 
     private int caseFoldingTo(int index) {
-        return caseFolding.get((index << 1) + 1) & 0xFF;
+        return caseFolding[(index << 1) + 1] & 0xFF;
     }
 
     private int caseFoldingSize() {
-        return caseFolding.size() >> 1;
+        return caseFolding.length >> 1;
     }
 
     private int caseFoldingBinarySearch(int minIndex, int target) {
@@ -159,19 +160,24 @@ public final class PythonLocaleData {
             invCodePoints.put(codePoints[b], (byte) b);
         }
 
-        this.caseFolding = new ArrayList<>();
+        List<CaseFoldingEntry> caseFoldingAccum = new ArrayList<>();
         for (int b = 0; b <= 255; b++) {
             int codePoint = codePoints[b];
             int lowerCase = toLowerCase(codePoint, turkish);
             int upperCase = toUpperCase(codePoint, turkish);
             if (lowerCase != codePoint && invCodePoints.containsKey(lowerCase)) {
-                caseFolding.add((byte) b);
-                caseFolding.add(invCodePoints.get(lowerCase));
+                caseFoldingAccum.add(new CaseFoldingEntry((byte) b, invCodePoints.get(lowerCase)));
             }
             if (upperCase != codePoint && invCodePoints.containsKey(upperCase)) {
-                caseFolding.add((byte) b);
-                caseFolding.add(invCodePoints.get(upperCase));
+                caseFoldingAccum.add(new CaseFoldingEntry((byte) b, invCodePoints.get(upperCase)));
             }
+        }
+        Collections.sort(caseFoldingAccum);
+
+        this.caseFolding = new byte[caseFoldingAccum.size() << 1];
+        for (int i = 0; i < caseFoldingAccum.size(); i++) {
+            this.caseFolding[i << 1] = caseFoldingAccum.get(i).mapping;
+            this.caseFolding[(i << 1) + 1] = caseFoldingAccum.get(i).character;
         }
     }
 
@@ -235,6 +241,39 @@ public final class PythonLocaleData {
             }
         }
         return codePoints;
+    }
+
+    private static final class CaseFoldingEntry implements Comparable<CaseFoldingEntry> {
+        final byte character;
+        final byte mapping;
+
+        CaseFoldingEntry(byte character, byte mapping) {
+            this.character = character;
+            this.mapping = mapping;
+        }
+
+        @Override
+        public int compareTo(CaseFoldingEntry o) {
+            int cmp = Integer.compare(this.mapping & 0xFF, o.mapping & 0xFF);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return Integer.compare(this.character & 0xFF, o.character & 0xFF);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof CaseFoldingEntry)) {
+                return false;
+            }
+            CaseFoldingEntry other = (CaseFoldingEntry) obj;
+            return this.character == other.character && this.mapping == other.mapping;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(character, mapping);
+        }
     }
 
     private static final class CacheKey {
