@@ -93,12 +93,14 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -133,15 +135,32 @@ public class ContextPreInitializationTest {
     static final String SECOND = "ContextPreInitializationSecond";
     static final String INTERNAL = "ContextPreInitializationInternal";
     static final String SHARED = "ContextPreInitializationShared";
+    static final String CONSTRAINED = "ContextPreInitializationConstrained";
+
     private static final AtomicInteger NEXT_ORDER_INDEX = new AtomicInteger();
     private static final String SYS_OPTION1_KEY = "polyglot." + FIRST + ".Option1";
     private static final String SYS_OPTION2_KEY = "polyglot." + FIRST + ".Option2";
     private static final List<CountingContext> emittedContexts = new ArrayList<>();
     private static final Set<String> patchableLanguages = new HashSet<>();
 
+    private static String originalDynamicCompilationThresholds;
+
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
+        // Workaround for issue GR-31197: Compiler tests are passing
+        // engine.DynamicCompilationThresholds option from command line.
+        originalDynamicCompilationThresholds = System.getProperty("polyglot.engine.DynamicCompilationThresholds");
+        if (originalDynamicCompilationThresholds != null) {
+            System.getProperties().remove("polyglot.engine.DynamicCompilationThresholds");
+        }
+    }
+
+    @AfterClass
+    public static void tearDownClass() {
+        if (originalDynamicCompilationThresholds != null) {
+            System.setProperty("polyglot.engine.DynamicCompilationThresholds", originalDynamicCompilationThresholds);
+        }
     }
 
     @Before
@@ -2393,6 +2412,123 @@ public class ContextPreInitializationTest {
         assertEquals(2, firstLangCtx.disposeThreadCount);
     }
 
+    @Test
+    public void testSandboxPolicySuccess() throws Exception {
+        setPatchable(CONSTRAINED);
+        doContextPreinitialize(CONSTRAINED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext constrainedLangCtx = findContext(CONSTRAINED, contexts);
+        assertNotNull(constrainedLangCtx);
+        assertEquals(1, constrainedLangCtx.createContextCount);
+        assertEquals(1, constrainedLangCtx.initializeContextCount);
+        assertEquals(0, constrainedLangCtx.patchContextCount);
+        assertEquals(0, constrainedLangCtx.disposeContextCount);
+        assertEquals(1, constrainedLangCtx.initializeThreadCount);
+        assertEquals(1, constrainedLangCtx.disposeThreadCount);
+        try (Context ctx = Context.newBuilder(CONSTRAINED).sandbox(SandboxPolicy.CONSTRAINED).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).option(
+                        ContextPreInitializationConstrainedInstrument.ID, "true").option(CONSTRAINED + ".Constrained", "true").build()) {
+            Value res = ctx.eval(Source.create(CONSTRAINED, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, constrainedLangCtx.createContextCount);
+            assertEquals(1, constrainedLangCtx.initializeContextCount);
+            assertEquals(1, constrainedLangCtx.patchContextCount);
+            assertEquals(0, constrainedLangCtx.disposeContextCount);
+            assertEquals(2, constrainedLangCtx.initializeThreadCount);
+            assertEquals(1, constrainedLangCtx.disposeThreadCount);
+        }
+    }
+
+    @Test
+    public void testSandboxPolicyLanguageFailure() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
+
+        AbstractPolyglotTest.assertFails(() -> {
+            Context.newBuilder(FIRST).sandbox(SandboxPolicy.CONSTRAINED).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).build();
+        }, IllegalArgumentException.class, (e) -> {
+            assertTrue(e.getMessage().contains("The language ContextPreInitializationFirst can only be used up to the TRUSTED sandbox policy."));
+        });
+    }
+
+    @Test
+    public void testSandboxPolicyInstrumentFailure() throws Exception {
+        setPatchable(CONSTRAINED);
+        doContextPreinitialize(CONSTRAINED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext constrainedLangCtx = findContext(CONSTRAINED, contexts);
+        assertNotNull(constrainedLangCtx);
+        assertEquals(1, constrainedLangCtx.createContextCount);
+        assertEquals(1, constrainedLangCtx.initializeContextCount);
+        assertEquals(0, constrainedLangCtx.patchContextCount);
+        assertEquals(0, constrainedLangCtx.disposeContextCount);
+        assertEquals(1, constrainedLangCtx.initializeThreadCount);
+        assertEquals(1, constrainedLangCtx.disposeThreadCount);
+        AbstractPolyglotTest.assertFails(() -> {
+            Context.newBuilder(CONSTRAINED).sandbox(SandboxPolicy.CONSTRAINED).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).option(
+                            ContextPreInitializationFirstInstrument.ID, "true").build();
+        }, IllegalArgumentException.class, (e) -> {
+            assertTrue(e.getMessage().contains("The instrument ContextPreInitializationFirstInstrument can only be used up to the TRUSTED sandbox policy."));
+        });
+    }
+
+    @Test
+    public void testSandboxPolicyInstrumentOptionFailure() throws Exception {
+        setPatchable(CONSTRAINED);
+        doContextPreinitialize(CONSTRAINED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext constrainedLangCtx = findContext(CONSTRAINED, contexts);
+        assertNotNull(constrainedLangCtx);
+        assertEquals(1, constrainedLangCtx.createContextCount);
+        assertEquals(1, constrainedLangCtx.initializeContextCount);
+        assertEquals(0, constrainedLangCtx.patchContextCount);
+        assertEquals(0, constrainedLangCtx.disposeContextCount);
+        assertEquals(1, constrainedLangCtx.initializeThreadCount);
+        assertEquals(1, constrainedLangCtx.disposeThreadCount);
+        AbstractPolyglotTest.assertFails(() -> {
+            Context.newBuilder(CONSTRAINED).sandbox(SandboxPolicy.CONSTRAINED).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).option(
+                            ContextPreInitializationConstrainedInstrument.ID, "true").option(ContextPreInitializationConstrainedInstrument.ID + ".Trusted", "true").build();
+        }, IllegalArgumentException.class, (e) -> {
+            assertTrue(e.getMessage().contains("The option ContextPreInitializationConstrainedInstrument.Trusted can only be used up to the TRUSTED sandbox policy."));
+        });
+    }
+
+    @Test
+    public void testSandboxPolicyLanguageOptionFailure() throws Exception {
+        setPatchable(CONSTRAINED);
+        doContextPreinitialize(CONSTRAINED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext constrainedLangCtx = findContext(CONSTRAINED, contexts);
+        assertNotNull(constrainedLangCtx);
+        assertEquals(1, constrainedLangCtx.createContextCount);
+        assertEquals(1, constrainedLangCtx.initializeContextCount);
+        assertEquals(0, constrainedLangCtx.patchContextCount);
+        assertEquals(0, constrainedLangCtx.disposeContextCount);
+        assertEquals(1, constrainedLangCtx.initializeThreadCount);
+        assertEquals(1, constrainedLangCtx.disposeThreadCount);
+        AbstractPolyglotTest.assertFails(() -> {
+            Context.newBuilder(CONSTRAINED).sandbox(SandboxPolicy.CONSTRAINED).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).option(CONSTRAINED + ".Trusted",
+                            "true").build();
+        }, IllegalArgumentException.class, (e) -> {
+            assertTrue(e.getMessage().contains("The option ContextPreInitializationConstrained.Trusted can only be used up to the TRUSTED sandbox policy."));
+        });
+    }
+
     private static IsSameFileResult testIsSameFileImpl(IOAccess ioAccess) throws ReflectiveOperationException {
         String path = Paths.get(".").toAbsolutePath().toString();
         setPatchable(FIRST);
@@ -2834,6 +2970,32 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @TruffleLanguage.Registration(id = CONSTRAINED, name = CONSTRAINED, version = "1.0", sandbox = SandboxPolicy.CONSTRAINED)
+    public static final class ContextPreInitializationTestConstrainedLanguage extends BaseLanguage {
+
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Trusted option") //
+        public static final OptionKey<Boolean> Trusted = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Constrained option", sandbox = SandboxPolicy.CONSTRAINED) //
+        public static final OptionKey<Boolean> Constrained = new OptionKey<>(false);
+
+        @Override
+        protected boolean patchContext(CountingContext context, Env newEnv) {
+            return super.patchContext(context, newEnv);
+        }
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestConstrainedLanguage.class);
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new ContextPreInitializationTestConstrainedLanguageOptionDescriptors();
+        }
+    }
+
     @TruffleLanguage.Registration(id = SECOND, name = SECOND, version = "1.0", dependentLanguages = FIRST)
     public static final class ContextPreInitializationTestSecondLanguage extends BaseLanguage {
         private static boolean callDependentLanguageInCreate;
@@ -3119,7 +3281,7 @@ public class ContextPreInitializationTest {
 
         static volatile Map<String, Consumer<Event>> actions;
 
-        @Option(name = "", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Activates instrument") //
+        @Option(name = "", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Activates instrument", sandbox = SandboxPolicy.CONSTRAINED) //
         static final OptionKey<Boolean> Enabled = new OptionKey<>(false);
 
         @Override
@@ -3155,5 +3317,27 @@ public class ContextPreInitializationTest {
             });
         }
 
+    }
+
+    @TruffleInstrument.Registration(id = ContextPreInitializationConstrainedInstrument.ID, name = ContextPreInitializationConstrainedInstrument.ID, sandbox = SandboxPolicy.CONSTRAINED)
+    public static final class ContextPreInitializationConstrainedInstrument extends BaseInstrument {
+
+        static final String ID = "ContextPreInitializationConstrainedInstrument";
+
+        @Option(name = "", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Activates instrument", sandbox = SandboxPolicy.CONSTRAINED) //
+        static final OptionKey<Boolean> Enabled = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Trusted only option") //
+        static final OptionKey<Boolean> Trusted = new OptionKey<>(false);
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new ContextPreInitializationConstrainedInstrumentOptionDescriptors();
+        }
+
+        @Override
+        protected Map<String, Consumer<Event>> getActions() {
+            return Collections.emptyMap();
+        }
     }
 }

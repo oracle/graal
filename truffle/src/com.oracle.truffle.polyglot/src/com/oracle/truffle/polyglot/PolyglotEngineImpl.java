@@ -1318,11 +1318,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return idToPublicLanguage;
     }
 
-    Set<String> getExplicitlyPermittedLanguages() {
-        checkState();
-        return Set.of(permittedLanguages);
-    }
-
     public OptionDescriptors getOptions() {
         checkState();
         return engineOptionValues.getDescriptors();
