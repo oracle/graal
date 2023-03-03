@@ -166,6 +166,7 @@ public class SVMHost extends HostVM {
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
     private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
+    private final SVMParsingSupport parsingSupport;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
@@ -183,6 +184,7 @@ public class SVMHost extends HostVM {
             ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
             multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
         }
+        parsingSupport = ImageSingletons.contains(SVMParsingSupport.class) ? ImageSingletons.lookup(SVMParsingSupport.class) : null;
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -234,8 +236,9 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes(), this);
+    public Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+                    IntrinsicContext initialIntrinsicContext) {
+        return new AnalysisGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, builderProviders.getWordTypes(), this);
     }
 
     @Override
@@ -554,7 +557,7 @@ public class SVMHost extends HostVM {
             }
 
             if (parseOnce) {
-                new ImplicitAssertionsPhase().apply(graph, bb.getProviders(method));
+                new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
                 UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
                 optimizeAfterParsing(bb, method, graph);
@@ -562,7 +565,7 @@ public class SVMHost extends HostVM {
                  * Do a complete Canonicalizer run once before graph encoding, to clean up any
                  * leftover uncanonicalized nodes.
                  */
-                CanonicalizerPhase.create().apply(graph, bb.getProviders(method));
+                CanonicalizerPhase.create().apply(graph, getProviders(method.getMultiMethodKey()));
             }
 
             super.methodAfterParsingHook(bb, method, graph);
@@ -577,8 +580,8 @@ public class SVMHost extends HostVM {
                  *
                  * Also, more work is needed to enable PEA in Runtime Compiled Methods.
                  */
-                new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
-                new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders(method));
+                new BoxNodeIdentityPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+                new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, getProviders(method.getMultiMethodKey()));
             }
         }
     }
@@ -632,7 +635,7 @@ public class SVMHost extends HostVM {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
             }
-            checkClassInitializerSideEffect(bb, method, n);
+            checkClassInitializerSideEffect(method, n);
         }
     }
 
@@ -655,7 +658,7 @@ public class SVMHost extends HostVM {
      * call chain is the class initializer. But this does not fit well into the current approach
      * where each method has a `Safety` flag.
      */
-    private void checkClassInitializerSideEffect(BigBang bb, AnalysisMethod method, Node n) {
+    private void checkClassInitializerSideEffect(AnalysisMethod method, Node n) {
         if (n instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) n).field();
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
@@ -671,7 +674,7 @@ public class SVMHost extends HostVM {
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {
-            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(bb.getProviders(method));
+            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()));
             if (type != null) {
                 initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
             } else {
@@ -862,8 +865,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, debug, method);
+        if (parsingSupport != null) {
+            return parsingSupport.parseGraph(bb, debug, method);
         } else {
             return super.parseGraph(bb, debug, method);
         }
@@ -871,8 +874,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).validateGraph(bb, graph);
+        if (parsingSupport != null) {
+            return parsingSupport.validateGraph(bb, graph);
         } else {
             return super.validateGraph(bb, graph);
         }
@@ -880,22 +883,23 @@ public class SVMHost extends HostVM {
 
     @Override
     public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            if (ImageSingletons.lookup(SVMParsingSupport.class).allowAssumptions(method)) {
+        if (parsingSupport != null) {
+            if (parsingSupport.allowAssumptions(method)) {
                 return StructuredGraph.AllowAssumptions.YES;
             }
         }
         return super.allowAssumptions(method);
     }
 
-    public HostedProviders getHostedProviders(HostedProviders defaultHostedProviders, MultiMethod.MultiMethodKey key) {
-        if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            HostedProviders result = ImageSingletons.lookup(SVMParsingSupport.class).getHostedProviders(key);
-            if (result != null) {
-                return result;
+    @Override
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        if (parsingSupport != null) {
+            HostedProviders providers = parsingSupport.getHostedProviders(key);
+            if (providers != null) {
+                return providers;
             }
         }
-        return defaultHostedProviders;
+        return super.getProviders(key);
     }
 
     @Override

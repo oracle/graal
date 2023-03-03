@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
@@ -68,6 +69,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -89,6 +91,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -115,6 +118,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * is enabled.
  */
 public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature, RuntimeCompilationSupport {
+
+    public static class Options {
+        /*
+         * Note this phase is currently overly aggressive and can illegally remove proxies. This
+         * will be fixed in GR-44459.
+         */
+        @Option(help = "Remove Deopt(Entries,Anchors,Proxies) determined to be unneeded after the runtime compiled graphs have been finalized.")//
+        public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(false);
+    }
 
     public static final class CallTreeNode extends AbstractCallTreeNode {
         final BytecodePosition position;
@@ -536,6 +548,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
     }
 
+    @SuppressWarnings("try")
     private void encodeRuntimeCompiledMethods() {
         graphEncoder.finishPrepare();
 
@@ -545,8 +558,15 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (var runtimeInfo : runtimeGraphs.entrySet()) {
             var graph = runtimeInfo.getValue();
             var method = runtimeInfo.getKey();
-            long startOffset = graphEncoder.encode(graph);
-            objectReplacer.createMethod(method).setEncodedGraphStartOffset(startOffset);
+            DebugContext debug = new DebugContext.Builder(graph.getOptions(), new GraalDebugHandlersFactory(hostedProviders.getSnippetReflection())).build();
+            graph.resetDebug(debug);
+            try (DebugContext.Scope s = debug.scope("Graph Encoding", graph);
+                            DebugContext.Activation a = debug.activate()) {
+                long startOffset = graphEncoder.encode(graph);
+                objectReplacer.createMethod(method).setEncodedGraphStartOffset(startOffset);
+            } catch (Throwable ex) {
+                debug.handle(ex);
+            }
         }
 
         ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
@@ -607,11 +627,13 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             @Override
             protected PhaseSuite<HighTierContext> getAfterParseSuite() {
                 PhaseSuite<HighTierContext> suite = super.getAfterParseSuite();
-                var iterator = suite.findPhase(StrengthenStampsPhase.class);
-                if (iterator == null) {
-                    suite.prependPhase(new RemoveDeoptEntries());
-                } else {
-                    iterator.add(new RemoveDeoptEntries());
+                if (Options.RemoveUnneededDeoptSupport.getValue()) {
+                    var iterator = suite.findPhase(StrengthenStampsPhase.class);
+                    if (iterator == null) {
+                        suite.prependPhase(new RemoveUnneededDeoptSupport());
+                    } else {
+                        iterator.add(new RemoveUnneededDeoptSupport());
+                    }
                 }
 
                 return suite;
@@ -934,7 +956,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
      * Removes Deoptimizations Entrypoints which are deemed to be unnecessary after the runtime
      * compilation methods are optimized.
      */
-    static class RemoveDeoptEntries extends Phase {
+    static class RemoveUnneededDeoptSupport extends Phase {
 
         @Override
         protected void run(StructuredGraph graph) {
@@ -978,6 +1000,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             // cache the decision
             decisionCache.put(node, result);
             return result;
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "RemoveDeoptEntries";
         }
     }
 }

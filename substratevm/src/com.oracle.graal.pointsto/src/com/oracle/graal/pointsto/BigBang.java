@@ -31,7 +31,6 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
 
@@ -99,8 +98,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
     boolean strengthenGraalGraphs();
-
-    Replacements getReplacements();
 
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")

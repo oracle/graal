@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.analysis;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -38,7 +37,4 @@ public interface Inflation extends BigBang {
     SVMHost getHostVM();
 
     AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
-
-    @Override
-    SubstrateReplacements getReplacements();
 }
