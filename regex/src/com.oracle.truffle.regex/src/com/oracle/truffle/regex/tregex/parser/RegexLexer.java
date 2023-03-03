@@ -434,6 +434,14 @@ public abstract class RegexLexer {
         return pattern.charAt(position - 1) == c;
     }
 
+    protected boolean isEscaped() {
+        int backslashPosition = position - 1;
+        while (backslashPosition >= 0 && pattern.charAt(backslashPosition) == '\\') {
+            backslashPosition--;
+        }
+        return (position - backslashPosition) % 2 == 0;
+    }
+
     protected int count(Predicate<Character> predicate) {
         return count(predicate, position, pattern.length());
     }

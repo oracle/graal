@@ -201,7 +201,7 @@ public final class PythonRegexLexer extends RegexLexer {
         Deque<Boolean> groupVerbosityStack = new ArrayDeque<>();
         groupVerbosityStack.push(globalFlags.isVerbose());
         while (findChars('[', '(', ')', '#')) {
-            if (lookbehind('\\')) {
+            if (isEscaped()) {
                 advance();
             } else {
                 switch (consumeChar()) {
@@ -211,7 +211,7 @@ public final class PythonRegexLexer extends RegexLexer {
                         advance();
                         // find end of character class
                         while (findChars(']')) {
-                            if (!lookbehind('\\')) {
+                            if (!isEscaped()) {
                                 break;
                             }
                             advance();
@@ -222,7 +222,7 @@ public final class PythonRegexLexer extends RegexLexer {
                             int ch = consumeChar();
                             if (ch == '#') {
                                 while (findChars(')')) {
-                                    if (!lookbehind('\\')) {
+                                    if (!isEscaped()) {
                                         break;
                                     }
                                     advance();

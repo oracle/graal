@@ -378,6 +378,11 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testInlineGlobalFlagsEscaped() {
+        test("\\\\(?i)foo", "", "\\FOO", 0, true, 0, 4, -1);
+    }
+
+    @Test
     public void testPythonFlagChecks() {
         expectSyntaxError("", "au", "ASCII and UNICODE flags are incompatible");
         expectSyntaxError("(?a)", "u", "ASCII and UNICODE flags are incompatible");
