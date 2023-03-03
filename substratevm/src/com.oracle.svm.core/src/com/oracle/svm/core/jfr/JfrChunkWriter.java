@@ -295,7 +295,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void writeFlushCheckpoint(boolean flush) {
-        // TEMP (chaeubl): this should also check if there is any data.
+        // TEMP (chaeubl): this should also check if there is any data - otherwise it is useless to
+        // emit the event.
         writeCheckpointEvent(JfrCheckpointType.Flush, flushCheckpointRepos, newChunk, flush);
     }
 
@@ -540,8 +541,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         JfrBufferNode node = linkedList.getHead();
         JfrBufferNode prev = WordFactory.nullPointer();
 
-        // TEMP (chaeubl): node.getBuffer() should be accessed if the node is locked -> add an
-        // accessor method.
         while (node.isNonNull()) {
             boolean locked = JfrBufferNodeAccess.tryLock(node);
             if (locked) {

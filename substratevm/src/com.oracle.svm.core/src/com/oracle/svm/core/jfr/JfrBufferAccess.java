@@ -159,8 +159,7 @@ public final class JfrBufferAccess {
         Pointer start = getDataStart(buffer);
         Pointer end = getDataEnd(buffer);
 
-        // Don't need to use setFlushedPos and getFlushedPos helpers here because we're just
-        // checking invariants.
+        /* Just checking invariants, so no need to use setFlushedPos() and getFlushedPos(). */
         return buffer.getCommittedPos().aboveOrEqual(start) && buffer.getCommittedPos().belowOrEqual(end) &&
                         buffer.getFlushedPos().aboveOrEqual(start) && buffer.getFlushedPos().belowOrEqual(end) &&
                         buffer.getFlushedPos().belowOrEqual(buffer.getCommittedPos());

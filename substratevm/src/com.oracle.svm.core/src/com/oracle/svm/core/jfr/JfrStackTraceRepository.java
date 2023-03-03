@@ -219,8 +219,6 @@ public class JfrStackTraceRepository implements JfrRepository {
         mutex.lockNoTransition();
         try {
             entry.setSerialized(true);
-            // TEMP (chaeubl): doesn't this cause issues? the buffer is written elsewhere ->
-            // reinitialize would destroy data
             getEpochData(false).unflushedEntries++;
         } finally {
             mutex.unlock();
@@ -230,6 +228,16 @@ public class JfrStackTraceRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
+        if (flush) {
+            /*
+             * Flushing is currently not support for the stack traces. When a stack trace is
+             * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
+             * used, which are not atomic enough (i.e., a flush could destroy the JfrBuffer of the
+             * epoch, while it is being written).
+             */
+            return EMPTY;
+        }
+
         mutex.lockNoTransition();
         try {
             JfrStackTraceEpochData epochData = getEpochData(!flush);

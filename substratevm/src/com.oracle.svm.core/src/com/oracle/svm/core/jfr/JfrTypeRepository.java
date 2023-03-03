@@ -39,18 +39,13 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
 /**
- * Repository that collects and writes used classes, packages, modules, and classloaders. Fields
- * that store state are only used during flushes and chunk rotations (only one thread will use them
- * at a time). This means that the maps in this repository will be entirely used and cleared with
- * respect to the current epoch before they are used for the subsequent epoch.
- *
- * The "epoch" maps hold records with respect to a specific epoch and are reset at an epoch change.
+ * Repository that collects and writes used classes, packages, modules, and classloaders.
  */
 public class JfrTypeRepository implements JfrRepository {
-    private final Set<Class<?>> epochClasses = new HashSet<>();
-    private final Map<String, PackageInfo> epochPackages = new HashMap<>();
-    private final Map<Module, Long> epochModules = new HashMap<>();
-    private final Map<ClassLoader, Long> epochClassLoaders = new HashMap<>();
+    private final Set<Class<?>> flushedClasses = new HashSet<>();
+    private final Map<String, PackageInfo> flushedPackages = new HashMap<>();
+    private final Map<Module, Long> flushedModules = new HashMap<>();
+    private final Map<ClassLoader, Long> flushedClassLoaders = new HashMap<>();
     private long currentPackageId = 0;
     private long currentModuleId = 0;
     private long currentClassLoaderId = 0;
@@ -66,28 +61,28 @@ public class JfrTypeRepository implements JfrRepository {
 
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
-        // Visit all used classes, and collect their packages, modules, classloaders and possibly
-        // referenced classes.
         TypeInfo typeInfo = collectTypeInfo(flush);
-
-        // The order of writing matters as following types can be tagged during the write process
-        int count = writeClasses(typeInfo, writer, flush);
-        count += writePackages(typeInfo, writer, flush);
-        count += writeModules(typeInfo, writer, flush);
-        count += writeClassLoaders(typeInfo, writer, flush);
+        int count = writeClasses(writer, typeInfo, flush);
+        count += writePackages(writer, typeInfo, flush);
+        count += writeModules(writer, typeInfo, flush);
+        count += writeClassLoaders(writer, typeInfo, flush);
 
         if (flush) {
-            epochClasses.addAll(typeInfo.classes);
-            epochPackages.putAll(typeInfo.packages);
-            epochModules.putAll(typeInfo.modules);
-            epochClassLoaders.putAll(typeInfo.classLoaders);
+            flushedClasses.addAll(typeInfo.classes);
+            flushedPackages.putAll(typeInfo.packages);
+            flushedModules.putAll(typeInfo.modules);
+            flushedClassLoaders.putAll(typeInfo.classLoaders);
         } else {
-            clearEpochChange();
+            clearEpochData();
         }
 
         return count;
     }
 
+    /**
+     * Visit all used classes, and collect their packages, modules, classloaders and possibly
+     * referenced classes.
+     */
     private TypeInfo collectTypeInfo(boolean flush) {
         TypeInfo typeInfo = new TypeInfo();
         for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
@@ -95,9 +90,11 @@ public class JfrTypeRepository implements JfrRepository {
                 if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
                     visitClass(typeInfo, clazz);
                 }
-            } else if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
-                JfrTraceId.clearUsedPreviousEpoch(clazz);
-                visitClass(typeInfo, clazz);
+            } else {
+                if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+                    JfrTraceId.clearUsedPreviousEpoch(clazz);
+                    visitClass(typeInfo, clazz);
+                }
             }
         }
         return typeInfo;
@@ -129,7 +126,7 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    private int writeClasses(TypeInfo typeInfo, JfrChunkWriter writer, boolean flush) {
+    private int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.classes.isEmpty()) {
             return EMPTY;
         }
@@ -154,7 +151,7 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    private int writePackages(TypeInfo typeInfo, JfrChunkWriter writer, boolean flush) {
+    private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.packages.isEmpty()) {
             return EMPTY;
         }
@@ -175,7 +172,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeBoolean(false); // exported
     }
 
-    private int writeModules(TypeInfo typeInfo, JfrChunkWriter writer, boolean flush) {
+    private int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.modules.isEmpty()) {
             return EMPTY;
         }
@@ -197,7 +194,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
     }
 
-    private int writeClassLoaders(TypeInfo typeInfo, JfrChunkWriter writer, boolean flush) {
+    private int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.classLoaders.isEmpty()) {
             return EMPTY;
         }
@@ -240,29 +237,28 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean isClassVisited(TypeInfo typeInfo, Class<?> clazz) {
-        return typeInfo.classes.contains(clazz) || epochClasses.contains(clazz);
+        return typeInfo.classes.contains(clazz) || flushedClasses.contains(clazz);
     }
 
     private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (!isPackageVisited(typeInfo, pkg)) {
-            // The empty package represented by "" is always traced with id 0
-            long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
-            typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
-            return true;
-        } else {
-            assert epochPackages.containsKey(pkg.getName()) ? module == epochPackages.get(pkg.getName()).module : module == typeInfo.packages.get(pkg.getName()).module;
+        if (isPackageVisited(typeInfo, pkg)) {
+            assert module == (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
             return false;
         }
+        // The empty package represented by "" is always traced with id 0
+        long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
+        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
+        return true;
     }
 
     private boolean isPackageVisited(TypeInfo typeInfo, Package pkg) {
-        return epochPackages.containsKey(pkg.getName()) || typeInfo.packages.containsKey(pkg.getName());
+        return flushedPackages.containsKey(pkg.getName()) || typeInfo.packages.containsKey(pkg.getName());
     }
 
     private long getPackageId(TypeInfo typeInfo, Package pkg) {
         if (pkg != null) {
-            if (epochPackages.containsKey(pkg.getName())) {
-                return epochPackages.get(pkg.getName()).id;
+            if (flushedPackages.containsKey(pkg.getName())) {
+                return flushedPackages.get(pkg.getName()).id;
             }
             return typeInfo.packages.get(pkg.getName()).id;
         } else {
@@ -271,22 +267,21 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean addModule(TypeInfo typeInfo, Module module) {
-        if (!isModuleVisited(typeInfo, module)) {
-            typeInfo.modules.put(module, ++currentModuleId);
-            return true;
-        } else {
+        if (isModuleVisited(typeInfo, module)) {
             return false;
         }
+        typeInfo.modules.put(module, ++currentModuleId);
+        return true;
     }
 
     private boolean isModuleVisited(TypeInfo typeInfo, Module module) {
-        return typeInfo.modules.containsKey(module) || epochModules.containsKey(module);
+        return typeInfo.modules.containsKey(module) || flushedModules.containsKey(module);
     }
 
     private long getModuleId(TypeInfo typeInfo, Module module) {
         if (module != null) {
-            if (epochModules.containsKey(module)) {
-                return epochModules.get(module);
+            if (flushedModules.containsKey(module)) {
+                return flushedModules.get(module);
             }
             return typeInfo.modules.get(module);
         } else {
@@ -295,22 +290,21 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean addClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
-        if (!isClassLoaderVisited(typeInfo, classLoader)) {
-            typeInfo.classLoaders.put(classLoader, ++currentClassLoaderId);
-            return true;
-        } else {
+        if (isClassLoaderVisited(typeInfo, classLoader)) {
             return false;
         }
+        typeInfo.classLoaders.put(classLoader, ++currentClassLoaderId);
+        return true;
     }
 
     private boolean isClassLoaderVisited(TypeInfo typeInfo, ClassLoader classLoader) {
-        return epochClassLoaders.containsKey(classLoader) || typeInfo.classLoaders.containsKey(classLoader);
+        return flushedClassLoaders.containsKey(classLoader) || typeInfo.classLoaders.containsKey(classLoader);
     }
 
     private long getClassLoaderId(TypeInfo typeInfo, ClassLoader classLoader) {
         if (classLoader != null) {
-            if (epochClassLoaders.containsKey(classLoader)) {
-                return epochClassLoaders.get(classLoader);
+            if (flushedClassLoaders.containsKey(classLoader)) {
+                return flushedClassLoaders.get(classLoader);
             }
             return typeInfo.classLoaders.get(classLoader);
         } else {
@@ -318,20 +312,20 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    private void clearEpochChange() {
-        epochClasses.clear();
-        epochPackages.clear();
-        epochModules.clear();
-        epochClassLoaders.clear();
+    private void clearEpochData() {
+        flushedClasses.clear();
+        flushedPackages.clear();
+        flushedModules.clear();
+        flushedClassLoaders.clear();
         currentPackageId = 0;
         currentModuleId = 0;
         currentClassLoaderId = 0;
     }
 
     private static class TypeInfo {
-        public final Set<Class<?>> classes = new HashSet<>();
-        public final Map<String, PackageInfo> packages = new HashMap<>();
-        public final Map<Module, Long> modules = new HashMap<>();
-        public final Map<ClassLoader, Long> classLoaders = new HashMap<>();
+        final Set<Class<?>> classes = new HashSet<>();
+        final Map<String, PackageInfo> packages = new HashMap<>();
+        final Map<Module, Long> modules = new HashMap<>();
+        final Map<ClassLoader, Long> classLoaders = new HashMap<>();
     }
 }

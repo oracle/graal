@@ -44,6 +44,7 @@ import com.oracle.svm.core.util.VMError;
  * implementations can deadlock in this case. So it is essential to check if the current thread is
  * the owner of the lock, before acquiring it.
  */
+// TEMP (chaeubl): should be removed, once we have the other SpinLock.
 class SamplerSpinLock {
     private final UninterruptibleUtils.AtomicPointer<IsolateThread> owner;
 

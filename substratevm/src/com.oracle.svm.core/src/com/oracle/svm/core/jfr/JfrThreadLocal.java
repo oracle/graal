@@ -186,8 +186,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     /**
      * This method excludes/includes a thread from JFR (emitting events and sampling). At the
-     * moment, only the current thread may be excluded/included. This is a difference to HotSpot
-     * that we will need to address at some point.
+     * moment, only the current thread may be excluded/included. See GR-44616.
      */
     public void setExcluded(Thread thread, boolean excluded) {
         if (!thread.equals(Thread.currentThread())) {

@@ -678,7 +678,10 @@ public class SubstrateJVM {
     }
 
     public boolean isExcluded(Thread thread) {
-        // in jdk 17 and jdk19 the argument is only ever the current thread.
+        /*
+         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
+         * will need to implement that in a more general way though, see GR-44616.
+         */
         if (!thread.equals(Thread.currentThread())) {
             return false;
         }
@@ -687,8 +690,7 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean isCurrentThreadExcluded() {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
-        return jfrThreadLocal.isCurrentThreadExcluded();
+        return getThreadLocal().isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
