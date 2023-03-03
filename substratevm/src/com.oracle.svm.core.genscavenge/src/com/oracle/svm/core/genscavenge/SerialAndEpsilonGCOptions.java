@@ -57,7 +57,7 @@ public final class SerialAndEpsilonGCOptions {
      * This should be a fraction of the size of an aligned chunk, else large small arrays will not
      * fit in an aligned chunk.
      */
-    @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. 0 implies (AlignedHeapChunkSize / 8). Serial and epsilon GC only.", type = OptionType.Expert) //
+    @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(0L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
     @Option(help = "Fill unused memory chunks with a sentinel value. Serial and epsilon GC only.", type = OptionType.Debug) //
