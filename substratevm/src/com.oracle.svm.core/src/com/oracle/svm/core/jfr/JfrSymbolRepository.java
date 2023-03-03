@@ -48,27 +48,21 @@ import com.oracle.svm.core.locks.VMMutex;
  */
 public class JfrSymbolRepository implements JfrConstantPool {
     private final VMMutex mutex;
-    private final CharReplacer dotWithSlash;
     private final JfrSymbolEpochData epochData0;
     private final JfrSymbolEpochData epochData1;
+    private final CharReplacer dotWithSlash;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrSymbolRepository() {
         this.mutex = new VMMutex("jfrSymbolRepository");
-        this.dotWithSlash = new ReplaceDotWithSlash();
         this.epochData0 = new JfrSymbolEpochData();
         this.epochData1 = new JfrSymbolEpochData();
+        this.dotWithSlash = new ReplaceDotWithSlash();
     }
 
     public void teardown() {
         epochData0.teardown();
         epochData1.teardown();
-    }
-
-    @Uninterruptible(reason = "Called by uninterruptible code.")
-    private JfrSymbolEpochData getEpochData(boolean previousEpoch) {
-        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
-        return epoch ? epochData0 : epochData1;
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
@@ -110,25 +104,24 @@ public class JfrSymbolRepository implements JfrConstantPool {
                 return 0L;
             }
 
-            /* We have a new symbol, so serialize it to the buffer. */
-            epochData.unflushedSymbolCount++;
+            /* We have a new entry, so serialize it to the buffer. */
+            epochData.unflushedEntries++;
 
-            if (epochData.symbolBuffer.isNull()) {
-                epochData.symbolBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
+            if (epochData.buffer.isNull()) {
+                epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
             }
 
-            CharReplacer charReplacer = replaceDotWithSlash ? dotWithSlash : null;
+            CharReplacer charReplacer = newEntry.getReplaceDotWithSlash() ? dotWithSlash : null;
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initialize(data, epochData.symbolBuffer);
+            JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
 
             JfrNativeEventWriter.putLong(data, newEntry.getId());
             JfrNativeEventWriter.putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
-            JfrNativeEventWriter.putString(data, imageHeapString, charReplacer);
+            JfrNativeEventWriter.putString(data, newEntry.getValue(), charReplacer);
             JfrNativeEventWriter.commit(data);
 
             /* The buffer may have been replaced with a new one. */
-            epochData.symbolBuffer = data.getJfrBuffer();
-
+            epochData.buffer = data.getJfrBuffer();
             return newEntry.getId();
         } finally {
             mutex.unlock();
@@ -138,36 +131,29 @@ public class JfrSymbolRepository implements JfrConstantPool {
     @Override
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
-        maybeLock(flush);
+        mutex.lockNoTransition();
         try {
             JfrSymbolEpochData epochData = getEpochData(!flush);
-            int numberOfSymbols = epochData.unflushedSymbolCount;
-            if (numberOfSymbols == 0) {
+            int count = epochData.unflushedEntries;
+            if (count == 0) {
                 return EMPTY;
             }
+
             writer.writeCompressedLong(JfrType.Symbol.getId());
-            writer.writeCompressedLong(numberOfSymbols);
-            writer.write(epochData.symbolBuffer);
+            writer.writeCompressedLong(count);
+            writer.write(epochData.buffer);
 
             epochData.clear(flush);
             return NON_EMPTY;
         } finally {
-            maybeUnlock(flush);
-        }
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeLock(boolean flush) {
-        if (flush) {
-            mutex.lockNoTransition();
-        }
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeUnlock(boolean flush) {
-        if (flush) {
             mutex.unlock();
         }
+    }
+
+    @Uninterruptible(reason = "Called by uninterruptible code.")
+    private JfrSymbolEpochData getEpochData(boolean previousEpoch) {
+        boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
+        return epoch ? epochData0 : epochData1;
     }
 
     @RawStructure
@@ -240,32 +226,30 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     private static class JfrSymbolEpochData {
         private final JfrSymbolHashtable table;
-        private JfrBuffer symbolBuffer;
-        private int unflushedSymbolCount;
+        private int unflushedEntries;
+        private JfrBuffer buffer;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrSymbolEpochData() {
             this.table = new JfrSymbolHashtable();
-            this.unflushedSymbolCount = 0;
+            this.unflushedEntries = 0;
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
         void clear(boolean flush) {
-            if (symbolBuffer.isNonNull()) {
-                JfrBufferAccess.reinitialize(symbolBuffer);
-            }
             if (!flush) {
-                /* The IDs must be stable for the whole epoch, so only clear after epoch change. */
                 table.clear();
             }
-            unflushedSymbolCount = 0;
+            unflushedEntries = 0;
+            JfrBufferAccess.reinitialize(buffer);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void teardown() {
-            JfrBufferAccess.free(symbolBuffer);
-            symbolBuffer = WordFactory.nullPointer();
             table.teardown();
+            unflushedEntries = 0;
+            JfrBufferAccess.free(buffer);
+            buffer = WordFactory.nullPointer();
         }
     }
 

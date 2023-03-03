@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.nativeimage.IsolateThread;
-
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -41,21 +38,12 @@ import jdk.internal.misc.Unsafe;
  * unexpectedly.
  */
 public final class ThreadData extends UnacquiredThreadData {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final long LOCK_OFFSET;
-    private static final long UNSAFE_PARK_EVENT_OFFSET;
-    private static final long SLEEP_PARK_EVENT_OFFSET;
+    private static final Unsafe U = Unsafe.getUnsafe();
+    private static final long LOCK_OFFSET = U.objectFieldOffset(ThreadData.class, "lock");
+    private static final long UNSAFE_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "unsafeParkEvent");
+    private static final long SLEEP_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "sleepParkEvent");
 
-    static {
-        try {
-            LOCK_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("lock"));
-            UNSAFE_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("unsafeParkEvent"));
-            SLEEP_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("sleepParkEvent"));
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-    private volatile IsolateThread lock;
+    private volatile int lock;
     private boolean detached;
     private long refCount;
 
@@ -190,10 +178,10 @@ public final class ThreadData extends UnacquiredThreadData {
     private boolean tryToStoreParkEvent(long offset, ParkEvent newEvent) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            if (UNSAFE.getObject(this, offset) != null) {
+            if (U.getObject(this, offset) != null) {
                 return false;
             }
-            UNSAFE.putObjectVolatile(this, offset, newEvent);
+            U.putObjectVolatile(this, offset, newEvent);
             return true;
         } finally {
             JavaSpinLockUtils.unlock(this, LOCK_OFFSET);

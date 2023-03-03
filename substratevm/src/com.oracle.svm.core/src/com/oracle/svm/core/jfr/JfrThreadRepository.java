@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -210,25 +210,24 @@ public final class JfrThreadRepository {
         JfrThreadEpochData epochData = getEpochData(!flush);
         int count = writeThreads(writer, epochData);
         count += writeThreadGroups(writer, epochData);
-
         return count;
     }
 
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public SignedWord maybeWrite(JfrChunkWriter writer, boolean flush, SignedWord lastCheckpointOffset) {
-
         JfrThreadEpochData epochData = getEpochData(!flush);
         maybeLock(flush);
         try {
             if (epochData.unflushedThreadCount == 0) {
                 return lastCheckpointOffset;
             }
+
             SignedWord start = writer.beginEvent();
             long delta = 0;
             if (lastCheckpointOffset.greaterOrEqual(0)) {
                 delta = lastCheckpointOffset.subtract(start).rawValue();
             }
-            writer.writeCompressedLong(JfrReservedEvent.EVENT_CHECKPOINT.getId());
+            writer.writeCompressedLong(JfrReservedEvent.CHECKPOINT.getId());
             writer.writeCompressedLong(JfrTicks.elapsedTicks());
             writer.writeCompressedLong(0); // duration
             writer.writeCompressedLong(delta);
@@ -239,7 +238,7 @@ public final class JfrThreadRepository {
             if (epochData.unflushedThreadGroupCount > 0) {
                 poolCount = 2;
             }
-            writer.writeInt(poolCount);
+            writer.writePaddedInt(poolCount);
 
             int actualPoolCount = write(writer, flush);
             assert poolCount == actualPoolCount;

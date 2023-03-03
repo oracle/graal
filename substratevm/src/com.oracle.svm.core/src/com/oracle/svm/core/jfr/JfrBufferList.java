@@ -39,15 +39,15 @@ import com.oracle.svm.core.thread.VMOperation;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Singly linked list that stores JFR buffers. Multiple instances of this data structure are used to
- * keep track of the global and the various thread-local buffers. When entering a safepoint, it is
- * guaranteed that none of the blocked Java threads holds the list's lock.
+ * Singly linked list that stores {@link JfrBuffer}s. Multiple instances of this data structure are
+ * used to keep track of the global and the various thread-local buffers. When entering a safepoint,
+ * it is guaranteed that none of the blocked Java threads holds the list's lock.
  *
  * The following invariants are crucial if the list is used for thread-local buffers:
  * <ul>
  * <li>Each thread shall only add one node to the list.</li>
- * <li>Only the thread performing a flush or epoch change shall iterate this list.</li>
- * <li>Only the thread performing a flush or epoch change is allowed to remove nodes.</li>
+ * <li>Only threads that hold the {@link JfrChunkWriter#lock()} may iterate or remove nodes from the
+ * list.</li>
  * </ul>
  */
 public class JfrBufferList {

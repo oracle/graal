@@ -62,62 +62,44 @@ public class JfrMethodRepository implements JfrConstantPool {
         assert methodName != null;
         assert methodId > 0;
 
-        mutex.lockNoTransition();
-        try {
-            return getMethodId0(clazz, methodName, methodId);
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private long getMethodId0(Class<?> clazz, String methodName, int methodId) {
         JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
         jfrVisited.setId(methodId);
         jfrVisited.setHash(methodId);
 
-        JfrMethodEpochData epochData = getEpochData(false);
-        if (!epochData.visitedMethods.putIfAbsent(jfrVisited)) {
+        mutex.lockNoTransition();
+        try {
+            JfrMethodEpochData epochData = getEpochData(false);
+            if (!epochData.table.putIfAbsent(jfrVisited)) {
+                return methodId;
+            }
+
+            /* We have a new entry, so serialize it to the buffer. */
+            epochData.unflushedEntries++;
+
+            if (epochData.buffer.isNull()) {
+                epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
+            }
+
+            JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
+            JfrTypeRepository typeRepo = SubstrateJVM.getTypeRepository();
+
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
+            JfrNativeEventWriter.putLong(data, methodId);
+            JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
+            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
+            /* Dummy value for signature. */
+            JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
+            /* Dummy value for modifiers. */
+            JfrNativeEventWriter.putShort(data, (short) 0);
+            /* Dummy value for isHidden. */
+            JfrNativeEventWriter.putBoolean(data, false);
+            JfrNativeEventWriter.commit(data);
+
+            /* The buffer may have been replaced with a new one. */
+            epochData.buffer = data.getJfrBuffer();
             return methodId;
-        }
-
-        if (epochData.methodBuffer.isNull()) {
-            // This will happen only on the first call.
-            epochData.methodBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
-        }
-
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
-        JfrTypeRepository typeRepo = SubstrateJVM.getTypeRepository();
-
-        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-        JfrNativeEventWriterDataAccess.initialize(data, epochData.methodBuffer);
-        JfrNativeEventWriter.putLong(data, methodId);
-        JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
-        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
-        /* Dummy value for signature. */
-        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
-        /* Dummy value for modifiers. */
-        JfrNativeEventWriter.putShort(data, (short) 0);
-        /* Dummy value for isHidden. */
-        JfrNativeEventWriter.putBoolean(data, false);
-        JfrNativeEventWriter.commit(data);
-
-        /* The buffer may have been replaced with a new one. */
-        epochData.methodBuffer = data.getJfrBuffer();
-        epochData.unflushedMethodCount++;
-        return methodId;
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeLock(boolean flush) {
-        if (flush) {
-            mutex.lockNoTransition();
-        }
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeUnlock(boolean flush) {
-        if (flush) {
+        } finally {
             mutex.unlock();
         }
     }
@@ -125,32 +107,23 @@ public class JfrMethodRepository implements JfrConstantPool {
     @Override
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
-        maybeLock(flush);
+        mutex.lockNoTransition();
         try {
             JfrMethodEpochData epochData = getEpochData(!flush);
-            int count = writeMethods(writer, epochData);
-            if (!flush) {
-                epochData.clear();
+            int count = epochData.unflushedEntries;
+            if (count == 0) {
+                return EMPTY;
             }
-            return count;
+
+            writer.writeCompressedLong(JfrType.Method.getId());
+            writer.writeCompressedInt(count);
+            writer.write(epochData.buffer);
+
+            epochData.clear(flush);
+            return NON_EMPTY;
         } finally {
-            maybeUnlock(flush);
+            mutex.unlock();
         }
-    }
-
-    @Uninterruptible(reason = "May write current epoch data.")
-    private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData) {
-        int numberOfMethods = epochData.unflushedMethodCount;
-        if (numberOfMethods == 0) {
-            return EMPTY;
-        }
-
-        writer.writeCompressedLong(JfrType.Method.getId());
-        writer.writeCompressedInt(numberOfMethods);
-        writer.write(epochData.methodBuffer);
-        JfrBufferAccess.reinitialize(epochData.methodBuffer);
-        epochData.unflushedMethodCount = 0;
-        return NON_EMPTY;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -160,32 +133,31 @@ public class JfrMethodRepository implements JfrConstantPool {
     }
 
     private static class JfrMethodEpochData {
-        private JfrBuffer methodBuffer;
-        private final JfrVisitedTable visitedMethods;
-        private int unflushedMethodCount;
+        private final JfrVisitedTable table;
+        private int unflushedEntries;
+        private JfrBuffer buffer;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrMethodEpochData() {
-            this.visitedMethods = new JfrVisitedTable();
-            this.unflushedMethodCount = 0;
+            this.table = new JfrVisitedTable();
+            this.unflushedEntries = 0;
+        }
+
+        @Uninterruptible(reason = "May write current epoch data.")
+        void clear(boolean flush) {
+            if (!flush) {
+                table.clear();
+            }
+            unflushedEntries = 0;
+            JfrBufferAccess.reinitialize(buffer);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void teardown() {
-            visitedMethods.teardown();
-            if (methodBuffer.isNonNull()) {
-                JfrBufferAccess.free(methodBuffer);
-            }
-            methodBuffer = WordFactory.nullPointer();
-        }
-
-        @Uninterruptible(reason = "May write current epoch data.")
-        void clear() {
-            visitedMethods.clear();
-            if (methodBuffer.isNonNull()) {
-                JfrBufferAccess.reinitialize(methodBuffer);
-            }
-            unflushedMethodCount = 0;
+            table.teardown();
+            unflushedEntries = 0;
+            JfrBufferAccess.free(buffer);
+            buffer = WordFactory.nullPointer();
         }
     }
 }

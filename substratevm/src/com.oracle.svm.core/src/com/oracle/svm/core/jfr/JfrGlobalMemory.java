@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -91,7 +92,7 @@ public class JfrGlobalMemory {
         buffers.teardown();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Fold
     public JfrBufferList getBuffers() {
         return buffers;
     }
@@ -115,7 +116,7 @@ public class JfrGlobalMemory {
 
         boolean shouldSignal;
         try {
-            // Copy all committed but not yet flushed memory to the promotion buffer.
+            /* Copy all committed but not yet flushed memory to the promotion buffer. */
             JfrBuffer promotionBuffer = promotionNode.getBuffer();
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
             UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(threadLocalBuffer), promotionBuffer.getCommittedPos(), unflushedSize);
@@ -126,8 +127,11 @@ public class JfrGlobalMemory {
         }
 
         JfrBufferAccess.increaseFlushedPos(threadLocalBuffer, unflushedSize);
-        // Notify the thread that writes the global memory to disk.
-        // If we're flushing, the global buffers are about to get persisted anyway
+
+        /*
+         * Notify the thread that writes the global memory to disk. If we're flushing, the global
+         * buffers are about to get persisted anyway.
+         */
         if (shouldSignal && !streamingFlush) {
             SubstrateJVM.getRecorderThread().signal();
         }

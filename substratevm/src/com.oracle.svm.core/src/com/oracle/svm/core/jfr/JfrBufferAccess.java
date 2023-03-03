@@ -74,10 +74,11 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public static void reinitialize(JfrBuffer buffer) {
-        assert buffer.isNonNull();
-        Pointer pos = getDataStart(buffer);
-        buffer.setCommittedPos(pos);
-        setFlushedPos(buffer, pos);
+        if (buffer.isNonNull()) {
+            Pointer pos = getDataStart(buffer);
+            buffer.setCommittedPos(pos);
+            setFlushedPos(buffer, pos);
+        }
     }
 
     /**

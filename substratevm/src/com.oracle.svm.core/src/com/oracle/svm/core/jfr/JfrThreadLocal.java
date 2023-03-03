@@ -111,7 +111,6 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
-
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             SubstrateJVM.getThreadRepo().registerThread(javaThread);

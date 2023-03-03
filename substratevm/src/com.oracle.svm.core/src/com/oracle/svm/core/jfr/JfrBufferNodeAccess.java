@@ -67,12 +67,6 @@ public final class JfrBufferNodeAccess {
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
-    public static boolean tryLock(JfrBufferNode node, int retries) {
-        assert node.isNonNull();
-        return NativeSpinLockUtils.tryLock(ptrToLock(node), retries);
-    }
-
-    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void lock(JfrBufferNode node) {
         assert node.isNonNull();
         NativeSpinLockUtils.lockNoTransition(ptrToLock(node));

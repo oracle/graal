@@ -25,8 +25,9 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.core.common.NumUtil;
+
+import com.oracle.svm.core.Uninterruptible;
 
 public enum JfrCheckpointType {
     Flush(1),

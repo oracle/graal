@@ -79,6 +79,12 @@ public final class Target_jdk_jfr_internal_JVM {
     private static void registerNatives() {
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    public void markChunkFinal() {
+        SubstrateJVM.get().markChunkFinal();
+    }
+
     /** See {@link JVM#beginRecording}. */
     @Substitute
     public void beginRecording() {
@@ -359,6 +365,12 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    public void flush() {
+        SubstrateJVM.get().flush();
+    }
+
     /** See {@link JVM#setRepositoryLocation}. */
     @Substitute
     public void setRepositoryLocation(String dirText) {
@@ -433,12 +445,6 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
-    public void flush() {
-        SubstrateJVM.get().flush();
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
         SubstrateJVM.get().setExcluded(thread, false);
     }
@@ -499,12 +505,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @TargetElement(onlyWith = JDK19OrLater.class) //
     public boolean isContainerized() {
         return Containers.isContainerized();
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
-    public void markChunkFinal() {
-        SubstrateJVM.get().markChunkFinal();
     }
 
     @Substitute

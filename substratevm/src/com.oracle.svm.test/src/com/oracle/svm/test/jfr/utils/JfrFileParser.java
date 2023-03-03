@@ -118,7 +118,7 @@ public class JfrFileParser {
     private static void parseMetadataHeader(RecordingInput input, long metadataPosition) throws IOException {
         input.position(metadataPosition); // Seek to starting position of metadata region.
         assertTrue("Metadata size is invalid!", input.readInt() > 0); // Size of metadata.
-        assertEquals(JfrReservedEvent.EVENT_METADATA.getId(), input.readLong());
+        assertEquals(JfrReservedEvent.METADATA.getId(), input.readLong());
         assertTrue("Metadata timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         input.readLong(); // Metadata ID.
@@ -134,7 +134,7 @@ public class JfrFileParser {
         // Size of constant pools.
         assertTrue("Constant pool size is invalid!", input.readInt() > 0);
         // Constant pools region ID.
-        assertEquals(JfrReservedEvent.EVENT_CHECKPOINT.getId(), input.readLong());
+        assertEquals(JfrReservedEvent.CHECKPOINT.getId(), input.readLong());
         assertTrue("Constant pool timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         long deltaNext = input.readLong(); // Offset to a next constant pools region.

@@ -46,6 +46,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
@@ -65,7 +66,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     private static final int MIN_STACK_DEPTH = 1;
     private static final int MAX_STACK_DEPTH = 2048;
 
-    private int stackTraceDepth = DEFAULT_STACK_DEPTH;
+    private int stackTraceDepth;
 
     private final VMMutex mutex;
     private final JfrStackTraceEpochData epochData0;
@@ -73,19 +74,14 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrStackTraceRepository() {
+        this.mutex = new VMMutex("jfrStackTraceRepository");
         this.epochData0 = new JfrStackTraceEpochData();
         this.epochData1 = new JfrStackTraceEpochData();
-        this.mutex = new VMMutex("jfrStackTraceRepository");
+        this.stackTraceDepth = DEFAULT_STACK_DEPTH;
     }
 
     public void setStackTraceDepth(int value) {
-        if (value < MIN_STACK_DEPTH) {
-            stackTraceDepth = MIN_STACK_DEPTH;
-        } else if (value > MAX_STACK_DEPTH) {
-            stackTraceDepth = MAX_STACK_DEPTH;
-        } else {
-            stackTraceDepth = value;
-        }
+        stackTraceDepth = UninterruptibleUtils.Math.clamp(value, MIN_STACK_DEPTH, MAX_STACK_DEPTH);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -93,7 +89,6 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         return stackTraceDepth;
     }
 
-    @Uninterruptible(reason = "Releasing repository buffers.")
     public void teardown() {
         epochData0.teardown();
         epochData1.teardown();
@@ -186,7 +181,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         entry.setSerialized(false);
 
         JfrStackTraceEpochData epochData = getEpochData(false);
-        JfrStackTraceTableEntry result = (JfrStackTraceTableEntry) epochData.visitedStackTraces.get(entry);
+        JfrStackTraceTableEntry result = (JfrStackTraceTableEntry) epochData.table.get(entry);
         if (result.isNonNull()) {
             /* There is an existing stack trace. */
             int status = result.getSerialized() ? JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED : JfrStackTraceTableEntryStatus.EXISTING_RAW;
@@ -203,7 +198,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
                 UnmanagedMemoryUtil.copy(start, to, size);
                 entry.setRawStackTrace(to);
 
-                JfrStackTraceTableEntry newEntry = (JfrStackTraceTableEntry) epochData.visitedStackTraces.getOrPut(entry);
+                JfrStackTraceTableEntry newEntry = (JfrStackTraceTableEntry) epochData.table.getOrPut(entry);
                 if (newEntry.isNonNull()) {
                     statusPtr.write(JfrStackTraceTableEntryStatus.INSERTED);
                     return newEntry;
@@ -224,22 +219,8 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         mutex.lockNoTransition();
         try {
             entry.setSerialized(true);
-            getEpochData(false).numberOfSerializedStackTraces++;
+            getEpochData(false).unflushedEntries++;
         } finally {
-            mutex.unlock();
-        }
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeLock(boolean flush) {
-        if (flush) {
-            mutex.lockNoTransition();
-        }
-    }
-
-    @Uninterruptible(reason = "Locking without transition.")
-    private void maybeUnlock(boolean flush) {
-        if (flush) {
             mutex.unlock();
         }
     }
@@ -247,31 +228,23 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     @Override
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
-        maybeLock(flush);
+        mutex.lockNoTransition();
         try {
             JfrStackTraceEpochData epochData = getEpochData(!flush);
-            int count = writeStackTraces(writer, epochData);
-            if (!flush) {
-                epochData.clear();
+            int count = epochData.unflushedEntries;
+            if (count == 0) {
+                return EMPTY;
             }
-            return count;
+
+            writer.writeCompressedLong(JfrType.StackTrace.getId());
+            writer.writeCompressedInt(count);
+            writer.write(epochData.buffer);
+
+            epochData.clear(flush);
+            return NON_EMPTY;
         } finally {
-            maybeUnlock(flush);
+            mutex.unlock();
         }
-    }
-
-    @Uninterruptible(reason = "May write current epoch data.")
-    private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData) {
-        if (epochData.numberOfSerializedStackTraces == 0) {
-            return EMPTY;
-        }
-
-        writer.writeCompressedLong(JfrType.StackTrace.getId());
-        writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);
-        writer.write(epochData.stackTraceBuffer);
-        JfrBufferAccess.reinitialize(epochData.stackTraceBuffer);
-        epochData.numberOfSerializedStackTraces = 0;
-        return NON_EMPTY;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -287,15 +260,15 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     public JfrBuffer getCurrentBuffer() {
         JfrStackTraceEpochData epochData = getEpochData(false);
-        if (epochData.stackTraceBuffer.isNull()) {
-            epochData.stackTraceBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
+        if (epochData.buffer.isNull()) {
+            epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
         }
-        return epochData.stackTraceBuffer;
+        return epochData.buffer;
     }
 
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     public void setCurrentBuffer(JfrBuffer value) {
-        getEpochData(false).stackTraceBuffer = value;
+        getEpochData(false).buffer = value;
     }
 
     /**
@@ -373,31 +346,31 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     private static class JfrStackTraceEpochData {
-        private JfrBuffer stackTraceBuffer;
-        private int numberOfSerializedStackTraces;
-        private final JfrStackTraceTable visitedStackTraces;
+        private final JfrStackTraceTable table;
+        private int unflushedEntries;
+        private JfrBuffer buffer;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrStackTraceEpochData() {
-            this.visitedStackTraces = new JfrStackTraceTable();
+            this.table = new JfrStackTraceTable();
+            this.unflushedEntries = 0;
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
-        void clear() {
-            visitedStackTraces.clear();
-            numberOfSerializedStackTraces = 0;
-            if (stackTraceBuffer.isNonNull()) {
-                JfrBufferAccess.reinitialize(stackTraceBuffer);
+        void clear(boolean flush) {
+            if (!flush) {
+                table.clear();
             }
+            unflushedEntries = 0;
+            JfrBufferAccess.reinitialize(buffer);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void teardown() {
-            visitedStackTraces.teardown();
-            numberOfSerializedStackTraces = 0;
-
-            JfrBufferAccess.free(stackTraceBuffer);
-            stackTraceBuffer = WordFactory.nullPointer();
+            table.teardown();
+            unflushedEntries = 0;
+            JfrBufferAccess.free(buffer);
+            buffer = WordFactory.nullPointer();
         }
     }
 }

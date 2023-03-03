@@ -28,8 +28,8 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.Uninterruptible;
 
 public enum JfrReservedEvent {
-    EVENT_METADATA(0),
-    EVENT_CHECKPOINT(1);
+    METADATA(0),
+    CHECKPOINT(1);
 
     private final long id;
 
