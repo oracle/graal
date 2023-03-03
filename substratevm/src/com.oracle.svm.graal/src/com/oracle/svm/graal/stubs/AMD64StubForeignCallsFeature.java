@@ -44,6 +44,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
@@ -86,6 +87,7 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAMD64(), GHASH_CPU_FEATURES_AMD64),
                         new StubDescriptor(BigIntegerMultiplyToLenNode.STUB, BASELINE, BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64),
                         new StubDescriptor(BigIntegerMulAddNode.STUB, BASELINE, BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64),
+                        new StubDescriptor(BigIntegerSquareToLenNode.STUB, BASELINE, BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64),
         });
     }
 }

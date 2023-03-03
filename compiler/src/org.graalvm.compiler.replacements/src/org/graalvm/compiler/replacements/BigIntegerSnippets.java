@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
@@ -45,11 +46,15 @@ public class BigIntegerSnippets implements Snippets {
         public final SnippetTemplate.SnippetInfo implMultiplyToLen;
         public final SnippetTemplate.SnippetInfo implMulAdd;
 
+        public final SnippetTemplate.SnippetInfo implSquareToLen;
+
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 
             this.implMultiplyToLen = snippet(providers, BigIntegerSnippets.class, "implMultiplyToLen");
             this.implMulAdd = snippet(providers, BigIntegerSnippets.class, "implMulAdd");
+
+            this.implSquareToLen = snippet(providers, BigIntegerSnippets.class, "implSquareToLen");
         }
     }
 
@@ -68,9 +73,15 @@ public class BigIntegerSnippets implements Snippets {
         return zResult;
     }
 
-    @Snippet(allowMissingProbabilities = true)
+    @Snippet
     public static int implMulAdd(int[] out, int[] in, int offset, int len, int k) {
         return BigIntegerMulAddNode.apply(arrayStart(out), arrayStart(in), out.length - offset, len, k);
+    }
+
+    @Snippet
+    public static int[] implSquareToLen(int[] x, int len, int[] z, int zlen) {
+        BigIntegerSquareToLenNode.apply(arrayStart(x), len, arrayStart(z), zlen);
+        return z;
     }
 
     private static Word arrayStart(int[] a) {

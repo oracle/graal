@@ -720,18 +720,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.registerConditional(config.useSquareToLenIntrinsic(), new InvocationPlugin("implSquareToLen", int[].class, int.class, int[].class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    // The stub doesn't return the right value for the intrinsic so push it here
-                    // and the proper after FrameState will be put on ForeignCallNode by add.
-                    b.addPush(JavaKind.Object, z);
-                    b.add(new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
-                }
-                return true;
-            }
-        });
         r.registerConditional(config.bigIntegerLeftShiftWorker != 0L, new InvocationPlugin("shiftLeftImplWorker", int[].class, int[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newArr, ValueNode oldArr, ValueNode newIdx, ValueNode shiftCount,

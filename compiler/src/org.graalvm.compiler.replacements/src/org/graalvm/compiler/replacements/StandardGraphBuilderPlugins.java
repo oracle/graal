@@ -2289,6 +2289,13 @@ public class StandardGraphBuilderPlugins {
                 return templates.implMulAdd;
             }
         });
+        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
+                        "implSquareToLen", int[].class, int.class, int[].class, int.class) {
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
+                return templates.implSquareToLen;
+            }
+        });
     }
 
     private static boolean hasEnsureMaterializedForStackWalk() {

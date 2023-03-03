@@ -55,7 +55,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
@@ -139,6 +138,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
@@ -548,9 +548,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.useMontgomerySquareIntrinsic()) {
             registerForeignCall(MONTGOMERY_SQUARE, c.montgomerySquare, NativeCall);
         }
-        if (c.useSquareToLenIntrinsic()) {
-            registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall);
-        }
         if (c.useCRC32Intrinsics) {
             // This stub does callee saving
             registerForeignCall(UPDATE_BYTES_CRC32, c.updateBytesCRC32Stub, NativeCall);
@@ -622,6 +619,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedMismatchForeignCalls.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMulAddNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerSquareToLenNode.STUB);
     }
 
     @FunctionalInterface

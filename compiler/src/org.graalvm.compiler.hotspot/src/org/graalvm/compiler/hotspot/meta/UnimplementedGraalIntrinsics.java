@@ -263,9 +263,6 @@ public final class UnimplementedGraalIntrinsics {
         if (!config.useMontgomerySquareIntrinsic()) {
             add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
         }
-        if (!config.useSquareToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
-        }
         // DigestBase intrinsics
         if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
                         !(config.md5ImplCompressMultiBlock != 0L || config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics() ||

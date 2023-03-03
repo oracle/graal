@@ -109,6 +109,31 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
+    public void testSquareToLen() {
+        EconomicMap<Pair<BigInteger, BigInteger>, BigInteger> expectedResults = EconomicMap.create();
+
+        // interpreter
+        for (int i = 0; i < N; i++) {
+            BigInteger big1 = randomBig(i);
+            BigInteger big2 = randomBig(i);
+
+            // squareToLen is exercised via the call path modPow -> oddModPow -> montgomerySquare
+            expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+        }
+
+        InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "squareToLen"), null, true, true, getInitialOptions());
+
+        for (Pair<BigInteger, BigInteger> key : expectedResults.getKeys()) {
+            BigInteger big1 = key.getLeft();
+            BigInteger big2 = key.getRight();
+
+            assertDeepEquals(big1.modPow(bigTwo, big2), expectedResults.get(key));
+        }
+
+        intrinsic.invalidate();
+    }
+
+    @Test
     public void testMontgomery() throws ClassNotFoundException {
         // Intrinsic must be available.
         Assume.assumeTrue(config.useMontgomeryMultiplyIntrinsic() || config.useMontgomerySquareIntrinsic());
