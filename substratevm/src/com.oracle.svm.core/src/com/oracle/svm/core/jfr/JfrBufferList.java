@@ -54,10 +54,6 @@ public class JfrBufferList {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET = U.objectFieldOffset(JfrBufferList.class, "lock");
 
-    // TEMP (chaeubl): we use a second lock for iteration & removal - if an iteration is in
-    // progress, then there is no need to remove the nodes because they will be removed
-    // periodically. Otherwise, remove the node right away. Would avoid the garbage issues, see
-    // comment below.
     @SuppressWarnings("unused") private volatile int lock;
     private JfrBufferNode head;
 
@@ -71,23 +67,15 @@ public class JfrBufferList {
      * This node data needs to be freed.
      */
     public void teardown() {
-        // TEMP (chaeubl): fix the case that flushing is disabled - then, the individual threads
-        // should free their data immediately, otherwise, we would leak memory... can this option be
-        // changed at runtime? then this tricky...
         assert VMOperation.isInProgressAtSafepoint();
 
-        lock();
-        try {
-            JfrBufferNode node = head;
-            while (node.isNonNull()) {
-                assert node.getBuffer().isNull();
+        JfrBufferNode node = head;
+        while (node.isNonNull()) {
+            assert node.getBuffer().isNull();
 
-                JfrBufferNode next = node.getNext();
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
-                node = next;
-            }
-        } finally {
-            unlock();
+            JfrBufferNode next = node.getNext();
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+            node = next;
         }
     }
 

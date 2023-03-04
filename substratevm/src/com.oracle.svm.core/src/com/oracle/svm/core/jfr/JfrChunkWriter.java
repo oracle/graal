@@ -517,7 +517,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         traverseList(getJavaBufferList(), flush);
         traverseList(getNativeBufferList(), flush);
 
-        /* Flush all global JFRBuffers. */
+        /* Flush all global buffers. */
         JfrBufferList buffers = globalMemory.getBuffers();
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {

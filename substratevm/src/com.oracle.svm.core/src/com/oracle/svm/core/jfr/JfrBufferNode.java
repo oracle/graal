@@ -55,10 +55,16 @@ public interface JfrBufferNode extends PointerBase {
     void setBuffer(JfrBuffer value);
 
     @RawField
-    IsolateThread getLockOwner();
+    int getLock();
 
     @RawFieldOffset
-    static int offsetOfLockOwner() {
+    static int offsetOfLock() {
         throw VMError.unimplemented(); // replaced
     }
+
+    @RawField
+    IsolateThread getLockOwner();
+
+    @RawField
+    void setLockOwner(IsolateThread value);
 }

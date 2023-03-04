@@ -29,7 +29,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -39,6 +39,10 @@ import com.oracle.svm.core.thread.NativeSpinLockUtils;
 
 /**
  * Used to access the raw memory of a {@link com.oracle.svm.core.jfr.JfrBufferNode}.
+ *
+ * This class also provides the infrastructure that threads can access thread-local buffers of other
+ * threads (see {@link JfrBuffer} for more information regarding concurrency). When the VM enters a
+ * safepoint, we must guarantee that all {@link JfrBufferNode}s are unlocked.
  */
 public final class JfrBufferNodeAccess {
     private JfrBufferNodeAccess() {
@@ -50,6 +54,7 @@ public final class JfrBufferNodeAccess {
         if (node.isNonNull()) {
             node.setBuffer(buffer);
             node.setNext(WordFactory.nullPointer());
+            node.setLockOwner(WordFactory.nullPointer());
             NativeSpinLockUtils.initialize(ptrToLock(node));
         }
         return node;
@@ -60,22 +65,28 @@ public final class JfrBufferNodeAccess {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
     }
 
-    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static boolean tryLock(JfrBufferNode node) {
         assert node.isNonNull();
-        return NativeSpinLockUtils.tryLock(ptrToLock(node));
+        if (NativeSpinLockUtils.tryLock(ptrToLock(node))) {
+            setLockOwner(node);
+            return true;
+        }
+        return false;
     }
 
-    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static void lock(JfrBufferNode node) {
         assert node.isNonNull();
         NativeSpinLockUtils.lockNoTransition(ptrToLock(node));
+        setLockOwner(node);
     }
 
-    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
+    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static void unlock(JfrBufferNode node) {
         assert node.isNonNull();
         assert isLockedByCurrentThread(node);
+        node.setLockOwner(WordFactory.nullPointer());
         NativeSpinLockUtils.unlock(ptrToLock(node));
     }
 
@@ -86,7 +97,13 @@ public final class JfrBufferNodeAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static WordPointer ptrToLock(JfrBufferNode node) {
-        return (WordPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLockOwner());
+    private static void setLockOwner(JfrBufferNode node) {
+        assert node.getLockOwner().isNull();
+        node.setLockOwner(CurrentIsolate.getCurrentThread());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static CIntPointer ptrToLock(JfrBufferNode node) {
+        return (CIntPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLock());
     }
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -92,7 +91,7 @@ public class JfrGlobalMemory {
         buffers.teardown();
     }
 
-    @Fold
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public JfrBufferList getBuffers() {
         return buffers;
     }

@@ -457,6 +457,7 @@ public class UninterruptibleUtils {
         }
         // Checkstyle: resume
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int hashCode(long value) {
             return (int) (value ^ (value >>> 32));
         }

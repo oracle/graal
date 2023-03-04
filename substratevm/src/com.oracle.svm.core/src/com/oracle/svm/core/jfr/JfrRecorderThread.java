@@ -125,22 +125,11 @@ public class JfrRecorderThread extends Thread {
         JfrBufferList buffers = globalMemory.getBuffers();
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            if (JfrBufferNodeAccess.tryLock(node)) {
-                try {
-                    JfrBuffer buffer = node.getBuffer();
-                    if (isFullEnough(buffer)) {
-                        boolean shouldNotify = chunkWriter.write(buffer);
-                        JfrBufferAccess.reinitialize(buffer);
-
-                        if (shouldNotify) {
-                            Object chunkRotationMonitor = getChunkRotationMonitor();
-                            synchronized (chunkRotationMonitor) {
-                                chunkRotationMonitor.notifyAll();
-                            }
-                        }
-                    }
-                } finally {
-                    JfrBufferNodeAccess.unlock(node);
+            boolean shouldNotify = tryPersistBuffer(chunkWriter, node);
+            if (shouldNotify) {
+                Object chunkRotationMonitor = getChunkRotationMonitor();
+                synchronized (chunkRotationMonitor) {
+                    chunkRotationMonitor.notifyAll();
                 }
             }
             node = node.getNext();
@@ -153,6 +142,23 @@ public class JfrRecorderThread extends Thread {
         } else {
             return Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
         }
+    }
+
+    @Uninterruptible(reason = "Locks a BufferNode.")
+    private static boolean tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
+        if (JfrBufferNodeAccess.tryLock(node)) {
+            try {
+                JfrBuffer buffer = node.getBuffer();
+                if (isFullEnough(buffer)) {
+                    boolean shouldNotify = chunkWriter.write(buffer);
+                    JfrBufferAccess.reinitialize(buffer);
+                    return shouldNotify;
+                }
+            } finally {
+                JfrBufferNodeAccess.unlock(node);
+            }
+        }
+        return false;
     }
 
     /**

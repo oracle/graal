@@ -156,7 +156,7 @@ public final class ThreadData extends UnacquiredThreadData {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void free() {
-        assert isLocked();
+        assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
         if (unsafeParker != null) {
             unsafeParker.release();
             unsafeParker = null;
@@ -191,11 +191,6 @@ public final class ThreadData extends UnacquiredThreadData {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isForCurrentThread() {
         return this == PlatformThreads.getCurrentThreadData();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean isLocked() {
-        return lock == 1;
     }
 }
 
