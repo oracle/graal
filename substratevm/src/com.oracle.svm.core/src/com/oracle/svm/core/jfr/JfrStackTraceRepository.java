@@ -66,11 +66,11 @@ public class JfrStackTraceRepository implements JfrRepository {
     private static final int MIN_STACK_DEPTH = 1;
     private static final int MAX_STACK_DEPTH = 2048;
 
-    private int stackTraceDepth;
-
     private final VMMutex mutex;
     private final JfrStackTraceEpochData epochData0;
     private final JfrStackTraceEpochData epochData1;
+
+    private int stackTraceDepth;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrStackTraceRepository() {
@@ -160,7 +160,7 @@ public class JfrStackTraceRepository implements JfrRepository {
      * NOTE: the returned value is only valid until the JFR epoch changes. So, this method may only
      * be used from uninterruptible code.
      */
-    @Uninterruptible(reason = "Prevent epoch change. Code that holds the mutex must be fully uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Prevent epoch change. Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     public JfrStackTraceTableEntry getOrPutStackTrace(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
         mutex.lockNoTransition();
         try {
@@ -170,7 +170,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Code that holds the mutex must be fully uninterruptible.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private JfrStackTraceTableEntry getOrPutStackTrace0(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
         assert size.rawValue() == (int) size.rawValue();
 
@@ -214,7 +214,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Code that holds the mutex must be fully uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     public void commitSerializedStackTrace(JfrStackTraceTableEntry entry) {
         mutex.lockNoTransition();
         try {
@@ -257,7 +257,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrStackTraceEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;

@@ -151,7 +151,7 @@ public class JfrSymbolRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
+    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrSymbolEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;

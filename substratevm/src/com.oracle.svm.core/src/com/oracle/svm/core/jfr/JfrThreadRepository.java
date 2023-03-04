@@ -234,7 +234,7 @@ public final class JfrThreadRepository implements JfrRepository {
         return JfrRepository.NON_EMPTY;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     private JfrThreadEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;

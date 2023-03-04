@@ -54,6 +54,10 @@ public class JfrBufferList {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET = U.objectFieldOffset(JfrBufferList.class, "lock");
 
+    // TEMP (chaeubl): we use a second lock for iteration & removal - if an iteration is in
+    // progress, then there is no need to remove the nodes because they will be removed
+    // periodically. Otherwise, remove the node right away. Would avoid the garbage issues, see
+    // comment below.
     @SuppressWarnings("unused") private volatile int lock;
     private JfrBufferNode head;
 

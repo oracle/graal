@@ -35,7 +35,6 @@ import org.graalvm.word.PointerBase;
  */
 @RawStructure
 public interface JfrNativeEventWriterData extends PointerBase {
-
     /**
      * Gets the JfrBuffer that data will be written to.
      */
