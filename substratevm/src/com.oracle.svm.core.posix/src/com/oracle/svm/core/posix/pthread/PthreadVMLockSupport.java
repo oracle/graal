@@ -46,6 +46,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -266,16 +267,10 @@ final class PthreadVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_unlock(getStructPointer()), "pthread_mutex_unlock");
-    }
-
-    @Override
-    public void unlockWithoutChecks() {
-        clearCurrentThreadOwner();
-        Pthread.pthread_mutex_unlock(getStructPointer());
     }
 }
 
@@ -365,10 +360,10 @@ final class PthreadVMCondition extends VMCondition {
         return remainingNanos(waitNanos, startTime);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long remainingNanos(long waitNanos, long startNanos) {
         long actual = System.nanoTime() - startNanos;
-        return Math.max(0, waitNanos - actual);
+        return UninterruptibleUtils.Math.max(0, waitNanos - actual);
     }
 
     @Override

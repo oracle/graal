@@ -476,7 +476,7 @@ public abstract class VMThreads {
      * {@link #detachedOsThreadToCleanup}) that all other threads exited on the operating-system
      * level as well.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code during teardown.")
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     private void waitUntilLastOsThreadExited() {
         cleanupExitedOsThreads();
     }
@@ -886,11 +886,10 @@ public abstract class VMThreads {
          * thread status).
          * 
          * NOTE: Be careful with this method and make sure that this thread does not allocate any
-         * Java objects as this could result deadlocks. This method will only work prevent
-         * safepoints reliably if it is called from a thread with
-         * {@link StatusSupport#STATUS_IN_JAVA}.
+         * Java objects as this could result deadlocks. This method will only prevent safepoints
+         * reliably if it is called from a thread with {@link StatusSupport#STATUS_IN_JAVA}.
          */
-        @Uninterruptible(reason = "May only be called from uninterruptible code.", callerMustBe = true)
+        @Uninterruptible(reason = "May only be called from uninterruptible code to prevent races with the safepoint handling.", callerMustBe = true)
         public static void preventSafepoints() {
             // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);

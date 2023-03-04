@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -126,12 +127,16 @@ public final class UninterruptibleAnnotationChecker {
                 violations.add("Method " + method.format("%H.%n(%p)") +
                                 " uses an unspecific reason but is annotated with 'callerMustBe = true'. Please document in the reason why the callers need to be uninterruptible.");
             }
+        } else if (isSimilarToUnspecificReason(annotation.reason())) {
+            violations.add("Method " + method.format("%H.%n(%p)") + " uses a reason that is similar to the unspecific reason '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'. " +
+                            "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
+                            "Otherwise, use exactly the reason from above.");
         }
 
         if (annotation.mayBeInlined()) {
             if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
-                                "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, please remove 'mayBeInlined = true'. " +
+                                "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
                                 "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
             }
 
@@ -150,6 +155,10 @@ public final class UninterruptibleAnnotationChecker {
             violations.add("Method " + method.format("%H.%n(%p)") +
                             " is annotated with @Uninterruptible and @AlwaysInline. If the method may be inlined into interruptible code, please specify 'mayBeInlined = true'. Otherwise, specify 'callerMustBe = true'.");
         }
+    }
+
+    private static boolean isSimilarToUnspecificReason(String reason) {
+        return OptionsParser.stringSimilarity(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, reason) > 0.75;
     }
 
     private static boolean useStrictChecking() {

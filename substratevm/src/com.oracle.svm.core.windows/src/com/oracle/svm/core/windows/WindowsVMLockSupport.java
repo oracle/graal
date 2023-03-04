@@ -256,15 +256,9 @@ final class WindowsVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
-    }
-
-    @Override
-    public void unlockWithoutChecks() {
-        clearCurrentThreadOwner();
         Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 }

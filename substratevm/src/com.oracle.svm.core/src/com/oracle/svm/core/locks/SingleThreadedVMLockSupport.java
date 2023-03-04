@@ -134,14 +134,9 @@ final class SingleThreadedVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-    }
-
-    @Override
-    public void unlockWithoutChecks() {
-        clearCurrentThreadOwner();
     }
 }
 

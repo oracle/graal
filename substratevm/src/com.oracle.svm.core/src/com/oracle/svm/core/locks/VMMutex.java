@@ -124,14 +124,17 @@ public class VMMutex {
      * Like {@linkplain #unlock()}. Only use this method if the lock was acquired via
      * {@linkplain #lockNoTransitionUnspecifiedOwner()}.
      */
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
+        /*
+         * Ideally, this method would be annotated with @Uninterruptible(callerMustBe = true) but
+         * this isn't possible because of legacy code, see GR-44619.
+         */
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
-    /**
-     * Releases the lock, without checking the result.
-     */
+    /* Legacy code, see GR-44619. */
+    @Deprecated(forRemoval = true)
     public void unlockWithoutChecks() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
