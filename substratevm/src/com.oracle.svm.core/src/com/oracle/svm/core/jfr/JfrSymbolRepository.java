@@ -36,8 +36,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
+import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;

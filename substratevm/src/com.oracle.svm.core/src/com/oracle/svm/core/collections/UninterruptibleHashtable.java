@@ -22,9 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.collections;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleEntry;
 
 /**
  * Common interface for all uninterruptible hashtable implementations. Please note that we don't use

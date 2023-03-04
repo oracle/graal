@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
+
 /**
  * The common interface for the LinkedList entries that can be used in an
  * {@link AbstractUninterruptibleHashtable}.
