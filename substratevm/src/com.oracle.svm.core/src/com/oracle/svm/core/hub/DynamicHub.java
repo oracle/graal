@@ -770,7 +770,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public ClassLoader getClassLoader() {
-        return classLoader;
+        return companion.getClassLoader();
     }
 
     @KeepOriginal

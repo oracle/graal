@@ -56,14 +56,9 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
     private final HeapDumpOperation heapDumpOperation;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapDumpSupportImpl() {
-        this.writer = new HeapDumpWriter();
+    public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
+        this.writer = new HeapDumpWriter(metadata);
         this.heapDumpOperation = new HeapDumpOperation();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMetadata(byte[] value) {
-        this.writer.setMetadata(value);
     }
 
     @Override

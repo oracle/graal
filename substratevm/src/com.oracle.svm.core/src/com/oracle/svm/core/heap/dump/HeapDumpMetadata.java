@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.heap.dump;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
@@ -41,6 +44,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;
@@ -49,21 +53,75 @@ import com.oracle.svm.core.util.coder.Pack200Coder;
 
 /**
  * Provides access to the encoded heap dump metadata that was prepared at image build-time.
+ *
+ * <pre>
+ * |----------------------------|
+ * | metadata byte[]            |
+ * |----------------------------|
+ * | s4 totalFieldCount         |
+ * | s4 classCount              |
+ * | s4 fieldNameCount          |
+ * | uv maxTypeId               |
+ * | (class information)*       |
+ * | (field names)*             |
+ * |----------------------------|
+ *
+ * |----------------------------|
+ * | information per class      |
+ * |----------------------------|
+ * | uv typeId                  |
+ * | uv instanceFieldCount      |
+ * | uv staticFieldCount        |
+ * | (instance field)*          |
+ * | (static field)*            |
+ * |----------------------------|
+ *
+ * |----------------------------|
+ * | information per field      |
+ * |----------------------------|
+ * | u1 type             |
+ * | uv fieldNameIndex          |
+ * | uv location                |
+ * |----------------------------|
+ *
+ * |----------------------------|
+ * | information per field name |
+ * |----------------------------|
+ * | uv lengthInBytes           |
+ * | (s1 utf8 character)*       |
+ * |----------------------------|
+ * </pre>
  */
 public class HeapDumpMetadata {
-    private static final ComputeHubDataVisitor COMPUTE_HUB_DATA_VISITOR = new ComputeHubDataVisitor();
+    private final ComputeHubDataVisitor computeHubDataVisitor;
+    @UnknownObjectField(types = {byte[].class}) private byte[] data;
 
-    private static int fieldNameCount;
-    private static int classInfoCount;
-    private static ClassInfo classInfos;
-    private static FieldInfoPointer fieldInfoTable;
-    private static FieldNamePointer fieldNameTable;
+    private int fieldNameCount;
+    private int classInfoCount;
+    private ClassInfo classInfos;
+    private FieldInfoPointer fieldInfoTable;
+    private FieldNamePointer fieldNameTable;
 
-    public static boolean initialize(byte[] metadata) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public HeapDumpMetadata() {
+        computeHubDataVisitor = new ComputeHubDataVisitor();
+    }
+
+    @Fold
+    public static HeapDumpMetadata singleton() {
+        return ImageSingletons.lookup(HeapDumpMetadata.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setData(byte[] value) {
+        this.data = value;
+    }
+
+    public boolean initialize() {
         assert classInfos.isNull() && fieldInfoTable.isNull() && fieldNameTable.isNull();
 
-        Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(metadata));
-        Pointer end = start.add(metadata.length);
+        Pointer start = NonmovableArrays.getArrayBase(NonmovableArrays.fromImageHeap(data));
+        Pointer end = start.add(data.length);
 
         ByteStream stream = StackValue.get(ByteStream.class);
         ByteStreamAccess.initialize(stream, start);
@@ -138,12 +196,12 @@ public class HeapDumpMetadata {
         assert stream.getPosition().equal(end);
 
         /* Store the DynamicHubs in their corresponding ClassInfo structs. */
-        COMPUTE_HUB_DATA_VISITOR.initialize();
-        Heap.getHeap().walkImageHeapObjects(COMPUTE_HUB_DATA_VISITOR);
+        computeHubDataVisitor.initialize();
+        Heap.getHeap().walkImageHeapObjects(computeHubDataVisitor);
 
         /* Compute the size of the instance fields per class. */
         for (int i = 0; i < classInfoCount; i++) {
-            ClassInfo classInfo = HeapDumpMetadata.getClassInfo(i);
+            ClassInfo classInfo = getClassInfo(i);
             if (ClassInfoAccess.isValid(classInfo)) {
                 computeInstanceFieldsDumpSize(classInfo);
             }
@@ -151,8 +209,10 @@ public class HeapDumpMetadata {
         return true;
     }
 
-    /** Must always be called, regardless if {@link #initialize} returned true or false. */
-    public static void teardown() {
+    /**
+     * Must always be called, regardless if {@link #initialize} returned true or false.
+     */
+    public void teardown() {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(classInfos);
         classInfos = WordFactory.nullPointer();
 
@@ -163,33 +223,33 @@ public class HeapDumpMetadata {
         fieldNameTable = WordFactory.nullPointer();
     }
 
-    public static int getClassInfoCount() {
+    public int getClassInfoCount() {
         return classInfoCount;
     }
 
-    public static ClassInfo getClassInfo(Class<?> clazz) {
+    public ClassInfo getClassInfo(Class<?> clazz) {
         if (clazz == null) {
             return WordFactory.nullPointer();
         }
         return getClassInfo(DynamicHub.fromClass(clazz));
     }
 
-    public static ClassInfo getClassInfo(DynamicHub hub) {
+    public ClassInfo getClassInfo(DynamicHub hub) {
         if (hub == null) {
             return WordFactory.nullPointer();
         }
         return getClassInfo(hub.getTypeID());
     }
 
-    public static ClassInfo getClassInfo(int typeId) {
+    public ClassInfo getClassInfo(int typeId) {
         return classInfos.addressOf(typeId);
     }
 
-    public static int getFieldNameCount() {
+    public int getFieldNameCount() {
         return fieldNameCount;
     }
 
-    public static FieldName getFieldName(int index) {
+    public FieldName getFieldName(int index) {
         return fieldNameTable.addressOf(index).read();
     }
 
@@ -199,7 +259,7 @@ public class HeapDumpMetadata {
      * size in the heap. The size in the heap will include the object header, padding/alignment, and
      * the size of object references may be different.
      */
-    private static int computeInstanceFieldsDumpSize(ClassInfo classInfo) {
+    private int computeInstanceFieldsDumpSize(ClassInfo classInfo) {
         /* Check if this class was already processed earlier. */
         if (classInfo.getInstanceFieldsDumpSize() != -1) {
             return classInfo.getInstanceFieldsDumpSize();
@@ -211,7 +271,7 @@ public class HeapDumpMetadata {
         /* Add the size of all inherited fields. */
         DynamicHub superHub = classInfo.getHub().getSuperHub();
         if (superHub != null) {
-            result += computeInstanceFieldsDumpSize(HeapDumpMetadata.getClassInfo(superHub));
+            result += computeInstanceFieldsDumpSize(getClassInfo(superHub));
         }
         classInfo.setInstanceFieldsDumpSize(result);
         return result;
@@ -288,7 +348,9 @@ public class HeapDumpMetadata {
         }
     }
 
-    /** Data structure has a variable size. */
+    /**
+     * Data structure has a variable size.
+     */
     @RawStructure
     public interface FieldInfo extends PointerBase {
         // u1 type
@@ -303,7 +365,7 @@ public class HeapDumpMetadata {
 
         static FieldName getFieldName(FieldInfo field) {
             int fieldNameIndex = Pack200Coder.readUVAsInt(getFieldNameIndexAddress(field));
-            return HeapDumpMetadata.getFieldName(fieldNameIndex);
+            return HeapDumpMetadata.singleton().getFieldName(fieldNameIndex);
         }
 
         static int getLocation(FieldInfo field) {
@@ -332,7 +394,9 @@ public class HeapDumpMetadata {
         FieldInfo read();
     }
 
-    /** Data structure has a variable size. */
+    /**
+     * Data structure has a variable size.
+     */
     @RawStructure
     public interface FieldName extends PointerBase {
         // uv lengthInBytes
@@ -369,13 +433,11 @@ public class HeapDumpMetadata {
         @Override
         public boolean visitObject(Object o) {
             if (o instanceof DynamicHub hub) {
-                ClassInfo classInfo = HeapDumpMetadata.getClassInfo(hub.getTypeID());
-                if (classInfo.getHub() == null) {
-                    /* Initialize the relevant data for all classes that don't declare any fields. */
-                    classInfo.setHub(hub);
-                    classInfo.setSerialNum(++classSerialNum);
-                    classInfo.setInstanceFieldsDumpSize(-1);
-                }
+                ClassInfo classInfo = HeapDumpMetadata.singleton().getClassInfo(hub.getTypeID());
+                assert classInfo.getHub() == null;
+                classInfo.setHub(hub);
+                classInfo.setSerialNum(++classSerialNum);
+                classInfo.setInstanceFieldsDumpSize(-1);
             }
             return true;
         }

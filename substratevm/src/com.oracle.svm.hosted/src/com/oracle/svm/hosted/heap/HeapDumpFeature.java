@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.impl.HeapDumpSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
+import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
 import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heapdump.HeapDumpUtils;
@@ -57,9 +58,9 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Heap dumping on Native Image needs some extra metadata about all the classes and fields that are
  * present in the image. The necessary information is encoded as binary data at image build time
- * (see below). When the heap dumping is triggered at run-time, the metadata is decoded on the fly
- * (see {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata}) and used for writing the heap dump
- * (see {@link HeapDumpWriter}).
+ * (see {@link #encodeMetadata}}). When the heap dumping is triggered at run-time, the metadata is
+ * decoded on the fly (see {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata}) and used for
+ * writing the heap dump (see {@link HeapDumpWriter}).
  */
 @AutomaticallyRegisteredFeature
 public class HeapDumpFeature implements InternalFeature {
@@ -80,13 +81,15 @@ public class HeapDumpFeature implements InternalFeature {
             ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
             ImageSingletons.add(com.oracle.svm.core.heapdump.HeapDumpWriter.class, new HeapDumpWriterImpl());
         } else {
-            ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl());
+            HeapDumpMetadata metadata = new HeapDumpMetadata();
+            ImageSingletons.add(HeapDumpMetadata.class, metadata);
+            ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl(metadata));
         }
     }
 
     public static boolean useLegacyImplementation() {
         /* See GR-44538. */
-        return !RawFileOperationSupport.isPresent() && !Platform.includedIn(Platform.WINDOWS.class);
+        return !RawFileOperationSupport.isPresent();
     }
 
     @Override
@@ -98,68 +101,28 @@ public class HeapDumpFeature implements InternalFeature {
             HeapDumpUtils.getHeapDumpUtils().setFieldsMap(fieldMap);
             access.registerAsImmutable(fieldMap);
         } else {
-            byte[] metadata = computeMetadata(accessImpl.getTypes());
-
-            HeapDumpSupportImpl support = (HeapDumpSupportImpl) ImageSingletons.lookup(HeapDumpSupport.class);
-            support.setMetadata(metadata);
+            byte[] metadata = encodeMetadata(accessImpl.getTypes());
+            HeapDumpMetadata.singleton().setData(metadata);
             access.registerAsImmutable(metadata);
         }
     }
 
     /**
-     * This method writes the metadata that is needed for heap dumping into one large byte[]. The
-     * format is as follows:
-     *
-     * <pre>
-     * |----------------------------|
-     * | metadata byte[]            |
-     * |----------------------------|
-     * | s4 totalFieldCount         |
-     * | s4 classCount              |
-     * | s4 fieldNameCount          |
-     * | uv maxTypeId               |
-     * | (class information)*       |
-     * | (field names)*             |
-     * |----------------------------|
-     *
-     * |----------------------------|
-     * | information per class      |
-     * |----------------------------|
-     * | uv typeId                  |
-     * | uv instanceFieldCount      |
-     * | uv staticFieldCount        |
-     * | (instance field)*          |
-     * | (static field)*            |
-     * |----------------------------|
-     *
-     * |----------------------------|
-     * | information per field      |
-     * |----------------------------|
-     * | u1 type             |
-     * | uv fieldNameIndex          |
-     * | uv location                |
-     * |----------------------------|
-     *
-     * |----------------------------|
-     * | information per field name |
-     * |----------------------------|
-     * | uv lengthInBytes           |
-     * | (s1 utf8 character)*       |
-     * |----------------------------|
-     * </pre>
+     * This method writes the metadata that is needed for heap dumping into one large byte[] (see
+     * {@link com.oracle.svm.core.heap.dump.HeapDumpMetadata} for more details).
      */
-    private static byte[] computeMetadata(Collection<? extends SharedType> types) {
+    private static byte[] encodeMetadata(Collection<? extends SharedType> types) {
         int maxTypeId = types.stream().mapToInt(t -> t.getHub().getTypeID()).max().orElse(0);
         assert maxTypeId > 0;
 
         UnsafeArrayTypeWriter output = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        writeMetadata(output, types, maxTypeId);
+        encodeMetadata(output, types, maxTypeId);
 
         int length = TypeConversion.asS4(output.getBytesWritten());
         return output.toArray(new byte[length]);
     }
 
-    private static void writeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types, int maxTypeId) {
+    private static void encodeMetadata(UnsafeArrayTypeWriter output, Collection<? extends SharedType> types, int maxTypeId) {
         /* Write header. */
         long totalFieldCountOffset = output.getBytesWritten();
         output.putS4(0); // total field count (patched later on)
@@ -191,12 +154,12 @@ public class HeapDumpFeature implements InternalFeature {
 
                 /* Write direct instance fields. */
                 for (SharedField field : instanceFields) {
-                    writeField(field, output, fieldNames);
+                    encodeField(field, output, fieldNames);
                 }
 
                 /* Write static fields. */
                 for (SharedField field : staticFields) {
-                    writeField(field, output, fieldNames);
+                    encodeField(field, output, fieldNames);
                 }
             }
         }
@@ -236,7 +199,7 @@ public class HeapDumpFeature implements InternalFeature {
         return result;
     }
 
-    private static void writeField(SharedField field, UnsafeArrayTypeWriter output, EconomicMap<String, Integer> fieldNames) {
+    private static void encodeField(SharedField field, UnsafeArrayTypeWriter output, EconomicMap<String, Integer> fieldNames) {
         int location = field.getLocation();
         assert location >= 0;
         output.putU1(getType(field).ordinal());
