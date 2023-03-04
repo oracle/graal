@@ -174,7 +174,7 @@ public class JfrThreadLocal implements ThreadListener {
         /* Free the buffer but leave the node alive as it still needed. */
         JfrBufferNodeAccess.lock(node);
         try {
-            JfrBuffer buffer = node.getBuffer();
+            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
             node.setBuffer(WordFactory.nullPointer());
 
             flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);

@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -89,7 +90,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Changes flushed position.")
     public static void setFlushedPos(JfrBuffer buffer, Pointer pos) {
-        assert buffer.getNode().isNull() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         buffer.setFlushedPos(pos);
     }
 
@@ -98,7 +99,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Accesses flushed position. Possible race between flushing and working threads.")
     public static Pointer getFlushedPos(JfrBuffer buffer) {
-        assert buffer.getNode().isNull() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         return buffer.getFlushedPos();
     }
 

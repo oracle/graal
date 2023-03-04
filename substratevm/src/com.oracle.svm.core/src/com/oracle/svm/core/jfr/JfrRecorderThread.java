@@ -148,7 +148,7 @@ public class JfrRecorderThread extends Thread {
     private static boolean tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
         if (JfrBufferNodeAccess.tryLock(node)) {
             try {
-                JfrBuffer buffer = node.getBuffer();
+                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 if (isFullEnough(buffer)) {
                     boolean shouldNotify = chunkWriter.write(buffer);
                     JfrBufferAccess.reinitialize(buffer);

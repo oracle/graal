@@ -94,12 +94,12 @@ public class JfrSymbolRepository implements JfrRepository {
         mutex.lockNoTransition();
         try {
             JfrSymbolEpochData epochData = getEpochData(previousEpoch);
-            JfrSymbol existingEntry = epochData.table.get(symbol);
+            JfrSymbol existingEntry = (JfrSymbol) epochData.table.get(symbol);
             if (existingEntry.isNonNull()) {
                 return existingEntry.getId();
             }
 
-            JfrSymbol newEntry = epochData.table.putNew(symbol);
+            JfrSymbol newEntry = (JfrSymbol) epochData.table.putNew(symbol);
             if (newEntry.isNull()) {
                 return 0L;
             }
@@ -114,7 +114,6 @@ public class JfrSymbolRepository implements JfrRepository {
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
 
             JfrNativeEventWriter.putLong(data, newEntry.getId());
-            JfrNativeEventWriter.putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             JfrNativeEventWriter.putString(data, newEntry.getValue(), charReplacer);
             if (!JfrNativeEventWriter.commit(data)) {
                 return 0L;
@@ -193,18 +192,6 @@ public class JfrSymbolRepository implements JfrRepository {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public JfrSymbol[] getTable() {
             return (JfrSymbol[]) super.getTable();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public JfrSymbol get(UninterruptibleEntry valueOnStack) {
-            return (JfrSymbol) super.get(valueOnStack);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public JfrSymbol putNew(UninterruptibleEntry valueOnStack) {
-            return (JfrSymbol) super.putNew(valueOnStack);
         }
 
         @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "image heap pointer comparison")

@@ -57,6 +57,15 @@ public class JfrBufferList {
     @SuppressWarnings("unused") private volatile int lock;
     private JfrBufferNode head;
 
+    // TEMP (chaeubl): fix the case that flushing is disabled - then, the individual threads
+    // should free their data immediately, otherwise, we would leak memory... can this option be
+    // changed at runtime? then this tricky...
+
+    // TEMP (chaeubl): we use a second lock for iteration & removal - if an iteration is in
+    // progress, then there is no need to remove the nodes because they will be removed
+    // periodically. Otherwise, remove the node right away. Would avoid the garbage issues, see
+    // comment below.
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrBufferList() {
     }
@@ -71,12 +80,13 @@ public class JfrBufferList {
 
         JfrBufferNode node = head;
         while (node.isNonNull()) {
-            assert node.getBuffer().isNull();
+            assert JfrBufferNodeAccess.getBuffer(node).isNull();
 
             JfrBufferNode next = node.getNext();
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
             node = next;
         }
+        head = WordFactory.nullPointer();
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
@@ -123,10 +133,11 @@ public class JfrBufferList {
     @Uninterruptible(reason = "Should not be interrupted while flushing.")
     public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
         assert head.isNonNull();
-        assert node.getBuffer().isNull();
 
         lock();
         try {
+            assert JfrBufferNodeAccess.getBuffer(node).isNull();
+
             JfrBufferNode next = node.getNext();
             if (node == head) {
                 assert prev.isNull();

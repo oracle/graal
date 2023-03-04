@@ -183,7 +183,7 @@ public final class JfrThreadRepository implements JfrRepository {
         mutex.lockNoTransition();
         try {
             JfrThreadEpochData epochData = getEpochData(false);
-            return epochData.unflushedThreadCount == 0 && epochData.unflushedThreadGroupCount == 0;
+            return epochData.unflushedThreadCount > 0 || epochData.unflushedThreadGroupCount > 0;
         } finally {
             mutex.unlock();
         }

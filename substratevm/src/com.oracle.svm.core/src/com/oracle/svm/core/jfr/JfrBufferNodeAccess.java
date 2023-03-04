@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * Used to access the raw memory of a {@link com.oracle.svm.core.jfr.JfrBufferNode}.
@@ -63,6 +64,12 @@ public final class JfrBufferNodeAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void free(JfrBufferNode node) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static JfrBuffer getBuffer(JfrBufferNode node) {
+        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
+        return node.getBuffer();
     }
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
@@ -93,7 +100,7 @@ public final class JfrBufferNodeAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isLockedByCurrentThread(JfrBufferNode node) {
         assert CurrentIsolate.getCurrentThread().isNonNull();
-        return node != null && node.getLockOwner() == CurrentIsolate.getCurrentThread();
+        return node.isNonNull() && node.getLockOwner() == CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

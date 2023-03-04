@@ -30,6 +30,7 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -498,10 +499,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public void writeString(String str) {
         if (str.isEmpty()) {
-            getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.byteValue);
+            getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.getValue());
         } else {
             byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
-            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.byteValue);
+            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
             writeCompressedInt(bytes.length);
             getFileSupport().write(fd, bytes);
         }
@@ -514,61 +515,64 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * reinitialize the thread-local buffers as the individual threads will handle space
          * reclamation on their own time.
          */
-        traverseList(getJavaBufferList(), flush);
-        traverseList(getNativeBufferList(), flush);
+        traverseThreadLocalBuffers(getJavaBufferList(), flush);
+        traverseThreadLocalBuffers(getNativeBufferList(), flush);
 
         /* Flush all global buffers. */
         JfrBufferList buffers = globalMemory.getBuffers();
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            boolean locked = JfrBufferNodeAccess.tryLock(node);
-            if (locked) {
+            boolean success = JfrBufferNodeAccess.tryLock(node);
+            if (success) {
                 try {
-                    JfrBuffer buffer = node.getBuffer();
+                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 } finally {
                     JfrBufferNodeAccess.unlock(node);
                 }
             }
-            assert locked || flush;
+            assert success || flush;
             node = node.getNext();
         }
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
-    private void traverseList(JfrBufferList linkedList, boolean flush) {
-        JfrBufferNode node = linkedList.getHead();
+    private void traverseThreadLocalBuffers(JfrBufferList list, boolean flush) {
+        JfrBufferNode node = list.getHead();
         JfrBufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
-            boolean locked = JfrBufferNodeAccess.tryLock(node);
-            if (locked) {
+            JfrBufferNode next = node.getNext();
+            boolean success = JfrBufferNodeAccess.tryLock(node);
+            if (success) {
+                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                if (buffer.isNull()) {
+                    list.removeNode(node, prev);
+                    JfrBufferNodeAccess.free(node);
+                    node = next;
+                    continue;
+                }
+
                 try {
-                    JfrBuffer buffer = node.getBuffer();
-                    if (buffer.isNull()) {
-                        linkedList.removeNode(node, prev);
-                        /* Don't update prev if we removed the node. */
+                    if (flush) {
+                        /*
+                         * I/O operations may be slow, so this flushes to the global buffers instead
+                         * of writing to disk directly. This mitigates the risk of acquiring the
+                         * thread-local buffers for too long.
+                         */
+                        SubstrateJVM.getGlobalMemory().write(buffer, true);
                     } else {
-                        if (flush) {
-                            /*
-                             * I/O operations may be slow, so this flushes to the global buffers
-                             * instead of writing to disk directly. This mitigates the risk of
-                             * acquiring the thread-local buffers for too long.
-                             */
-                            SubstrateJVM.getGlobalMemory().write(buffer, true);
-                        } else {
-                            write(buffer);
-                        }
-                        prev = node;
+                        write(buffer);
                     }
+                    prev = node;
                 } finally {
                     JfrBufferNodeAccess.unlock(node);
                 }
             }
 
-            assert locked || flush;
-            node = node.getNext();
+            assert success || flush;
+            node = next;
         }
     }
 
@@ -580,10 +584,15 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         CHAR_ARRAY(4),
         LATIN1_BYTE_ARRAY(5);
 
-        public final byte byteValue;
+        private final byte value;
 
-        StringEncoding(int byteValue) {
-            this.byteValue = (byte) byteValue;
+        StringEncoding(int value) {
+            this.value = NumUtil.safeToByte(value);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public byte getValue() {
+            return value;
         }
     }
 

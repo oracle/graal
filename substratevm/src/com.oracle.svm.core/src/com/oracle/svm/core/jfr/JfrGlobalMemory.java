@@ -74,7 +74,8 @@ public class JfrGlobalMemory {
 
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBufferAccess.reinitialize(node.getBuffer());
+            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            JfrBufferAccess.reinitialize(buffer);
             node = node.getNext();
         }
     }
@@ -83,7 +84,8 @@ public class JfrGlobalMemory {
         /* Free the buffers. */
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBufferAccess.free(node.getBuffer());
+            JfrBuffer buffer = node.getBuffer();
+            JfrBufferAccess.free(buffer);
             node = node.getNext();
         }
 
@@ -143,11 +145,13 @@ public class JfrGlobalMemory {
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
             JfrBufferNode node = buffers.getHead();
             while (node.isNonNull()) {
-                JfrBuffer buffer = node.getBuffer();
-                if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size) && JfrBufferNodeAccess.tryLock(node)) {
-                    /* Recheck the available size after acquiring the buffer. */
+                if (JfrBufferNodeAccess.tryLock(node)) {
+                    JfrBuffer buffer = node.getBuffer();
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
-                        return node;
+                        /* Recheck the available size after acquiring the buffer. */
+                        if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
+                            return node;
+                        }
                     }
                     JfrBufferNodeAccess.unlock(node);
                 }

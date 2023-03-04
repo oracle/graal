@@ -30,7 +30,7 @@ import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -39,30 +39,36 @@ import com.oracle.svm.test.jfr.events.ClassEvent;
 import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
+import jdk.jfr.consumer.RecordedEvent;
+
 /**
- * This test induces repeated chunk rotations and spawns several threads that create java and native
- * events. The goal of this test is to repeatedly create and remove nodes from the
- * JfrBufferNodeLinkedList. Unlike TestStreamingCount, each thread in this test will only do a small
- * amount of work before dying. 80 Threads in total should spawn.
- *
+ * Check to make sure 1. All events are accounted for when using streaming (even when there are very
+ * many events generated). This test also forces a chunk rotation after the first flush as a sanity
+ * check for potential flush/rotation clashes.
  */
 
-public class TestStreamingStress extends StreamingTest {
+public class TestStreamingCount extends JfrStreamingTest {
     private static final int THREADS = 8;
-    private static final int COUNT = 10;
-    private static final int EXPECTED_EVENTS = THREADS * COUNT * 10;
-    final Helper helper = new Helper();
-    private int iterations = 10;
+    private static final int COUNT = 1024;
+    private static final int EXPECTED_EVENTS = THREADS * COUNT;
     private AtomicLong remainingClassEvents = new AtomicLong(EXPECTED_EVENTS);
     private AtomicLong remainingIntegerEvents = new AtomicLong(EXPECTED_EVENTS);
     private AtomicLong remainingStringEvents = new AtomicLong(EXPECTED_EVENTS);
-    private AtomicLong remainingWaitEvents = new AtomicLong(EXPECTED_EVENTS);
     volatile int flushes = 0;
-    volatile boolean doneCollection = false;
 
     @Override
     public String[] getTestedEvents() {
         return new String[]{"com.jfr.String"};
+    }
+
+    @Override
+    public void validateEvents() throws Throwable {
+        // Tally up a selection of the events in the dump as a quick check they match the expected
+        // number.
+        List<RecordedEvent> events = getEvents(dumpLocation);
+        if (events.size() != EXPECTED_EVENTS) {
+            throw new Exception("Not all expected events were found in the JFR file");
+        }
     }
 
     @Test
@@ -80,19 +86,14 @@ public class TestStreamingStress extends StreamingTest {
                 ClassEvent classEvent = new ClassEvent();
                 classEvent.clazz = Math.class;
                 classEvent.commit();
-                try {
-                    helper.doEvent();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
                 emittedEvents.incrementAndGet();
             }
         };
+
         var rs = createStream();
         rs.enable("com.jfr.String");
         rs.enable("com.jfr.Integer");
         rs.enable("com.jfr.Class");
-        rs.enable("jdk.JavaMonitorWait").withThreshold(Duration.ofNanos(0));
         rs.onEvent("com.jfr.Class", event -> {
             remainingClassEvents.decrementAndGet();
         });
@@ -102,19 +103,13 @@ public class TestStreamingStress extends StreamingTest {
         rs.onEvent("com.jfr.String", event -> {
             remainingStringEvents.decrementAndGet();
         });
-        rs.onEvent("jdk.JavaMonitorWait", event -> {
-            if (!event.getClass("monitorClass").getName().equals(Helper.class.getName())) {
-                return;
-            }
-            remainingWaitEvents.decrementAndGet();
-        });
 
         File directory = new File(".");
-        dumpLocation = new File(directory.getAbsolutePath(), "TestStreamingStress.jfr").toPath();
+        dumpLocation = new File(directory.getAbsolutePath(), "TestStreamingCount.jfr").toPath();
 
         Runnable rotateChunk = () -> {
             try {
-                if (flushes % 3 == 0 && !doneCollection) {
+                if (flushes == 0) {
                     rs.dump(dumpLocation); // force chunk rotation
                 }
             } catch (IOException e) {
@@ -127,30 +122,17 @@ public class TestStreamingStress extends StreamingTest {
 
         rs.onFlush(rotateChunk);
         rs.startAsync();
-        while (iterations > 0) {
-            Stressor.execute(THREADS, r);
-            iterations--;
-        }
+        Stressor.execute(THREADS, r);
+
         while (emittedEvents.get() < EXPECTED_EVENTS) {
             Thread.sleep(10);
         }
 
         int flushCount = flushes;
-        while (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 || remainingStringEvents.get() > 0 || remainingWaitEvents.get() > 0) {
-            assertFalse("Not all expected events were found in the stream. Class:" + remainingClassEvents.get() + " Integer:" + remainingIntegerEvents.get() + " String:" +
-                            remainingStringEvents.get() + " Wait:" + remainingWaitEvents.get(),
-                            flushes > (flushCount + 1) && (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 ||
-                                            remainingStringEvents.get() > 0 || remainingWaitEvents.get() > 0));
+        while (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 || remainingStringEvents.get() > 0) {
+            assertFalse("Not all expected events were found in the stream. Class:" + remainingClassEvents.get() + " Integer:" + remainingIntegerEvents.get() + " String:" + remainingStringEvents.get(),
+                            flushes > (flushCount + 1) && (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 || remainingStringEvents.get() > 0));
         }
-        doneCollection = true;
-
-        rs.dump(dumpLocation);
         closeStream();
-    }
-
-    static class Helper {
-        public synchronized void doEvent() throws InterruptedException {
-            wait(0, 1);
-        }
     }
 }

@@ -25,19 +25,20 @@
  */
 package com.oracle.svm.test.jfr;
 
-import jdk.jfr.consumer.RecordingStream;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.oracle.svm.test.jfr.events.EndStreamEvent;
 
-import static org.junit.Assert.assertTrue;
+import jdk.jfr.consumer.RecordingStream;
 
 abstract class StreamingTest extends JfrTest {
     protected static final int TIMEOUT_MILLIS = 3 * 1000;
     protected Path dumpLocation;
-    protected AtomicLong emittedEvents = new AtomicLong(0);
+    protected AtomicInteger emittedEvents = new AtomicInteger(0);
     private RecordingStream rs;
     private volatile boolean streamEndedSuccessfully = false;
 
