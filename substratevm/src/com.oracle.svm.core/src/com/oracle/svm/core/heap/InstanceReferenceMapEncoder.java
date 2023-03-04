@@ -112,6 +112,6 @@ public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
     private void encodeRun(int offset, int refsCount) {
         assert offset >= 0 && refsCount >= 0;
         writeBuffer.putS4(offset);
-        writeBuffer.putU4(refsCount);
+        writeBuffer.putU4(Integer.toUnsignedLong(refsCount));
     }
 }
