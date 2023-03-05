@@ -84,6 +84,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
@@ -1037,7 +1038,7 @@ final class EngineAccessor extends Accessor {
                 useArguments = arguments;
             }
 
-            PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
+            PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, creatorConfig.sandboxPolicy, sharingEnabled, useOut, useErr, useIn,
                             useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
@@ -1992,6 +1993,22 @@ final class EngineAccessor extends Accessor {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
+        }
+
+        @Override
+        public SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.sandboxPolicy;
+        }
+
+        @Override
+        public SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument) {
+            return ((PolyglotInstrument) polyglotInstrument).engine.sandboxPolicy;
+        }
+
+        @Override
+        public void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId) {
+            PolyglotInstrument polyglotInstrument = ((PolyglotContextImpl) polyglotContextImpl).engine.idToInstrument.get(instrumentId);
+            polyglotInstrument.ensureCreated();
         }
     }
 

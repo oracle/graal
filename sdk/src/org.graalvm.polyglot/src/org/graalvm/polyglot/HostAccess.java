@@ -81,6 +81,12 @@ import org.graalvm.collections.MapCursor;
  * <li>{@link #ALL} - Does allow full unrestricted access to public methods or fields of host
  * objects. Note that this policy allows unrestricted access to reflection. It is highly discouraged
  * from using this policy in environments where the guest application is not fully trusted.
+ * <li>{@link #CONSTRAINED} host access policy suitable for a context with
+ * {@link SandboxPolicy#CONSTRAINED CONSTRAINED} sandbox policy.
+ * <li>{@link #ISOLATED} host access policy suitable for a context with
+ * {@link SandboxPolicy#ISOLATED ISOLATED} sandbox policy.
+ * <li>{@link #UNTRUSTED} host access policy suitable for a context with
+ * {@link SandboxPolicy#UNTRUSTED UNTRUSTED} sandbox policy.
  * </ul>
  * Custom host access policies can be created using {@link #newBuilder()}. The builder allows to
  * specify a custom export annotation and allowed and denied methods or fields.
@@ -91,14 +97,14 @@ public final class HostAccess {
 
     private final String name;
     private final EconomicSet<Class<? extends Annotation>> accessAnnotations;
-    private final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
+    final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
     private final EconomicMap<Class<?>, Boolean> excludeTypes;
     private final EconomicSet<AnnotatedElement> members;
     private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
     final boolean allowPublic;
-    private final boolean allowAllInterfaceImplementations;
-    private final boolean allowAllClassImplementations;
+    final boolean allowAllInterfaceImplementations;
+    final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
     final boolean allowBufferAccess;
@@ -216,6 +222,62 @@ public final class HostAccess {
      * @since 19.0
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
+
+    /**
+     * Predefined host access policy used by Context with a {@link SandboxPolicy#CONSTRAINED}
+     * sandbox policy when the host access policy is not explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder().
+     *           allowAccessAnnotatedBy(Export.class).
+     *           allowImplementationsAnnotatedBy(Implementable.class).
+     *           allowMutableTargetMappings().build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
+     */
+    public static final HostAccess CONSTRAINED = HostAccess.newBuilder().//
+                    allowAccessAnnotatedBy(Export.class).//
+                    allowImplementationsAnnotatedBy(Implementable.class).//
+                    allowMutableTargetMappings().name("HostAccess.CONSTRAINED").build();
+
+    /**
+     * Predefined host access policy used by Context with an {@link SandboxPolicy#ISOLATED} sandbox
+     * policy when the host access policy is not explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder(CONSTRAINED).
+     *           methodScoping(true).build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
+     */
+    public static final HostAccess ISOLATED = HostAccess.newBuilder(CONSTRAINED).//
+                    methodScoping(true).build();
+
+    /**
+     * Predefined host access policy used by Context with an {@link SandboxPolicy#UNTRUSTED} sandbox
+     * policy when the host access policy is not explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder(ISOLATED).build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
+     */
+    public static final HostAccess UNTRUSTED = HostAccess.newBuilder(ISOLATED).build();
 
     /**
      * List of default host object mappings of mutable target types available in

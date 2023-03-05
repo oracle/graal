@@ -47,6 +47,16 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-42961 Added `TruffleString.ByteIndexOfCodePointSetNode`, which allows fast searching for a given set of codepoints.
 * GR-42961 Added `TruffleString.GetCodeRangeImpreciseNode`, which allows querying the currently known code range without triggering a string scan.
 * GR-42961 `TruffleString.FromJavaStringNode` no longer eagerly scans strings for their code range. To still get eager scanning of constant strings, use `fromConstant(String)`.
+* GR-30473 Added support for sandbox policies. By default, languages and instruments support just the `TRUSTED` sandbox policy.
+  * If a language wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleLanguage.Registration#sandbox()`.
+    2. For each option, the language must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If a language needs additional validation, it can use `TruffleLanguage.Env#getSandboxPolicy()` to obtain the current context sandbox policy.
+  * If an instrument wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleInstrument.Registration#sandbox()`.
+    2. For each option, the instrument must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If an instrument needs additional validation, it can use `TruffleInstrument.Env#getSandboxPolicy()` to obtain the engine's sandbox policy.
+  * Added `TruffleOptionDescriptors` extending `OptionDescriptors` by the ability to provide the option's `SandboxPolicy`.
 
 ## Version 22.3.0
 

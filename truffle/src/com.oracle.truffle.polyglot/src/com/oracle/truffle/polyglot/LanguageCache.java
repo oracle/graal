@@ -75,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
+import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -103,6 +104,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final ContextPolicy contextPolicy;
     private final TruffleLanguage.Provider provider;
     private final String website;
+    private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
     private int staticIndex;
@@ -116,7 +118,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
                     Set<String> dependentLanguages, boolean interactive, boolean internal, boolean needsAllEncodings, Set<String> services,
-                    ContextPolicy contextPolicy, TruffleLanguage.Provider provider, String website) {
+                    ContextPolicy contextPolicy, TruffleLanguage.Provider provider, String website, SandboxPolicy sandboxPolicy) {
         assert provider != null : "Provider must be non null";
         this.className = className;
         this.name = name;
@@ -137,6 +139,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.contextPolicy = contextPolicy;
         this.provider = provider;
         this.website = website;
+        this.sandboxPolicy = sandboxPolicy;
     }
 
     /**
@@ -161,7 +164,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, false, hostLanguageProvider.getServicesClassNames(),
-                        ContextPolicy.SHARED, hostLanguageProvider, "");
+                        ContextPolicy.SHARED, hostLanguageProvider, "", SandboxPolicy.UNTRUSTED);
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
     }
@@ -337,9 +340,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         for (String service : provider.getServicesClassNames()) {
             servicesClassNames.add(service);
         }
+        SandboxPolicy sandboxPolicy = reg.sandbox();
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), provider, reg.website()));
+                        servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy));
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
@@ -608,6 +612,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getWebsite() {
         return website;
+    }
+
+    SandboxPolicy getSandboxPolicy() {
+        return sandboxPolicy;
     }
 
     private static final class HostLanguageProvider implements TruffleLanguage.Provider {
