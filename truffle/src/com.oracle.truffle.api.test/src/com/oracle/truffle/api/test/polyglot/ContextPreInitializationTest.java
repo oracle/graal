@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -102,6 +103,7 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -2414,6 +2416,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testSandboxPolicySuccess() throws Exception {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.", executedWithXCompOptions());
         setPatchable(CONSTRAINED);
         doContextPreinitialize(CONSTRAINED);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -2443,6 +2446,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testSandboxPolicyLanguageFailure() throws Exception {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.", executedWithXCompOptions());
         setPatchable(FIRST);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -2465,6 +2469,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testSandboxPolicyInstrumentFailure() throws Exception {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.", executedWithXCompOptions());
         setPatchable(CONSTRAINED);
         doContextPreinitialize(CONSTRAINED);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -2487,6 +2492,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testSandboxPolicyInstrumentOptionFailure() throws Exception {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.", executedWithXCompOptions());
         setPatchable(CONSTRAINED);
         doContextPreinitialize(CONSTRAINED);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -2509,6 +2515,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testSandboxPolicyLanguageOptionFailure() throws Exception {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.", executedWithXCompOptions());
         setPatchable(CONSTRAINED);
         doContextPreinitialize(CONSTRAINED);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -2527,6 +2534,11 @@ public class ContextPreInitializationTest {
         }, IllegalArgumentException.class, (e) -> {
             assertTrue(e.getMessage().contains("The option ContextPreInitializationConstrained.Trusted can only be used up to the TRUSTED sandbox policy."));
         });
+    }
+
+    private static boolean executedWithXCompOptions() {
+        Properties props = System.getProperties();
+        return props.containsKey("polyglot.engine.CompileImmediately") || props.containsKey("polyglot.engine.BackgroundCompilation");
     }
 
     private static IsSameFileResult testIsSameFileImpl(IOAccess ioAccess) throws ReflectiveOperationException {

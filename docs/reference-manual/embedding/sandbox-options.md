@@ -21,13 +21,14 @@ The options are a best effort approach to limiting resource usage of guest appli
 The resource limits may be configured using the following options:
 
 <!-- BEGIN: sandbox-options -->
-- `--sandbox.AllocatedBytesCheckEnabled=true|false` : Specifies whether checking of allocated bytes for an execution context is enabled. Is set to 'true' by default.
 - `--sandbox.AllocatedBytesCheckFactor=[0.0, inf)` : Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated. Is set to '1.0' by default.
 - `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default. Maximum interval is 1h.
 - `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
 - `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
 - `--sandbox.MaxCPUTimeCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check the active CPU time for an execution context. Is set to '10ms' by default. Maximum interval is 1h.
-- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxErrorStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stderr. No limit is set by default. Example value: '10MB'.
+- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. Includes only data retained by the guest application, runtime allocated data is not included. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxOutputStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stdout. No limit is set by default. Example value: '10MB'.
 - `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
 - `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
 - `--sandbox.MaxStatementsIncludeInternal` : Configures whether to include internal sources in the max statements computation.
@@ -37,8 +38,6 @@ The resource limits may be configured using the following options:
 - `--sandbox.ReuseLowMemoryTriggerThreshold=true|false` : Specifies whether an already set heap memory notification limit can be reused for the low memory trigger. When reusing is allowed and the usage threshold or the collection usage threshold of a heap memory pool has already been set, then the value of 'RetainedBytesCheckFactor' is ignored for that memory pool and threshold type and whatever threshold value has already been set is used. Is set to 'false' by default.
 - `--sandbox.TraceLimits=true|false` : Records the maximum amount of resources used during execution, and reports a summary of resource limits to the log file upon application exit. Users may also provide limits to enforce while tracing. This flag can be used to estimate an application's optimal sandbox parameters, either by tracing the limits of a stress test or peak usage.
 - `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heap for the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
-- `--sandbox.MaxOutputStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stdout during its run. No limit is set by default. Example value: '100MB'.
-- `--sandbox.MaxErrorStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stderr during its run. No limit is set by default. Example value: '100MB'.
 <!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.

@@ -50,6 +50,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -427,7 +428,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         Map<String, List<OptionInfo>> groupedOptions = new LinkedHashMap<>();
         for (OptionInfo info : model.options) {
-            groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new ArrayList<>()).add(info);
+            groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new LinkedList<>()).add(info);
         }
 
         builder = sandboxPolicyMethod.createBuilder();
@@ -452,8 +453,11 @@ public class OptionProcessor extends AbstractProcessor {
         groupedOptions.remove(defaultSandboxPolicy);
         groupedOptions.remove(maxEntry);
         elseIf = false;
-        for (var entry : groupedOptions.entrySet()) {
-            for (OptionInfo optionInfo : entry.getValue()) {
+        for (var groupIt = groupedOptions.entrySet().iterator(); groupIt.hasNext();) {
+            var entry = groupIt.next();
+            var options = entry.getValue();
+            for (var optionsIt = options.iterator(); optionsIt.hasNext();) {
+                OptionInfo optionInfo = optionsIt.next();
                 if (optionInfo.optionMap) {
                     elseIf = builder.startIf(elseIf);
                     builder.startCall(nameVariableName, "startsWith").doubleQuote(optionInfo.name + ".").end();
@@ -462,20 +466,25 @@ public class OptionProcessor extends AbstractProcessor {
                     builder.end().startBlock();
                     builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
                     builder.end();
+                    optionsIt.remove();
                 }
+            }
+            if (options.isEmpty()) {
+                groupIt.remove();
             }
         }
         if (defaultSandboxPolicy != null) {
             builder.startReturn().type(types.SandboxPolicy).string(".", defaultSandboxPolicy).end();
+        } else if (groupedOptions.isEmpty()) {
+            builder.startReturn().type(types.SandboxPolicy).string(".", maxEntry).end();
         } else {
             builder.startSwitch().string("optionName").end().startBlock();
             for (var entry : groupedOptions.entrySet()) {
                 for (OptionInfo optionInfo : entry.getValue()) {
-                    if (!optionInfo.optionMap) {
-                        builder.startCase().doubleQuote(optionInfo.name).end().startCaseBlock();
-                        builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
-                        builder.end();
-                    }
+                    assert !optionInfo.optionMap;
+                    builder.startCase().doubleQuote(optionInfo.name).end().startCaseBlock();
+                    builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
+                    builder.end();
                 }
             }
 
