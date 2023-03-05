@@ -26,11 +26,7 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertFalse;
-
-import java.io.File;
-import java.io.IOException;
-import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -39,118 +35,96 @@ import com.oracle.svm.test.jfr.events.ClassEvent;
 import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
-/**
- * This test induces repeated chunk rotations and spawns several threads that create java and native
- * events. The goal of this test is to repeatedly create and remove nodes from the
- * JfrBufferNodeLinkedList. Unlike TestStreamingCount, each thread in this test will only do a small
- * amount of work before dying. 80 Threads in total should spawn.
- *
- */
+import jdk.jfr.consumer.RecordedEvent;
 
-public class TestStreamingStress extends JfrStreamingTest {
-    private static final int THREADS = 8;
-    private static final int COUNT = 10;
-    private static final int EXPECTED_EVENTS = THREADS * COUNT * 10;
-    final Helper helper = new Helper();
-    private int iterations = 10;
-    private AtomicLong remainingClassEvents = new AtomicLong(EXPECTED_EVENTS);
-    private AtomicLong remainingIntegerEvents = new AtomicLong(EXPECTED_EVENTS);
-    private AtomicLong remainingStringEvents = new AtomicLong(EXPECTED_EVENTS);
-    private AtomicLong remainingWaitEvents = new AtomicLong(EXPECTED_EVENTS);
-    volatile int flushes = 0;
-    volatile boolean doneCollection = false;
+/**
+ * This test spawns several threads that create Java and native events. The goal of this test is to
+ * repeatedly create and remove nodes from the {@link com.oracle.svm.core.jfr.JfrBufferList}. Unlike
+ * {@link TestJfrStreamingCount}, each thread in this test will only do a small amount of work
+ * before dying.
+ */
+public class TestJfrStreamingStress extends JfrStreamingTest {
+    private static final int THREADS = 32;
+    private static final int ITERATIONS = 100;
+    private static final int EXPECTED_EVENTS_PER_TYPE = THREADS * ITERATIONS;
+    private static final int EXPECTED_TOTAL_EVENTS = EXPECTED_EVENTS_PER_TYPE * 4;
+
+    private final MonitorWaitHelper helper = new MonitorWaitHelper();
+    private final AtomicLong classEvents = new AtomicLong(0);
+    private final AtomicLong integerEvents = new AtomicLong(0);
+    private final AtomicLong stringEvents = new AtomicLong(0);
+    private final AtomicLong waitEvents = new AtomicLong(0);
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"com.jfr.String"};
+        return new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", "jdk.JavaMonitorWait"};
+    }
+
+    @Override
+    public void validateEvents() throws Throwable {
+        int otherMonitorWaitEvents = 0;
+        List<RecordedEvent> events = getEvents();
+        for (RecordedEvent event : events) {
+            if (event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
+                if (!event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+                    otherMonitorWaitEvents++;
+                }
+            }
+        }
+
+        if (events.size() - otherMonitorWaitEvents != EXPECTED_TOTAL_EVENTS) {
+            throw new Exception("Not all expected events were found in the JFR file");
+        }
     }
 
     @Test
     public void test() throws Exception {
-        Runnable r = () -> {
-            for (int i = 0; i < COUNT; i++) {
-                StringEvent stringEvent = new StringEvent();
-                stringEvent.message = "StringEvent has been generated as part of TestConcurrentEvents.";
-                stringEvent.commit();
+        createStream();
 
-                IntegerEvent integerEvent = new IntegerEvent();
-                integerEvent.number = Integer.MAX_VALUE;
-                integerEvent.commit();
-
-                ClassEvent classEvent = new ClassEvent();
-                classEvent.clazz = Math.class;
-                classEvent.commit();
-                try {
-                    helper.doEvent();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                emittedEvents.incrementAndGet();
-            }
-        };
-        var rs = createStream();
-        rs.enable("com.jfr.String");
-        rs.enable("com.jfr.Integer");
-        rs.enable("com.jfr.Class");
-        rs.enable("jdk.JavaMonitorWait").withThreshold(Duration.ofNanos(0));
-        rs.onEvent("com.jfr.Class", event -> {
-            remainingClassEvents.decrementAndGet();
+        stream.onEvent("com.jfr.Class", event -> {
+            classEvents.incrementAndGet();
         });
-        rs.onEvent("com.jfr.Integer", event -> {
-            remainingIntegerEvents.decrementAndGet();
+        stream.onEvent("com.jfr.Integer", event -> {
+            integerEvents.incrementAndGet();
         });
-        rs.onEvent("com.jfr.String", event -> {
-            remainingStringEvents.decrementAndGet();
+        stream.onEvent("com.jfr.String", event -> {
+            stringEvents.incrementAndGet();
         });
-        rs.onEvent("jdk.JavaMonitorWait", event -> {
-            if (!event.getClass("monitorClass").getName().equals(Helper.class.getName())) {
+        stream.onEvent("jdk.JavaMonitorWait", event -> {
+            if (!event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 return;
             }
-            remainingWaitEvents.decrementAndGet();
+            waitEvents.incrementAndGet();
         });
 
-        File directory = new File(".");
-        dumpLocation = new File(directory.getAbsolutePath(), "TestStreamingStress.jfr").toPath();
+        startStream();
 
-        Runnable rotateChunk = () -> {
-            try {
-                if (flushes % 3 == 0 && !doneCollection) {
-                    rs.dump(dumpLocation); // force chunk rotation
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            flushes++;
+        Runnable eventEmitter = () -> {
+            StringEvent stringEvent = new StringEvent();
+            stringEvent.message = "StringEvent has been generated as part of TestConcurrentEvents.";
+            stringEvent.commit();
+
+            IntegerEvent integerEvent = new IntegerEvent();
+            integerEvent.number = Integer.MAX_VALUE;
+            integerEvent.commit();
+
+            ClassEvent classEvent = new ClassEvent();
+            classEvent.clazz = Math.class;
+            classEvent.commit();
+
+            helper.doEvent();
+
+            emittedEventsPerType.incrementAndGet();
         };
 
-        rs.onFlush(rotateChunk);
-        rs.startAsync();
-        while (iterations > 0) {
-            Stressor.execute(THREADS, r);
-            iterations--;
-        }
-        while (emittedEvents.get() < EXPECTED_EVENTS) {
-            Thread.sleep(10);
+        for (int i = 0; i < ITERATIONS; i++) {
+            Stressor.execute(THREADS, eventEmitter);
         }
 
-        int flushCount = flushes;
-        while (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 || remainingStringEvents.get() > 0 || remainingWaitEvents.get() > 0) {
-            assertFalse("Not all expected events were found in the stream. Class:" + remainingClassEvents.get() + " Integer:" + remainingIntegerEvents.get() + " String:" +
-                            remainingStringEvents.get() + " Wait:" + remainingWaitEvents.get(),
-                            flushes > (flushCount + 1) && (remainingClassEvents.get() > 0 || remainingIntegerEvents.get() > 0 ||
-                                            remainingStringEvents.get() > 0 || remainingWaitEvents.get() > 0));
-        }
-        doneCollection = true;
+        waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
+        waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE &&
+                        waitEvents.get() == EXPECTED_EVENTS_PER_TYPE);
 
-        rs.dump(dumpLocation);
         closeStream();
-    }
-
-    static class Helper {
-        public synchronized void doEvent() throws InterruptedException {
-            wait(0, 1);
-        }
     }
 }

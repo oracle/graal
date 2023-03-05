@@ -26,22 +26,26 @@
 
 package com.oracle.svm.test.jfr;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Class to help run multiple threads executing some task.
  */
 public class Stressor {
-    public static void execute(int numberOfThreads, Runnable task) throws Exception {
-        List<Thread> threads = new ArrayList<>();
-        for (int n = 0; n < numberOfThreads; ++n) {
-            Thread t = new Thread(task);
-            threads.add(t);
-            t.start();
+    public static void execute(int numberOfThreads, Runnable task) {
+        Thread[] threads = new Thread[numberOfThreads];
+        for (int i = 0; i < numberOfThreads; i++) {
+            threads[i] = new Thread(task);
         }
-        for (Thread t : threads) {
-            t.join();
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            threads[i].start();
+        }
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

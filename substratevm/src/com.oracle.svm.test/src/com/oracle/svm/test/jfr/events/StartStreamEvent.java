@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +31,9 @@ import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("com.jfr.EndStream")
-@Label("End Stream Event")
-@Description("Signals to end stream")
+@Name("com.jfr.StartStream")
+@Label("Start Stream Event")
+@Description("Signals thread the stream was started")
 @StackTrace(false)
-public class EndStreamEvent extends Event {
+public class StartStreamEvent extends Event {
 }

@@ -28,8 +28,9 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.JfrEvent;
 import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;

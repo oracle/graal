@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -46,6 +47,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.test.jfr.utils.Jfr;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJfr;
@@ -159,9 +161,21 @@ public abstract class JfrTest {
     private List<RecordedEvent> getEvents0(Path p) throws IOException {
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
         Collections.sort(events, new ChronologicalComparator());
-        // remove events that are not in the list of tested events
+        /* Remove events that are not in the list of tested events. */
         events.removeIf(event -> (Arrays.stream(getTestedEvents()).noneMatch(testedEvent -> (testedEvent.equals(event.getEventType().getName())))));
         return events;
+    }
+
+    protected static void waitUntilTrue(BooleanSupplier supplier) throws InterruptedException {
+        long timeout = TimeUtils.secondsToNanos(30);
+        long startTime = System.nanoTime();
+        while (!supplier.getAsBoolean()) {
+            long elapsedNanos = System.nanoTime() - startTime;
+            if (elapsedNanos > timeout) {
+                Assert.fail("Timed out after: " + TimeUtils.divideNanosToMillis(timeout) + "ms.");
+            }
+            Thread.sleep(10);
+        }
     }
 }
 
