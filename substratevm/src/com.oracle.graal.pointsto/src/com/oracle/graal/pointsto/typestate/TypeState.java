@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,9 +38,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class TypeState {
-
-    /** TypeState id is only be used for statistics. */
-    private int id = -1;
 
     /** Get the number of types. */
     public abstract int typesCount();
@@ -143,16 +140,6 @@ public abstract class TypeState {
 
     @Override
     public abstract boolean equals(Object o);
-
-    public int getId(PointsToAnalysis bb) {
-        assert bb.reportAnalysisStatistics() : "TypeState id should only be used for statistics.";
-        return id;
-    }
-
-    public void setId(PointsToAnalysis bb, int id) {
-        assert bb.reportAnalysisStatistics() : "TypeState id should only be used for statistics.";
-        this.id = id;
-    }
 
     /* Static methods. */
 
