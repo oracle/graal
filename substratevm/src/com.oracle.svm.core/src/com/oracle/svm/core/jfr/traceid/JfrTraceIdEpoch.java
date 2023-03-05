@@ -74,7 +74,7 @@ public class JfrTraceIdEpoch {
         return epoch;
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean previousEpoch() {
         return !epoch;
     }

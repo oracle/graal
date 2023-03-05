@@ -95,7 +95,7 @@ public class VMThreadLocalInfos {
         }
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer primitiveData(IsolateThread thread) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return (Pointer) thread;
@@ -104,7 +104,7 @@ public class VMThreadLocalInfos {
         }
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Object objectData(IsolateThread thread) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return ((Pointer) thread).toObjectNonNull();

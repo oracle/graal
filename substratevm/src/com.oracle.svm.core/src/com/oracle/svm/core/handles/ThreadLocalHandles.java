@@ -100,7 +100,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
     }
 
     @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public T tryCreateNonNull(Object obj) {
         assert obj != null;
         if (top >= objects.length) {

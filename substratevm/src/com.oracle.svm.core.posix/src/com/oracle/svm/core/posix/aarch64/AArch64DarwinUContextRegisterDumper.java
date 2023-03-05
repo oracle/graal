@@ -90,14 +90,14 @@ class AArch64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.regs().read(27));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.regs().read(28));

@@ -33,12 +33,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter.Group;
@@ -183,7 +183,7 @@ public final class Counter {
      * Increments the value of this counter.
      */
     @AlwaysInline("Constant folding and dead code elimination remove code for disabled counters")
-    @Uninterruptible(reason = "Gets always inlined", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void inc() {
         add(1);
     }
@@ -192,7 +192,7 @@ public final class Counter {
      * Increments the value of this counter.
      */
     @AlwaysInline("Constant folding and dead code elimination remove code for disabled counters")
-    @Uninterruptible(reason = "Gets always inlined", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void add(long increment) {
         if (group.enabled) {
             value += increment;

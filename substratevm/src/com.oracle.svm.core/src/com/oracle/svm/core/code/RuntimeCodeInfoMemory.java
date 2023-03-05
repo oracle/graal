@@ -108,7 +108,7 @@ public class RuntimeCodeInfoMemory {
         return remove0(info);
     }
 
-    @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
+    @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private void add0(CodeInfo info) {
         if (table.isNull()) {
             table = NonmovableArrays.createWordArray(32);
@@ -134,7 +134,7 @@ public class RuntimeCodeInfoMemory {
         assert count > 0 : "invalid counter value";
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private boolean resize(int newLength) {
         assert SubstrateUtil.isPowerOf2(newLength);
         final int maxLength = 1 << 30;
@@ -163,7 +163,7 @@ public class RuntimeCodeInfoMemory {
         return true;
     }
 
-    @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
+    @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private boolean remove0(CodeInfo info) {
         int length = NonmovableArrays.lengthOf(table);
         int index = hashIndex(info, length);
@@ -183,7 +183,7 @@ public class RuntimeCodeInfoMemory {
     }
 
     /** Rehashes possibly-colliding entries after deletion to preserve collision properties. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private void rehashAfterUnregisterAt(int index) { // from IdentityHashMap: Knuth 6.4 Algorithm R
         int length = NonmovableArrays.lengthOf(table);
         int d = index;

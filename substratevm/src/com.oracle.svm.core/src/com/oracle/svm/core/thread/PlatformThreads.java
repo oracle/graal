@@ -1000,7 +1000,7 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getThreadStatus(Thread thread) {
         assert !isVirtual(thread);
         return (JavaVersionUtil.JAVA_SPEC >= 19) ? toTarget(thread).holder.threadStatus : toTarget(thread).threadStatus;

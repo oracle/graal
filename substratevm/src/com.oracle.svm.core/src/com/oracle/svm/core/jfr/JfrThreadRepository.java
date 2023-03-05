@@ -129,7 +129,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         epochData.threadBuffer = data.getJfrBuffer();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadGroupId(boolean isVirtual, ThreadGroup threadGroup) {
         if (isVirtual) {
             // java thread group - VirtualThread threadgroup reserved id 1

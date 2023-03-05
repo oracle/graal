@@ -34,13 +34,13 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -131,7 +131,7 @@ public class DeoptTester {
      * best placed in a {@code finally} block. Only use this in code where {@link Uninterruptible}
      * cannot be used and to which the checks in {@link #deoptTest()} do not apply.
      */
-    @Uninterruptible(reason = "Prevent indirect recursion when called from deoptTest(), but safe to inline anywhere.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void disableDeoptTesting() {
         if (enabled()) {
             int newValue = inDeoptTest.get() + 1;
@@ -140,7 +140,7 @@ public class DeoptTester {
         }
     }
 
-    @Uninterruptible(reason = "Prevent indirect recursion when called from deoptTest(), but safe to inline anywhere.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void enableDeoptTesting() {
         if (enabled()) {
             int newValue = inDeoptTest.get() - 1;

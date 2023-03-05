@@ -164,7 +164,7 @@ public final class JavaThreads {
         return VirtualThreads.isSupported();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isVirtual(Thread thread) {
         return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
@@ -385,7 +385,7 @@ public final class JavaThreads {
         return PlatformThreads.isAlive(thread);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setCurrentThreadLockHelper(Object helper) {
         if (supportsVirtual()) {
             toTarget(Thread.currentThread()).lockHelper = helper;
