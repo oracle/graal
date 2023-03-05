@@ -85,7 +85,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private RawFileDescriptor fd;
     private long chunkStartTicks;
     private long chunkStartNanos;
-    private byte generation;
+    private byte nextGeneration;
     private boolean newChunk;
     private boolean isFinal;
     private long lastMetadataId;
@@ -154,7 +154,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();
-        generation = 1;
+        nextGeneration = 1;
         newChunk = true;
         isFinal = false;
         lastMetadataId = -1;
@@ -287,12 +287,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private byte getAndIncrementGeneration() {
-        if (generation == Byte.MAX_VALUE) {
+        if (nextGeneration == Byte.MAX_VALUE) {
             // Restart counter if required.
-            generation = 1;
+            nextGeneration = 1;
             return Byte.MAX_VALUE;
         }
-        return generation++;
+        return nextGeneration++;
     }
 
     private void writeFlushCheckpoint(boolean flush) {

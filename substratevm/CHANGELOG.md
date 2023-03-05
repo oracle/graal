@@ -25,6 +25,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-38414) BellSoft implemented the `MemoryPoolMXBean` for the serial and epsilon GCs.
 * (GR-40641) Dynamic linking of AWT libraries on Linux.
 * (GR-40463) Red Hat added experimental support for JMX, which can be enabled with the `--enable-monitoring` option (e.g. `--enable-monitoring=jmxclient,jmxserver`).
+* (GR-42740) Red Hat added experimental support for JFR event streaming.
 * (GR-44110) Native Image now targets `x86-64-v3` by default on AMD64 and supports a new `-march` option. Use `-march=compatibility` for best compatibility (previous default) or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
 
 ## Version 22.3.0

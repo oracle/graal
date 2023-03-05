@@ -148,6 +148,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UninterruptibleEntry putNew(UninterruptibleEntry valueOnStack) {
         assert valueOnStack.isNonNull();

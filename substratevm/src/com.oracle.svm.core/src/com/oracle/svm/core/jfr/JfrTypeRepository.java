@@ -194,7 +194,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
     }
 
-    private int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
+    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
         if (typeInfo.classLoaders.isEmpty()) {
             return EMPTY;
         }
@@ -207,7 +207,7 @@ public class JfrTypeRepository implements JfrRepository {
         return NON_EMPTY;
     }
 
-    private void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
+    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
         if (cl == null) {

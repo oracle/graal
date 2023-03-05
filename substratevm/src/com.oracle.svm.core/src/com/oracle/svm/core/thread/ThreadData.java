@@ -43,7 +43,7 @@ public final class ThreadData extends UnacquiredThreadData {
     private static final long UNSAFE_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "unsafeParker");
     private static final long SLEEP_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "sleepParker");
 
-    private volatile int lock;
+    @SuppressWarnings("unused") private volatile int lock;
     private boolean detached;
     private long refCount;
 
