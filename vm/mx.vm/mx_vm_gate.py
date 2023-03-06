@@ -153,7 +153,7 @@ def _test_libgraal_basic(extra_vm_arguments):
                 stub = f'{m.group(1)}{m.group(2)}'
                 stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
         if not stub_compilations:
-            mx.abort('Expected at least one stub compilation in compiler log')
+            mx.abort(f'Expected at least one stub compilation in compiler log:\n{compiler_log}')
         duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
         if duplicated:
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
