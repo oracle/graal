@@ -31,6 +31,7 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -44,12 +45,23 @@ public class ImageBuildStatistics {
     }
 
     public enum CheckCountLocation {
+        BEFORE_STRENGTHEN_GRAPHS,
+        AFTER_STRENGTHEN_GRAPHS,
         AFTER_PARSE_CANONICALIZATION,
         BEFORE_HIGH_TIER,
         AFTER_HIGH_TIER
     }
 
     final TreeMap<String, AtomicLong> counters;
+
+    public AtomicLong insert(String key) {
+        AtomicLong result = new AtomicLong();
+        var existing = counters.put(key, result);
+        if (existing != null) {
+            throw GraalError.shouldNotReachHere("Key already used: " + key);
+        }
+        return result;
+    }
 
     public void incDevirtualizedInvokeCounter() {
         counters.get(devirtualizedInvokes()).incrementAndGet();

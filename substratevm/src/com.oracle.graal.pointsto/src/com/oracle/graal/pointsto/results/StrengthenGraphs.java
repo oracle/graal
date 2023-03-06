@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -63,6 +65,8 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
@@ -129,9 +133,20 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
     private final boolean strengthenGraphWithConstants;
 
+    private final StrengthenGraphsCounters beforeCounters;
+    private final StrengthenGraphsCounters afterCounters;
+
     public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
         strengthenGraphWithConstants = Options.StrengthenGraphWithConstants.getValue(bb.getOptions());
+
+        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(bb.getOptions())) {
+            beforeCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.BEFORE_STRENGTHEN_GRAPHS);
+            afterCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.AFTER_STRENGTHEN_GRAPHS);
+        } else {
+            beforeCounters = null;
+            afterCounters = null;
+        }
     }
 
     private PointsToAnalysis getAnalysis() {
@@ -153,13 +168,18 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
         if (graph != null) {
             graph.resetDebug(debug);
+            if (beforeCounters != null) {
+                beforeCounters.collect(graph);
+            }
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
                 new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders());
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
-
+            if (afterCounters != null) {
+                afterCounters.collect(graph);
+            }
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
         }
 
@@ -818,5 +838,89 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
             return newStamp;
         }
+    }
+}
+
+/**
+ * Infrastructure for collecting detailed counters that capture the benefits of strengthening
+ * graphs. The counter dumping is handled by {@link ImageBuildStatistics}.
+ */
+final class StrengthenGraphsCounters {
+
+    enum Counter {
+        METHOD,
+        BLOCK,
+        IS_NULL,
+        INSTANCE_OF,
+        INVOKE_STATIC,
+        INVOKE_DIRECT,
+        INVOKE_INDIRECT,
+        LOAD_FIELD,
+        CONSTANT,
+    }
+
+    private final AtomicLong[] values;
+
+    StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation location) {
+        values = new AtomicLong[Counter.values().length];
+
+        ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
+        for (Counter counter : Counter.values()) {
+            values[counter.ordinal()] = imageBuildStats.insert(location + "_" + counter.name());
+        }
+    }
+
+    void collect(StructuredGraph graph) {
+        int[] localValues = new int[Counter.values().length];
+
+        inc(localValues, Counter.METHOD);
+        for (Node n : graph.getNodes()) {
+            if (n instanceof AbstractBeginNode) {
+                inc(localValues, Counter.BLOCK);
+            } else if (n instanceof ConstantNode) {
+                inc(localValues, Counter.CONSTANT);
+            } else if (n instanceof LoadFieldNode) {
+                inc(localValues, Counter.LOAD_FIELD);
+            } else if (n instanceof IfNode node) {
+                collect(localValues, node.condition());
+            } else if (n instanceof ConditionalNode node) {
+                collect(localValues, node.condition());
+            } else if (n instanceof MethodCallTargetNode node) {
+                collect(localValues, node.invokeKind());
+            }
+        }
+
+        for (int i = 0; i < localValues.length; i++) {
+            values[i].addAndGet(localValues[i]);
+        }
+    }
+
+    private static void collect(int[] localValues, LogicNode condition) {
+        if (condition instanceof IsNullNode) {
+            inc(localValues, Counter.IS_NULL);
+        } else if (condition instanceof InstanceOfNode) {
+            inc(localValues, Counter.INSTANCE_OF);
+        }
+    }
+
+    private static void collect(int[] localValues, CallTargetNode.InvokeKind invokeKind) {
+        switch (invokeKind) {
+            case Static:
+                inc(localValues, Counter.INVOKE_STATIC);
+                break;
+            case Virtual:
+            case Interface:
+                inc(localValues, Counter.INVOKE_INDIRECT);
+                break;
+            case Special:
+                inc(localValues, Counter.INVOKE_DIRECT);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    private static void inc(int[] localValues, Counter counter) {
+        localValues[counter.ordinal()]++;
     }
 }
