@@ -93,6 +93,11 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
 
     @CompilerDirectives.TruffleBoundary
     public StaticObject[] activeThreads() {
+        /*
+         * Note that this might return threads that have been seen as terminated through Thread.join
+         * because EspressoThreadRegistry.unregisterThread happens after
+         * ThreadsAccess.setTerminateStatusAndNotify
+         */
         return activeThreads.toArray(StaticObject.EMPTY_ARRAY);
     }
 
@@ -237,7 +242,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             return null;
         }
         int index = getThreadIndex(id, threads);
-        if (index <= 0 || index >= guestThreads.length) {
+        if (index <= 0 || index >= threads.length) {
             // no guest thread created for this host thread
             return null;
         }
