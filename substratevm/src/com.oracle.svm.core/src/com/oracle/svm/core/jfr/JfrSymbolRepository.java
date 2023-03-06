@@ -71,7 +71,7 @@ public class JfrSymbolRepository implements JfrRepository {
         return getSymbolId(imageHeapString, previousEpoch, false);
     }
 
-    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch, boolean replaceDotWithSlash) {
         if (imageHeapString == null) {
             return 0;

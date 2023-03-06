@@ -34,7 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -62,16 +62,13 @@ public class JfrBufferList {
     }
 
     /**
-     * This method is called after all the threads already stopped recording. So, the
-     * {@link JfrBuffer}s were already flushed and freed, but there may still be nodes in the list.
-     * This node data needs to be freed.
+     * This method is called after the {@link JfrBuffer}s were already flushed and freed, but there
+     * may still be nodes in the list.
      */
     public void teardown() {
-        assert VMOperation.isInProgressAtSafepoint();
-
         JfrBufferNode node = head;
         while (node.isNonNull()) {
-            assert JfrBufferNodeAccess.getBuffer(node).isNull();
+            assert node.getBuffer().isNull();
 
             JfrBufferNode next = node.getNext();
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
@@ -80,9 +77,9 @@ public class JfrBufferList {
         head = WordFactory.nullPointer();
     }
 
-    @Uninterruptible(reason = "Locking with no transition.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public JfrBufferNode getHead() {
-        lock();
+        lockNoTransition();
         try {
             return head;
         } finally {
@@ -90,11 +87,7 @@ public class JfrBufferList {
         }
     }
 
-    /**
-     * Must be uninterruptible because if this list is acquired and we safepoint for an epoch change
-     * in this method, the thread doing the epoch change will be blocked accessing the list.
-     */
-    @Uninterruptible(reason = "Locking with no transition. List must not be acquired entering epoch change.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public JfrBufferNode addNode(JfrBuffer buffer) {
         assert buffer.isNonNull();
         assert buffer.getBufferType() != null && buffer.getBufferType() != JfrBufferType.C_HEAP;
@@ -104,11 +97,11 @@ public class JfrBufferList {
             return WordFactory.nullPointer();
         }
 
-        assert buffer.getNode().isNull();
-        buffer.setNode(node);
-
-        lock();
+        lockNoTransition();
         try {
+            assert buffer.getNode().isNull();
+            buffer.setNode(node);
+
             node.setNext(head);
             head = node;
             return node;
@@ -118,14 +111,14 @@ public class JfrBufferList {
     }
 
     /**
-     * Removes a node from the list. The buffer contained in the nodes must have already been freed
-     * by the caller.
+     * Removes a node from the list. The buffer that is referenced by the node must have already
+     * been freed by the caller.
      */
-    @Uninterruptible(reason = "Should not be interrupted while flushing.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
         assert head.isNonNull();
 
-        lock();
+        lockNoTransition();
         try {
             assert JfrBufferNodeAccess.getBuffer(node).isNull();
 
@@ -133,22 +126,40 @@ public class JfrBufferList {
             if (node == head) {
                 assert prev.isNull();
                 head = next;
-            } else {
-                assert prev.isNonNull();
+            } else if (prev.isNonNull()) {
                 assert prev.getNext() == node;
                 prev.setNext(next);
+            } else {
+                /* We are removing an old head (other threads added nodes in the meanwhile). */
+                JfrBufferNode p = findPrev(node);
+                assert p.isNonNull() && p.getNext() == node;
+                p.setNext(next);
             }
         } finally {
             unlock();
         }
     }
 
-    @Uninterruptible(reason = "Whole critical section must be uninterruptible because we are locking without transition.", callerMustBe = true)
-    private void lock() {
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private JfrBufferNode findPrev(JfrBufferNode node) {
+        JfrBufferNode cur = head;
+        JfrBufferNode prev = WordFactory.nullPointer();
+        while (cur.isNonNull()) {
+            if (cur == node) {
+                return prev;
+            }
+            prev = cur;
+            cur = cur.getNext();
+        }
+        throw VMError.shouldNotReachHere("JfrBufferNode not found in JfrBufferList.");
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
+    private void lockNoTransition() {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
     }
 
-    @Uninterruptible(reason = "Whole critical section must be uninterruptible because we are locking without transition.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     private void unlock() {
         JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
     }

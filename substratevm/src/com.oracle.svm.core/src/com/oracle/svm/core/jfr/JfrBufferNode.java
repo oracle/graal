@@ -36,8 +36,8 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and have a longer lifetime than the
- * {@link JfrBuffer} that they reference. With this concept and the providing locking mechanism,
- * threads can iterate over the thread-local JFR buffers of other threads. This enables use cases,
+ * {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
+ * threads can iterate over the thread-local JFR buffers of other threads, which enables use cases
  * such as JFR event streaming.
  */
 @RawStructure

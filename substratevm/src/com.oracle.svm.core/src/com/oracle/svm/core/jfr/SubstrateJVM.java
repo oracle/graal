@@ -231,14 +231,19 @@ public class SubstrateJVM {
             return false;
         }
 
-        recorderThread.shutdown();
+        try {
+            recorderThread.shutdown();
 
-        globalMemory.teardown();
-        symbolRepo.teardown();
-        threadRepo.teardown();
-        stackTraceRepo.teardown();
-        methodRepo.teardown();
-        typeRepo.teardown();
+            globalMemory.teardown();
+            symbolRepo.teardown();
+            threadRepo.teardown();
+            stackTraceRepo.teardown();
+            methodRepo.teardown();
+            typeRepo.teardown();
+        } catch (Throwable e) {
+            /* Log errors because the shutdown hook swallows exceptions. */
+            jfrLogging.warnInternal(e.getClass().getName() + " in destroyJFR.");
+        }
 
         initialized = false;
         return true;
@@ -689,7 +694,7 @@ public class SubstrateJVM {
         return isCurrentThreadExcluded();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
         return getThreadLocal().isCurrentThreadExcluded();
     }

@@ -54,12 +54,16 @@ import com.oracle.svm.core.util.VMError;
  * <li>Committed data refers to fully written, valid event data that can be flushed at any
  * time.</li>
  * <li>Unflushed data refers to the data of a JFR event that is currently being written.</li>
+ * </ul>
  *
  * Multiple threads may access the same {@link JfrBuffer} concurrently:
  * <li>If a thread owns/created a thread-local buffer, then it may access and modify most of that
- * buffer's data at any time, without the need for any locking. The flushed position is the only
- * exception as it may only be accessed/modified after locking the corresponding
- * {@link JfrBufferNode}.</li>
+ * buffer's data at any time, without the need for any locking. Only the following operations
+ * require that the {@link JfrBufferNode} is locked:
+ * <ul>
+ * <li>accessing or modifying the flushed position (see {@link JfrBufferAccess#setFlushedPos}</li>
+ * <li>freeing the buffer</li>
+ * </ul>
  * <li>Accessing a thread-local buffer of another thread is only allowed after locking the
  * corresponding {@link JfrBufferNode} (see {@link #getNode()}). This prevents other threads from
  * freeing the buffer in meanwhile. The thread that holds the lock may read any field in the buffer

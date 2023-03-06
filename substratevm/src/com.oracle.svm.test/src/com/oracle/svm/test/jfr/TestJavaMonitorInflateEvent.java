@@ -40,9 +40,9 @@ import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
 public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
-    private static final EnterHelper ENTER_HELPER = new EnterHelper();
-    private static Thread firstThread;
-    private static Thread secondThread;
+    private final EnterHelper enterHelper = new EnterHelper();
+    private Thread firstThread;
+    private Thread secondThread;
 
     @Override
     public String[] getTestedEvents() {
@@ -69,7 +69,7 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
     public void test() throws Exception {
         Runnable first = () -> {
             try {
-                ENTER_HELPER.doWork();
+                enterHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -77,8 +77,8 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
 
         Runnable second = () -> {
             try {
-                EnterHelper.passedCheckpoint = true;
-                ENTER_HELPER.doWork();
+                enterHelper.passedCheckpoint = true;
+                enterHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -94,8 +94,8 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
         secondThread.join();
     }
 
-    private static class EnterHelper {
-        static volatile boolean passedCheckpoint = false;
+    private class EnterHelper {
+        volatile boolean passedCheckpoint = false;
 
         synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {

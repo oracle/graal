@@ -170,7 +170,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.")
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     private JfrStackTraceTableEntry getOrPutStackTrace0(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
         assert size.rawValue() == (int) size.rawValue();
 

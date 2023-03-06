@@ -39,11 +39,7 @@ import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
- * Used to access the raw memory of a {@link com.oracle.svm.core.jfr.JfrBufferNode}.
- *
- * This class also provides the infrastructure that threads can access thread-local buffers of other
- * threads (see {@link JfrBuffer} for more information regarding concurrency). When the VM enters a
- * safepoint, we must guarantee that all {@link JfrBufferNode}s are unlocked.
+ * Used to access the raw memory of a {@link JfrBufferNode}.
  */
 public final class JfrBufferNodeAccess {
     private JfrBufferNodeAccess() {
@@ -66,13 +62,14 @@ public final class JfrBufferNodeAccess {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
     }
 
+    /** Should be used instead of {@link JfrBufferNode#getBuffer}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JfrBuffer getBuffer(JfrBufferNode node) {
         assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
         return node.getBuffer();
     }
 
-    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     public static boolean tryLock(JfrBufferNode node) {
         assert node.isNonNull();
         if (NativeSpinLockUtils.tryLock(ptrToLock(node))) {
@@ -82,14 +79,14 @@ public final class JfrBufferNodeAccess {
         return false;
     }
 
-    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
-    public static void lock(JfrBufferNode node) {
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
+    public static void lockNoTransition(JfrBufferNode node) {
         assert node.isNonNull();
         NativeSpinLockUtils.lockNoTransition(ptrToLock(node));
         setLockOwner(node);
     }
 
-    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     public static void unlock(JfrBufferNode node) {
         assert node.isNonNull();
         assert isLockedByCurrentThread(node);

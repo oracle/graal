@@ -85,8 +85,8 @@ public final class JfrBufferAccess {
     /**
      * Sets the flushed position. Also verifies that the thread that modifies the flushed position
      * owns the lock if the buffer is published in a {@link JfrBufferList}. This is important to
-     * avoid races between the thread that owns/created JFR local buffers and threads that iterate
-     * {@link JfrBufferList}s (e.g., threads that flush for event streaming).
+     * avoid races between the thread that owns/created a thread local buffer and threads that
+     * iterate {@link JfrBufferList}s (e.g., threads that flush for event streaming).
      */
     @Uninterruptible(reason = "Changes flushed position.")
     public static void setFlushedPos(JfrBuffer buffer, Pointer pos) {

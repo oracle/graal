@@ -165,14 +165,14 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static void flushToGlobalMemoryAndFreeBuffer(JfrBufferNode node) {
         if (node.isNull()) {
             return;
         }
 
         /* Free the buffer but leave the node alive as it still needed. */
-        JfrBufferNodeAccess.lock(node);
+        JfrBufferNodeAccess.lockNoTransition(node);
         try {
             JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
             node.setBuffer(WordFactory.nullPointer());
@@ -201,7 +201,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
@@ -286,7 +286,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public static JfrBuffer flushToGlobalMemory(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
         assert buffer.isNonNull();
         assert JfrBufferAccess.isThreadLocal(buffer);
@@ -294,7 +294,7 @@ public class JfrThreadLocal implements ThreadListener {
 
         /* Acquire the buffer because a streaming flush could be in progress. */
         JfrBufferNode node = buffer.getNode();
-        JfrBufferNodeAccess.lock(node);
+        JfrBufferNodeAccess.lockNoTransition(node);
         try {
             return flushToGlobalMemory0(buffer, uncommitted, requested);
         } finally {

@@ -199,7 +199,7 @@ public class VMMutex {
         owner = WordFactory.nullPointer();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasOwner() {
         return owner.isNonNull();
     }

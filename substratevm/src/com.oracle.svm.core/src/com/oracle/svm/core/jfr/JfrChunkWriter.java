@@ -360,7 +360,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private void writeMetadataEvent() {
         assert lock.isOwner();
 
-        /* Only the write the metadata if this is a new chunk or if it changed in the meanwhile. */
+        /* Only write the metadata if this is a new chunk or if it changed in the meanwhile. */
         long currentMetadataId = metadata.getCurrentMetadataId();
         if (lastMetadataId == currentMetadataId) {
             return;
@@ -506,34 +506,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage(boolean flush) {
-        /*
-         * Write unflushed data from the thread-local event buffers to the output file. We do *not*
-         * reinitialize the thread-local buffers as the individual threads will handle space
-         * reclamation on their own time.
-         */
         traverseThreadLocalBuffers(getJavaBufferList(), flush);
         traverseThreadLocalBuffers(getNativeBufferList(), flush);
 
-        /* Flush all global buffers. */
-        JfrBufferList buffers = globalMemory.getBuffers();
-        JfrBufferNode node = buffers.getHead();
-        while (node.isNonNull()) {
-            boolean success = JfrBufferNodeAccess.tryLock(node);
-            if (success) {
-                try {
-                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
-                    write(buffer);
-                    JfrBufferAccess.reinitialize(buffer);
-                } finally {
-                    JfrBufferNodeAccess.unlock(node);
-                }
-            }
-            assert success || flush;
-            node = node.getNext();
-        }
+        flushGlobalMemory(flush);
     }
 
-    @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void traverseThreadLocalBuffers(JfrBufferList list, boolean flush) {
         JfrBufferNode node = list.getHead();
         JfrBufferNode prev = WordFactory.nullPointer();
@@ -561,14 +540,34 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     } else {
                         write(buffer);
                     }
-                    prev = node;
                 } finally {
                     JfrBufferNodeAccess.unlock(node);
                 }
             }
 
             assert success || flush;
+            prev = node;
             node = next;
+        }
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private void flushGlobalMemory(boolean flush) {
+        JfrBufferList buffers = globalMemory.getBuffers();
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            boolean success = JfrBufferNodeAccess.tryLock(node);
+            if (success) {
+                try {
+                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                    write(buffer);
+                    JfrBufferAccess.reinitialize(buffer);
+                } finally {
+                    JfrBufferNodeAccess.unlock(node);
+                }
+            }
+            assert success || flush;
+            node = node.getNext();
         }
     }
 

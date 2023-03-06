@@ -145,7 +145,7 @@ public class JfrRecorderThread extends Thread {
         }
     }
 
-    @Uninterruptible(reason = "Locks a BufferNode.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static void tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
         if (JfrBufferNodeAccess.tryLock(node)) {
             try {

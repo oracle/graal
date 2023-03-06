@@ -81,16 +81,27 @@ public class JfrGlobalMemory {
     }
 
     public void teardown() {
-        /* Free the buffers. */
-        JfrBufferNode node = buffers.getHead();
-        while (node.isNonNull()) {
-            JfrBuffer buffer = node.getBuffer();
-            JfrBufferAccess.free(buffer);
-            node = node.getNext();
-        }
+        freeBuffers();
 
         /* Free the nodes. */
         buffers.teardown();
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private void freeBuffers() {
+        /* Free the buffers. */
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            JfrBufferNodeAccess.lockNoTransition(node);
+            try {
+                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBufferAccess.free(buffer);
+                node.setBuffer(WordFactory.nullPointer());
+            } finally {
+                JfrBufferNodeAccess.unlock(node);
+            }
+            node = node.getNext();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -104,7 +115,7 @@ public class JfrGlobalMemory {
         return write(threadLocalBuffer, unflushedSize, streamingFlush);
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize, boolean streamingFlush) {
         if (unflushedSize.equal(0)) {
             return true;
@@ -118,7 +129,7 @@ public class JfrGlobalMemory {
         boolean shouldSignal;
         try {
             /* Copy all committed but not yet flushed memory to the promotion buffer. */
-            JfrBuffer promotionBuffer = promotionNode.getBuffer();
+            JfrBuffer promotionBuffer = JfrBufferNodeAccess.getBuffer(promotionNode);
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
             UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(threadLocalBuffer), promotionBuffer.getCommittedPos(), unflushedSize);
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
@@ -139,14 +150,14 @@ public class JfrGlobalMemory {
         return true;
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private JfrBufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
             JfrBufferNode node = buffers.getHead();
             while (node.isNonNull()) {
                 if (JfrBufferNodeAccess.tryLock(node)) {
-                    JfrBuffer buffer = node.getBuffer();
+                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                         /* Recheck the available size after acquiring the buffer. */
                         if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {

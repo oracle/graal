@@ -84,7 +84,7 @@ public final class JfrThreadRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void registerThread(Thread thread) {
         long threadId = JavaThreads.getThreadId(thread);
 
@@ -182,7 +182,7 @@ public final class JfrThreadRepository implements JfrRepository {
         return threadGroupId;
     }
 
-    @Uninterruptible(reason = "Lock without transition.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public boolean hasUnflushedData() {
         mutex.lockNoTransition();
         try {
@@ -194,7 +194,7 @@ public final class JfrThreadRepository implements JfrRepository {
     }
 
     @Override
-    @Uninterruptible(reason = "May write current epoch data.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flush) {
         mutex.lockNoTransition();
         try {
