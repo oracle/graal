@@ -1441,37 +1441,28 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitIntegerCompress(Value value, Value mask) {
+        AMD64Kind kind = (AMD64Kind) value.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.QWORD || kind == AMD64Kind.DWORD, "Unsupported value kind");
         Variable result = getLIRGen().newVariable(value.getValueKind());
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, AVXSize.QWORD, result, asAllocatable(value), asAllocatable(mask)));
-        } else {
-            GraalError.guarantee(value.getPlatformKind() == AMD64Kind.DWORD, "Unsupported value kind");
-            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
-        }
+        getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, kind == AMD64Kind.QWORD ? AVXSize.QWORD : AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
         return result;
     }
 
     @Override
     public Value emitIntegerExpand(Value value, Value mask) {
+        AMD64Kind kind = (AMD64Kind) value.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.QWORD || kind == AMD64Kind.DWORD, "Unsupported value kind");
         Variable result = getLIRGen().newVariable(value.getValueKind());
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, AVXSize.QWORD, result, asAllocatable(value), asAllocatable(mask)));
-        } else {
-            GraalError.guarantee(value.getPlatformKind() == AMD64Kind.DWORD, "Unsupported value kind");
-            getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
-        }
+        getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, kind == AMD64Kind.QWORD ? AVXSize.QWORD : AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
         return result;
     }
 
     @Override
     public Value emitFloatIsInfinite(Value input) {
+        AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.DOUBLE || kind == AMD64Kind.SINGLE, "Unsupported value kind %s", input.getPlatformKind());
         Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
-        if (input.getPlatformKind() == AMD64Kind.DOUBLE) {
-            getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SD, POS_INF | NEG_INF, result, asAllocatable(input)));
-        } else {
-            GraalError.guarantee(input.getPlatformKind() == AMD64Kind.SINGLE, "Unsupported value kind %s", input.getPlatformKind());
-            getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
-        }
+        getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), kind == AMD64Kind.DOUBLE ? OperandSize.SD : OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
         return result;
     }
 
@@ -1678,7 +1669,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitBitSwap(Value input) {
+    public Variable emitReverseBits(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         getLIRGen().append(new AMD64BitSwapOp(getLIRGen(), result, asAllocatable(input)));
         return result;
@@ -1699,7 +1690,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
         Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
         getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;

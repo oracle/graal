@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.jdk20.test;
 
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Compress;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Expand;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.nodes.calc.CompressBitsNode;
-import org.graalvm.compiler.nodes.calc.ExpandBitsNode;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
@@ -36,21 +38,24 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class IntegerShuffleBitsStampTest extends GraalTest {
 
-    private int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
+    private int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0x55555555, 0xAAAAAAAA, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
 
     static final long INT_MASK = CodeUtil.mask(32);
 
     @Test
     public void testICompress() {
+        BinaryOp<Compress> compressOp = StampFactory.forInteger(32).getOps().getCompress();
         for (int value0 : inputs) {
+            Stamp value0Stamp = StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK);
             for (int value1 : inputs) {
-                IntegerStamp valueStamp = (IntegerStamp) StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK).meet(
-                                StampFactory.forInteger(JavaKind.Int, value1, value1, value1 & INT_MASK, value1 & INT_MASK));
+                Stamp value1Stamp = StampFactory.forInteger(JavaKind.Int, value1, value1, value1 & INT_MASK, value1 & INT_MASK);
+                Stamp valueStamp = (IntegerStamp) value0Stamp.meet(value1Stamp);
                 for (int mask0 : inputs) {
+                    Stamp mask0Stamp = StampFactory.forInteger(JavaKind.Int, mask0, mask0, mask0 & INT_MASK, mask0 & INT_MASK);
                     for (int mask1 : inputs) {
-                        IntegerStamp maskStamp = (IntegerStamp) StampFactory.forInteger(JavaKind.Int, mask0, mask0, mask0 & INT_MASK, mask0 & INT_MASK).meet(
-                                        StampFactory.forInteger(JavaKind.Int, mask1, mask1, mask1 & INT_MASK, mask1 & INT_MASK));
-                        IntegerStamp newStamp = (IntegerStamp) CompressBitsNode.computeStamp(valueStamp, maskStamp);
+                        Stamp mask1Stamp = StampFactory.forInteger(JavaKind.Int, mask1, mask1, mask1 & INT_MASK, mask1 & INT_MASK);
+                        Stamp maskStamp = (IntegerStamp) mask0Stamp.meet(mask1Stamp);
+                        IntegerStamp newStamp = (IntegerStamp) compressOp.foldStamp(valueStamp, maskStamp);
                         assertTrue(newStamp.contains(Integer.compress(value0, mask0)));
                         assertTrue(newStamp.contains(Integer.compress(value0, mask1)));
                         assertTrue(newStamp.contains(Integer.compress(value1, mask0)));
@@ -63,13 +68,18 @@ public class IntegerShuffleBitsStampTest extends GraalTest {
 
     @Test
     public void testIExpand() {
+        BinaryOp<Expand> expandOp = StampFactory.forInteger(64).getOps().getExpand();
         for (int value0 : inputs) {
+            Stamp value0Stamp = StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK);
             for (int value1 : inputs) {
+                Stamp value1Stamp = StampFactory.forInteger(JavaKind.Int, value1, value1, value1 & INT_MASK, value1 & INT_MASK);
+                Stamp valueStamp = value0Stamp.meet(value1Stamp);
                 for (int mask0 : inputs) {
+                    Stamp mask0Stamp = StampFactory.forInteger(JavaKind.Int, mask0, mask0, mask0 & INT_MASK, mask0 & INT_MASK);
                     for (int mask1 : inputs) {
-                        IntegerStamp maskStamp = (IntegerStamp) StampFactory.forInteger(JavaKind.Int, mask0, mask0, mask0 & INT_MASK, mask0 & INT_MASK).meet(
-                                        StampFactory.forInteger(JavaKind.Int, mask1, mask1, mask1 & INT_MASK, mask1 & INT_MASK));
-                        IntegerStamp newStamp = (IntegerStamp) ExpandBitsNode.computeStamp(maskStamp);
+                        Stamp mask1Stamp = StampFactory.forInteger(JavaKind.Int, mask1, mask1, mask1 & INT_MASK, mask1 & INT_MASK);
+                        Stamp maskStamp = mask0Stamp.meet(mask1Stamp);
+                        IntegerStamp newStamp = (IntegerStamp) expandOp.foldStamp(valueStamp, maskStamp);
                         assertTrue(newStamp.contains(Integer.expand(value0, mask0)));
                         assertTrue(newStamp.contains(Integer.expand(value0, mask1)));
                         assertTrue(newStamp.contains(Integer.expand(value1, mask0)));

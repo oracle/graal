@@ -599,7 +599,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitByteSwap(Value input) {
+    public Variable emitReverseBytes(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
         return result;

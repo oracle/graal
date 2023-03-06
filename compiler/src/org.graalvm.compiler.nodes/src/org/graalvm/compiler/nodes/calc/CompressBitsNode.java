@@ -28,24 +28,19 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Compress;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -53,109 +48,50 @@ import jdk.vm.ci.meta.JavaKind;
  * Intrinsification for {@link Integer#compress}, {@link Long#compress}.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class CompressBitsNode extends BinaryNode implements ArithmeticLIRLowerable {
+public final class CompressBitsNode extends BinaryArithmeticNode<Compress> {
 
     public static final NodeClass<CompressBitsNode> TYPE = NodeClass.create(CompressBitsNode.class);
 
     public CompressBitsNode(ValueNode value, ValueNode mask) {
-        super(TYPE, computeStamp((IntegerStamp) value.stamp(NodeView.DEFAULT), (IntegerStamp) mask.stamp(NodeView.DEFAULT)), value, mask);
-    }
-
-    private static int integerCompress(int i, int mask) {
-        try {
-            Method compress = Integer.class.getDeclaredMethod("compress", int.class, int.class);
-            return (Integer) compress.invoke(null, i, mask);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e, "Integer.compress is introduced in Java 19");
-        }
-    }
-
-    private static long longCompress(long i, long mask) {
-        try {
-            Method compress = Long.class.getDeclaredMethod("compress", long.class, long.class);
-            return (Long) compress.invoke(null, i, mask);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e, "Long.compress is introduced in Java 19");
-        }
-    }
-
-    static final long INT_MASK = CodeUtil.mask(32);
-    static final long LONG_MASK = CodeUtil.mask(64);
-
-    public static Stamp computeStamp(IntegerStamp valueStamp, IntegerStamp maskStamp) {
-        if (valueStamp.getStackKind() == JavaKind.Int) {
-            if (maskStamp.upMask() == INT_MASK && valueStamp.canBeNegative()) {
-                // compress result can be negative
-                return IntegerStamp.create(32,
-                                valueStamp.lowerBound(), // compress(value, INT_MASK)
-                                CodeUtil.maxValue(32));
-            }
-            // compress result will always be positive
-            return IntegerStamp.create(32,
-                            integerCompress((int) valueStamp.downMask(), (int) maskStamp.downMask()) & INT_MASK,
-                            integerCompress((int) valueStamp.upMask(), (int) maskStamp.upMask()) & INT_MASK,
-                            0,
-                            integerCompress((int) INT_MASK, (int) maskStamp.upMask()) & INT_MASK);
-        } else {
-            GraalError.guarantee(valueStamp.getStackKind() == JavaKind.Long, "unexpected Java kind %s", valueStamp.getStackKind());
-            if (maskStamp.upMask() == LONG_MASK && valueStamp.canBeNegative()) {
-                // compress result can be negative
-                return IntegerStamp.create(64,
-                                valueStamp.lowerBound(), // compress(value, LONG_MASK)
-                                CodeUtil.maxValue(64));
-            }
-            // compress result will always be positive
-            return IntegerStamp.create(64,
-                            longCompress(valueStamp.downMask(), maskStamp.downMask()),
-                            longCompress(valueStamp.upMask(), maskStamp.upMask()),
-                            0,
-                            longCompress(LONG_MASK, maskStamp.upMask()));
-        }
+        super(TYPE, getArithmeticOpTable(value).getCompress(), value, mask);
     }
 
     @Override
-    public Stamp foldStamp(Stamp valueStamp, Stamp maskStamp) {
-        Stamp newStamp = computeStamp((IntegerStamp) valueStamp, (IntegerStamp) maskStamp);
-        if (newStamp.join(stamp).equals(newStamp)) {
-            return newStamp;
-        }
-        return stamp;
+    protected BinaryOp<Compress> getOp(ArithmeticOpTable table) {
+        return table.getCompress();
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool, ValueNode value, ValueNode mask) {
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode value, ValueNode mask) {
+        ValueNode ret = super.canonical(tool, value, mask);
+        if (ret != this) {
+            return ret;
+        }
+
         JavaKind kind = value.getStackKind();
         GraalError.guarantee(kind == JavaKind.Int || kind == JavaKind.Long, "unexpected Java kind %s", kind);
 
         if (mask.isConstant()) {
             JavaConstant maskAsConstant = mask.asJavaConstant();
 
-            if (value.isConstant()) {
-                JavaConstant valueAsConstant = value.asJavaConstant();
-                if (kind == JavaKind.Int) {
-                    return ConstantNode.forInt(integerCompress(valueAsConstant.asInt(), maskAsConstant.asInt()));
-                } else {
-                    return ConstantNode.forLong(longCompress(valueAsConstant.asLong(), maskAsConstant.asLong()));
+            GraalError.guarantee(!value.isConstant(), "should have been folded in super.canonical");
+            if (kind == JavaKind.Int) {
+                int maskValue = maskAsConstant.asInt();
+                if (maskValue == 0) {
+                    // compress(x, 0) == 0
+                    return ConstantNode.forInt(0);
+                } else if (maskValue == -1) {
+                    // compress(x, -1) == x
+                    return value;
                 }
             } else {
-                if (kind == JavaKind.Int) {
-                    int maskValue = maskAsConstant.asInt();
-                    if (maskValue == 0) {
-                        // compress(x, 0) == 0
-                        return ConstantNode.forInt(0);
-                    } else if (maskValue == -1) {
-                        // compress(x, -1) == x
-                        return value;
-                    }
-                } else {
-                    long maskValue = maskAsConstant.asLong();
-                    if (maskValue == 0L) {
-                        // compress(x, 0) == 0
-                        return ConstantNode.forLong(0L);
-                    } else if (maskValue == -1L) {
-                        // compress(x, -1) == x
-                        return value;
-                    }
+                long maskValue = maskAsConstant.asLong();
+                if (maskValue == 0L) {
+                    // compress(x, 0) == 0
+                    return ConstantNode.forLong(0L);
+                } else if (maskValue == -1L) {
+                    // compress(x, -1) == x
+                    return value;
                 }
             }
         }

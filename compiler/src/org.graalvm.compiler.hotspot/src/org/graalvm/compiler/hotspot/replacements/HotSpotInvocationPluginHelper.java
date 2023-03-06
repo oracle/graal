@@ -47,7 +47,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
-import org.graalvm.compiler.hotspot.nodes.ExtendSetCurrentThreadNode;
+import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -216,7 +216,8 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      * Reads thread object from current thread. {@code readVirtualThread} indicates whether the
      * caller wants the current virtual thread or its carrier -- the current platform thread.
      */
-    public ValueNode readThreadObject(CurrentJavaThreadNode thread, boolean readVirtualThread) {
+    public ValueNode readCurrentThreadObject(boolean readVirtualThread) {
+        CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(getWordKind()));
         // JavaThread::_threadObj is never compressed
         ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
         Stamp fieldStamp = StampFactory.forKind(getWordKind());
@@ -237,7 +238,9 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         ValueNode threadObjectHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, StampFactory.forKind(getWordKind()));
         AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
         b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, BarrierType.NONE, MemoryOrderMode.PLAIN));
-        b.add(new ExtendSetCurrentThreadNode(thread));
+        if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
+            b.add(new VirtualThreadUpdateJFRNode(thread));
+        }
     }
 
     private AddressNode scopedValueCacheHelper() {

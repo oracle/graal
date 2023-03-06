@@ -682,7 +682,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Variable emitByteSwap(Value operand) {
+    public Variable emitReverseBytes(Value operand) {
         LLVMValueRef byteSwap = builder.buildBswap(getVal(operand));
         return new LLVMVariable(byteSwap);
     }

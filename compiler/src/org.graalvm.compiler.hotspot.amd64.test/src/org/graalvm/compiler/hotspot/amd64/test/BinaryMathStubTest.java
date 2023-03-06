@@ -69,7 +69,6 @@ public class BinaryMathStubTest extends GraalCompilerTest {
 
     @Test
     public void testStub() {
-        // Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         for (double x : inputs) {
             for (double y : inputs) {
                 test(stub, x, y);

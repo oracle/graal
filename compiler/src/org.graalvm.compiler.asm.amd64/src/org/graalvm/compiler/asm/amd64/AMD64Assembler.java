@@ -1580,7 +1580,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMRIOp VEXTRACTF64X4 = new VexMRIOp("VEXTRACTF64X2", P_66, M_0F3A, W1, 0x1B, VEXOpAssertion.AVX512F_512ONLY,     EVEXTuple.T4_64BIT, W1);
         public static final VexMRIOp VEXTRACTI64X4 = new VexMRIOp("VEXTRACTI64X2", P_66, M_0F3A, W1, 0x3B, VEXOpAssertion.AVX512F_512ONLY,     EVEXTuple.T4_64BIT, W1);
 
-        //
+        // Half precision floating-point values conversion
         public static final VexMRIOp VCVTPS2PH     = new VexMRIOp("VCVTPS2PH",     P_66, M_0F3A, W0, 0x1D, VEXOpAssertion.F16C_AVX512F_VL,     EVEXTuple.HVM,      W0);
         // @formatter:on
 

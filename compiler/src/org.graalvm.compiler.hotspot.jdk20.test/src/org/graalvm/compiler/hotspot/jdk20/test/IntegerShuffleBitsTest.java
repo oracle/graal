@@ -46,7 +46,7 @@ public class IntegerShuffleBitsTest extends JTTTest {
 
     @Parameterized.Parameters(name = "{0}, {1}")
     public static Collection<Object[]> testData() {
-        int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
+        int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0x55555555, 0xAAAAAAAA, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
 
         List<Object[]> testParameters = new ArrayList<>();
         for (int a : inputs) {

@@ -955,6 +955,12 @@ public class HotSpotReplacementsUtil {
         return config.threadCarrierThreadObjectOffset;
     }
 
+    public static boolean supportsVirtualThreadUpdateJFR(GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset != -1 && config.jfrThreadLocalVthreadIDOffset != -1 && config.jfrThreadLocalVthreadEpochOffset != -1 &&
+                        config.jfrThreadLocalVthreadExcludedOffset != -1 && config.jfrThreadLocalVthreadOffset != -1 && config.javaLangThreadJFREpochOffset != -1 &&
+                        config.javaLangThreadTIDOffset != -1;
+    }
+
     @Fold
     public static int jfrThreadLocalVthreadIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.threadJFRThreadLocalOffset + config.jfrThreadLocalVthreadIDOffset;

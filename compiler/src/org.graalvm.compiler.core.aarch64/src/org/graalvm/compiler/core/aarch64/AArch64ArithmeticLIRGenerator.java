@@ -665,14 +665,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitBitSwap(Value input) {
+    public Variable emitReverseBits(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         getLIRGen().append(new AArch64BitSwapOp(result, asAllocatable(input)));
         return result;
     }
 
     @Override
-    public Variable emitUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
         Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
         getLIRGen().append(new AArch64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;

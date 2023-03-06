@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
@@ -59,10 +58,6 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
     protected void testConditionalElimination(String snippet, String referenceSnippet) {
         testConditionalElimination(snippet, referenceSnippet, false, false);
-    }
-
-    protected OptionValues getOptions() {
-        return getInitialOptions();
     }
 
     @SuppressWarnings("try")

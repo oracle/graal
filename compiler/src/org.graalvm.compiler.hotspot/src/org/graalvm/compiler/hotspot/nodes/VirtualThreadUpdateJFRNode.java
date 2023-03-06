@@ -35,16 +35,15 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public final class ExtendSetCurrentThreadNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
+@NodeInfo(cycles = NodeCycles.CYCLES_32, size = NodeSize.SIZE_32)
+public final class VirtualThreadUpdateJFRNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
 
-    public static final NodeClass<ExtendSetCurrentThreadNode> TYPE = NodeClass.create(ExtendSetCurrentThreadNode.class);
+    public static final NodeClass<VirtualThreadUpdateJFRNode> TYPE = NodeClass.create(VirtualThreadUpdateJFRNode.class);
 
     @Input protected ValueNode thread;
 
-    public ExtendSetCurrentThreadNode(ValueNode thread) {
+    public VirtualThreadUpdateJFRNode(ValueNode thread) {
         super(TYPE, StampFactory.forVoid());
-
         this.thread = thread;
     }
 

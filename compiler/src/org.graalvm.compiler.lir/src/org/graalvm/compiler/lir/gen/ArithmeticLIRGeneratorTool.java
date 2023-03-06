@@ -190,7 +190,7 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
-    default Variable emitBitSwap(Value operand) {
+    default Variable emitReverseBits(Value operand) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
@@ -205,7 +205,7 @@ public interface ArithmeticLIRGeneratorTool {
     }
 
     @SuppressWarnings("unused")
-    default Variable emitUnsignedCompare(Value x, Value y) {
+    default Variable emitNormalizedUnsignedCompare(Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

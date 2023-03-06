@@ -37,6 +37,9 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
+/**
+ * Returns -1, 0, or 1 if either x &lt; y, x == y, or x &gt; y.
+ */
 public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AMD64NormalizedUnsignedCompareOp.class);
 

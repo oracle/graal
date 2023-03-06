@@ -46,7 +46,8 @@ public class LongShuffleBitsTest extends JTTTest {
 
     @Parameterized.Parameters(name = "{0}, {1}")
     public static Collection<Object[]> testData() {
-        long[] inputs = {0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 0xCAFEBABECAFEBABEL, 0xFF00FFF0FF00FFF0L, 0x0000CABAB0000CABABL};
+        long[] inputs = {0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 0x5555555555555555L, 0xAAAAAAAAAAAAAAAAL,
+                        0xCAFEBABECAFEBABEL, 0xFF00FFF0FF00FFF0L, 0x0000CABAB0000CABABL};
 
         List<Object[]> testParameters = new ArrayList<>();
         for (long a : inputs) {

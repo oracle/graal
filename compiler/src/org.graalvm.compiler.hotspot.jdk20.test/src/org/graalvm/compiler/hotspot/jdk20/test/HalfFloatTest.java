@@ -243,7 +243,7 @@ public class HalfFloatTest extends JTTTest {
      * Put all 16-bit NaN values through a conversion loop and make sure the significand, sign, and
      * exponent are all preserved.
      */
-    @Ignore("https://bugs.openjdk.org/browse/JDK-8289552?focusedCommentId=14554746&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-14554746")
+    @Ignore("JDK-8302976")
     @Test
     public void binary16NaNRoundTrip() {
 

@@ -139,7 +139,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        // TODO confirm https://bugs.openjdk.org/browse/JDK-8296999 is merged
         r.register(new InvocationPlugin("reverse", type) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {

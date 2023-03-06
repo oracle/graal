@@ -30,6 +30,8 @@ import static org.graalvm.compiler.core.common.calc.FloatConvert.I2F;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.L2D;
 import static org.graalvm.compiler.core.common.calc.FloatConvert.L2F;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.core.common.LIRKind;
@@ -2254,6 +2256,114 @@ public final class IntegerStamp extends PrimitiveStamp {
                             } else {
                                 return resultStamp;
                             }
+                        }
+                    },
+
+                    new BinaryOp.Compress(false, false) {
+
+                        private static final long INT_MASK = CodeUtil.mask(32);
+                        private static final long LONG_MASK = CodeUtil.mask(64);
+
+                        private static int integerCompress(int i, int mask) {
+                            try {
+                                Method compress = Integer.class.getDeclaredMethod("compress", int.class, int.class);
+                                return (Integer) compress.invoke(null, i, mask);
+                            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                                throw GraalError.shouldNotReachHere(e, "Integer.compress is introduced in Java 19");
+                            }
+                        }
+
+                        private static long longCompress(long i, long mask) {
+                            try {
+                                Method compress = Long.class.getDeclaredMethod("compress", long.class, long.class);
+                                return (Long) compress.invoke(null, i, mask);
+                            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                                throw GraalError.shouldNotReachHere(e, "Long.compress is introduced in Java 19");
+                            }
+                        }
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant i = (PrimitiveConstant) a;
+                            PrimitiveConstant mask = (PrimitiveConstant) b;
+
+                            if (i.getJavaKind() == JavaKind.Int) {
+                                return JavaConstant.forInt(integerCompress(i.asInt(), mask.asInt()));
+                            } else {
+                                GraalError.guarantee(i.getJavaKind() == JavaKind.Long, "unexpected Java kind %s", i.getJavaKind());
+                                return JavaConstant.forLong(longCompress(i.asLong(), mask.asLong()));
+                            }
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            IntegerStamp valueStamp = (IntegerStamp) a;
+                            IntegerStamp maskStamp = (IntegerStamp) b;
+
+                            if (valueStamp.getStackKind() == JavaKind.Int) {
+                                if (maskStamp.upMask() == INT_MASK && valueStamp.canBeNegative()) {
+                                    // compress result can be negative
+                                    return IntegerStamp.create(32, valueStamp.lowerBound(), CodeUtil.maxValue(32));
+                                }
+                                // compress result will always be positive
+                                return IntegerStamp.create(32,
+                                                integerCompress((int) valueStamp.downMask(), (int) maskStamp.downMask()) & INT_MASK,
+                                                integerCompress((int) valueStamp.upMask(), (int) maskStamp.upMask()) & INT_MASK,
+                                                0,
+                                                integerCompress((int) INT_MASK, (int) maskStamp.upMask()) & INT_MASK);
+                            } else {
+                                GraalError.guarantee(valueStamp.getStackKind() == JavaKind.Long, "unexpected Java kind %s", valueStamp.getStackKind());
+                                if (maskStamp.upMask() == LONG_MASK && valueStamp.canBeNegative()) {
+                                    // compress result can be negative
+                                    return IntegerStamp.create(64, valueStamp.lowerBound(), CodeUtil.maxValue(64));
+                                }
+                                // compress result will always be positive
+                                return IntegerStamp.create(64,
+                                                longCompress(valueStamp.downMask(), maskStamp.downMask()),
+                                                longCompress(valueStamp.upMask(), maskStamp.upMask()),
+                                                0,
+                                                longCompress(LONG_MASK, maskStamp.upMask()));
+                            }
+                        }
+                    },
+
+                    new BinaryOp.Expand(false, false) {
+
+                        private static int integerExpand(int i, int mask) {
+                            try {
+                                Method expand = Integer.class.getDeclaredMethod("expand", int.class, int.class);
+                                return (Integer) expand.invoke(null, i, mask);
+                            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                                throw GraalError.shouldNotReachHere(e, "Integer.expand is introduced in Java 19");
+                            }
+                        }
+
+                        private static long longExpand(long i, long mask) {
+                            try {
+                                Method expand = Long.class.getDeclaredMethod("expand", long.class, long.class);
+                                return (Long) expand.invoke(null, i, mask);
+                            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                                throw GraalError.shouldNotReachHere(e, "Long.expand is introduced in Java 19");
+                            }
+                        }
+
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            PrimitiveConstant i = (PrimitiveConstant) a;
+                            PrimitiveConstant mask = (PrimitiveConstant) b;
+
+                            if (i.getJavaKind() == JavaKind.Int) {
+                                return JavaConstant.forInt(integerExpand(i.asInt(), mask.asInt()));
+                            } else {
+                                GraalError.guarantee(i.getJavaKind() == JavaKind.Long, "unexpected Java kind %s", i.getJavaKind());
+                                return JavaConstant.forLong(longExpand(i.asLong(), mask.asLong()));
+                            }
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            IntegerStamp maskStamp = (IntegerStamp) b;
+                            return IntegerStamp.stampForMask(maskStamp.getBits(), 0, maskStamp.upMask());
                         }
                     },
 

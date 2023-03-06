@@ -67,18 +67,18 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         input = readClassfile16(getClass());
     }
 
-    private ResolvedJavaMethod getResovledJavaMethod(String className, String methodName) throws ClassNotFoundException {
+    private ResolvedJavaMethod getResolvedJavaMethod(String className, String methodName) throws ClassNotFoundException {
         Class<?> klass = Class.forName(className);
         return getMetaAccess().lookupJavaMethod(getMethod(klass, methodName));
     }
 
-    private ResolvedJavaMethod getResovledJavaMethod(String className, String methodName, Class<?>... paramterTypes) throws ClassNotFoundException {
+    private ResolvedJavaMethod getResolvedJavaMethod(String className, String methodName, Class<?>... parameterTypes) throws ClassNotFoundException {
         Class<?> klass = Class.forName(className);
-        return getMetaAccess().lookupJavaMethod(getMethod(klass, methodName, paramterTypes));
+        return getMetaAccess().lookupJavaMethod(getMethod(klass, methodName, parameterTypes));
     }
 
     private void testEncryptDecrypt(String className, String methodName, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException, ClassNotFoundException {
-        testEncryptDecrypt(getResovledJavaMethod(className, methodName), generatorAlgorithm, keySize, algorithm);
+        testEncryptDecrypt(getResolvedJavaMethod(className, methodName), generatorAlgorithm, keySize, algorithm);
     }
 
     private void testEncryptDecrypt(ResolvedJavaMethod intrinsicMethod, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException {
@@ -192,13 +192,13 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Test
     public void testPoly1305() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().poly1305ProcessBlocks != 0L);
-        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+        testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
-        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+        testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/ECB/NoPadding");
-        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+        testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/None/PKCS5Padding");
-        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+        testEncryptDecrypt(getResolvedJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
                         "ChaCha20", 256, "ChaCha20-Poly1305/ECB/PKCS5Padding");
     }
 

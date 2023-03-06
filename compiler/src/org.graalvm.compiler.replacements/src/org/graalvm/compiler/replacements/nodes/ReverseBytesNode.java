@@ -89,7 +89,7 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitByteSwap(gen.operand(getValue()));
+        Value result = gen.getLIRGeneratorTool().emitReverseBytes(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

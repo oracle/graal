@@ -729,7 +729,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
         if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
                         c1.asJavaConstant().asInt() == 1) {
-            return builder -> getArithmeticLIRGenerator().emitUnsignedCompare(operand(x), operand(y));
+            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(operand(x), operand(y));
         }
         return null;
     }

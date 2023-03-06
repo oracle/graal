@@ -60,7 +60,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -587,8 +586,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                    ValueNode value = helper.readThreadObject(thread, true);
+                    ValueNode value = helper.readCurrentThreadObject(true);
                     b.push(JavaKind.Object, value);
                 }
                 return true;
@@ -600,8 +598,7 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        ValueNode value = helper.readThreadObject(thread, false);
+                        ValueNode value = helper.readCurrentThreadObject(false);
                         b.push(JavaKind.Object, value);
                     }
                     return true;
