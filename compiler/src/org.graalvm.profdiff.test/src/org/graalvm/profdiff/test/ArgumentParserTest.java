@@ -29,19 +29,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.profdiff.command.Command;
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.parser.args.CommandGroup;
-import org.graalvm.profdiff.parser.args.DoubleArgument;
-import org.graalvm.profdiff.parser.args.EnumArgument;
-import org.graalvm.profdiff.parser.args.FlagArgument;
-import org.graalvm.profdiff.parser.args.IntegerArgument;
-import org.graalvm.profdiff.parser.args.InvalidArgumentException;
-import org.graalvm.profdiff.parser.args.MissingArgumentException;
-import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
-import org.graalvm.profdiff.parser.args.StringArgument;
-import org.graalvm.profdiff.parser.args.UnknownArgumentException;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.args.CommandGroup;
+import org.graalvm.profdiff.args.DoubleArgument;
+import org.graalvm.profdiff.args.EnumArgument;
+import org.graalvm.profdiff.args.FlagArgument;
+import org.graalvm.profdiff.args.IntegerArgument;
+import org.graalvm.profdiff.args.InvalidArgumentException;
+import org.graalvm.profdiff.args.MissingArgumentException;
+import org.graalvm.profdiff.args.ProgramArgumentParser;
+import org.graalvm.profdiff.args.StringArgument;
+import org.graalvm.profdiff.args.UnknownArgumentException;
+import org.graalvm.profdiff.core.Writer;
 import org.junit.Test;
 
 public class ArgumentParserTest {
@@ -74,11 +73,6 @@ public class ArgumentParserTest {
         public void invoke(Writer writer) {
 
         }
-
-        @Override
-        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
-
-        }
     }
 
     private static final class CommandBar implements Command {
@@ -107,11 +101,6 @@ public class ArgumentParserTest {
 
         @Override
         public void invoke(Writer writer) {
-
-        }
-
-        @Override
-        public void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy) {
 
         }
     }

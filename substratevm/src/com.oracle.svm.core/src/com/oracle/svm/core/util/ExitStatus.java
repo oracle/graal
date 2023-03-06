@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,21 @@
  */
 package com.oracle.svm.core.util;
 
+/** Exit status codes to be used at build time (in driver and builder). */
 public enum ExitStatus {
     OK(0),
     BUILDER_ERROR(1),
     FALLBACK_IMAGE(2),
-    BUILDER_INTERRUPT_WITHOUT_REASON(3),
+
+    // 3 used by `-XX:+ExitOnOutOfMemoryError` (see src/hotspot/share/utilities/debug.cpp)
+    OUT_OF_MEMORY(3),
+
+    BUILDER_INTERRUPT_WITHOUT_REASON(4),
     DRIVER_ERROR(20),
     DRIVER_TO_BUILDER_ERROR(21),
-    WATCHDOG_EXIT(30);
+    WATCHDOG_EXIT(30),
+    MISSING_METADATA(172),
+    UNKNOWN(255);
 
     public static ExitStatus of(int status) {
         for (ExitStatus s : values()) {
@@ -39,7 +46,7 @@ public enum ExitStatus {
                 return s;
             }
         }
-        return null;
+        return UNKNOWN;
     }
 
     private final int code;

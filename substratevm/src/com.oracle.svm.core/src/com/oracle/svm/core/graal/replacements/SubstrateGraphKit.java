@@ -207,7 +207,7 @@ public class SubstrateGraphKit extends GraphKit {
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
             /*
-             * Since this deoptimization is occurring in an custom graph, assume there are no
+             * Since this deoptimization is occurring in a custom graph, assume there are no
              * exception handlers and directly unwind.
              */
             int bci = invoke.stateAfter().bci;

@@ -254,7 +254,6 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     @ExportLibrary(value = DefaultLibrary.class, receiverType = Integer.class)
     static class DefaultExportError2 {
 
-        @ExpectError("Exported methods with explicit receiver must be static.")
         @ExportMessage
         int abstractMethod(Integer receiverObject) {
             return 42;
@@ -266,7 +265,6 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     static class DefaultExportError3 {
 
         @ExportMessage
-        @ExpectError("Invalid exported type. Expected 'Integer' but was 'Object'. %")
         static int abstractMethod(Object receiverObject) {
             return 42;
         }

@@ -51,9 +51,10 @@ import java.util.Iterator;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -117,6 +118,7 @@ public class ExportSharingTest extends AbstractLibraryTest {
     }
 
     @GenerateUncached
+    @GenerateInline(false)
     abstract static class TestCached1Node extends Node {
 
         abstract String execute();

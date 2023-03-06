@@ -49,6 +49,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeMethodAccessorImpl.SharedNativeMetohdAccessorImpl.class)
 public final class Target_sun_reflect_NativeMethodAccessorImpl {
+    private static final String[] NAMES = {
+                    "Target_sun_reflect_NativeMethodAccessorImpl",
+                    "Target_jdk_internal_reflect_NativeMethodAccessorImpl",
+                    "Target_jdk_internal_reflect_DirectMethodHandleAccessor$NativeAccessor"
+    };
+
+    private Target_sun_reflect_NativeMethodAccessorImpl() {
+    }
 
     /**
      * Checks argument for reflection, checking type matches and widening for primitives. Throws
@@ -233,7 +241,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         @Inject EspressoLanguage language,
                         @Inject Meta meta);
 
-        @Specialization()
+        @Specialization
         public @JavaType(Object.class) StaticObject invoke(
                         @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
                         @JavaType(Object.class) StaticObject receiver,
@@ -245,17 +253,9 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
     }
 
-    private static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
+    static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
                     @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode toEspressoNode) {
-        StaticObject curMethod = guestMethod;
-
-        Method reflectedMethod = null;
-        while (reflectedMethod == null) {
-            reflectedMethod = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
-            if (reflectedMethod == null) {
-                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
-            }
-        }
+        Method reflectedMethod = Method.getHostReflectiveMethodRoot(guestMethod, meta);
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
@@ -265,8 +265,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
 
         StaticObject parameterTypes = meta.java_lang_reflect_Method_parameterTypes.getObject(guestMethod);
-        StaticObject result = callMethodReflectively(language, meta, receiver, args, reflectedMethod, klass, parameterTypes, toEspressoNode);
-        return result;
+        return callMethodReflectively(language, meta, receiver, args, reflectedMethod, klass, parameterTypes, toEspressoNode);
     }
 
     public static @JavaType(Object.class) StaticObject callMethodReflectively(EspressoLanguage language, Meta meta, @JavaType(Object.class) StaticObject receiver,
@@ -278,20 +277,21 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         klass.safeInitialize();
 
         Method reflectedMethod = m;
-        if (reflectedMethod.isRemovedByRedefition()) {
-            reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
-                            reflectedMethod,
-                            reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
-
+        if (reflectedMethod.isRemovedByRedefinition()) {
+            try {
+                reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
+                                reflectedMethod,
+                                reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+            } catch (EspressoException e) {
+                throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
+            }
         }
 
         Method method;      // actual method to invoke
-        Klass targetKlass;  // target klass, receiver's klass for non-static
 
         if (reflectedMethod.isStatic()) {
             // Ignore receiver argument;.
             method = reflectedMethod;
-            targetKlass = klass;
         } else {
             if (StaticObject.isNull(receiver)) {
                 throw meta.throwNullPointerException();
@@ -303,7 +303,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             }
 
             // target klass is receiver's klass
-            targetKlass = receiver.getKlass();
+            Klass targetKlass = receiver.getKlass();
             // no need to resolve if method is private or <init>
             if (reflectedMethod.isPrivate() || Name._init_.equals(reflectedMethod.getName())) {
                 method = reflectedMethod;
@@ -409,10 +409,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     }
 
     public static class SharedNativeMetohdAccessorImpl extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        TARGET_SUN_REFLECT_NATIVEMETHODACCESSORIMPL,
-                        TARGET_JDK_INTERNAL_REFLECT_NATIVEMETHODACCESSORIMPL
-        };
         public static SubstitutionNamesProvider INSTANCE = new SharedNativeMetohdAccessorImpl();
 
         @Override
@@ -420,8 +416,5 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             return NAMES;
         }
     }
-
-    private static final String TARGET_SUN_REFLECT_NATIVEMETHODACCESSORIMPL = "Target_sun_reflect_NativeMethodAccessorImpl";
-    private static final String TARGET_JDK_INTERNAL_REFLECT_NATIVEMETHODACCESSORIMPL = "Target_jdk_internal_reflect_NativeMethodAccessorImpl";
 
 }

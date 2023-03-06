@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ public abstract class BaseSulongOnlyHarness {
         int sulongResult = out.getReturnValue();
         String sulongStdOut = out.getStdOutput();
 
-        if (sulongResult != (sulongResult & 0xFF)) {
+        if (!Platform.isWindows() && sulongResult != (sulongResult & 0xFF)) {
             Assert.fail("Broken unittest " + getPath() + ". Test exits with invalid value (" + sulongResult + ").");
         }
         String testName = getPath().getFileName().toString();

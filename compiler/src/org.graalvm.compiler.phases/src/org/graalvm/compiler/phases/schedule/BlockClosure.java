@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.phases.schedule;
 
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.
  */
 public interface BlockClosure {
 
-    void apply(Block block);
+    void apply(HIRBlock block);
 }

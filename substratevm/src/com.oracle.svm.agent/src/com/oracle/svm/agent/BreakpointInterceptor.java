@@ -217,7 +217,7 @@ final class BreakpointInterceptor {
         boolean classLoaderValid = true;
         WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
         if (bp.method == agent.handles().javaLangClassForName3) {
-            assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+            assert thread.notEqual(nullHandle()) || Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
             classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
         } else {
             classLoaderPtr.write(nullHandle());
@@ -1288,15 +1288,15 @@ final class BreakpointInterceptor {
      * used to properly read the locals in the breakpoint.
      */
     private static JNIObjectHandle rectifyCurrentThread(JNIObjectHandle thread) {
-        if (Support.jvmtiVersion() < JvmtiInterface.JVMTI_VERSION_19) {
+        if (Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19) {
             return thread;
         }
+
         WordPointer threadPtr = StackValue.get(WordPointer.class);
         JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
         if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
             return nullHandle();
         }
-
         check(error);
         return threadPtr.read();
     }
@@ -1571,7 +1571,7 @@ final class BreakpointInterceptor {
             return null;
         }
         Breakpoint bp = new Breakpoint(br, clazz, method);
-        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: " + bp);
+        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: %s", bp);
         return bp;
     }
 

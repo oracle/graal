@@ -475,19 +475,32 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "All code executed after VMThreads#tearDown must be uninterruptible")
     private static int tearDownIsolate() {
         try {
-            RuntimeSupport.executeTearDownHooks();
-            if (!PlatformThreads.singleton().tearDown()) {
+            if (!initiateTearDownIsolateInterruptibly()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 
             VMThreads.singleton().tearDown();
-            return Isolates.tearDownCurrent();
+            IsolateThread finalThread = CurrentIsolate.getCurrentThread();
+            int result = Isolates.tearDownCurrent();
+            // release the heap memory associated with final isolate thread
+            VMThreads.singleton().freeIsolateThread(finalThread);
+            return result;
         } catch (Throwable t) {
-            logException(t);
-            return CEntryPointErrors.UNCAUGHT_EXCEPTION;
+            return reportException(t);
         }
+    }
+
+    @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
+    private static boolean initiateTearDownIsolateInterruptibly() {
+        return initiateTearDownIsolateInterruptibly0();
+    }
+
+    private static boolean initiateTearDownIsolateInterruptibly0() {
+        RuntimeSupport.executeTearDownHooks();
+        return PlatformThreads.singleton().tearDown();
     }
 
     @Snippet(allowMissingProbabilities = true)

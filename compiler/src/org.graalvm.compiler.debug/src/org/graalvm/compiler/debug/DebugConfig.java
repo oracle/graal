@@ -81,7 +81,9 @@ public interface DebugConfig {
     boolean isVerifyEnabled(DebugContext.Scope scope);
 
     /**
-     * @see DebugContext#isVerifyEnabledForMethod()
+     * Determines if verification is enabled for any {@link JavaMethod} in the provided scope.
+     *
+     * @see DebugContext#verify(Object, String)
      */
     boolean isVerifyEnabledForMethod(DebugContext.Scope scope);
 

@@ -55,12 +55,14 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -138,6 +140,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     private boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
         return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreter(translateMethod(targetMethod));
+    }
+
+    private boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
+        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreterFastPath(translateMethod(targetMethod));
     }
 
     protected String isTruffleBoundary(ResolvedJavaMethod targetMethod) {
@@ -384,13 +390,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         EconomicSet<AbstractBeginNode> deoptimizedBlocks = EconomicSet.create();
         EconomicSet<AbstractBeginNode> inInterpreterBlocks = EconomicSet.create();
         List<CallTree> children = new ArrayList<>();
+        HIRBlock[] reversePostOrder = cfg.reversePostOrder();
+
+        EconomicSet<AbstractBeginNode> unwindBlocks = EconomicSet.create();
+        computeUnwindBlocks(unwindBlocks, reversePostOrder);
 
         /*
          * We traverse the graph in reverse post order to detect all deoptimized blocks before the
          * actual invoke. This allows us to not inline calls that were preceded by a transfer to
          * interpreter.
          */
-        for (Block block : cfg.reversePostOrder()) {
+        for (HIRBlock block : reversePostOrder) {
 
             if (block.getEndNode() instanceof IfNode) {
                 /*
@@ -429,7 +439,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
                                 if (targetMethod != null && isInInterpreter(targetMethod)) {
-                                    Block dominatedSilbling = block.getFirstDominated();
+                                    HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
                                         dominatedSilbling = dominatedSilbling.getDominatedSibling();
@@ -466,9 +476,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                      * block of a method is a deopt. Maybe this could be better?
                      */
                     if (block.getBeginNode() == graph.start()) {
-                        caller.propagatesDeopt = true;
+                        caller.propagates = BackPropagation.DEOPT;
                     }
                 }
+                /**
+                 * Whether all blocks lead to unwind.
+                 */
+                boolean unwind = caller.unwind || unwindBlocks.contains(block.getBeginNode());
 
                 boolean inInterpreter = guardedByInInterpreter || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
 
@@ -478,7 +492,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(invoke.getTargetMethod());
 
-                CallTree callee = new CallTree(caller, invoke, deoptimized, inInterpreter, forceShallowInline);
+                CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline);
                 children.add(callee);
 
                 if (forceShallowInline) {
@@ -489,18 +503,27 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 }
 
                 if (shouldInline(context, callee)) {
-                    if (!callee.propagatesDeopt) {
-                        callee.propagatesDeopt = peekPropagatesDeopt(context, callee.invoke, getTargetMethod(context, callee), 0);
+                    if (callee.propagates == BackPropagation.NOTHING) {
+                        callee.propagates = peekPropagatesDeoptOrUnwind(context, callee.invoke, getTargetMethod(context, callee), 0);
                     }
 
-                    if (callee.propagatesDeopt) {
-                        deoptimizedBlocks.add(block.getBeginNode());
+                    if (callee.propagates != BackPropagation.NOTHING) {
+                        switch (callee.propagates) {
+                            case DEOPT:
+                                deoptimizedBlocks.add(block.getBeginNode());
+                                break;
+                            case UNWIND:
+                                if (unwindBlocks.add(block.getBeginNode())) {
+                                    computeUnwindBlocks(unwindBlocks, reversePostOrder);
+                                }
+                                break;
+                        }
 
                         /*
-                         * Propagate even further up if the invoke is again in the first block.
+                         * Propagate even further up if the invoke is in the first block.
                          */
                         if (block.getBeginNode() == graph.start()) {
-                            caller.propagatesDeopt = true;
+                            caller.propagates = callee.propagates;
                         }
                     }
 
@@ -512,34 +535,77 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
+     * Computes the set of blocks where all direct or transitive successors
+     * {@link HIRBlock#getEndNode() end} in an {@link UnwindNode}.
+     */
+    private static void computeUnwindBlocks(EconomicSet<AbstractBeginNode> unwindBlocks, HIRBlock[] reversePostOrder) {
+        /*
+         * Since we traverse in post order, we process all blocks before their dominator. This
+         * guarantees that we can traverse all blocks in a single pass, given that we want to find
+         * blocks where all successors end in an unwind. In order to do the single pass we also need
+         * to skip loop ends, therefore we are not following unwind successors through loop ends.
+         * That is a fine trade-off for compilation speed and complexity.
+         */
+        block: for (int blockIndex = reversePostOrder.length - 1; blockIndex >= 0; blockIndex--) {
+            HIRBlock block = reversePostOrder[blockIndex];
+            int successorCount = block.getSuccessorCount();
+            if (block.getEndNode() instanceof UnwindNode) {
+                unwindBlocks.add(block.getBeginNode());
+            } else if (successorCount == 0) {
+                // no successors (return, ...)
+            } else if (block.getEndNode() instanceof LoopEndNode) {
+                // loops are not necessary to be processed here
+                // allowing us to do this analysis in a single pass
+            } else if (!unwindBlocks.isEmpty()) {
+                for (int i = 0; i < successorCount; i++) {
+                    if (!unwindBlocks.contains(block.getSuccessorAt(i).getBeginNode())) {
+                        continue block;
+                    }
+                }
+                unwindBlocks.add(block.getBeginNode());
+            }
+        }
+    }
+
+    private enum BackPropagation {
+        NOTHING,
+        DEOPT,
+        UNWIND;
+    }
+
+    /**
      * Traverses the call graph starting at {@code method} based on invokes in each traversed
      * method's entry block, stopping at depth {@link #MAX_PEEK_PROPAGATE_DEOPT}` to find a
      * {@link #isTransferToInterpreterMethod}.
      */
-    private boolean peekPropagatesDeopt(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
+    private BackPropagation peekPropagatesDeoptOrUnwind(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
-            return false;
+            return BackPropagation.NOTHING;
         }
 
         StructuredGraph graph = lookupGraph(context, callerInvoke, method);
         FixedNode current = graph.start();
         while (current instanceof FixedWithNextNode) {
             current = ((FixedWithNextNode) current).next();
-
+            if (current instanceof UnwindNode) {
+                return BackPropagation.UNWIND;
+            }
             if (current instanceof Invoke) {
                 Invoke invoke = (Invoke) current;
                 ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
                 if (targetMethod == null) {
                     continue;
                 }
+
                 if (isTransferToInterpreterMethod(targetMethod)) {
-                    return true;
+                    return BackPropagation.DEOPT;
                 } else if (invoke.getInvokeKind().isDirect()) {
                     if (!targetMethod.canBeInlined()) {
                         continue;
                     }
-                    if (peekPropagatesDeopt(context, invoke, targetMethod, depth + 1)) {
-                        return true;
+                    BackPropagation recursivePeek = peekPropagatesDeoptOrUnwind(context, invoke, targetMethod, depth + 1);
+                    if (recursivePeek != BackPropagation.NOTHING) {
+                        return recursivePeek;
                     }
                 }
             }
@@ -547,7 +613,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 break;
             }
         }
-        return false;
+        return BackPropagation.NOTHING;
     }
 
     /**
@@ -557,11 +623,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * to check whether the current block is deoptimized itself or one of the current blocks
      * dominators is.
      */
-    private static boolean isBlockOrDominatorContainedIn(Block currentBlock, EconomicSet<AbstractBeginNode> blocks) {
+    private static boolean isBlockOrDominatorContainedIn(HIRBlock currentBlock, EconomicSet<AbstractBeginNode> blocks) {
         if (blocks.isEmpty()) {
             return false;
         }
-        Block dominator = currentBlock;
+        HIRBlock dominator = currentBlock;
         while (dominator != null) {
             if (blocks.contains(dominator.getBeginNode())) {
                 return true;
@@ -788,10 +854,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         if (call.deoptimized) {
             return false;
         }
+        if (call.unwind) {
+            return false;
+        }
         if (call.inInterpreter) {
             return false;
         }
-        if (call.propagatesDeopt) {
+        if (call.propagates != BackPropagation.NOTHING) {
             return false;
         }
         /*
@@ -848,7 +917,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return true;
         }
 
-        if (isInInterpreter(targetMethod)) {
+        if (isInInterpreter(targetMethod) || isInInterpreterFastPath(targetMethod)) {
             /*
              * Always inline inInterpreter method.
              */
@@ -871,6 +940,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
+        if (call.unwind) {
+            /*
+             * All successors lead to an unwind, or an unconditional unwind in a callee.
+             */
+            call.reason = "leads to unwind";
+            return false;
+        }
+
         if (call.inInterpreter) {
             /*
              * The block of the call was deoptimized or the deoptimization propagated through a call
@@ -882,11 +959,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         /*
          * If a method always is deoptimized, we can exclude it from inlining as it is likely not a
-         * common path. For example CompilerDirectives.shouldNotReachHere.
+         * common path. For example CompilerDirectives.shouldNotReachHere. We handle unwind branches
+         * the same way.
          */
-        if (call.propagatesDeopt) {
-            call.reason = "propagates transferToInterpreter";
-            return false;
+        switch (call.propagates) {
+            case DEOPT:
+                call.reason = "propagates transferToInterpreter";
+                return false;
+            case UNWIND:
+                call.reason = "propagates unwind";
+                return false;
+
         }
 
         if (isInliningCutoff(targetMethod)) {
@@ -1131,6 +1214,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             graph = context.graphCache.get(method);
             if (graph == null) {
                 graph = parseGraph(context.highTierContext, context.graph, method);
+
                 context.graphCache.put(method, graph);
             }
         }
@@ -1222,10 +1306,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
+    public static boolean shouldDenyTrivialInliningInAllMethods(ResolvedJavaMethod callee) {
+        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        assert r != null;
+        return r.isInliningCutoff(callee);
+    }
+
     public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
         TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
         assert r != null;
-        return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreter(callee) || r.isTransferToInterpreterMethod(callee));
+        return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreterFastPath(callee) || r.isInInterpreter(callee) ||
+                        r.isTransferToInterpreterMethod(callee));
     }
 
     static final class BytecodeParserInlineInvokePlugin implements InlineInvokePlugin {
@@ -1303,6 +1394,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final boolean deoptimized;
 
         /**
+         * True if this method is in a block that ends in an unwind or all successors lead to
+         * unwind.
+         */
+        final boolean unwind;
+
+        /**
          * True if invoke is contained in a block protected by a call to if (inInterpreter()). Code
          * protected by such conditions are potentially not designed for PE and therefore
          * assumptions taken by this inlining heuristic do not apply.
@@ -1315,9 +1412,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final boolean forceShallowInline;
 
         /**
-         * True if this method contains a deopt in its first block.
+         * Set to a value other than {@link BackPropagation#NOTHING} if this method contains a deopt
+         * or an unwind in its first block.
          */
-        boolean propagatesDeopt;
+        BackPropagation propagates = BackPropagation.NOTHING;
 
         /**
          * The reason why inlining failed or succeeded.
@@ -1368,9 +1466,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         final int depth;
 
-        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean inInterpreter, boolean forceShallowInline) {
+        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean unwind, boolean inInterpreter, boolean forceShallowInline) {
             this.invoke = invoke;
             this.deoptimized = deoptimized;
+            this.unwind = unwind;
             this.inInterpreter = inInterpreter;
             this.parent = parent;
             this.cachedTargetMethod = invoke.getTargetMethod();
@@ -1382,6 +1481,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         CallTree(ResolvedJavaMethod root) {
             this.invoke = null;
             this.deoptimized = false;
+            this.unwind = false;
             this.inInterpreter = false;
             this.forceShallowInline = false;
             this.cachedTargetMethod = root;
@@ -1447,12 +1547,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 boolean fastPathInvoke = isFastPathInvoke(this);
                 return String.format(
                                 "%-" + maxIndent +
-                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, inInterpreter %5s, propDeopt %5s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, unwind %5s, inInterpreter %5s, propagates %7s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
                                 indent + buildLabel(),
                                 formatOptionalInt(hasCutoffParent() ? -1 : inlinedIndex),
                                 formatOptionalInt(exploredIndex),
                                 monomorphicTargetMethod != null,
-                                deoptimized, inInterpreter, propagatesDeopt,
+                                deoptimized, unwind, inInterpreter, propagates,
                                 fastPathInvoke,
                                 formatOptionalInt(cost),
                                 formatOptionalInt(subTreeCost),

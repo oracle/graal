@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -35,43 +32,36 @@ import jdk.vm.ci.meta.SpeculationLog;
 /**
  * JDK versioned functionality used by the HotSpot Truffle runtime.
  *
- * This version is for JDK 11 without the changes from JDK-8220623.
+ * This version is for JDK 17+.
  */
 class HotSpotTruffleRuntimeServices {
 
-    private static final Constructor<? extends SpeculationLog> sharedHotSpotSpeculationLogConstructor;
+    /**
+     * A wrapper that holds a strong reference to another speculation log that
+     * {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} the failed
+     * speculations list.
+     */
+    static class CompilationSpeculationLog extends HotSpotSpeculationLog {
+        private final HotSpotSpeculationLog wrappedLog;
 
-    static {
-        Constructor<? extends SpeculationLog> constructor = null;
-        try {
-            @SuppressWarnings("unchecked")
-            Class<? extends SpeculationLog> theClass = (Class<? extends SpeculationLog>) Class.forName("jdk.vm.ci.hotspot.SharedHotSpotSpeculationLog");
-            constructor = theClass.getDeclaredConstructor(HotSpotSpeculationLog.class);
-        } catch (ClassNotFoundException e) {
-        } catch (NoSuchMethodException e) {
-            throw new InternalError("SharedHotSpotSpeculationLog exists but constructor is missing", e);
+        CompilationSpeculationLog(HotSpotSpeculationLog wrappedLog) {
+            super(wrappedLog.getFailedSpeculationsAddress());
+            this.wrappedLog = wrappedLog;
         }
-        sharedHotSpotSpeculationLogConstructor = constructor;
+
+        @Override
+        public String toString() {
+            return wrappedLog.toString();
+        }
     }
 
     /**
      * Gets a speculation log to be used for compiling {@code callTarget}.
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
-        if (sharedHotSpotSpeculationLogConstructor != null) {
-            HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
-            try {
-                SpeculationLog compilationSpeculationLog = sharedHotSpotSpeculationLogConstructor.newInstance(log);
-                compilationSpeculationLog.collectFailedSpeculations();
-                return compilationSpeculationLog;
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new InternalError(e);
-            }
-        }
-        SpeculationLog log = callTarget.getSpeculationLog();
-        if (log != null) {
-            log.collectFailedSpeculations();
-        }
-        return log;
+        HotSpotSpeculationLog wrappedLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+        CompilationSpeculationLog compilationSpeculationLog = new CompilationSpeculationLog(wrappedLog);
+        compilationSpeculationLog.collectFailedSpeculations();
+        return compilationSpeculationLog;
     }
 }

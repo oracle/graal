@@ -50,6 +50,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class SlowPathCallTest extends AbstractLibraryTest {
 
     @GenerateLibrary

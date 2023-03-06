@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
@@ -74,7 +74,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
         }
 
         @Override
-        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
+        protected void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 FixedWithNextNode lowered = guard.lowerGuard();
@@ -126,7 +126,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
         ScheduleResult schedule = graph.getLastSchedule();
 
-        for (Block block : schedule.getCFG().getBlocks()) {
+        for (HIRBlock block : schedule.getCFG().getBlocks()) {
             processBlock(block, schedule);
         }
 
@@ -145,7 +145,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
         return true;
     }
 
-    private static void processBlock(Block block, ScheduleResult schedule) {
+    private static void processBlock(HIRBlock block, ScheduleResult schedule) {
         DebugContext debug = block.getBeginNode().getDebug();
         new LowerGuards(debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()).processNodes(block, schedule);
     }

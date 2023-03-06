@@ -43,8 +43,8 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -79,7 +79,7 @@ final class EnumSwitchPlugin implements NodePlugin {
             return false;
         }
 
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (reason.duringAnalysis()) {
             if (!method.getDeclaringClass().isInitialized()) {
                 /*
                  * Declaring class is initialized at run time. Even if the enum itself is
@@ -148,7 +148,7 @@ final class EnumSwitchFeature implements InternalFeature {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
-        assert existingValue == null : "Method parsed twice: " + method.format("%H.%n(%p)");
+        assert existingValue == null || !method.isOriginalMethod() : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     @Override

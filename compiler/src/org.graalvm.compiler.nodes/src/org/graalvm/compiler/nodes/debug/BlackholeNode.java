@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,15 +46,24 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
  * {@link ReachabilityFenceNode} (but keep in mind that {@link ReachabilityFenceNode} currently does
  * not keep primitive values alive).
  */
-@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, nameTemplate = "Blackhole {p#reason}")
 public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable, NodeWithIdentity {
 
     public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);
     @Input ValueNode value;
+    /** Indicates the reason why we need the blackhole, to be seen in IGV. */
+    String reason;
 
     public BlackholeNode(ValueNode value) {
         super(TYPE, StampFactory.forVoid());
         this.value = value;
+        this.reason = "";
+    }
+
+    public BlackholeNode(ValueNode value, String reason) {
+        this(value);
+        assert reason != null;
+        this.reason = reason;
     }
 
     public ValueNode getValue() {

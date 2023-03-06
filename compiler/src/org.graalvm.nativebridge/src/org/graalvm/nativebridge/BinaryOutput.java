@@ -27,9 +27,11 @@ package org.graalvm.nativebridge;
 import org.graalvm.nativebridge.JNIConfig.Builder;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -69,7 +71,7 @@ public abstract class BinaryOutput {
     static final byte STRING = DOUBLE + 1;
     static final byte ARRAY = STRING + 1;
 
-    private byte[] byteBuffer;
+    private byte[] tempDecodingBuffer;
     protected int pos;
 
     private BinaryOutput() {
@@ -203,14 +205,14 @@ public abstract class BinaryOutput {
         if (utfLen > MAX_SHORT_LENGTH) {
             headerSize = Integer.BYTES;
             ensureBufferSize(headerSize, utfLen);
-            byteBuffer[count++] = (byte) ((LARGE_STRING_TAG | (utfLen >>> 24)) & 0xff);
-            byteBuffer[count++] = (byte) ((utfLen >>> 16) & 0xFF);
+            tempDecodingBuffer[count++] = (byte) ((LARGE_STRING_TAG | (utfLen >>> 24)) & 0xff);
+            tempDecodingBuffer[count++] = (byte) ((utfLen >>> 16) & 0xFF);
         } else {
             headerSize = Short.BYTES;
             ensureBufferSize(headerSize, utfLen);
         }
-        byteBuffer[count++] = (byte) ((utfLen >>> 8) & 0xFF);
-        byteBuffer[count++] = (byte) (utfLen & 0xFF);
+        tempDecodingBuffer[count++] = (byte) ((utfLen >>> 8) & 0xFF);
+        tempDecodingBuffer[count++] = (byte) (utfLen & 0xFF);
 
         int i = 0;
         for (; i < len; i++) {
@@ -218,23 +220,23 @@ public abstract class BinaryOutput {
             if (!((c >= 0x0001) && (c <= 0x007F))) {
                 break;
             }
-            byteBuffer[count++] = (byte) c;
+            tempDecodingBuffer[count++] = (byte) c;
         }
 
         for (; i < len; i++) {
             c = string.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
-                byteBuffer[count++] = (byte) c;
+                tempDecodingBuffer[count++] = (byte) c;
             } else if (c > 0x07FF) {
-                byteBuffer[count++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                byteBuffer[count++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-                byteBuffer[count++] = (byte) (0x80 | (c & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | (c & 0x3F));
             } else {
-                byteBuffer[count++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-                byteBuffer[count++] = (byte) (0x80 | (c & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | (c & 0x3F));
             }
         }
-        write(byteBuffer, 0, headerSize + utfLen);
+        write(tempDecodingBuffer, 0, headerSize + utfLen);
     }
 
     /**
@@ -294,9 +296,128 @@ public abstract class BinaryOutput {
         }
     }
 
+    /**
+     * Writes {@code len} bytes from the boolean {@code array} starting at offset {@code off}. The
+     * value {@code true} is written as the value {@code (byte)1}, the value {@code false} is
+     * written as the value {@code (byte)0}. The buffer position is incremented by {@code len}.
+     */
+    public final void write(boolean[] array, int off, int len) {
+        ensureBufferSize(0, len);
+        for (int i = 0, j = 0; i < len; i++, j++) {
+            tempDecodingBuffer[j] = (byte) (array[off + i] ? 1 : 0);
+        }
+        write(tempDecodingBuffer, 0, len);
+    }
+
+    /**
+     * Writes {@code len} shorts from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 2 * len}.
+     */
+    public final void write(short[] array, int off, int len) {
+        int size = len * Short.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} chars from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 2 * len}.
+     */
+    public final void write(char[] array, int off, int len) {
+        int size = len * Character.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} ints from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 4 * len}.
+     */
+    public final void write(int[] array, int off, int len) {
+        int size = len * Integer.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} longs from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 8 * len}.
+     */
+    public final void write(long[] array, int off, int len) {
+        int size = len * Long.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 56) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 48) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 40) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 32) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} floats from the {@code array} starting at offset {@code off}. Each
+     * {@code float} value is converted to an {@code int} using the
+     * {@link Float#floatToIntBits(float)} and written as an int. The buffer position is incremented
+     * by {@code 4 * len}.
+     */
+    public final void write(float[] array, int off, int len) {
+        int size = len * Float.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            int bits = Float.floatToIntBits(array[off + i]);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (bits & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} doubles from the {@code array} starting at offset {@code off}. Each
+     * {@code double} value is converted to an {@code lang} using the
+     * {@link Double#doubleToLongBits(double)} and written as a long. The buffer position is
+     * incremented by {@code 8 * len}.
+     */
+    public final void write(double[] array, int off, int len) {
+        int size = len * Double.BYTES;
+        ensureBufferSize(Integer.BYTES, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            long bits = Double.doubleToLongBits(array[off + i]);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 56) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 48) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 40) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 32) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (bits & 0xff);
+        }
+        write(tempDecodingBuffer, 0, size);
+    }
+
     private void ensureBufferSize(int headerSize, int dataSize) {
-        if (byteBuffer == null || byteBuffer.length < (headerSize + dataSize)) {
-            byteBuffer = new byte[bufferSize(headerSize, dataSize)];
+        if (tempDecodingBuffer == null || tempDecodingBuffer.length < (headerSize + dataSize)) {
+            tempDecodingBuffer = new byte[bufferSize(headerSize, dataSize)];
         }
     }
 
@@ -408,9 +529,21 @@ public abstract class BinaryOutput {
      */
     public static final class CCharPointerBinaryOutput extends BinaryOutput implements Closeable {
 
+        /**
+         * Represents the point at which the average cost of a JNI call exceeds the expense of an
+         * element by element copy. See {@code java.nio.Bits#JNI_COPY_FROM_ARRAY_THRESHOLD}.
+         */
+        private static final int BYTEBUFFER_COPY_FROM_ARRAY_THRESHOLD = 6;
+
         private CCharPointer address;
         private int length;
         private boolean unmanaged;
+        /**
+         * ByteBuffer view of this {@link CCharPointerBinaryOutput} direct memory. The ByteBuffer is
+         * used for bulk data transfers, where the bulk ByteBuffer operations outperform element by
+         * element copying by an order of magnitude.
+         */
+        private ByteBuffer byteBufferView;
 
         private CCharPointerBinaryOutput(CCharPointer address, int length, boolean unmanaged) {
             this.address = address;
@@ -446,8 +579,16 @@ public abstract class BinaryOutput {
                 throw new IndexOutOfBoundsException("offset: " + off + ", length: " + len + ", array length: " + b.length);
             }
             ensureCapacity(pos + len);
-            for (int i = 0; i < len; i++) {
-                address.write(pos + i, b[off + i]);
+            if (len > BYTEBUFFER_COPY_FROM_ARRAY_THRESHOLD) {
+                if (byteBufferView == null) {
+                    byteBufferView = CTypeConversion.asByteBuffer(address, length);
+                }
+                byteBufferView.position(pos);
+                byteBufferView.put(b, off, len);
+            } else {
+                for (int i = 0; i < len; i++) {
+                    address.write(pos + i, b[off + i]);
+                }
             }
             pos += len;
         }
@@ -465,6 +606,7 @@ public abstract class BinaryOutput {
         public void close() {
             if (unmanaged) {
                 UnmanagedMemory.free(address);
+                byteBufferView = null;
                 address = WordFactory.nullPointer();
                 length = 0;
                 unmanaged = false;
@@ -480,6 +622,7 @@ public abstract class BinaryOutput {
 
         private void ensureCapacity(int neededCapacity) {
             if (neededCapacity - length > 0) {
+                byteBufferView = null;
                 int newCapacity = length << 1;
                 if (newCapacity - neededCapacity < 0) {
                     newCapacity = neededCapacity;

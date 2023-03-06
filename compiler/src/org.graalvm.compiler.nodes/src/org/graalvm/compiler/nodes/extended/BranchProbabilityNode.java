@@ -129,10 +129,6 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         return probability;
     }
 
-    public ValueNode getCondition() {
-        return condition;
-    }
-
     public void setProbability(ValueNode probability) {
         updateUsages(this.probability, probability);
         this.probability = probability;

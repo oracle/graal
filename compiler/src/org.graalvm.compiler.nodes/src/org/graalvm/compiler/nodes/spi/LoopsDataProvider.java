@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 
 /**
@@ -32,5 +33,16 @@ import org.graalvm.compiler.nodes.loop.LoopsData;
  */
 public interface LoopsDataProvider {
 
+    /**
+     * Compute the {@link LoopsData} for this graph. This involves computing the
+     * {@link ControlFlowGraph} for the {@link StructuredGraph} which is a costly operation. If a
+     * callsites have a valid {@link ControlFlowGraph} in hand they should use
+     * {@link #getLoopsData(ControlFlowGraph)}.
+     */
     LoopsData getLoopsData(StructuredGraph graph);
+
+    /**
+     * @see LoopsDataProvider#getLoopsData(StructuredGraph)
+     */
+    LoopsData getLoopsData(ControlFlowGraph cfg);
 }

@@ -423,10 +423,10 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         // Align the main loop
         masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
-        pmovSZx(masm, vectorSize, vector1, maxStride, arrayA, length, 0, strideA);
-        pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, length, 0, strideB);
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, length, 0);
         if (withMask()) {
-            pmovSZx(masm, vectorSize, vector3, maxStride, mask, length, 0, strideMask);
+            masm.pmovSZx(vectorSize, extendMode, vector3, maxStride, mask, strideMask, length, 0);
             masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
@@ -451,10 +451,10 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
          * Compare the remaining bytes with an unaligned memory load aligned to the end of the
          * array.
          */
-        pmovSZx(masm, vectorSize, vector1, maxStride, arrayA, result, -vectorSize.getBytes(), strideA);
-        pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, result, -vectorSize.getBytes(), strideB);
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, result, -vectorSize.getBytes());
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, result, -vectorSize.getBytes());
         if (withMask()) {
-            pmovSZx(masm, vectorSize, vector3, maxStride, mask, result, -vectorSize.getBytes(), strideMask);
+            masm.pmovSZx(vectorSize, extendMode, vector3, maxStride, mask, strideMask, result, -vectorSize.getBytes());
             masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
@@ -475,17 +475,9 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         return vSize.getBytes() >> maxStride.log2;
     }
 
-    private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Stride maxStride, Register src, int displacement, Stride stride) {
-        pmovSZx(asm, size, dst, maxStride, src, Register.None, displacement, stride);
-    }
-
-    private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Stride maxStride, Register src, Register index, int displacement, Stride stride) {
-        asm.pmovSZx(size, extendMode, dst, maxStride, src, stride, index, displacement);
-    }
-
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
         masm.pxor(size, vector1, vector2);
-        masm.ptest(size, vector1);
+        masm.ptest(size, vector1, vector1);
     }
 
     /**
@@ -818,26 +810,26 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
             }
         } else {
-            pmovSZx(asm, vSize, vector1, maxStride, arrayA, 0, argStrideA);
-            pmovSZx(asm, vSize, vector2, maxStride, arrayB, 0, argStrideB);
+            asm.pmovSZx(vSize, extendMode, vector1, maxStride, arrayA, argStrideA, Register.None, 0);
+            asm.pmovSZx(vSize, extendMode, vector2, maxStride, arrayB, argStrideB, Register.None, 0);
             if (withMask()) {
-                pmovSZx(asm, vSize, vector4, maxStride, mask, 0, argStrideMask);
+                asm.pmovSZx(vSize, extendMode, vector4, maxStride, mask, argStrideMask, Register.None, 0);
                 asm.por(vSize, vector1, vector4);
             }
             asm.pxor(vSize, vector1, vector2);
             if (constantLength() > elementsPerVector) {
                 int endOffset = (constantLength() << maxStride.log2) - vSize.getBytes();
-                pmovSZx(asm, vSize, vector3, maxStride, arrayA, endOffset, argStrideA);
-                pmovSZx(asm, vSize, vector2, maxStride, arrayB, endOffset, argStrideB);
+                asm.pmovSZx(vSize, extendMode, vector3, maxStride, arrayA, argStrideA, Register.None, endOffset);
+                asm.pmovSZx(vSize, extendMode, vector2, maxStride, arrayB, argStrideB, Register.None, endOffset);
                 if (withMask()) {
-                    pmovSZx(asm, vSize, vector4, maxStride, mask, endOffset, argStrideMask);
+                    asm.pmovSZx(vSize, extendMode, vector4, maxStride, mask, argStrideMask, Register.None, endOffset);
                     asm.por(vSize, vector3, vector4);
                 }
                 asm.pxor(vSize, vector3, vector2);
                 asm.por(vSize, vector1, vector3);
             }
             asm.xorq(arrayA, arrayA);
-            asm.ptest(vSize, vector1);
+            asm.ptest(vSize, vector1, vector1);
             asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
         }
     }

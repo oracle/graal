@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,15 +33,7 @@ public final class CSVUtil {
     public static final char SEPARATOR = ';';
     public static final String SEPARATOR_STR = String.valueOf(SEPARATOR);
     public static final char QUOTE = '"';
-    public static final String QUOTE_STR = String.valueOf(QUOTE);
     public static final char ESCAPE = '\\';
-    public static final String ESCAPE_STR = String.valueOf(ESCAPE);
-    public static final String ESCAPED_QUOTE_STR = ESCAPE_STR + QUOTE_STR;
-    public static final String ESCAPED_ESCAPE_STR = ESCAPE_STR + ESCAPE_STR;
-
-    public static String buildFormatString(String format, int num) {
-        return buildFormatString(format, SEPARATOR, num);
-    }
 
     public static String buildFormatString(String... format) {
         return String.join(SEPARATOR_STR, format);

@@ -399,11 +399,11 @@ public final class TruffleStackTrace extends Exception {
         }
 
         boolean isTProfiled = CompilerDirectives.isPartialEvaluationConstant(t.getClass());
+        MaterializedFrame frame = null;
         if (currentFrame != null && root.getRootNode().isCaptureFramesForTrace()) {
-            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, currentFrame.materialize());
-        } else {
-            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, null);
+            frame = currentFrame.materialize();
         }
+        callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, frame);
     }
 
     private static void callInnerAddStackFrameInfo(boolean isTProfiled, Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {

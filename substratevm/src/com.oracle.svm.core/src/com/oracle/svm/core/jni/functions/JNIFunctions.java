@@ -104,7 +104,9 @@ import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDK20OrLater;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -153,7 +155,9 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return JavaVersionUtil.JAVA_SPEC <= 17 ? JNIVersion.JNI_VERSION_10() : JNIVersionJDK19OrLater.JNI_VERSION_19();
+        return (JavaVersionUtil.JAVA_SPEC >= 20) ? JNIVersionJDK20OrLater.JNI_VERSION_20()
+                        : ((JavaVersionUtil.JAVA_SPEC >= 19) ? JNIVersionJDK19OrLater.JNI_VERSION_19()
+                                        : JNIVersion.JNI_VERSION_10());
     }
 
     /*
@@ -1015,7 +1019,7 @@ public final class JNIFunctions {
         }
         boolean acquired = false;
         try {
-            MonitorSupport.singleton().monitorEnter(obj);
+            MonitorSupport.singleton().monitorEnter(obj, MonitorInflationCause.JNI_ENTER);
             assert Thread.holdsLock(obj);
             acquired = true;
 
@@ -1024,7 +1028,8 @@ public final class JNIFunctions {
         } catch (Throwable t) {
             try {
                 if (acquired) {
-                    MonitorSupport.singleton().monitorExit(obj);
+                    /* The thread acquired the monitor, so monitor inflation can't happen here. */
+                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
                 }
                 if (pinned) {
                     VirtualThreads.singleton().unpinCurrent();
@@ -1049,7 +1054,7 @@ public final class JNIFunctions {
         if (!Thread.holdsLock(obj)) {
             throw new IllegalMonitorStateException();
         }
-        MonitorSupport.singleton().monitorExit(obj);
+        MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.JNI_EXIT);
         JNIThreadOwnedMonitors.exited(obj);
         if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {
@@ -1135,7 +1140,7 @@ public final class JNIFunctions {
         }
 
         static class ReturnMinusOneLong implements CEntryPointOptions.PrologueBailout {
-            @Uninterruptible(reason = "Thread state not set up yet.")
+            @Uninterruptible(reason = "prologue")
             public static long bailout(int prologueResult) {
                 return -1L;
             }

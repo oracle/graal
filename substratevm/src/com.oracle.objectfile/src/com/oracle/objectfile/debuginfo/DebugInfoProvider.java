@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -72,7 +72,7 @@ public interface DebugInfoProvider {
     /**
      * An interface implemented by items that can be located in a file.
      */
-    public interface DebugFileInfo {
+    interface DebugFileInfo {
         /**
          * @return the name of the file containing a file element excluding any path.
          */
@@ -83,15 +83,9 @@ public interface DebugInfoProvider {
          *         name or {@code null} if the element is in the empty package.
          */
         Path filePath();
-
-        /**
-         * @return a relative path to the source cache containing the cached source file of a file
-         *         element or {@code null} if sources are not available.
-         */
-        Path cachePath();
     }
 
-    public interface DebugTypeInfo extends DebugFileInfo {
+    interface DebugTypeInfo extends DebugFileInfo {
         ResolvedJavaType idType();
 
         enum DebugTypeKind {
@@ -143,7 +137,7 @@ public interface DebugInfoProvider {
         int size();
     }
 
-    public interface DebugInstanceTypeInfo extends DebugTypeInfo {
+    interface DebugInstanceTypeInfo extends DebugTypeInfo {
         int headerSize();
 
         String loaderName();
@@ -157,13 +151,13 @@ public interface DebugInfoProvider {
         Stream<ResolvedJavaType> interfaces();
     }
 
-    public interface DebugEnumTypeInfo extends DebugInstanceTypeInfo {
+    interface DebugEnumTypeInfo extends DebugInstanceTypeInfo {
     }
 
-    public interface DebugInterfaceTypeInfo extends DebugInstanceTypeInfo {
+    interface DebugInterfaceTypeInfo extends DebugInstanceTypeInfo {
     }
 
-    public interface DebugArrayTypeInfo extends DebugTypeInfo {
+    interface DebugArrayTypeInfo extends DebugTypeInfo {
         int baseSize();
 
         int lengthOffset();
@@ -173,7 +167,7 @@ public interface DebugInfoProvider {
         Stream<DebugFieldInfo> fieldInfoProvider();
     }
 
-    public interface DebugPrimitiveTypeInfo extends DebugTypeInfo {
+    interface DebugPrimitiveTypeInfo extends DebugTypeInfo {
         /*
          * NUMERIC excludes LOGICAL types boolean and void
          */
@@ -194,12 +188,12 @@ public interface DebugInfoProvider {
         int flags();
     }
 
-    public interface DebugHeaderTypeInfo extends DebugTypeInfo {
+    interface DebugHeaderTypeInfo extends DebugTypeInfo {
 
         Stream<DebugFieldInfo> fieldInfoProvider();
     }
 
-    public interface DebugMemberInfo extends DebugFileInfo {
+    interface DebugMemberInfo extends DebugFileInfo {
 
         String name();
 
@@ -208,13 +202,13 @@ public interface DebugInfoProvider {
         int modifiers();
     }
 
-    public interface DebugFieldInfo extends DebugMemberInfo {
+    interface DebugFieldInfo extends DebugMemberInfo {
         int offset();
 
         int size();
     }
 
-    public interface DebugMethodInfo extends DebugMemberInfo {
+    interface DebugMethodInfo extends DebugMemberInfo {
         /**
          * @return the line number for the outer or inlined segment.
          */
@@ -282,9 +276,9 @@ public interface DebugInfoProvider {
 
     /**
      * Access details of a compiled top level or inline method producing the code in a specific
-     * {@link com.oracle.objectfile.debugentry.Range}.
+     * {@link com.oracle.objectfile.debugentry.range.Range}.
      */
-    public interface DebugRangeInfo extends DebugMethodInfo {
+    interface DebugRangeInfo extends DebugMethodInfo {
 
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
@@ -302,7 +296,7 @@ public interface DebugInfoProvider {
     /**
      * Access details of a specific compiled method.
      */
-    public interface DebugCodeInfo extends DebugRangeInfo {
+    interface DebugCodeInfo extends DebugRangeInfo {
         void debugContext(Consumer<DebugContext> action);
 
         /**
@@ -326,7 +320,7 @@ public interface DebugInfoProvider {
     /**
      * Access details of a specific heap object.
      */
-    public interface DebugDataInfo {
+    interface DebugDataInfo {
         void debugContext(Consumer<DebugContext> action);
 
         String getProvenance();
@@ -346,7 +340,7 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    public interface DebugLocationInfo extends DebugRangeInfo {
+    interface DebugLocationInfo extends DebugRangeInfo {
         /**
          * @return the {@link DebugLocationInfo} of the nested inline caller-line
          */
@@ -357,13 +351,15 @@ public interface DebugInfoProvider {
          *         variables present in the frame of the current range.
          */
         DebugLocalValueInfo[] getLocalValueInfo();
+
+        boolean isLeaf();
     }
 
     /**
      * A DebugLocalInfo details a local or parameter variable recording its name and type, the
      * (abstract machine) local slot index it resides in and the number of slots it occupies.
      */
-    public interface DebugLocalInfo {
+    interface DebugLocalInfo {
         ResolvedJavaType valueType();
 
         String name();
@@ -384,7 +380,7 @@ public interface DebugInfoProvider {
      * frame. The value may be undefined. If not then the instance records its type and either its
      * (constant) value or the register or stack location in which the value resides.
      */
-    public interface DebugLocalValueInfo extends DebugLocalInfo {
+    interface DebugLocalValueInfo extends DebugLocalInfo {
         enum LocalKind {
             UNDEFINED,
             REGISTER,
@@ -403,7 +399,7 @@ public interface DebugInfoProvider {
         JavaConstant constantValue();
     }
 
-    public interface DebugFrameSizeChange {
+    interface DebugFrameSizeChange {
         enum Type {
             EXTEND,
             CONTRACT
@@ -421,4 +417,6 @@ public interface DebugInfoProvider {
 
     @SuppressWarnings("unused")
     Stream<DebugDataInfo> dataInfoProvider();
+
+    Path getCachePath();
 }

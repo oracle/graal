@@ -36,7 +36,6 @@ import java.util.List;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
@@ -220,8 +219,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                     }
                     delayedIntervals = (IntervalDumper) object;
                 }
-            } else if (object instanceof AbstractBlockBase<?>[]) {
-                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object);
+            } else if (object instanceof char[]) {
+                cfgPrinter.printCFG(message, (char[]) object);
             }
         } finally {
             cfgPrinter.lir = null;

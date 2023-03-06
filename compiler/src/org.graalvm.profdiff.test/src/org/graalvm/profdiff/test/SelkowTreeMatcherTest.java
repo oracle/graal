@@ -24,15 +24,13 @@
  */
 package org.graalvm.profdiff.test;
 
-import java.util.List;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.EditScript;
+import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
+import org.graalvm.profdiff.diff.SelkowTreeMatcher;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -59,18 +57,17 @@ public class SelkowTreeMatcherTest {
         root2.addChild(bar);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
-        EditScript<OptimizationTreeNode> editScript = matcher.match(root1, root2);
-        List<EditScript.DeltaNode<OptimizationTreeNode>> expected = List.of(
-                        new EditScript.Identity<>(root1, root2, 0),
-                        new EditScript.Delete<>(foo, 1),
-                        new EditScript.Insert<>(bar, 1));
-        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
+        EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
+        EditScript<OptimizationTreeNode> expected = new EditScript<>();
+        expected.insert(bar, 1);
+        expected.delete(foo, 1);
+        expected.identity(root1, root2, 0);
+        Assert.assertEquals(expected.getOperations().toList(), actual.getOperations().toList());
     }
 
     /**
      * Tests that the Selkow tree matcher identifies the correct edit operations in dfs preorder.
      *
-     * // @formatter:off
      * <pre>
      *                method1
      *                   |
@@ -91,7 +88,6 @@ public class SelkowTreeMatcherTest {
      *          /        |       \
      *         foo foo{prop: 1}  foo
      * </pre>
-     * // @formatter:on
      */
     @Test
     public void testOperations() {
@@ -122,16 +118,16 @@ public class SelkowTreeMatcherTest {
         root2.addChild(toBeInserted);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
-        EditScript<OptimizationTreeNode> editScript = matcher.match(root1, root2);
-        List<EditScript.DeltaNode<OptimizationTreeNode>> expected = List.of(
-                        new EditScript.Identity<>(root1, root2, 0),
-                        new EditScript.Delete<>(toBeDeleted, 1),
-                        new EditScript.Relabel<>(toBeRelabeled, relabeled, 1),
-                        new EditScript.Identity<>(foo1, foo1Clone, 2),
-                        new EditScript.Insert<>(foo2, 2),
-                        new EditScript.Identity<>(foo3, foo3Clone, 2),
-                        new EditScript.Identity<>(toBeUnchaged, toBeUnchagedClone, 1),
-                        new EditScript.Insert<>(toBeInserted, 1));
-        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
+        EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
+        EditScript<OptimizationTreeNode> expected = new EditScript<>();
+        expected.insert(toBeInserted, 1);
+        expected.identity(toBeUnchaged, toBeUnchagedClone, 1);
+        expected.identity(foo3, foo3Clone, 2);
+        expected.insert(foo2, 2);
+        expected.identity(foo1, foo1Clone, 2);
+        expected.relabel(toBeRelabeled, relabeled, 1);
+        expected.delete(toBeDeleted, 1);
+        expected.identity(root1, root2, 0);
+        Assert.assertEquals(expected.getOperations().toList(), actual.getOperations().toList());
     }
 }

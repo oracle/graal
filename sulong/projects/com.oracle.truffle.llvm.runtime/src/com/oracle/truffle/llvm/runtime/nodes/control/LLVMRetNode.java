@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -176,6 +177,15 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
+    public abstract static class LLVM128BitFloatRetNode extends LLVMRetNode {
+
+        @Specialization
+        protected Object doOp(LLVM128BitFloat retResult) {
+            return retResult;
+        }
+    }
+
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressRetNode extends LLVMRetNode {
 
         @Specialization
@@ -246,16 +256,6 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
             memMove.executeWithTarget(retStructAddress, retResult, getStructSize());
             return retStructAddress;
         }
-    }
-
-    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
-    public abstract static class LLVMArrayRetNode extends LLVMRetNode {
-
-        @Specialization
-        protected Object doOp(LLVMPointer retResult) {
-            return retResult;
-        }
-
     }
 
     public abstract static class LLVMVoidReturnNode extends LLVMRetNode {

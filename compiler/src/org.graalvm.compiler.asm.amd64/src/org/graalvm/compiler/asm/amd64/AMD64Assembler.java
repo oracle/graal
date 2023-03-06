@@ -37,9 +37,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
@@ -774,6 +771,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D, PreferredNDS.DST);
         public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E, PreferredNDS.DST);
         public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F, PreferredNDS.DST);
+        public static final SSEOp PSUBUSB   = new SSEOp("PSUBUSB",         P_0F, 0xD8, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSUBUSW   = new SSEOp("PSUBUSW",         P_0F, 0xD9, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PMINUB    = new SSEOp("PMINUB",          P_0F, 0xDA, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PMINUW    = new SSEOp("PMINUW",        P_0F38, 0x3A, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMINUD    = new SSEOp("PMINUD",        P_0F38, 0x3B, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+
+        public static final SSEOp PACKUSWB  = new SSEOp("PACKUSWB",        P_0F, 0x67, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PACKUSDW  = new SSEOp("PACKUSDW",      P_0F38, 0x2B, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,  CPUFeature.SSE4_1);
+
+        public static final SSEOp PSHUFB    = new SSEOp("PSHUFB",        P_0F38, 0x00, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
 
         // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
         public static final SSEOp MOVD      = new SSEOp("MOVD",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
@@ -788,12 +795,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this(opcode, 0, prefix, op, preferredNDS, OpAssertion.FloatAssertion);
         }
 
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, CPUFeature feature) {
+            this(opcode, 0, prefix, op, preferredNDS, OpAssertion.FloatAssertion, feature);
+        }
+
         protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
             this(opcode, 0, prefix, op, preferredNDS, assertion);
         }
 
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, 0, prefix, op, preferredNDS, assertion, feature);
+        }
+
         protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
-            super(opcode, mandatoryPrefix, prefix, op, assertion, CPUFeature.SSE2);
+            this(opcode, mandatoryPrefix, prefix, op, preferredNDS, assertion, CPUFeature.SSE2);
+        }
+
+        protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, mandatoryPrefix, prefix, op, assertion, feature);
             this.preferredNDS = preferredNDS;
         }
 
@@ -1266,7 +1285,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      P_66, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTTPD2QQ      = new VexRMOp("VCVTTPD2QQ",      P_66, M_0F,   W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       P_F3, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       W0);
-        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.FVM,       W0);
+        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W0);
         public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    P_66, M_0F38, W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.FVM,       W1);
         public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  P_66, M_0F38, W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
         public static final VexRMOp VPBROADCASTI128 = new VexRMOp("VPBROADCASTI128", P_66, M_0F38, W0,  0x5A, VEXOpAssertion.AVX2_256ONLY);
@@ -1654,6 +1673,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPMULLD         = new VexRVMOp("VPMULLD",     P_66, M_0F38, WIG, 0x40, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexRVMOp VPMULLQ         = new VexRVMOp("VPMULLQ",     P_66, M_0F38, W1,  0x40, VEXOpAssertion.AVX512DQ_VL,                  EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPSUBUSB        = new VexRVMOp("VPSUBUSB",    P_66, M_0F,   WIG, 0xD8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPSUBUSW        = new VexRVMOp("VPSUBUSW",    P_66, M_0F,   WIG, 0xD9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBB          = new VexRVMOp("VPSUBB",      P_66, M_0F,   WIG, 0xF8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBW          = new VexRVMOp("VPSUBW",      P_66, M_0F,   WIG, 0xF9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBD          = new VexRVMOp("VPSUBD",      P_66, M_0F,   WIG, 0xFA, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
@@ -2380,6 +2400,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ADD.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void adcl(Register dst, int imm32) {
+        ADC.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
+    }
+
     public final void addpd(Register dst, Register src) {
         SSEOp.ADD.emit(this, PD, dst, src);
     }
@@ -2436,6 +2460,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void andl(Register dst, Register src) {
         AND.rmOp.emit(this, DWORD, dst, src);
+    }
+
+    public final void mull(Register src) {
+        MUL.emit(this, DWORD, src);
     }
 
     public final void andpd(Register dst, Register src) {
@@ -3216,217 +3244,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void nop(int count) {
-        int i = count;
-        if (UseNormalNop) {
-            assert i > 0 : " ";
-            // The fancy nops aren't currently recognized by debuggers making it a
-            // pain to disassemble code while debugging. If assert are on clearly
-            // speed is not an issue so simply use the single byte traditional nop
-            // to do alignment.
-
-            for (; i > 0; i--) {
-                emitByte(0x90);
-            }
-            return;
-        }
-
-        if (UseAddressNop) {
-            if (UseIntelNops) {
-                intelNops(i);
-            } else {
-                amdNops(i);
-            }
-            return;
-        }
-
-        // Using nops with size prefixes "0x66 0x90".
-        // From AMD Optimization Guide:
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90
-        // 4: 0x66 0x66 0x66 0x90
-        // 5: 0x66 0x66 0x90 0x66 0x90
-        // 6: 0x66 0x66 0x90 0x66 0x66 0x90
-        // 7: 0x66 0x66 0x66 0x90 0x66 0x66 0x90
-        // 8: 0x66 0x66 0x66 0x90 0x66 0x66 0x66 0x90
-        // 9: 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        // 10: 0x66 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        //
-        while (i > 12) {
-            i -= 4;
-            emitByte(0x66); // size prefix
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90); // nop
-        }
-        // 1 - 12 nops
-        if (i > 8) {
-            if (i > 9) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        // 1 - 8 nops
-        if (i > 4) {
-            if (i > 6) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        switch (i) {
-            case 4:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 3:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 2:
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 1:
-                emitByte(0x90);
-                break;
-            default:
-                assert i == 0;
-        }
-    }
-
-    private void amdNops(int count) {
-        int i = count;
-        //
-        // Using multi-bytes nops "0x0F 0x1F [Address]" for AMD.
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90 (don't use "0x0F 0x1F 0x00" - need patching safe padding)
-        // 4: 0x0F 0x1F 0x40 0x00
-        // 5: 0x0F 0x1F 0x44 0x00 0x00
-        // 6: 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 7: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 8: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 9: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 10: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 11: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-
-        // The rest coding is AMD specific - use consecutive Address nops
-
-        // 12: 0x66 0x0F 0x1F 0x44 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 13: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 14: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 15: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 16: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // Size prefixes (0x66) are added for larger sizes
-
-        while (i >= 22) {
-            i -= 11;
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            addrNop8();
-        }
-        // Generate first nop for size between 21-12
-        switch (i) {
-            case 21:
-                i -= 11;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 20:
-            case 19:
-                i -= 10;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 18:
-            case 17:
-                i -= 9;
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 16:
-            case 15:
-                i -= 8;
-                addrNop8();
-                break;
-            case 14:
-            case 13:
-                i -= 7;
-                addrNop7();
-                break;
-            case 12:
-                i -= 6;
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            default:
-                assert i < 12;
-        }
-
-        // Generate second nop for size between 11-1
-        switch (i) {
-            case 11:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 10:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 9:
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 8:
-                addrNop8();
-                break;
-            case 7:
-                addrNop7();
-                break;
-            case 6:
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            case 5:
-                addrNop5();
-                break;
-            case 4:
-                addrNop4();
-                break;
-            case 3:
-                // Don't use "0x0F 0x1F 0x00" - need patching safe padding
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 2:
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 1:
-                emitByte(0x90); // nop
-                break;
-            default:
-                assert i == 0;
-        }
+        intelNops(count);
     }
 
     @SuppressWarnings("fallthrough")
@@ -3533,24 +3351,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         OR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
-    // Insn: VPACKUSWB xmm1, xmm2, xmm3/m128
-    // -----
-    // Insn: VPACKUSWB xmm1, xmm1, xmm2
-
     public final void packuswb(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        // Code: VEX.NDS.128.66.0F.WIG 67 /r
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0x67);
-        emitModRM(dst, src);
+        SSEOp.PACKUSWB.emit(this, PD, dst, src);
     }
 
     public final void packusdw(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        // Code: VEX.128.66.0F38 2B /r
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x2B);
-        emitModRM(dst, src);
+        SSEOp.PACKUSDW.emit(this, PD, dst, src);
     }
 
     public final void pop(Register dst) {
@@ -3563,7 +3369,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, Register src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3571,7 +3377,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3624,6 +3430,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0x76);
         emitOperandHelper(dst, src, 0);
+    }
+
+    public final void pminub(Register dst, Register src) {
+        SSEOp.PMINUB.emit(this, PD, dst, src);
+    }
+
+    public final void pminuw(Register dst, Register src) {
+        SSEOp.PMINUW.emit(this, PD, dst, src);
+    }
+
+    public final void pminud(Register dst, Register src) {
+        SSEOp.PMINUD.emit(this, PD, dst, src);
     }
 
     public final void pcmpgtb(Register dst, Register src) {
@@ -3959,19 +3777,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, Register src) {
-        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x00);
-        emitModRM(dst, src);
+        SSEOp.PSHUFB.emit(this, PD, dst, src);
     }
 
     public final void pshufb(Register dst, AMD64Address src) {
-        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x00);
-        emitOperandHelper(dst, src, 0);
+        SSEOp.PSHUFB.emit(this, PD, dst, src);
     }
 
     public final void pshuflw(Register dst, Register src, int imm8) {
@@ -3994,17 +3804,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void psubusb(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0xD8);
-        emitModRM(dst, src);
+        SSEOp.PSUBUSB.emit(this, PD, dst, src);
     }
 
     public final void psubusb(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0xD8);
-        emitOperandHelper(dst, src, 0);
+        SSEOp.PSUBUSB.emit(this, PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, Register src) {
+        SSEOp.PSUBUSW.emit(this, PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, AMD64Address src) {
+        SSEOp.PSUBUSW.emit(this, PD, dst, src);
     }
 
     public final void psubd(Register dst, Register src) {
@@ -5011,22 +4823,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void clflush(AMD64Address adr) {
-        prefix(adr);
-        // opcode family is 0x0F 0xAE
-        emitByte(0x0f);
-        emitByte(0xae);
-        // extended opcode byte is 7
-        emitOperandHelper(7, adr, 0);
-    }
-
-    public void clflushopt(AMD64Address adr) {
-        assert supportsCPUFeature("FLUSHOPT");
-        // adr should be base reg only with no index or offset
-        assert adr.getIndex().equals(Register.None) : adr;
-        assert adr.getScale().equals(Stride.S1) : adr;
-        assert adr.getDisplacement() == 0 : adr;
-        // instruction prefix is 0x66
-        emitByte(0x66);
         prefix(adr);
         // opcode family is 0x0F 0xAE
         emitByte(0x0f);

@@ -29,10 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
@@ -60,29 +57,33 @@ public class JfrMethodRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public long getMethodId(FrameInfoQueryResult stackTraceElement) {
-        JfrMethodEpochData epochData = getEpochData(false);
+    public long getMethodId(Class<?> clazz, String methodName, int methodId) {
+        assert clazz != null;
+        assert methodName != null;
+        assert methodId > 0;
+
         mutex.lockNoTransition();
         try {
-            return getMethodId0(stackTraceElement, epochData);
+            return getMethodId0(clazz, methodName, methodId);
         } finally {
             mutex.unlock();
         }
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static long getMethodId0(FrameInfoQueryResult stackTraceElement, JfrMethodEpochData epochData) {
+    private long getMethodId0(Class<?> clazz, String methodName, int methodId) {
+        JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
+        jfrVisited.setId(methodId);
+        jfrVisited.setHash(methodId);
+
+        JfrMethodEpochData epochData = getEpochData(false);
+        if (!epochData.visitedMethods.putIfAbsent(jfrVisited)) {
+            return methodId;
+        }
+
         if (epochData.methodBuffer.isNull()) {
             // This will happen only on the first call.
             epochData.methodBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
-        }
-
-        JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
-        int methodId = stackTraceElement.getMethodID();
-        jfrVisited.setId(methodId);
-        jfrVisited.setHash(stackTraceElement.hashCode());
-        if (!epochData.visitedMethods.putIfAbsent(jfrVisited)) {
-            return methodId;
         }
 
         JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
@@ -90,23 +91,18 @@ public class JfrMethodRepository implements JfrConstantPool {
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.methodBuffer);
-
-        /* JFR Method id. */
         JfrNativeEventWriter.putLong(data, methodId);
-        /* Class. */
-        JfrNativeEventWriter.putLong(data, typeRepo.getClassId(stackTraceElement.getSourceClass()));
-        /* Method name. */
-        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(stackTraceElement.getSourceMethodName(), false));
-        /* Method description. */
+        JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
+        JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
+        /* Dummy value for signature. */
         JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
-        /* Method modifier. */
-        JfrNativeEventWriter.putInt(data, 0);
-        /* Is hidden class? */
-        JfrNativeEventWriter.putBoolean(data, SubstrateUtil.isHiddenClass(DynamicHub.fromClass(stackTraceElement.getSourceClass())));
+        /* Dummy value for modifiers. */
+        JfrNativeEventWriter.putShort(data, (short) 0);
+        /* Dummy value for isHidden. */
+        JfrNativeEventWriter.putBoolean(data, false);
         JfrNativeEventWriter.commit(data);
 
-        // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we
-        // need to update the repository pointer as well.
+        /* The buffer may have been replaced with a new one. */
         epochData.methodBuffer = data.getJfrBuffer();
         return methodId;
     }

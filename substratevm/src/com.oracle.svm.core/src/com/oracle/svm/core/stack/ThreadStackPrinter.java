@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.stack;
 
+import com.oracle.svm.core.code.CodeInfoDecoder;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -32,13 +33,9 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
-import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
-import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -48,10 +45,7 @@ public class ThreadStackPrinter {
     private static final int MAX_STACK_FRAMES_PER_THREAD_TO_PRINT = 100_000;
 
     public static class StackFramePrintVisitor extends Stage1StackFramePrintVisitor {
-        private static final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
-        private static final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
-        private static final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
-        private static final FrameInfoState frameInfoState = new FrameInfoState();
+        private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
 
         public StackFramePrintVisitor() {
         }
@@ -60,33 +54,36 @@ public class ThreadStackPrinter {
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
-            } else {
-                CodeInfoAccess.initFrameInfoReader(codeInfo, ip, frameInfoReader.reset(), frameInfoState.reset());
-                if (frameInfoState.entryOffset >= 0) {
-                    boolean isFirst = true;
-                    FrameInfoQueryResult validResult;
-                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, frameInfoReader, singleShotFrameInfoQueryResultAllocator.reload(), dummyValueInfoAllocator, frameInfoState)) != null) {
-                        if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
-                            log.string("... (truncated)").newline();
-                            break;
-                        }
+                return;
+            }
 
-                        if (!isFirst) {
-                            log.newline();
-                        }
-                        logFrameRaw(log, sp, ip);
-                        logFrameInfo(log, validResult, CodeInfoAccess.getName(codeInfo));
-                        isFirst = false;
-                        printedFrames++;
-                    }
-                } else {
-                    super.logFrame(log, sp, ip, codeInfo, deoptFrame);
+            boolean isFirst = true;
+            frameInfoCursor.initialize(codeInfo, ip);
+            while (frameInfoCursor.advance()) {
+                if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
+                    log.string("... (truncated)").newline();
+                    break;
                 }
+
+                if (!isFirst) {
+                    log.newline();
+                }
+                logFrameRaw(log, sp, ip);
+
+                FrameInfoQueryResult frame = frameInfoCursor.get();
+                logFrameInfo(log, frame, CodeInfoAccess.getName(codeInfo));
+                isFirst = false;
+                printedFrames++;
+            }
+
+            if (isFirst) {
+                /* The code above failed, so print less detailed information. */
+                super.logFrame(log, sp, ip, codeInfo, deoptFrame);
             }
         }
     }
 
-    public static class Stage0StackFramePrintVisitor extends ParameterizedStackFrameVisitor<Log> {
+    public static class Stage0StackFramePrintVisitor extends ParameterizedStackFrameVisitor {
         protected int printedFrames;
 
         public Stage0StackFramePrintVisitor() {
@@ -99,7 +96,8 @@ public class ThreadStackPrinter {
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
-        protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Log log) {
+        protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Object data) {
+            Log log = (Log) data;
             if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
                 log.string("... (truncated)").newline();
                 return false;
@@ -111,7 +109,8 @@ public class ThreadStackPrinter {
         }
 
         @Override
-        protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Log log) {
+        protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
+            Log log = (Log) data;
             logFrameRaw(log, sp, ip);
             if (DeoptimizationSupport.enabled()) {
                 log.string("  deoptFrame=").object(deoptimizedFrame);

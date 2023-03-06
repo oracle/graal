@@ -28,7 +28,8 @@ import java.util.BitSet;
 import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 
 /**
  * Computes an ordering of the blocks that can be used by the linear scan register allocator.
@@ -50,22 +51,27 @@ public final class LinearScanOrder {
     /**
      * Computes the block order used for the linear scan register allocator.
      *
-     * @return sorted list of blocks
+     * @return sorted list of block ids pointing into the reverse post order array of
+     *         {@link AbstractControlFlowGraph}
      */
-    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
+    public static <T extends BasicBlock<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
         computeLinearScanOrder(order, worklist, visitedBlocks);
         BasicBlockOrderUtils.checkOrder(order, originalBlockCount);
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
-        return order.toArray();
+        char[] orderIndices = new char[order.size()];
+        for (int i = 0; i < order.size(); i++) {
+            orderIndices[i] = order.getOrder().get(i).getId();
+        }
+        return orderIndices;
     }
 
     /**
      * Iteratively adds paths to the linear scan block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeLinearScanOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends BasicBlock<T>> void computeLinearScanOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
             do {
@@ -77,7 +83,7 @@ public final class LinearScanOrder {
     /**
      * Add a linear path to the linear scan order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> T addPathToLinearScanOrder(T block, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends BasicBlock<T>> T addPathToLinearScanOrder(T block, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
         T mostLikelySuccessor = BasicBlockOrderUtils.findAndMarkMostLikelySuccessor(block, order, visitedBlocks);
@@ -87,7 +93,8 @@ public final class LinearScanOrder {
                 // We are at a merge. Check probabilities of predecessors that are not yet
                 // scheduled.
                 double unscheduledSum = 0.0;
-                for (T pred : mostLikelySuccessor.getPredecessors()) {
+                for (int i = 0; i < mostLikelySuccessor.getPredecessorCount(); i++) {
+                    T pred = mostLikelySuccessor.getPredecessorAt(i);
                     if (pred.getLinearScanNumber() == -1) {
                         unscheduledSum += pred.getRelativeFrequency();
                     }

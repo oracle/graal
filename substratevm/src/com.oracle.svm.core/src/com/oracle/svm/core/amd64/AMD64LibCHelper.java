@@ -282,6 +282,14 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fCET_SS();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fF16C();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512_IFMA();
     }
     // Checkstyle: resume
 }

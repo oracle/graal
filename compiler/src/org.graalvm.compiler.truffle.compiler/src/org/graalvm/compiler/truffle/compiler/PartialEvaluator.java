@@ -482,13 +482,6 @@ public abstract class PartialEvaluator {
                     appendMemorySegmentScopePlugin(plugins, m);
                 }
             }
-        } else if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            ResolvedJavaType memorySegmentType = TruffleCompilerRuntime.getRuntime().resolveType(config.lastTier().providers().getMetaAccess(), "jdk.internal.foreign.Scoped");
-            for (ResolvedJavaMethod m : memorySegmentType.getDeclaredMethods()) {
-                if (m.getName().equals("sessionImpl")) {
-                    appendMemorySegmentScopePlugin(plugins, m);
-                }
-            }
         }
     }
 

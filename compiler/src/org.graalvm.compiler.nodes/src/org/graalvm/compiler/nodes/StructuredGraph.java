@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -56,8 +58,8 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ProfileProvider;
@@ -80,7 +82,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * node is the start of the control flow of the graph.
  */
 public final class StructuredGraph extends Graph implements JavaMethodContext {
-
     /**
      * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
      */
@@ -99,10 +100,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public static class ScheduleResult {
         private final ControlFlowGraph cfg;
-        private final NodeMap<Block> nodeToBlockMap;
+        private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
@@ -112,7 +113,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return cfg;
         }
 
-        public NodeMap<Block> getNodeToBlockMap() {
+        public NodeMap<HIRBlock> getNodeToBlockMap() {
             return nodeToBlockMap;
         }
 
@@ -120,7 +121,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return blockToNodesMap;
         }
 
-        public List<Node> nodesFor(Block block) {
+        public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
     }
@@ -131,7 +132,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public static class Builder {
         private String name;
         private final Assumptions assumptions;
-        private GraphState graphState;
         private SpeculationLog speculationLog;
         private ResolvedJavaMethod rootMethod;
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
@@ -165,10 +165,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             this.trackNodeSourcePosition = Graph.trackNodeSourcePositionDefault(options, debug);
         }
 
-        public String getName() {
-            return name;
-        }
-
         public Builder name(String s) {
             this.name = s;
             return this;
@@ -194,23 +190,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public DebugContext getDebug() {
-            return debug;
-        }
-
-        public GraphState getGraphState() {
-            return graphState;
-        }
-
-        public Builder graphState(GraphState state) {
-            this.graphState = state;
-            return this;
-        }
-
-        public SpeculationLog getSpeculationLog() {
-            return speculationLog;
-        }
-
         public Builder speculationLog(SpeculationLog log) {
             this.speculationLog = log;
             return this;
@@ -234,10 +213,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public int getEntryBCI() {
-            return entryBCI;
-        }
-
         public Builder entryBCI(int bci) {
             this.entryBCI = bci;
             return this;
@@ -246,10 +221,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public Builder profileProvider(ProfileProvider provider) {
             this.profileProvider = provider;
             return this;
-        }
-
-        public boolean getRecordInlinedMethods() {
-            return recordInlinedMethods;
         }
 
         public Builder recordInlinedMethods(boolean flag) {
@@ -270,7 +241,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            GraphState newGraphState = graphState == null ? GraphState.defaultGraphState() : graphState;
+            GraphState newGraphState = GraphState.defaultGraphState();
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
             // @formatter:off
             return new StructuredGraph(name,
@@ -311,7 +282,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private ScheduleResult lastSchedule;
 
-    private final InliningLog inliningLog;
+    private InliningLog inliningLog;
 
     /**
      * Call stack (context) leading to construction of this graph.
@@ -386,6 +357,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setLastSchedule(ScheduleResult result) {
+        GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
     }
 
@@ -571,19 +543,28 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param invoke the invocation to which the inlining decision pertains
      * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
      * @param phase name of the phase doing the inlining
-     * @param replacements the node replacement map used by inlining. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
-     * @param calleeLog the inlining log of the inlined graph. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param replacements the node replacement map used by inlining, ignored if
+     *            {@code positive == false}
+     * @param calleeInliningLog the inlining log of the inlined graph, ignored if
+     *            {@code positive == false}
+     * @param calleeOptimizationLog the optimization log of the inlined graph, ignored if
+     *            {@code positive == false}
+     * @param inlineeMethod the actual method considered for inlining
      * @param reason format string that along with {@code args} provides the reason for decision
      */
-    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
+                    InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, ResolvedJavaMethod inlineeMethod,
+                    String reason, Object... args) {
         if (inliningLog != null) {
-            inliningLog.addDecision(invoke, positive, phase, replacements, calleeLog, reason, args);
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
+        }
+        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+            FixedNode invokeNode = invoke.asFixedNodeOrNull();
+            optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
-            getDebug().notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+            getDebug().notifyInlining(invoke.getContextMethod(), inlineeMethod, positive, message, invoke.bci());
         }
     }
 
@@ -657,6 +638,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 copyInliningLog.replaceLog(duplicates, this.getInliningLog());
             }
         }
+        copy.getOptimizationLog().replaceLog(optimizationLog);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -1150,5 +1132,110 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public OptimizationLog getOptimizationLog() {
         return optimizationLog;
+    }
+
+    /**
+     * Implementers of this interface should provide <empf>global</empf> profile-related information
+     * about the {@link StructuredGraph} i.e. global profiling information about the
+     * <empf>compilation unit</empf>.
+     *
+     * Unlike the {@link ProfileProvider} which represents the profile in isolation and relating to
+     * a single method, implementers of this interface provide data in the context of a global
+     * system and relating to a compilation unit (including e.g. inlined methods).
+     *
+     * This source of this information could, for example, be gathered through profiling the
+     * application with a sampling based profiler, or just a heuristic-based estimation.
+     *
+     * This data can be used for aggressive optimizations, applying more or less optimization budget
+     * to individual compilation units based on estimates of how much run time is spent in that
+     * particular compilation unit.
+     */
+    public interface GlobalProfileProvider {
+
+        GlobalProfileProvider DEFAULT = new GlobalProfileProvider() {
+
+            public static final int DEFAULT_TIME = -1;
+
+            /**
+             * The default time provider always returns -1, i.e. the self time is unknown by
+             * default.
+             */
+            @Override
+            public double getGlobalSelfTimePercent() {
+                return DEFAULT_TIME;
+            }
+
+            /**
+             * The default time provider always returns false, i.e. no methods are hot callers by
+             * default.
+             */
+            @Override
+            public boolean hotCaller() {
+                return false;
+            }
+        };
+
+        /**
+         * This method provides an approximation of what percentage of run time is spent executing
+         * this compilation unit (a.k.a. self time - the time spent executing the compilation unit).
+         * Since the value is meant to represent a percentage, this method should return a value
+         * between 0 and 1 (inclusive) for {@link StructuredGraph graphs} for which the data is
+         * available. If no data is available, this method should return -1 as a way to disambiguate
+         * compilation units that are known to have a self time of 0 and compilation units for which
+         * the data is not present.
+         *
+         * @return A value between 0 and 1 If self time data is available, -1 otherwise.
+         */
+        double getGlobalSelfTimePercent();
+
+        /**
+         * We define a "hot caller" as any method that is frequently contained in the call stack
+         * during execution. Note that "contained in the call stack" means that it is not
+         * necessarily on top of the stack.
+         *
+         * @return Is this {@link StructuredGraph graph} considered a "hot caller".
+         */
+        boolean hotCaller();
+
+    }
+
+    private GlobalProfileProvider globalProfileProvider = GlobalProfileProvider.DEFAULT;
+
+    /**
+     * Set a {@link GlobalProfileProvider global profile provider} for this {@link StructuredGraph
+     * graph}.
+     */
+    public void setGlobalProfileProvider(GlobalProfileProvider globalProfileProvider) {
+        Objects.requireNonNull(globalProfileProvider);
+        this.globalProfileProvider = globalProfileProvider;
+    }
+
+    /**
+     * @return The current {@link GlobalProfileProvider} for this graph.
+     */
+    public GlobalProfileProvider globalProfileProvider() {
+        return globalProfileProvider;
+    }
+
+    /**
+     * Sets the optimization log associated with this graph. The new instance should be bound to
+     * this graph and be set up according to the {@link #getOptions() options}.
+     *
+     * @param newOptimizationLog the optimization log instance
+     */
+    public void setOptimizationLog(OptimizationLog newOptimizationLog) {
+        assert newOptimizationLog != null : "the optimization log must not be null";
+        optimizationLog = newOptimizationLog;
+    }
+
+    /**
+     * Sets the inlining log associated with this graph. The new instance should be {@code null} iff
+     * it is expected to be {@code null} according to the {@link #getOptions() options}.
+     *
+     * @param newInliningLog the new inlining log instance
+     */
+    public void setInliningLog(InliningLog newInliningLog) {
+        assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
+        inliningLog = newInliningLog;
     }
 }

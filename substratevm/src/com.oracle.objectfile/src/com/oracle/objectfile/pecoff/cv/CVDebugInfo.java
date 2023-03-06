@@ -43,12 +43,23 @@ public final class CVDebugInfo extends DebugInfoBase {
     private final CVTypeSectionImpl cvTypeSection;
     private DebugContext debugContext;
 
+    /* Register constants for Windows x86_64 */
+    /* See AMD64ReservedRegisters.java. */
+    public static final byte RHEAPBASE_X86 = (byte) 14;
+    public static final byte RTHREAD_X86 = (byte) 15;
+
+    private final byte heapbaseRegister;
+    private final byte threadRegister;
+
     public CVDebugInfo(PECoffMachine machine, ByteOrder byteOrder) {
         super(byteOrder);
         cvSymbolSection = new CVSymbolSectionImpl(this);
         cvTypeSection = new CVTypeSectionImpl(this);
-        if (machine != PECoffMachine.X86_64) {
-            /* room for future aarch64 port */
+        if (machine == PECoffMachine.X86_64) {
+            this.heapbaseRegister = RHEAPBASE_X86;
+            this.threadRegister = RTHREAD_X86;
+        } else {
+            /* room for future aach64 port */
             throw GraalError.shouldNotReachHere("Unsupported architecture on Windows");
         }
     }
@@ -59,6 +70,15 @@ public final class CVDebugInfo extends DebugInfoBase {
 
     public CVTypeSectionImpl getCVTypeSection() {
         return cvTypeSection;
+    }
+
+    public byte getHeapbaseRegister() {
+        return heapbaseRegister;
+    }
+
+    @SuppressWarnings("unused")
+    public byte getThreadRegister() {
+        return threadRegister;
     }
 
     public DebugContext getDebugContext() {

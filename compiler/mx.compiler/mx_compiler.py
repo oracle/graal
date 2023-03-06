@@ -43,7 +43,7 @@ import mx_sdk_vm
 
 import mx
 import mx_gate
-from mx_gate import Task, Tags
+from mx_gate import Task
 from mx import SafeDirectoryUpdater
 
 import mx_unittest
@@ -419,54 +419,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
         mx.abort("Gate for scala-dacapo benchmark '{}' failed!".format(name))
     return exit_code, suite, results
 
-def _check_catch_files():
-    """
-    Verifies that there is a "catch_files" array in common.json at the root of
-    the repository containing this suite and that the array contains elements
-    matching DebugContext.DUMP_FILE_MESSAGE_REGEXP and
-    StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP.
-    """
-    catch_files_fields = (
-        ('DebugContext', 'DUMP_FILE_MESSAGE_REGEXP'),
-        ('StandardPathUtilitiesProvider', 'DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP')
-    )
-
-    def get_regexp(class_name, field_name):
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.debug', 'src', 'org', 'graalvm', 'compiler', 'debug', class_name + '.java')
-        regexp = None
-        with open(source_path) as fp:
-            for line in fp.readlines():
-                decl = field_name + ' = "'
-                index = line.find(decl)
-                if index != -1:
-                    start_index = index + len(decl)
-                    end_index = line.find('"', start_index)
-                    regexp = line[start_index:end_index]
-
-                    # Convert from Java style regexp to Python style
-                    return regexp.replace('(?<', '(?P<')
-
-        if not regexp:
-            mx.abort('Could not find value of ' + field_name + ' in ' + source_path)
-        return regexp
-
-    common_path = join(dirname(_suite.dir), 'common.json')
-    if not exists(common_path):
-        mx.abort('Required file does not exist: {}'.format(common_path))
-    with open(common_path) as common_file:
-        common_cfg = json.load(common_file)
-    catch_files = common_cfg.get('catch_files')
-    if catch_files is None:
-        mx.abort('Could not find catch_files attribute in {}'.format(common_path))
-    for class_name, field_name in catch_files_fields:
-        regexp = get_regexp(class_name, field_name)
-        if regexp not in catch_files:
-            mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, regexp))
-
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
-    with Task('CheckCatchFiles', tasks, tags=[Tags.style]) as t:
-        if t: _check_catch_files()
-
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
@@ -528,7 +481,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             phaseplan_fuzz_jtt_tests([], extraVMarguments=_remove_empty_entries(extraVMarguments), extraUnitTestArguments=_remove_empty_entries(extraUnitTestArguments))
 
-def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task_report_component='compiler'):
     # run DaCapo benchmarks #
     #########################
 
@@ -552,15 +505,20 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     dacapo_gate_iterations.update({'tradesoap': -1})
     for name in dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
-    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
             # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
             _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
+
+    # ensure we can run with --enable-preview
+    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        if t:
+            _gate_dacapo('fop', 8, ['--enable-preview', '-Dgraal.CompilationFailureAction=ExitVM'])
 
     # run Scala DaCapo benchmarks #
     ###############################
@@ -570,13 +528,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     }
     for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = scala_dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run benchmark with non default setup #
     ########################################
     # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
@@ -586,7 +544,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
     if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
-        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=task_report_component) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
@@ -607,11 +565,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                     os.remove(logFile)
 
     # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
-    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 graal_unit_test_runs = [
@@ -620,7 +578,8 @@ graal_unit_test_runs = [
 
 _registers = {
     'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
-    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
+    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3',
+    'riscv64': 'x10,x11,x12,x13,x14,v10,v11,v12,v13'
 }
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
@@ -649,7 +608,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
-    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
+    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.

@@ -1,0 +1,4 @@
+com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest$C.<clinit>
+com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.foo
+com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.foo1
+com.oracle.graal.pointsto.standalone.test.AnalysisEntryPointsFileTest.bar(String)

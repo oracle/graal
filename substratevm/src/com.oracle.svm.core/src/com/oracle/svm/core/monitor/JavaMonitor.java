@@ -26,7 +26,10 @@
 
 package com.oracle.svm.core.monitor;
 
-import org.graalvm.nativeimage.CurrentIsolate;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -66,7 +69,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
 
-        latestJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+        latestJfrTid = SubstrateJVM.getCurrentThreadId();
     }
 
     public void monitorExit() {
@@ -145,16 +148,20 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     @Override
     protected boolean tryAcquire(long acquires) {
         assert acquires > 0 && acquires == (int) acquires;
-        if (getState() == 0 && compareAndSetState(0, getCurrentThreadIdentity())) {
-            assert acquisitions == 1;
-            acquisitions = (int) acquires;
-            return true;
+        // Do not expect to acquire the lock because this method is typically called after having
+        // already failed to do so, except after conditional waiting.
+        if (probability(NOT_FREQUENT_PROBABILITY, getState() == 0)) {
+            if (probability(FREQUENT_PROBABILITY, compareAndSetState(0, getCurrentThreadIdentity()))) {
+                assert acquisitions == 1;
+                acquisitions = (int) acquires;
+                return true;
+            }
         }
         return false;
     }
 
     // see ReentrantLock.Sync.tryLock()
-    boolean tryLock() {
+    protected boolean tryLock() {
         long current = getCurrentThreadIdentity();
         long c = getState();
         if (c == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 public final class CallFrame {
 
@@ -53,10 +53,11 @@ public final class CallFrame {
     private final DebugStackFrame debugStackFrame;
     private final DebugScope debugScope;
     private final JDWPContext context;
+    private final DebuggerController controller;
     private Object scope;
 
     public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
-                    DebugStackFrame debugStackFrame, JDWPContext context) {
+                    DebugStackFrame debugStackFrame, JDWPContext context, DebuggerController controller) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
@@ -69,10 +70,11 @@ public final class CallFrame {
         this.debugStackFrame = debugStackFrame;
         this.debugScope = debugStackFrame != null ? debugStackFrame.getScope() : null;
         this.context = context;
+        this.controller = controller;
     }
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
-        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null);
+        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null, null);
     }
 
     public byte getTypeTag() {
@@ -112,10 +114,19 @@ public final class CallFrame {
 
     public Object getThisValue() {
         Object theScope = getScope();
+        if (theScope == null) {
+            return null;
+        }
         try {
-            return theScope != null ? INTEROP.readMember(theScope, "this") : null;
+            // See com.oracle.truffle.espresso.EspressoScope.createVariables
+            if (INTEROP.isMemberReadable(theScope, "this")) {
+                return INTEROP.readMember(theScope, "this");
+            }
+            return INTEROP.readMember(theScope, "0");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            JDWP.LOGGER.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
+            if (controller != null) {
+                controller.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
+            }
             return INVALID_VALUE;
         }
     }
@@ -133,7 +144,9 @@ public final class CallFrame {
         try {
             INTEROP.writeMember(theScope, identifier, value);
         } catch (Exception e) {
-            JDWP.LOGGER.warning(() -> "Unable to write member " + identifier + " from variables");
+            if (controller != null) {
+                controller.warning(() -> "Unable to write member " + identifier + " from variables");
+            }
         }
     }
 
@@ -151,10 +164,14 @@ public final class CallFrame {
             try {
                 scope = NodeLibrary.getUncached().getScope(node, frame, true);
             } catch (UnsupportedMessageException e) {
-                JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
+                if (controller != null) {
+                    controller.warning(() -> "Unable to get scope for " + currentNode.getClass());
+                }
             }
         } else {
-            JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
+            if (controller != null) {
+                controller.warning(() -> "Unable to get scope for " + currentNode.getClass());
+            }
         }
         return scope;
     }

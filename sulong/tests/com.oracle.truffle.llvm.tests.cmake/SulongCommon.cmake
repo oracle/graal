@@ -71,6 +71,13 @@ function(setCompilerConfig varname value)
    set(${varname} ${value} PARENT_SCOPE)
 endfunction()
 
+# set a variable and produce a log message (even in non-verbose mode)
+macro(overrideCompilerConfig varname value)
+  if(NOT "${${value}}" STREQUAL "")
+    setCompilerConfig(${varname} "${${value}}")
+  endif()
+endmacro()
+
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
     #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.

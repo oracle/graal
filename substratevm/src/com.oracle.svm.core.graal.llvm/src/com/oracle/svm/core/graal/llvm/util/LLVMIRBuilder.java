@@ -218,6 +218,23 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
     }
 
+    public void setFunctionCallingConvention(LLVMCallingConvention cc) {
+        setFunctionCallingConvention(function, cc);
+    }
+
+    public void setFunctionCallingConvention(LLVMValueRef func, LLVMCallingConvention cc) {
+        LLVM.LLVMSetFunctionCallConv(func, cc.value);
+    }
+
+    public enum LLVMCallingConvention {
+        GraalCallingConvention(102);
+
+        private final int value;
+
+        LLVMCallingConvention(int value) {
+            this.value = value;
+        }
+    }
     /* Basic blocks */
 
     public LLVMBasicBlockRef appendBasicBlock(String name) {
@@ -637,6 +654,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     public LLVMValueRef buildReadRegister(LLVMValueRef register) {
         LLVMTypeRef readRegisterType = functionType(wordType(), metadataType());
         return buildIntrinsicCall("llvm.read_register." + intrinsicType(wordType()), readRegisterType, register);
+    }
+
+    public void buildWriteRegister(LLVMValueRef register, LLVMValueRef value) {
+        LLVMTypeRef writeRegisterType = functionType(voidType(), metadataType(), wordType());
+        buildIntrinsicCall("llvm.write_register." + intrinsicType(wordType()), writeRegisterType, register, value);
     }
 
     public LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {
@@ -1176,22 +1198,41 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildGEP(builder, base, new PointerPointer<>(indices), indices.length, DEFAULT_INSTR_NAME);
     }
 
-    public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
+    private LLVMValueRef buildLoadHelper(LLVMValueRef address, LLVMTypeRef type, int alignment) {
         LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
         if (isObjectType(type) && !isObjectType(addressType)) {
             boolean compressed = isCompressedPointerType(type);
             return buildCall(helpers.getLoadObjectFromUntrackedPointerFunction(compressed), address);
         }
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(type, isObjectType(addressType), false));
-        return buildLoad(castedAddress);
+        return alignment > 0 ? buildAlignedLoad(castedAddress, alignment) : buildLoad(castedAddress);
+    }
+
+    public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
+        return buildLoadHelper(address, type, 0);
+    }
+
+    public LLVMValueRef buildAlignedLoad(LLVMValueRef address, LLVMTypeRef type, int alignment) {
+        return buildLoadHelper(address, type, alignment);
     }
 
     public LLVMValueRef buildLoad(LLVMValueRef address) {
         return LLVM.LLVMBuildLoad(builder, address, DEFAULT_INSTR_NAME);
     }
 
+    public LLVMValueRef buildAlignedLoad(LLVMValueRef address, int alignment) {
+        LLVMValueRef load = LLVM.LLVMBuildLoad(builder, address, DEFAULT_INSTR_NAME);
+        LLVM.LLVMSetAlignment(load, alignment);
+        return load;
+    }
+
     public void buildStore(LLVMValueRef value, LLVMValueRef address) {
         LLVM.LLVMBuildStore(builder, value, address);
+    }
+
+    public void buildAlignedStore(LLVMValueRef value, LLVMValueRef address, int alignment) {
+        LLVMValueRef store = LLVM.LLVMBuildStore(builder, value, address);
+        LLVM.LLVMSetAlignment(store, alignment);
     }
 
     public void buildVolatileStore(LLVMValueRef value, LLVMValueRef address, int alignment) {

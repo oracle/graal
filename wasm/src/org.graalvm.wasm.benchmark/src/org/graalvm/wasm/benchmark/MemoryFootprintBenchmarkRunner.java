@@ -92,8 +92,8 @@ import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
 public class MemoryFootprintBenchmarkRunner {
     // We currently hardcode the path to memory-footprint-related tests. We might in the future
     // generalize this to include more paths, if that turns out necessary.
-    private static String BENCHCASES_TYPE = "bench";
-    private static String BENCHCASES_RESOURCE = "wasm/memory";
+    private static final String BENCHCASES_TYPE = "bench";
+    private static final String BENCHCASES_RESOURCE = "wasm/memory";
 
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args[0].equals("--list")) {
@@ -108,11 +108,20 @@ public class MemoryFootprintBenchmarkRunner {
         final int warmup_iterations = Integer.parseInt(args[1]);
         final int result_iterations = Integer.parseInt(args[3]);
 
-        for (final String caseSpec : Arrays.copyOfRange(args, 4, args.length)) {
+        // Support debugging
+        int offset = 4;
+        if (args[4].equals("Listening")) {
+            offset = 11;
+        }
+
+        for (final String caseSpec : Arrays.copyOfRange(args, offset, args.length)) {
             final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+            contextBuilder.allowExperimentalOptions(true);
+            contextBuilder.option("wasm.Builtins", "go");
+            contextBuilder.option("wasm.MemoryOverheadMode", "true");
 
             final List<Double> results = new ArrayList<>();
 
@@ -123,6 +132,7 @@ public class MemoryFootprintBenchmarkRunner {
 
                 // The code we want to profile:
                 benchmarkCase.getSources().forEach(context::eval);
+                context.getBindings(WasmLanguage.ID).getMember("main").getMember("run");
 
                 final double heapSizeAfter = getHeapSize();
                 final double result = heapSizeAfter - heapSizeBefore;

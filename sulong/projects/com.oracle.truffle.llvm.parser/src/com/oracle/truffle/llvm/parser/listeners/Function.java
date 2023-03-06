@@ -511,9 +511,9 @@ public final class Function implements ParserListener {
 
         final Type returnType = functionType.getReturnType();
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
+            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle, functionType));
         } else {
-            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
+            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle, functionType));
         }
         operandBundle = null;
         isLastBlockTerminated = true;
@@ -653,9 +653,9 @@ public final class Function implements ParserListener {
         final Type returnType = functionType.getReturnType();
 
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle));
+            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle, functionType));
         } else {
-            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle));
+            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle, functionType));
         }
         operandBundle = null;
     }
@@ -765,7 +765,16 @@ public final class Function implements ParserListener {
     private void createCompareExchange(RecordBuffer buffer, int record) {
         int ptr = readIndex(buffer);
         Type ptrType = readValueType(buffer, ptr);
-        int cmp = record == INSTRUCTION_CMPXCHG ? readIndexSkipType(buffer) : readIndex(buffer);
+        int cmp;
+        Type cmpType;
+        if (record == INSTRUCTION_CMPXCHG) {
+            cmp = readIndex(buffer);
+            cmpType = readValueType(buffer, cmp);
+        } else {
+            assert record == INSTRUCTION_CMPXCHG_OLD;
+            cmp = readIndex(buffer);
+            cmpType = Types.castToPointer(ptrType).getPointeeType();
+        }
         final int replace = readIndex(buffer);
         final boolean isVolatile = buffer.readBoolean();
         final long successOrdering = buffer.read();
@@ -774,7 +783,7 @@ public final class Function implements ParserListener {
         final boolean addExtractValue = buffer.remaining() == 0;
         final boolean isWeak = addExtractValue || buffer.readBoolean();
 
-        final AggregateType type = findCmpxchgResultType(Types.castToPointer(ptrType).getPointeeType());
+        final AggregateType type = findCmpxchgResultType(cmpType);
         CompareExchangeInstruction inst;
         emit(inst = CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
 
@@ -845,8 +854,7 @@ public final class Function implements ParserListener {
     }
 
     private void createAtomicReadModifyWrite(RecordBuffer buffer) {
-        int ptr = readIndex(buffer);
-        Type ptrType = readValueType(buffer, ptr);
+        int ptr = readIndexSkipType(buffer);
         int value = readIndex(buffer);
         Type valType = readValueType(buffer, value);
         int opcode = buffer.readInt();
@@ -854,9 +862,7 @@ public final class Function implements ParserListener {
         long atomicOrdering = buffer.read();
         long synchronizationScope = buffer.read();
 
-        final Type type = Types.castToPointer(ptrType).getPointeeType();
-
-        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, valType, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
+        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), valType, ptr, valType, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
     }
 
     private void createFence(RecordBuffer buffer) {
@@ -957,20 +963,20 @@ public final class Function implements ParserListener {
 
     private void createGetElementPointer(RecordBuffer buffer) {
         boolean isInbounds = buffer.readBoolean();
-        buffer.read(); // we do not use this parameter
+        Type baseType = readType(buffer);
         int pointer = readIndex(buffer);
-        Type base = readValueType(buffer, pointer);
+        Type pointerType = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = getElementPointerType(base, indices);
-        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
+        Type type = getElementPointerType(baseType, pointerType, indices);
+        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, baseType, pointer, indices, isInbounds));
     }
 
     private void createGetElementPointerOld(RecordBuffer buffer, boolean isInbounds) {
         int pointer = readIndex(buffer);
-        Type base = readValueType(buffer, pointer);
+        Type pointerType = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = getElementPointerType(base, indices);
-        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
+        Type type = getElementPointerType(null, pointerType, indices);
+        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, null, pointer, indices, isInbounds));
     }
 
     private void createIndirectBranch(RecordBuffer buffer) {
@@ -1076,29 +1082,47 @@ public final class Function implements ParserListener {
         return (int) argument & (Long.SIZE - 1);
     }
 
-    private Type getElementPointerType(Type type, int[] indices) {
-        boolean vectorized = type instanceof VectorType;
-        int length = vectorized ? ((VectorType) type).getNumberOfElementsInt() : 0;
-        Type elementType = vectorized ? ((VectorType) type).getElementType() : type;
-        for (int indexIndex : indices) {
+    private Type getElementPointerType(Type baseType, Type ptrType, int[] indices) {
+        boolean vectorized = ptrType instanceof VectorType;
+        int length = vectorized ? ((VectorType) ptrType).getNumberOfElementsInt() : 0;
+
+        Type elementType;
+        if (baseType == null) {
+            // for the "old" variant
+            elementType = vectorized ? ((VectorType) ptrType).getElementType() : ptrType;
+            assert elementType instanceof PointerType;
+            elementType = ((PointerType) elementType).getPointeeType();
+        } else {
+            elementType = baseType;
+        }
+
+        for (int i = 0; i < indices.length; i++) {
+            int indexIndex = indices[i];
             Type indexType = scope.getValueType(indexIndex);
 
-            if (elementType instanceof PointerType) {
-                elementType = ((PointerType) elementType).getPointeeType();
-            } else if (elementType instanceof ArrayType) {
-                elementType = ((ArrayType) elementType).getElementType();
-            } else if (elementType instanceof VectorType) {
-                elementType = ((VectorType) elementType).getElementType();
-            } else if (elementType instanceof StructureType) {
-                StructureType structure = (StructureType) elementType;
-                if (!(indexType instanceof PrimitiveType)) {
-                    throw new LLVMParserException("Cannot infer structure element from " + indexType);
+            /*
+             * We need to skip the first index. In the getelementptr instruction, the first index
+             * does index over the "array" of the base type, only the second index goes into the
+             * base type.
+             */
+            if (i > 0) {
+                if (elementType instanceof PointerType) {
+                    elementType = ((PointerType) elementType).getPointeeType();
+                } else if (elementType instanceof ArrayType) {
+                    elementType = ((ArrayType) elementType).getElementType();
+                } else if (elementType instanceof VectorType) {
+                    elementType = ((VectorType) elementType).getElementType();
+                } else if (elementType instanceof StructureType) {
+                    StructureType structure = (StructureType) elementType;
+                    if (!(indexType instanceof PrimitiveType)) {
+                        throw new LLVMParserException("Cannot infer structure element from " + indexType);
+                    }
+                    Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
+                    assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
+                    elementType = structure.getElementType(indexNumber.intValue());
+                } else {
+                    throw new LLVMParserException("Cannot index type: " + elementType);
                 }
-                Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
-                assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
-                elementType = structure.getElementType(indexNumber.intValue());
-            } else {
-                throw new LLVMParserException("Cannot index type: " + elementType);
             }
 
             if (indexType instanceof VectorType) {

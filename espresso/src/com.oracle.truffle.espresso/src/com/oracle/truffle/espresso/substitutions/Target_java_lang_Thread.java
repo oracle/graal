@@ -23,9 +23,12 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
+
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -35,6 +38,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -129,7 +133,7 @@ public final class Target_java_lang_Thread {
                 context.getLogger().fine(() -> {
                     String guestName = threadAccess.getThreadName(self);
                     long guestId = threadAccess.getThreadId(self);
-                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
                 });
                 hostThread.start();
             } else {
@@ -191,7 +195,7 @@ public final class Target_java_lang_Thread {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/Thread$State;")
-        StaticObject execute(@JavaType(Thread.class) StaticObject self,
+        StaticObject doDefault(@JavaType(Thread.class) StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));
@@ -267,7 +271,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void resume0(@JavaType(Object.class) StaticObject self,
+    public static void resume0(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
         context.getThreadAccess().resume(self);
     }
@@ -275,23 +279,35 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void suspend0(@JavaType(Object.class) StaticObject toSuspend,
+    public static void suspend0(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
-        context.getThreadAccess().suspend(toSuspend);
+        context.getThreadAccess().suspend(self);
     }
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
+    public static void stop0(@JavaType(Thread.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
                     @Inject EspressoContext context) {
         context.getThreadAccess().stop(self, throwable);
     }
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void setNativeName(@JavaType(Object.class) StaticObject self, @JavaType(String.class) StaticObject name,
+    public static void setNativeName(@JavaType(Thread.class) StaticObject self, @JavaType(String.class) StaticObject name,
                     @Inject Meta meta) {
         Thread hostThread = meta.getThreadAccess().getHost(self);
         hostThread.setName(meta.toHostString(name));
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings({"unused"})
+    @Substitution(versionFilter = VersionFilter.Java19OrLater.class)
+    public static @JavaType(Object.class) StaticObject getStackTrace0(@JavaType(Thread.class) StaticObject self) {
+        throw EspressoError.unimplemented("async_get_stacktrace");
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
+    public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
+        CompilerDirectives.blackhole(obj);
     }
 }

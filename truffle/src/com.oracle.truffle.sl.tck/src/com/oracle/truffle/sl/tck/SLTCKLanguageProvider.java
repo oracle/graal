@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.tck;
 
+import static org.graalvm.polyglot.tck.TypeDescriptor.NUMBER;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -47,6 +49,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -70,7 +73,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                     "function %s(p1) {r = 0;\n%s\nreturn r;\n}",
     };
 
-    private static final TypeDescriptor NUMBER_RETURN = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.intersection());
+    private static final TypeDescriptor NUMBER_RETURN = TypeDescriptor.union(NUMBER, TypeDescriptor.intersection());
 
     @Override
     public String getId() {
@@ -87,8 +90,8 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         final Collection<Snippet> res = new ArrayList<>();
 
         res.add(createValueConstructor(context, "1 == 2", "boolean", "createBoolean", TypeDescriptor.BOOLEAN));
-        res.add(createValueConstructor(context, "1", "number", "createNumber", TypeDescriptor.NUMBER));
-        res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.intersection()));
+        res.add(createValueConstructor(context, "1", "number", "createNumber", NUMBER));
+        res.add(createValueConstructor(context, "9223372036854775809", "bigNumber", "createBigNumber", NUMBER));
         res.add(createValueConstructor(context, "\"string\"", "string", "createString", TypeDescriptor.STRING));
         Snippet.Builder opb = Snippet.newBuilder(
                         "object",
@@ -115,7 +118,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.EXECUTABLE);
 
         res.add(createValueConstructor(context, "wrapPrimitive(1 == 2)", "wrapped-boolean", "createWrappedBoolean", TypeDescriptor.BOOLEAN));
-        res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", TypeDescriptor.NUMBER));
+        res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", NUMBER));
         res.add(createValueConstructor(context, "wrapPrimitive(\"string\")", "wrapped-string", "createWrappedString", TypeDescriptor.STRING));
 
         res.add(createValueConstructor(context, "typeOf(1 == 2)", "boolean-metaobject",
@@ -140,15 +143,15 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     public Collection<? extends Snippet> createExpressions(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
         final Value fnc = eval(context, String.format(PATTERN_BIN_OP_FNC, "add", "+"), "add");
-        Snippet.Builder opb = Snippet.newBuilder("+", fnc, NUMBER_RETURN).parameterTypes(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        Snippet.Builder opb = Snippet.newBuilder("+", fnc, NUMBER_RETURN).parameterTypes(NUMBER, NUMBER);
         res.add(opb.build());
         opb = Snippet.newBuilder("+", fnc, TypeDescriptor.STRING).parameterTypes(TypeDescriptor.STRING, TypeDescriptor.ANY);
         res.add(opb.build());
         opb = Snippet.newBuilder("+", fnc, TypeDescriptor.STRING).parameterTypes(TypeDescriptor.ANY, TypeDescriptor.STRING);
         res.add(opb.build());
-        res.add(createBinaryOperator(context, "-", "sub", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, "*", "mul", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, "/", "div", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).resultVerifier((snippetRun) -> {
+        res.add(createBinaryOperator(context, "-", "sub", NUMBER_RETURN, NUMBER, NUMBER).build());
+        res.add(createBinaryOperator(context, "*", "mul", NUMBER_RETURN, NUMBER, NUMBER).build());
+        res.add(createBinaryOperator(context, "/", "div", NUMBER_RETURN, NUMBER, NUMBER).resultVerifier((snippetRun) -> {
             final Value dividend = snippetRun.getParameters().get(0);
             final Value divider = snippetRun.getParameters().get(1);
             final PolyglotException exception = snippetRun.getException();
@@ -157,15 +160,15 @@ public class SLTCKLanguageProvider implements LanguageProvider {
             } else if (exception != null) {
                 throw exception;
             } else {
-                Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
+                Assert.assertTrue(NUMBER.isAssignable(TypeDescriptor.forValue(snippetRun.getResult())));
             }
         }).build());
         res.add(createBinaryOperator(context, "==", "eq", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY, TypeDescriptor.ANY).build());
         res.add(createBinaryOperator(context, "!=", "neq", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY, TypeDescriptor.ANY).build());
-        res.add(createBinaryOperator(context, "<=", "le", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, ">=", "ge", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, "<", "l", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, ">", "g", TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "<=", "le", TypeDescriptor.BOOLEAN, NUMBER, NUMBER).build());
+        res.add(createBinaryOperator(context, ">=", "ge", TypeDescriptor.BOOLEAN, NUMBER, NUMBER).build());
+        res.add(createBinaryOperator(context, "<", "l", TypeDescriptor.BOOLEAN, NUMBER, NUMBER).build());
+        res.add(createBinaryOperator(context, ">", "g", TypeDescriptor.BOOLEAN, NUMBER, NUMBER).build());
         res.add(createBinaryOperator(context, "||", "or", TypeDescriptor.BOOLEAN, TypeDescriptor.BOOLEAN, TypeDescriptor.ANY).resultVerifier((snippetRun) -> {
             final Value firstParam = snippetRun.getParameters().get(0);
             final Value secondParam = snippetRun.getParameters().get(1);
@@ -191,8 +194,8 @@ public class SLTCKLanguageProvider implements LanguageProvider {
             }
         }).build());
         res.add(createPostfixOperator(context, "()", "callNoArg", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY)).build());
-        res.add(createPostfixOperator(context, "(1)", "callOneArg", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER)).build());
-        res.add(createPostfixOperator(context, "(1, \"\")", "callTwoArgs", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
+        res.add(createPostfixOperator(context, "(1)", "callOneArg", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, NUMBER)).build());
+        res.add(createPostfixOperator(context, "(1, \"\")", "callTwoArgs", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, NUMBER, TypeDescriptor.STRING)).build());
 
         return Collections.unmodifiableCollection(res);
     }
@@ -200,12 +203,12 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Snippet> createStatements(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
-        res.add(createStatement(context, "if", "iffnc", "if ({1}) '{'\n{0}=1;\n'}' else '{'\n{0}=0;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
-        res.add(createStatement(context, "while", "whilefnc", "while ({1}) '{'break;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
+        res.add(createStatement(context, "if", "iffnc", "if ({1}) '{'\n{0}=1;\n'}' else '{'\n{0}=0;\n'}'", NUMBER, TypeDescriptor.BOOLEAN));
+        res.add(createStatement(context, "while", "whilefnc", "while ({1}) '{'break;\n'}'", NUMBER, TypeDescriptor.BOOLEAN));
         res.add(createStatement(context, "assign", "assignfnc", "{1} = {0};", TypeDescriptor.ANY, TypeDescriptor.ANY));
 
         // relevant builtins
-        res.add(createBuiltin(context, "getSize", TypeDescriptor.NUMBER, TypeDescriptor.ARRAY));
+        res.add(createBuiltin(context, "getSize", NUMBER, TypeDescriptor.ARRAY));
         res.add(createBuiltin(context, "hasSize", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
         res.add(createBuiltin(context, "isExecutable", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
         res.add(createBuiltin(context, "isNull", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));

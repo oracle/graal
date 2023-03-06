@@ -54,7 +54,9 @@ public class HostedLibCFeature implements InternalFeature {
             @Override
             public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 if (!values.containsKey(this)) {
-                    return Platform.includedIn(Platform.ANDROID.class) ? "bionic" : "glibc";
+                    return Platform.includedIn(Platform.ANDROID.class)
+                                    ? "bionic"
+                                    : System.getProperty("substratevm.HostLibC", "glibc");
                 }
                 return (String) values.get(this);
             }

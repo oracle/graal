@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,8 +73,7 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a graph to the context of this {@code GraalGraphError}. The first graph added via this
-     * method will be returned by {@link #graph()}.
+     * Adds a graph to the context of this {@code GraalGraphError}.
      *
      * @param newGraph the graph which is in a incorrect state, if the error was not caused by a
      *            specific node
@@ -90,8 +89,7 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a node to the context of this {@code GraalGraphError}. The first node added via this
-     * method will be returned by {@link #node()}.
+     * Adds a node to the context of this {@code GraalGraphError}.
      *
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
@@ -114,23 +112,6 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Transform a GraalError into a GraalGraphInternalError and add a graph to the context.
-     *
-     * @param e the previous error
-     * @param newGraph the graph which is in a incorrect state, if the verification error was not
-     *            caused by a specific node
-     */
-    public static GraalGraphError transformAndAddContext(GraalError e, Graph newGraph) {
-        GraalGraphError graphError;
-        if (e instanceof GraalGraphError) {
-            graphError = (GraalGraphError) e;
-        } else {
-            graphError = new GraalGraphError(e);
-        }
-        return graphError.addContext(newGraph);
-    }
-
-    /**
      * Transform a GraalError into a GraalGraphInternalError and add a node to the context.
      *
      * @param e the previous error
@@ -145,13 +126,5 @@ public class GraalGraphError extends GraalError {
             graphError = new GraalGraphError(e);
         }
         return graphError.addContext(newNode);
-    }
-
-    public Node node() {
-        return node;
-    }
-
-    public Graph graph() {
-        return graph;
     }
 }

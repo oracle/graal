@@ -125,19 +125,8 @@ public class IntrinsicContext {
         return originalMethod.equals(targetMethod) || intrinsicMethod.equals(targetMethod);
     }
 
-    private NodeSourcePosition nodeSourcePosition;
-
     public boolean isPostParseInlined() {
         return compilationContext.equals(INLINE_AFTER_PARSING);
-    }
-
-    public NodeSourcePosition getNodeSourcePosition() {
-        return nodeSourcePosition;
-    }
-
-    public void setNodeSourcePosition(NodeSourcePosition position) {
-        assert nodeSourcePosition == null : "can only be set once";
-        this.nodeSourcePosition = position;
     }
 
     /**

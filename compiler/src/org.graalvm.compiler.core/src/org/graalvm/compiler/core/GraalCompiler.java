@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
@@ -58,6 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class GraalCompiler {
 
     private static final TimerKey CompilerTimer = DebugContext.timer("GraalCompiler").doc("Time spent in compilation (excludes code installation).");
+    private static final MemUseTrackerKey CompilerMemory = DebugContext.memUseTracker("GraalCompiler");
     private static final TimerKey FrontEnd = DebugContext.timer("FrontEnd").doc("Time spent processing HIR.");
 
     /**
@@ -143,7 +145,9 @@ public class GraalCompiler {
         DebugContext debug = r.graph.getDebug();
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
-            try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start(debug)) {
+            try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache());
+                            DebugCloseable a = CompilerTimer.start(debug);
+                            DebugCloseable b = CompilerMemory.start(debug)) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 r.backend.emitBackEnd(r.graph, null, r.installedCodeOwner, r.compilationResult, r.factory, null, r.lirSuites);
                 if (r.verifySourcePositions) {
@@ -285,16 +289,5 @@ public class GraalCompiler {
         } finally {
             graph.checkCancellation();
         }
-    }
-
-    protected static <T extends CompilationResult> String getCompilationUnitName(StructuredGraph graph, T compilationResult) {
-        if (compilationResult != null && compilationResult.getName() != null) {
-            return compilationResult.getName();
-        }
-        ResolvedJavaMethod method = graph.method();
-        if (method == null) {
-            return "<unknown>";
-        }
-        return method.format("%H.%n(%p)");
     }
 }

@@ -101,15 +101,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.identity = identity;
     }
 
-    public InvokeNode(InvokeWithExceptionNode invoke) {
-        super(TYPE, invoke.stamp);
-        this.callTarget = invoke.callTarget;
-        this.bci = invoke.bci;
-        this.polymorphic = invoke.polymorphic;
-        this.inlineControl = invoke.inlineControl;
-        this.identity = invoke.getKilledLocationIdentity();
-    }
-
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);

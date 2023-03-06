@@ -102,8 +102,7 @@ public abstract class CPUFeatureAccessFeatureBase {
 
         ArrayList<String> unknownFeatures = new ArrayList<>();
         for (var feature : allCPUFeatures) {
-            GraalError.guarantee(fieldToOffset.containsKey(feature.name()), "No field f%s in %s", feature.name(), cpuFeatureStructClass.getName());
-            int fieldOffset = fieldToOffset.get(feature.name());
+            int fieldOffset = fieldToOffset.get(feature.name(), -1);
             if (fieldOffset < 0) {
                 unknownFeatures.add(feature.name());
             } else {

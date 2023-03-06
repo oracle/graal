@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -857,6 +857,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isBigIntegerAccessibleAsNumber(HostAccess access) {
+            return access.allowBigIntegerNumberAccess;
+        }
+
+        @Override
         public boolean allowsPublicAccess(HostAccess access) {
             return access.allowPublic;
         }
@@ -1056,12 +1061,22 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ProcessHandler newDefaultProcessHandler() {
             throw noPolyglotImplementationFound();
         }
 
         @Override
         public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+            return false;
+        }
+
+        @Override
+        public boolean isInternalFileSystem(FileSystem fileSystem) {
             return false;
         }
 

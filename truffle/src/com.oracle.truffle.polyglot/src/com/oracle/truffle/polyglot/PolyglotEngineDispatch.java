@@ -114,7 +114,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public void close(Object oreceiver, Object apiObject, boolean cancelIfExecuting) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
-            receiver.ensureClosed(cancelIfExecuting, false, false);
+            receiver.ensureClosed(cancelIfExecuting, false);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
         }

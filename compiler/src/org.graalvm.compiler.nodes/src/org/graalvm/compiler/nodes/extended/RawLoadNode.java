@@ -113,10 +113,6 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         this(c, object, offset, accessKind, locationIdentity, forceLocation, MemoryOrderMode.PLAIN);
     }
 
-    protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
-        this(c, object, offset, accessKind, locationIdentity, false, memoryOrder);
-    }
-
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation,
                     MemoryOrderMode memoryOrder) {
         super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);

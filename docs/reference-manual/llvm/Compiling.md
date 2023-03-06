@@ -32,7 +32,7 @@ for building native projects such as a linker (`ld`), or an archiver (`ar`) for 
 
 The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](../graalvm-updater.md) tool:
 ```shell
-$GRAALVM_HOME/bin/gu install llvm-toolchain
+$JAVA_HOME/bin/gu install llvm-toolchain
 ```
 
 The above command will install the LLVM toolchain from the GitHub catalog for GraalVM Community users.

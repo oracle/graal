@@ -63,9 +63,9 @@ import jdk.vm.ci.meta.Value;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6559,
-          lineEnd   = 6777,
-          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
+          lineStart = 6603,
+          lineEnd   = 6821,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "128d88224b8fc7fa9283072966a28c14fdc1eda5")
 // @formatter:on
 @Opcode("VECTORIZED_MISMATCH")
@@ -175,7 +175,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pxor(vectorSize, vector3, vector1, vector2);
-            asm.ptest(vectorSize, vector3);
+            asm.ptest(vectorSize, vector3, vector3);
             asm.jccb(ConditionFlag.NotZero, diffFound);
             // regions are equal, continue the loop
             asm.addq(result, bytesPerVector);
@@ -188,7 +188,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pxor(vectorSize, vector3, vector1, vector2);
-            asm.ptest(vectorSize, vector3);
+            asm.ptest(vectorSize, vector3, vector3);
             asm.jcc(ConditionFlag.Zero, returnEqualLabel);
 
             asm.align(preferredBranchTargetAlignment(crb));

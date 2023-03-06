@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,11 +53,8 @@ import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.TestChildNod
 import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.UncachedTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeChildUncachedTestFactory.UncachedTestWithNodeGen;
 import com.oracle.truffle.api.nodes.Node;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class NodeChildUncachedTest {
 
     abstract static class TestBaseNode extends Node {

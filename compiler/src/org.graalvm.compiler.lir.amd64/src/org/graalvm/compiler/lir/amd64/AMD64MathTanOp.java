@@ -145,49 +145,49 @@ public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    private ArrayDataPointerConstant onehalf = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant onehalf = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x3fe00000, 0x00000000, 0x3fe00000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant mul16 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant mul16 = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x40300000, 0x00000000, 0x3ff00000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant signMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant signMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x80000000, 0x00000000, 0x80000000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant pi32Inv = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant pi32Inv = pointerConstant(16, new int[]{
             // @formatter:off
             0x6dc9c883, 0x3fe45f30, 0x6dc9c883, 0x40245f30
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant p1 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant p1 = pointerConstant(16, new int[]{
             // @formatter:off
             0x54444000, 0x3fb921fb, 0x54440000, 0x3fb921fb
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant p2 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant p2 = pointerConstant(16, new int[]{
             // @formatter:off
             0x67674000, 0xbd32e7b9, 0x4c4c0000, 0x3d468c23
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant p3 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant p3 = pointerConstant(16, new int[]{
             // @formatter:off
             0x3707344a, 0x3aa8a2e0, 0x03707345, 0x3ae98a2e
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant ctable = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant ctable = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x882c10fa,
             0x3f9664f4, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -474,43 +474,43 @@ public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant mask35 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant mask35 = pointerConstant(16, new int[]{
             // @formatter:off
             0xfffc0000, 0xffffffff, 0x00000000, 0x00000000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant q11 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant q11 = pointerConstant(16, new int[]{
             // @formatter:off
             0xb8fe4d77, 0x3f82609a
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant q9 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant q9 = pointerConstant(16, new int[]{
             // @formatter:off
             0xbf847a43, 0x3f9664a0
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant q7 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant q7 = pointerConstant(16, new int[]{
             // @formatter:off
             0x52c4c8ab, 0x3faba1ba
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant q5 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant q5 = pointerConstant(16, new int[]{
             // @formatter:off
             0x11092746, 0x3fc11111
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant q3 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant q3 = pointerConstant(16, new int[]{
             // @formatter:off
             0x55555612, 0x3fd55555
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant piInvTable = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant piInvTable = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x00000000, 0xa2f9836e, 0x4e441529, 0xfc2757d1,
             0xf534ddc0, 0xdb629599, 0x3c439041, 0xfe5163ab, 0xdebbc561,
@@ -524,40 +524,40 @@ public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant pi4 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant pi4 = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x3fe921fb,
     });
-    private ArrayDataPointerConstant pi48 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant pi48 = pointerConstant(8, new int[]{
             0x4611a626, 0x3e85110b
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant qq2 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant qq2 = pointerConstant(8, new int[]{
             // @formatter:off
             0x676733af, 0x3d32e7b9
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant one = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant one = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x3ff00000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant twoPow55 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant twoPow55 = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x43600000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant twoPowM55 = pointerConstant(4, new int[]{
+    private static ArrayDataPointerConstant twoPowM55 = pointerConstant(4, new int[]{
             // @formatter:off
             0x00000000, 0x3c800000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant negZero = pointerConstant(4, new int[]{
+    private static ArrayDataPointerConstant negZero = pointerConstant(4, new int[]{
             // @formatter:off
             0x00000000, 0x80000000
             // @formatter:on

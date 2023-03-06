@@ -32,7 +32,7 @@ import java.util.List;
 import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigins;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
 public class ConditionalConfigurationPartialRunWriter implements TracingResultWriter {

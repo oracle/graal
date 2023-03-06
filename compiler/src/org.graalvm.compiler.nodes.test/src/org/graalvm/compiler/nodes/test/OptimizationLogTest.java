@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,34 +117,33 @@ public class OptimizationLogTest extends GraalCompilerTest {
     @Test
     public void buildOptimizationTreeWhenEnabled() {
         StructuredGraph graph = parseGraph("addSnippet", true);
-        OptimizationLog optimizationLog = graph.getOptimizationLog();
+        OptimizationLogImpl optimizationLog = (OptimizationLogImpl) graph.getOptimizationLog();
         Assert.assertTrue(optimizationLog.isOptimizationLogEnabled());
 
-        graph.getDebug().setCompilationListener(optimizationLog);
         new ReportNodePhase(() -> 43).apply(graph, getProviders());
 
-        OptimizationLogImpl.OptimizationPhaseScope rootPhase = graph.getOptimizationLog().getCurrentPhase();
-        Assert.assertEquals("RootPhase", rootPhase.getPhaseName());
+        OptimizationLogImpl.OptimizationPhaseNode rootPhase = optimizationLog.getCurrentPhase();
+        Assert.assertEquals(OptimizationLogImpl.ROOT_PHASE_NAME, rootPhase.getPhaseName());
 
-        OptimizationLogImpl.OptimizationPhaseScope reportNodePhaseScope = (OptimizationLogImpl.OptimizationPhaseScope) rootPhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationPhaseNode reportNodePhaseScope = (OptimizationLogImpl.OptimizationPhaseNode) rootPhase.getChildren().get(rootPhase.getChildren().size() - 1);
         Assert.assertEquals(new ClassTypeSequence(ReportNodePhase.class).toString(), reportNodePhaseScope.getPhaseName().toString());
         Assert.assertEquals(3, reportNodePhaseScope.getChildren().count());
 
-        OptimizationLogImpl.OptimizationEntryImpl startNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportNodePhaseScope.getChildren().get(0);
+        OptimizationLogImpl.OptimizationNode startNodeLog = (OptimizationLogImpl.OptimizationNode) reportNodePhaseScope.getChildren().get(0);
         Assert.assertEquals("ReportNode", startNodeLog.getOptimizationName());
         Assert.assertEquals("StartNodeReported", startNodeLog.getEventName());
         Assert.assertEquals(EconomicMap.of("foo", 42, "bar", 43).toString(), startNodeLog.getProperties().toString());
 
-        OptimizationLogImpl.OptimizationPhaseScope reportAddNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(1);
+        OptimizationLogImpl.OptimizationPhaseNode reportAddNodePhase = (OptimizationLogImpl.OptimizationPhaseNode) reportNodePhaseScope.getChildren().get(1);
         Assert.assertEquals(new ClassTypeSequence(ReportAddNodePhase.class).toString(), reportAddNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportAddNodePhase.getChildren().count());
-        OptimizationLogImpl.OptimizationEntryImpl addNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportAddNodePhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationNode addNodeLog = (OptimizationLogImpl.OptimizationNode) reportAddNodePhase.getChildren().get(0);
         Assert.assertEquals("AddNodeReported", addNodeLog.getEventName());
 
-        OptimizationLogImpl.OptimizationPhaseScope reportReturnNodePhase = (OptimizationLogImpl.OptimizationPhaseScope) reportNodePhaseScope.getChildren().get(2);
+        OptimizationLogImpl.OptimizationPhaseNode reportReturnNodePhase = (OptimizationLogImpl.OptimizationPhaseNode) reportNodePhaseScope.getChildren().get(2);
         Assert.assertEquals(new ClassTypeSequence(ReportReturnNodePhase.class).toString(), reportReturnNodePhase.getPhaseName().toString());
         Assert.assertEquals(1, reportReturnNodePhase.getChildren().count());
-        OptimizationLogImpl.OptimizationEntryImpl returnNodeLog = (OptimizationLogImpl.OptimizationEntryImpl) reportReturnNodePhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationNode returnNodeLog = (OptimizationLogImpl.OptimizationNode) reportReturnNodePhase.getChildren().get(0);
         Assert.assertEquals("ReturnNodeReported", returnNodeLog.getEventName());
     }
 
@@ -166,9 +165,6 @@ public class OptimizationLogTest extends GraalCompilerTest {
             return null;
         });
         reportNodePhase.apply(graph, providers);
-
-        Assert.assertNull(optimizationLog.getOptimizationTree());
-        Assert.assertNull(optimizationLog.getCurrentPhase());
     }
 
     /**

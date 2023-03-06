@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.library;
 
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -62,8 +63,6 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class LibraryParser extends AbstractParser<LibraryData> {
-
-    public final List<DeclaredType> annotations = Arrays.asList(types.GenerateLibrary, types.GenerateLibrary_DefaultExport, types.GenerateLibrary_Abstract);
 
     @Override
     public boolean isDelegateToRootDeclaredType() {
@@ -97,6 +96,18 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         AnnotationMirror generateAOT = ElementUtils.findAnnotationMirror(element, types.GenerateAOT);
         if (generateAOT != null) {
             model.setGenerateAOT(true);
+        }
+
+        AnnotationMirror invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateCached);
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateUncached);
+        }
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateInline);
+        }
+        if (invalidAnnotation != null) {
+            model.addError(invalidAnnotation, null, "The annotation @%s cannot be used on a library.", ElementUtils.getSimpleName(invalidAnnotation.getAnnotationType()));
+            return model;
         }
 
         model.setDefaultExportLookupEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "defaultExportLookupEnabled"));
@@ -202,17 +213,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             AnnotationMirror abstractMirror = ElementUtils.findAnnotationMirror(message.getExecutable(), types.GenerateLibrary_Abstract);
             if (abstractMirror != null) {
                 message.setAbstract(true);
-                AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, "ifExported");
-                for (String ifExported : ElementUtils.getAnnotationValueList(String.class, abstractMirror, "ifExported")) {
-                    LibraryMessage ifExportedMessage = messages.get(ifExported);
-                    if (ifExportedMessage == message) {
-                        message.addError(abstractMirror, value, "The ifExported condition links to itself. Remove that condition to resolve this problem.");
-                    } else if (ifExportedMessage == null) {
-                        message.addError(abstractMirror, value, "The ifExported condition links to an unknown message '%s'. Only valid library messages may be linked.", ifExported);
-                    } else {
-                        message.getAbstractIfExported().add(ifExportedMessage);
-                    }
-                }
+                message.getAbstractIfExported().addAll(parseAbstractIfExported(message, abstractMirror, "ifExported", messages));
+                message.getAbstractIfExportedAsWarning().addAll(parseAbstractIfExported(message, abstractMirror, "ifExportedAsWarning", messages));
             }
         }
 
@@ -258,6 +260,23 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
 
         return model;
+    }
+
+    private static Set<LibraryMessage> parseAbstractIfExported(LibraryMessage message, AnnotationMirror abstractMirror, String ifExportedAttribute, Map<String, LibraryMessage> messages) {
+        Set<LibraryMessage> abstractIfExportedMessages = new LinkedHashSet<>();
+        AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, ifExportedAttribute);
+        List<String> valueList = ElementUtils.getAnnotationValueList(String.class, abstractMirror, ifExportedAttribute);
+        for (String ifExported : valueList) {
+            LibraryMessage ifExportedMessage = messages.get(ifExported);
+            if (ifExportedMessage == message) {
+                message.addError(abstractMirror, value, "The %s condition links to itself. Remove that condition to resolve this problem.", ifExportedAttribute);
+            } else if (ifExportedMessage == null) {
+                message.addError(abstractMirror, value, "The %s condition links to an unknown message '%s'. Only valid library messages may be linked.", ifExportedAttribute, ifExported);
+            } else {
+                abstractIfExportedMessages.add(ifExportedMessage);
+            }
+        }
+        return abstractIfExportedMessages;
     }
 
     private static void parseAssertions(Element element, AnnotationMirror mirror, TypeElement type, LibraryData model) {

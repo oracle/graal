@@ -258,7 +258,7 @@ public class ErrorTypeTest {
                                         TestUtil.formatErrorMessage(
                                                         "Unexpected Exception: " + e.getMessage() + ", expected: " + polyglotException.getMessage(),
                                                         testRun,
-                                                        context),
+                                                        context, null, polyglotException),
                                         e);
                     }
                 }
@@ -267,7 +267,7 @@ public class ErrorTypeTest {
                 throw new AssertionError(TestUtil.formatErrorMessage(
                                 "Expected PolyglotException, but executed successfully.",
                                 testRun,
-                                context));
+                                context, null, polyglotException));
             }
         } finally {
             TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, passed));

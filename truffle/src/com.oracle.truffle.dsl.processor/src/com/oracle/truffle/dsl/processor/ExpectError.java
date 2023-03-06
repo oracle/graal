@@ -40,42 +40,36 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
-public class ExpectError {
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
+public final class ExpectError {
 
-    public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
-        for (String errorType : EXPECT_ERROR_TYPES) {
-            assertNoErrorExpectedImpl(processingEnv, element, ElementUtils.getTypeElement(errorType));
+    public static void assertNoErrorExpected(Element element) {
+        for (DeclaredType errorType : ProcessorContext.types().ExpectErrorTypes) {
+            assertNoErrorExpectedImpl(element, errorType);
         }
     }
 
-    private static void assertNoErrorExpectedImpl(ProcessingEnvironment processingEnv, Element element, TypeElement eee) {
+    private static void assertNoErrorExpectedImpl(Element element, DeclaredType eee) {
         if (eee != null) {
-            for (AnnotationMirror am : element.getAnnotationMirrors()) {
-                if (am.getAnnotationType().asElement().equals(eee)) {
-                    processingEnv.getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", element);
-                }
+            AnnotationMirror am = ElementUtils.findAnnotationMirror(element, eee);
+            if (am != null) {
+                ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, "Expected an error, but none found!", element);
             }
         }
     }
 
-    public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String actualText) {
-        List<String> expectedErrors = getExpectedErrors(processingEnv, element);
+    public static boolean isExpectedError(Element element, String actualText) {
+        List<String> expectedErrors = getExpectedErrors(element);
         for (String expectedText : expectedErrors) {
             String newExpectedText = expectedText.replaceAll("%n", System.lineSeparator());
             if (newExpectedText.endsWith("%") && actualText.startsWith(newExpectedText.substring(0, newExpectedText.length() - 1))) {
@@ -87,35 +81,22 @@ public class ExpectError {
         return false;
     }
 
-    public static List<String> getExpectedErrors(ProcessingEnvironment processingEnv, Element element) {
-        if (element == null) {
+    public static List<String> getExpectedErrors(Element element) {
+        if (element == null || ProcessorContext.types().ExpectErrorTypes.isEmpty()) {
             return Collections.emptyList();
         }
         List<String> expectedErrors = new ArrayList<>();
-        for (String errorType : EXPECT_ERROR_TYPES) {
-            collectExpectedErrors(expectedErrors, element, processingEnv.getElementUtils().getTypeElement(errorType));
+        for (DeclaredType errorType : ProcessorContext.types().ExpectErrorTypes) {
+            collectExpectedErrors(expectedErrors, element, errorType);
         }
         return expectedErrors;
     }
 
-    private static void collectExpectedErrors(List<String> expectedErrors, Element element, TypeElement eee) {
-        if (eee != null) {
-            for (AnnotationMirror am : element.getAnnotationMirrors()) {
-                if (am.getAnnotationType().asElement().equals(eee)) {
-                    Map<? extends ExecutableElement, ? extends AnnotationValue> vals = am.getElementValues();
-                    if (vals.size() == 1) {
-                        AnnotationValue av = vals.values().iterator().next();
-                        if (av.getValue() instanceof List) {
-                            List<?> arr = (List<?>) av.getValue();
-                            for (Object o : arr) {
-                                if (o instanceof AnnotationValue) {
-                                    AnnotationValue ov = (AnnotationValue) o;
-                                    expectedErrors.add((String) ov.getValue());
-                                }
-                            }
-                        }
-                    }
-                }
+    private static void collectExpectedErrors(List<String> expectedErrors, Element element, DeclaredType type) {
+        if (type != null) {
+            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element, type);
+            if (mirror != null) {
+                expectedErrors.addAll(ElementUtils.getAnnotationValueList(String.class, mirror, "value"));
             }
         }
     }

@@ -74,7 +74,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
 
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
 
         ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);

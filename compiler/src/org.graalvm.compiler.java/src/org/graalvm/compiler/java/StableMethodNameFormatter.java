@@ -45,6 +45,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Formats method names so that different compilations of a method can be correlated. If the method
@@ -57,11 +58,15 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      */
     private static final Pattern LAMBDA_METHOD_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/0x[0-9a-f]+");
 
+    private static final Pattern MH_METHOD_PATTERN = Pattern.compile("LambdaForm\\$[A-Z]*MH.0x[0-9a-f]+");
+
     /**
      * The part of a lambda method classname that is kept in the stable method name, so that it is
      * still clear that it is a lambda method.
      */
     private static final String LAMBDA_PREFIX = "$$Lambda$";
+
+    private static final String MH_PREFIX = "LambdaForm$";
 
     /**
      * The format of the methods passed to {@link ResolvedJavaMethod#format(String)}.
@@ -74,20 +79,27 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      */
     private static final String INVOKED_METHOD_FORMAT = "%H.%n(%P)%R";
 
-    private final StructuredGraph graph;
-
     private final Providers providers;
 
     private GraphBuilderPhase graphBuilderPhase;
+
+    private final DebugContext debug;
+
+    private final boolean considerMH;
 
     /**
      * Cached stable method names.
      */
     private final EconomicMap<ResolvedJavaMethod, String> methodName = EconomicMap.create(Equivalence.IDENTITY);
 
-    public StableMethodNameFormatter(StructuredGraph graph, Providers providers) {
-        this.graph = graph;
+    public StableMethodNameFormatter(Providers providers, DebugContext debug) {
+        this(providers, debug, false);
+    }
+
+    public StableMethodNameFormatter(Providers providers, DebugContext debug, boolean considerMH) {
         this.providers = providers;
+        this.debug = debug;
+        this.considerMH = considerMH;
     }
 
     /**
@@ -122,7 +134,20 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         if (LambdaUtils.isLambdaType(method.getDeclaringClass())) {
             return findStableLambdaMethodName(method);
         }
+        if (considerMH && isMethodHandle(method.getDeclaringClass())) {
+            return findStableMHName(method);
+        }
         return method.format(METHOD_FORMAT);
+    }
+
+    public static final String LAMBDA_MH_CLASS_NAME_SUBSTRING = "LambdaForm$MH";
+
+    public static boolean isMethodHandle(ResolvedJavaType declaringClass) {
+        String typeName = declaringClass.getName();
+        if (typeName.contains(MH_PREFIX)) {
+            return MH_METHOD_PATTERN.matcher(typeName).find();
+        }
+        return false;
     }
 
     private GraphBuilderPhase getGraphBuilderPhase() {
@@ -135,6 +160,23 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         return graphBuilderPhase;
     }
 
+    @SuppressWarnings("try")
+    private String findStableMHName(ResolvedJavaMethod method) {
+        StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+        try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
+            HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
+            getGraphBuilderPhase().apply(methodGraph, context);
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
+        List<ResolvedJavaMethod> invokedMethods = StreamSupport.stream(methodGraph.getInvokes().spliterator(), false).map(Invoke::getTargetMethod).collect(Collectors.toList());
+        String lambdaName = method.format(METHOD_FORMAT);
+        Matcher matcher = MH_METHOD_PATTERN.matcher(lambdaName);
+        StringBuilder sb = new StringBuilder();
+        invokedMethods.forEach((targetMethod) -> sb.append(targetMethod.format(INVOKED_METHOD_FORMAT)));
+        return matcher.replaceFirst(Matcher.quoteReplacement(MH_PREFIX + digest(sb.toString())));
+    }
+
     /**
      * Find a stable method name for a lambda method by replacing the numbers just after the
      * substring {@code $$Lambda$} with a hash of invokes similarly to {@link LambdaUtils}.
@@ -144,12 +186,12 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      */
     @SuppressWarnings("try")
     private String findStableLambdaMethodName(ResolvedJavaMethod method) {
-        StructuredGraph methodGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug()).method(method).build();
-        try (DebugContext.Scope ignored = graph.getDebug().scope("Lambda method analysis", methodGraph, method, this)) {
+        StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+        try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
             getGraphBuilderPhase().apply(methodGraph, context);
         } catch (Throwable e) {
-            throw graph.getDebug().handle(e);
+            throw debug.handle(e);
         }
         List<ResolvedJavaMethod> invokedMethods = StreamSupport.stream(methodGraph.getInvokes().spliterator(), false).map(Invoke::getTargetMethod).collect(Collectors.toList());
         String lambdaName = method.format(METHOD_FORMAT);

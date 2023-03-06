@@ -11,7 +11,7 @@ tests.
 Please refer to https://www.graalvm.org/tools/ to learn how to use each tool.
 The tools in this suite have options that can be specified to command-line
 language launchers, which can be listed via `--help:tools` (e.g.,
-`$GRAALVM_HOME/bin/polyglot --help:tools`). Some tools provide additional
+`$JAVA_HOME/bin/polyglot --help:tools`). Some tools provide additional
 [APIs](http://www.graalvm.org/tools/javadoc/).
 
 ## Setup and Build

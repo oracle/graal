@@ -59,14 +59,14 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 2792,
-          lineEnd   = 2853,
-          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
+          lineStart = 2949,
+          lineEnd   = 3010,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "8ada7fcdb170eda06a7852fc90450193b2a0f7a0")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6100,
-          lineEnd   = 6557,
-          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
+          lineStart = 6144,
+          lineEnd   = 6601,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "3b967007055fd0134e74b90898a6ab12dc531653")
 // @formatter:on
 public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
@@ -95,12 +95,12 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         // Due to lack of allocatable registers, we use fixed registers and mark them as @Use+@Temp.
         // This allows the fixed registers to be reused for hosting temporary values.
-        assert asRegister(xValue).equals(rdi);
-        assert asRegister(xlenValue).equals(rax);
-        assert asRegister(yValue).equals(rsi);
-        assert asRegister(ylenValue).equals(rcx);
-        assert asRegister(zValue).equals(r8);
-        assert asRegister(zlenValue).equals(r11);
+        GraalError.guarantee(asRegister(xValue).equals(rdi), "expect xValue at rdi, but was %s", xValue);
+        GraalError.guarantee(asRegister(xlenValue).equals(rax), "expect xlenValue at rax, but was %s", xlenValue);
+        GraalError.guarantee(asRegister(yValue).equals(rsi), "expect yValue at rsi, but was %s", yValue);
+        GraalError.guarantee(asRegister(ylenValue).equals(rcx), "expect ylenValue at rcx, but was %s", ylenValue);
+        GraalError.guarantee(asRegister(zValue).equals(r8), "expect zValue at r8, but was %s", zValue);
+        GraalError.guarantee(asRegister(zlenValue).equals(r9), "expect zlenValue at r9, but was %s", zlenValue);
 
         this.xValue = xValue;
         this.xlenValue = xlenValue;
@@ -143,7 +143,7 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
         Register tmp1 = asRegister(tmp1Value);
         Register tmp2 = r13;
-        Register tmp3 = r9;
+        Register tmp3 = r11;
         Register tmp4 = r10;
         Register tmp5 = rbx;
 
@@ -351,7 +351,7 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
                     Register tmp,
                     Register tmp3,
                     Register tmp4) {
-        assert masm.supports(BMI2) && masm.supports(AVX) : "should be used only when BMI2 is available";
+        GraalError.guarantee(masm.supports(BMI2) && masm.supports(AVX), "should be used only when BMI2 is available");
 
         // @formatter:off
         //   jlong carry, x[], y[], z[];

@@ -60,8 +60,6 @@ import java.util.logging.Level;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -72,8 +70,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -83,6 +85,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
@@ -842,46 +845,28 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return context.toGuestValue(node, receiver, false);
     }
 
-    static final class ToHostValueNode {
+    @GenerateInline(true)
+    @GenerateCached(false)
+    abstract static class ToHostValueNode extends Node {
 
-        final APIAccess apiAccess;
-        @CompilationFinal volatile Class<?> cachedClass;
-        @CompilationFinal volatile PolyglotValueDispatch cachedValue;
+        abstract Value execute(Node node, PolyglotLanguageContext languageContext, Object value);
 
-        private ToHostValueNode(AbstractPolyglotImpl polyglot) {
-            this.apiAccess = polyglot.getAPIAccess();
+        @Specialization(guards = "value.getClass() == cachedClass", limit = "3")
+        Value doCached(PolyglotLanguageContext languageContext, Object value,
+                        @Cached("value.getClass()") Class<?> cachedClass,
+                        @Cached("lookupDispatch(languageContext, value)") PolyglotValueDispatch cachedValue) {
+            Object receiver = CompilerDirectives.inInterpreter() ? value : CompilerDirectives.castExact(value, cachedClass);
+            return cachedValue.impl.getAPIAccess().newValue(cachedValue, languageContext, receiver);
         }
 
-        Value execute(PolyglotLanguageContext languageContext, Object value) {
-            Object receiver = value;
-            Class<?> cachedClassLocal = cachedClass;
-            PolyglotValueDispatch cache;
-            if (cachedClassLocal != Generic.class) {
-                if (cachedClassLocal == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = receiver.getClass();
-                    cachedValue = cache = languageContext.lazy.languageInstance.lookupValueCache(languageContext.context, receiver);
-                } else if (value.getClass() == cachedClassLocal) {
-                    receiver = CompilerDirectives.inInterpreter() ? receiver : CompilerDirectives.castExact(receiver, cachedClassLocal);
-                    cache = cachedValue;
-                    if (cache == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        // invalid state retry next time for now do generic
-                    } else {
-                        return apiAccess.newValue(cache, languageContext, receiver);
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = Generic.class; // switch to generic
-                    cachedValue = null;
-                    // fall through to generic
-                }
-            }
+        @Specialization(replaces = "doCached")
+        Value doGeneric(PolyglotLanguageContext languageContext, Object value) {
             return languageContext.asValue(value);
         }
 
-        public static ToHostValueNode create(AbstractPolyglotImpl polyglot) {
-            return new ToHostValueNode(polyglot);
+        @NeverDefault
+        static PolyglotValueDispatch lookupDispatch(PolyglotLanguageContext languageContext, Object value) {
+            return languageContext.lazy.languageInstance.lookupValueCache(languageContext.context, value);
         }
     }
 
@@ -1018,118 +1003,99 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     @GenerateUncached
+    @GenerateInline
     abstract static class ToGuestValueNode extends Node {
 
-        abstract Object execute(PolyglotLanguageContext context, Object receiver);
+        abstract Object execute(Node node, PolyglotLanguageContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
-        Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(this, receiver);
+        static Object doNull(Node node, PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
+            return context.toGuestValue(node, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
-        Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(this, cachedReceiver.cast(receiver));
+        static Object doCached(Node node, PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return context.toGuestValue(node, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
-        Object doUncached(PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(this, receiver);
+        static Object doUncached(Node node, PolyglotLanguageContext context, Object receiver) {
+            return context.toGuestValue(node, receiver);
         }
     }
 
-    static final class ToGuestValuesNode extends Node {
+    @GenerateInline
+    @GenerateCached(false)
+    abstract static class ToGuestValuesNode extends Node {
 
-        @Children private volatile ToGuestValueNode[] toGuestValue;
-        @CompilationFinal private volatile boolean needsCopy = false;
-        @CompilationFinal private volatile boolean generic = false;
+        abstract Object[] execute(Node node, PolyglotLanguageContext context, Object[] args);
 
-        private ToGuestValuesNode() {
-        }
-
-        public Object[] apply(PolyglotLanguageContext context, Object[] args) {
-            ToGuestValueNode[] nodes = this.toGuestValue;
-            if (nodes == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                nodes = new ToGuestValueNode[args.length];
-                for (int i = 0; i < nodes.length; i++) {
-                    nodes[i] = insert(PolyglotLanguageContextFactory.ToGuestValueNodeGen.create());
-                }
-                toGuestValue = nodes;
-            }
-            if (args.length == nodes.length) {
-                // fast path
-                if (nodes.length == 0) {
-                    return args;
-                } else {
-                    Object[] newArgs = fastToGuestValuesUnroll(nodes, context, args);
-                    return newArgs;
-                }
-            } else {
-                if (!generic || nodes.length != 1) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    nodes = Arrays.copyOf(nodes, 1);
-                    if (nodes[0] == null) {
-                        nodes[0] = insert(PolyglotLanguageContextFactory.ToGuestValueNodeGen.create());
-                    }
-                    this.toGuestValue = nodes;
-                    this.generic = true;
-                }
-                if (args.length == 0) {
-                    return args;
-                }
-                return fastToGuestValues(nodes[0], context, args);
-            }
+        @Specialization(guards = "args.length == 0")
+        @SuppressWarnings("unused")
+        static Object[] doZero(PolyglotLanguageContext context, Object[] args) {
+            return args;
         }
 
         /*
          * Specialization for constant number of arguments. Uses a profile for each argument.
          */
         @ExplodeLoop
-        private Object[] fastToGuestValuesUnroll(ToGuestValueNode[] nodes, PolyglotLanguageContext context, Object[] args) {
-            Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
-            for (int i = 0; i < nodes.length; i++) {
+        @Specialization(replaces = {"doZero"}, guards = "args.length == toGuestValues.length", limit = "1")
+        static Object[] doCached(Node node, PolyglotLanguageContext context, Object[] args,
+                        @Cached("createArray(args.length)") ToGuestValueNode[] toGuestValues,
+                        @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
+            boolean needsCopy = needsCopyProfile.wasEntered(node);
+            Object[] newArgs = needsCopy ? new Object[toGuestValues.length] : args;
+            for (int i = 0; i < toGuestValues.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].execute(context, arg);
+                Object newArg = toGuestValues[i].execute(toGuestValues[i], context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    newArgs = new Object[nodes.length];
+                    needsCopyProfile.enter(node);
+                    needsCopy = true;
+                    newArgs = new Object[toGuestValues.length];
                     System.arraycopy(args, 0, newArgs, 0, args.length);
                     newArgs[i] = newArg;
-                    needsCopy = true;
                 }
             }
             return newArgs;
         }
 
         /*
-         * Specialization that supports multiple argument lengths but uses a single profile for all
-         * arguments.
+         * Specialization for constant number of arguments. Uses a profile for each argument.
          */
-        private Object[] fastToGuestValues(ToGuestValueNode node, PolyglotLanguageContext context, Object[] args) {
-            assert toGuestValue[0] != null;
+        @Specialization(replaces = {"doZero", "doCached"})
+        static Object[] doGeneric(Node node, PolyglotLanguageContext context, Object[] args,
+                        @Cached ToGuestValueNode toGuest,
+                        @Shared("needsCopy") @Cached InlinedBranchProfile needsCopyProfile) {
+
+            boolean needsCopy = needsCopyProfile.wasEntered(node);
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.execute(context, arg);
+                Object newArg = toGuest.execute(node, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    needsCopyProfile.enter(node);
+                    needsCopy = true;
                     newArgs = new Object[args.length];
                     System.arraycopy(args, 0, newArgs, 0, args.length);
                     newArgs[i] = newArg;
-                    needsCopy = true;
                 }
             }
             return newArgs;
         }
 
-        public static ToGuestValuesNode create() {
-            return new ToGuestValuesNode();
+        @NeverDefault
+        static ToGuestValueNode[] createArray(int length) {
+            ToGuestValueNode[] nodes = new ToGuestValueNode[length];
+            for (int i = 0; i < nodes.length; i++) {
+                nodes[i] = PolyglotLanguageContextFactory.ToGuestValueNodeGen.create();
+            }
+            return nodes;
         }
 
     }

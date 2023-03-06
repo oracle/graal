@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -121,57 +121,5 @@ public final class NodeFlood implements Iterable<Node> {
     @Override
     public Iterator<Node> iterator() {
         return new QueueConsumingIterator(worklist);
-    }
-
-    private static class UnmarkedNodeIterator implements Iterator<Node> {
-
-        private final NodeBitMap visited;
-        private Iterator<Node> nodes;
-        private Node nextNode;
-
-        UnmarkedNodeIterator(NodeBitMap visited, Iterator<Node> nodes) {
-            this.visited = visited;
-            this.nodes = nodes;
-            forward();
-        }
-
-        private void forward() {
-            do {
-                if (!nodes.hasNext()) {
-                    nextNode = null;
-                    return;
-                }
-                nextNode = nodes.next();
-            } while (visited.isMarked(nextNode));
-        }
-
-        @Override
-        public boolean hasNext() {
-            return nextNode != null;
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nextNode;
-            } finally {
-                forward();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    public Iterable<Node> unmarkedNodes() {
-        return new Iterable<>() {
-
-            @Override
-            public Iterator<Node> iterator() {
-                return new UnmarkedNodeIterator(visited, visited.graph().getNodes().iterator());
-            }
-        };
     }
 }

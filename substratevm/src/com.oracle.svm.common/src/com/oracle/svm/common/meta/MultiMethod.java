@@ -26,11 +26,22 @@ package com.oracle.svm.common.meta;
 
 import java.util.Collection;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * Multi-methods can have multiple implementations of the original Java method. This functionality
  * is used to create the different variants needed for different compilation scenarios.
  */
 public interface MultiMethod {
+
+    String MULTI_METHOD_KEY_SEPARATOR = "%%";
+
+    static boolean isDeoptTarget(ResolvedJavaMethod method) {
+        if (method instanceof MultiMethod) {
+            return ((MultiMethod) method).isDeoptTarget();
+        }
+        return false;
+    }
 
     /**
      * Key for accessing a multi-method.
@@ -42,6 +53,13 @@ public interface MultiMethod {
         @Override
         public String toString() {
             return "Original_Method_Key";
+        }
+    };
+
+    MultiMethodKey DEOPT_TARGET_METHOD = new MultiMethodKey() {
+        @Override
+        public String toString() {
+            return "Deopt_Target_Method_Key";
         }
     };
 
@@ -64,4 +82,12 @@ public interface MultiMethod {
      * @return all implementations of this method.
      */
     Collection<MultiMethod> getAllMultiMethods();
+
+    default boolean isOriginalMethod() {
+        return getMultiMethodKey() == ORIGINAL_METHOD;
+    }
+
+    default boolean isDeoptTarget() {
+        return getMultiMethodKey() == DEOPT_TARGET_METHOD;
+    }
 }

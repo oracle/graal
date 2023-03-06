@@ -75,6 +75,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
     @Temp({REG}) protected Value temp2;
 
     @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
+    @Temp({REG, ILLEGAL}) protected Value maskRegister;
 
     public AMD64ArrayCompareToOp(LIRGeneratorTool tool, int useAVX3Threshold, Stride strideA, Stride strideB,
                     EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
@@ -108,6 +109,16 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
         }
+
+        if (canUseAVX512Variant()) {
+            maskRegister = k7.asValue();
+        } else {
+            maskRegister = Value.ILLEGAL;
+        }
+    }
+
+    private boolean canUseAVX512Variant() {
+        return useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM();
     }
 
     @Override
@@ -247,7 +258,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(labelCompareWideVectorsLoop);
 
             // trying 64 bytes fast loop
-            if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM()) {
+            if (canUseAVX512Variant()) {
                 masm.cmplAndJcc(cnt2, stride2x2, ConditionFlag.Below, labelCompareWideVectorsLoopAVX2, true);
                 // cnt2 holds the vector, not-zero means we cannot subtract by 0x40
                 masm.testlAndJcc(cnt2, stride2x2 - 1, ConditionFlag.NotZero, labelCompareWideVectorsLoopAVX2, true);

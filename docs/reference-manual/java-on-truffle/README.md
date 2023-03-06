@@ -44,7 +44,7 @@ Having downloaded the appropriate JAR file in consideration of the operating sys
 gu install -L espresso.jar
 ```
 
-It installs the `jvm` runtime library under the `GRAALVM_HOME/lib/truffle/` location.
+It installs the `jvm` runtime library under the `$JAVA_HOME/lib/truffle/` location.
 
 ## Run Java on Truffle
 

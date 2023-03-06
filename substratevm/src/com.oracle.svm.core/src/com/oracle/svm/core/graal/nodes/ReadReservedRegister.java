@@ -27,8 +27,8 @@ package com.oracle.svm.core.graal.nodes;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.meta.SharedMethod;
 
 import jdk.vm.ci.code.Register;
 
@@ -54,8 +54,7 @@ public class ReadReservedRegister {
          * proxying at deoptimization entry points for this node, so the value is not restored
          * during deoptimization.
          */
-        boolean isDeoptTarget = graph.method() instanceof SharedMethod && ((SharedMethod) graph.method()).isDeoptTarget();
-        if (isDeoptTarget) {
+        if (MultiMethod.isDeoptTarget(graph.method())) {
             return new ReadReservedRegisterFixedNode(register);
         } else {
             return new ReadReservedRegisterFloatingNode(register);

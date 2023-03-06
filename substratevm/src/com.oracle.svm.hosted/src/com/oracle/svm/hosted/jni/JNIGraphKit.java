@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -63,8 +64,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class JNIGraphKit extends HostedGraphKit {
 
-    JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        super(debug, providers, method);
+    JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
+        super(debug, providers, method, purpose);
     }
 
     public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {

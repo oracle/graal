@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mode PUBLIC
+          "-//NetBeans//DTD Mode Properties 2.0//EN"
+          "http://www.netbeans.org/dtds/mode-properties2_0.dtd">
+
+<mode version="2.0">
+    <name unique="scripts" />
+    <kind type="editor" />
+    <state type="joined" />
+    <constraints>
+        <path orientation="horizontal" number="60" weight="0.7"/>
+        <path orientation="vertical" number="40" weight="0.7"/>
+        <path orientation="horizontal" number="40" weight="0.7"/>
+        <path orientation="vertical" number="80" weight="0.3"/>
+    </constraints>
+    <bounds x="0" y="0" width="0" height="0" />
+    <frame state="0"/>
+    <empty-behavior permanent="true"/>
+</mode>

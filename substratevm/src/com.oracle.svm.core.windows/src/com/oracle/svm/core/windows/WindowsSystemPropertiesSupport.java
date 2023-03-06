@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -181,7 +182,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         return libraryPath.toString();
     }
 
-    private static String toJavaString(WCharPointer wcString, int length) {
+    static String toJavaString(WCharPointer wcString, int length) {
         return asCharBuffer(wcString, length).toString();
     }
 
@@ -390,6 +391,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(SystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
+        /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
+        ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }

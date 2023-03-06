@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
@@ -72,7 +73,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -84,11 +84,29 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+import sun.misc.Unsafe;
+
 final class ObjectSizeCalculator {
     private enum ForcedStop {
         NONE,
         STOPATBYTES,
         CANCELLATION
+    }
+
+    static final sun.misc.Unsafe UNSAFE = getUnsafe();
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 
     private static volatile int staticObjectAlignment = -1;
@@ -187,7 +205,7 @@ final class ObjectSizeCalculator {
      */
     @CompilerDirectives.TruffleBoundary
     long calculateObjectSize(final Object obj, long stopAtBytes, AtomicBoolean cancelled) {
-        if (TruffleOptions.AOT || Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
+        if (Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
             throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on this platform.");
         }
         /*
@@ -488,13 +506,15 @@ final class ObjectSizeCalculator {
     private static final class ObjectClassInfo implements ClassInfo {
         // Padded fields + header size
         private final long objectSize;
-        private final Object[] resolvedJavaFields;
+        private final int[] fieldOffsets;
         private final boolean isReference;
+        private final Class<?> clazz;
 
         ObjectClassInfo(Class<?> clazz) {
-            this.resolvedJavaFields = EngineAccessor.RUNTIME.getResolvedFields(clazz, false, true);
+            this.fieldOffsets = EngineAccessor.RUNTIME.getFieldOffsets(clazz, false, true);
             this.objectSize = EngineAccessor.RUNTIME.getBaseInstanceSize(clazz);
             this.isReference = Reference.class.isAssignableFrom(clazz);
+            this.clazz = clazz;
         }
 
         @Override
@@ -504,6 +524,7 @@ final class ObjectSizeCalculator {
 
         @Override
         public ForcedStop visit(CalculationState calculationState, Object obj) {
+            assert clazz == obj.getClass();
             if (isReference) {
                 Object nextObj = null;
                 try {
@@ -519,8 +540,8 @@ final class ObjectSizeCalculator {
                     return stop;
                 }
             }
-            for (Object f : resolvedJavaFields) {
-                Object nextObj = EngineAccessor.RUNTIME.getFieldValue(f, obj);
+            for (int fieldOffset : fieldOffsets) {
+                Object nextObj = UNSAFE.getObject(obj, fieldOffset);
                 ForcedStop stop = enqueueOrStop(calculationState, nextObj);
                 if (stop != ForcedStop.NONE) {
                     return stop;

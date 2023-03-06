@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,7 +113,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Input {
+    public @interface Input {
         InputType value() default InputType.Value;
     }
 
@@ -126,7 +126,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface OptionalInput {
+    public @interface OptionalInput {
         InputType value() default InputType.Value;
     }
 
@@ -136,7 +136,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Successor {
+    public @interface Successor {
     }
 
     /**
@@ -145,7 +145,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface ConstantNodeParameter {
+    public @interface ConstantNodeParameter {
     }
 
     /**
@@ -158,7 +158,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface InjectedNodeParameter {
+    public @interface InjectedNodeParameter {
     }
 
     /**
@@ -190,7 +190,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.METHOD)
-    public static @interface NodeIntrinsic {
+    public @interface NodeIntrinsic {
 
         /**
          * The class declaring the factory method or {@link Node} subclass declaring the constructor
@@ -274,7 +274,6 @@ public abstract class Node implements Cloneable, Formattable {
     private Node predecessor;
     private NodeClass<? extends Node> nodeClass;
 
-    public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
     static class NodeStackTrace {
@@ -484,42 +483,6 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         return numUses == 1;
-    }
-
-    /**
-     * Checks whether {@code this} has only usages of type {@code inputType}.
-     *
-     * @param inputType the type of usages to look for
-     */
-    public final boolean hasOnlyUsagesOfType(InputType inputType) {
-        for (Node usage : usages()) {
-            for (Position pos : usage.inputPositions()) {
-                if (pos.get(usage) == this) {
-                    if (pos.getInputType() != inputType) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Checks whether this node has usages of a given {@link InputType}.
-     *
-     * @param type the type of usages to look for
-     */
-    public final boolean hasUsagesOfType(InputType type) {
-        for (Node usage : usages()) {
-            for (Position pos : usage.inputPositions()) {
-                if (pos.get(usage) == this) {
-                    if (pos.getInputType() == type) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
     }
 
     /**
@@ -900,18 +863,6 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public final void replaceAtUsagesAndDelete(Node replacement) {
         replaceAtUsages(replacement, null, true, true);
-        safeDelete();
-    }
-
-    /**
-     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
-     * if {@code filter == null} or {@code filter.test(n) == true} and then
-     * {@linkplain #safeDelete() remove} {@code this} from the graph.
-     *
-     * @see #replaceAtUsages(Node)
-     */
-    public final void replaceAtUsagesAndDelete(Node replacement, Predicate<Node> filter) {
-        replaceAtUsages(replacement, filter, true, true);
         safeDelete();
     }
 
@@ -1323,10 +1274,8 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public static final EnumSet<Edges.Type> WithNoEdges = EnumSet.noneOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithAllEdges = EnumSet.allOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithOnlyInputEdges = EnumSet.of(Inputs);
-    public static final EnumSet<Edges.Type> WithOnlySucessorEdges = EnumSet.of(Successors);
 
     /**
      * Makes a copy of {@code this} in(to) a given graph.
@@ -1405,10 +1354,6 @@ public abstract class Node implements Cloneable, Formattable {
         if (graph.verifyGraphEdges) {
             verifyEdges();
         }
-        return true;
-    }
-
-    public boolean verifySourcePosition() {
         return true;
     }
 

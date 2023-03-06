@@ -72,7 +72,7 @@ public final class ShortestInvokeChainPrinter {
             assert methodElement != null;
 
             for (InvokeInfo invoke : method.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getCallees()) {
+                for (AnalysisMethod callee : invoke.getAllCallees()) {
 
                     if (visited.containsKey(callee)) {
                         // We already had a shorter path to this method.

@@ -32,6 +32,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -57,12 +58,6 @@ public final class StackWalk {
     private static final long SHOW_HIDDEN_FRAMES = 0x20;
     private static final long FILL_LIVE_STACK_FRAMES = 0x100;
 
-    private static final String STRING_DEFAULT_MODE = "DEFAULT_MODE";
-    private static final String STRING_FILL_CLASS_REFS_ONLY = "FILL_CLASS_REFS_ONLY";
-    private static final String STRING_GET_CALLER_CLASS = "GET_CALLER_CLASS";
-    private static final String STRING_SHOW_HIDDEN_FRAMES = "SHOW_HIDDEN_FRAMES";
-    private static final String STRING_FILL_LIVE_STACK_FRAMES = "FILL_LIVE_STACK_FRAMES";
-
     static boolean getCallerClass(long mode) {
         return (mode & GET_CALLER_CLASS) != 0;
     }
@@ -82,11 +77,11 @@ public final class StackWalk {
     private static boolean synchronizedConstants(Meta meta) {
         Klass stackStreamFactory = meta.java_lang_StackStreamFactory;
         StaticObject statics = stackStreamFactory.tryInitializeAndGetStatics();
-        assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, STRING_DEFAULT_MODE, meta);
-        assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, STRING_FILL_CLASS_REFS_ONLY, meta);
-        assert GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, STRING_GET_CALLER_CLASS, meta);
-        assert SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, STRING_SHOW_HIDDEN_FRAMES, meta);
-        assert FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, STRING_FILL_LIVE_STACK_FRAMES, meta);
+        assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, "DEFAULT_MODE", meta);
+        assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "FILL_CLASS_REFS_ONLY", meta);
+        assert GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, "GET_CALLER_CLASS", meta);
+        assert SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, "SHOW_HIDDEN_FRAMES", meta);
+        assert FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, "FILL_LIVE_STACK_FRAMES", meta);
         return true;
     }
 
@@ -121,7 +116,7 @@ public final class StackWalk {
             throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
-        Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
+        Object result = meta.java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
         unAnchor(fw);
         return (StaticObject) result;
     }
@@ -251,14 +246,18 @@ public final class StackWalk {
         }
 
         private boolean isFromStackWalkingAPI(Method m) {
-            return m.getDeclaringKlass() == meta.java_lang_StackWalker || m.getDeclaringKlass() == meta.java_lang_AbstractStackWalker ||
-                            m.getDeclaringKlass().getSuperKlass() == meta.java_lang_AbstractStackWalker;
+            return m.getDeclaringKlass() == meta.java_lang_StackWalker || m.getDeclaringKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker ||
+                            m.getDeclaringKlass().getSuperKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker;
         }
 
         private boolean isCallStackWalk(Method m) {
-            return m.getDeclaringKlass() == meta.java_lang_AbstractStackWalker &&
+            return m.getDeclaringKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker &&
                             Name.callStackWalk.equals(m.getName()) &&
-                            Symbol.Signature.Object_long_int_int_int_Object_array.equals(m.getRawSignature());
+                            getCallStackWalkSignature().equals(m.getRawSignature());
+        }
+
+        private Symbol<Signature> getCallStackWalkSignature() {
+            return meta.getJavaVersion().java19OrLater() ? Signature.Object_long_int_ContinuationScope_Continuation_int_int_Object_array : Signature.Object_long_int_int_int_Object_array;
         }
 
         @SuppressWarnings("fallthrough")

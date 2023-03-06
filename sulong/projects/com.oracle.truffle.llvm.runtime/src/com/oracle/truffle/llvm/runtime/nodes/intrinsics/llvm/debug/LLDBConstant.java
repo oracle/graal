@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -461,10 +461,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         private int asInt(long bitOffset) {
             int valAsInt = java.lang.Float.floatToRawIntBits(value);
-            if (bitOffset != 0) {
-                valAsInt >>= bitOffset;
-            }
-            return valAsInt;
+            return valAsInt >> bitOffset;
         }
 
         @Override

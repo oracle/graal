@@ -8,7 +8,7 @@
     timelimit: "30:00",
   },
 
-  local regex_gate = regex_common + common.eclipse + common.jdt + {
+  local regex_gate = regex_common + common.deps.eclipse + common.deps.jdt + {
     name: 'gate-regex-oraclejdk' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
@@ -27,7 +27,7 @@
   local regex_downstream_js = regex_common + {
     name: 'gate-regex-downstream-js-oraclejdk' + self.jdk_version,
     run: [
-      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", "--strict-compliance gate --strict-mode --all-suites --tags build,Test262-default,TestV8-default,regex"]
+      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", " gate --no-warning-as-error --all-suites --tags build,Test262-default,TestV8-default,regex"]
     ],
     targets: ["gate"],
   },

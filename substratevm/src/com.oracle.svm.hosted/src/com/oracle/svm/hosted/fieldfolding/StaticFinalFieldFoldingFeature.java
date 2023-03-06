@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,34 +33,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,19 +46,16 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -305,201 +277,5 @@ final class StaticFinalFieldFoldingFeature implements InternalFeature {
         } else {
             return (AnalysisField) field;
         }
-    }
-}
-
-/**
- * Performs the constant folding of fields that are optimizable.
- */
-final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
-
-    private final StaticFinalFieldFoldingFeature feature;
-
-    StaticFinalFieldFoldingNodePlugin(StaticFinalFieldFoldingFeature feature) {
-        this.feature = feature;
-    }
-
-    @Override
-    public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        assert field.isStatic();
-        if (!field.isFinal()) {
-            return false;
-        }
-
-        if (b.getMethod().isClassInitializer()) {
-            /*
-             * Cannot optimize static field loads in class initializers because that can lead to
-             * deadlocks when classes have cyclic dependencies.
-             */
-            return false;
-        }
-
-        AnalysisField aField = StaticFinalFieldFoldingFeature.toAnalysisField(field);
-        AnalysisMethod classInitializer = aField.getDeclaringClass().getClassInitializer();
-        if (classInitializer == null) {
-            /* If there is no class initializer, there cannot be a foldable constant found in it. */
-            return false;
-        }
-
-        if (aField.wrapped instanceof ReadableJavaField && !((ReadableJavaField) aField.wrapped).isValueAvailable()) {
-            /*
-             * Cannot optimize static field whose value is recomputed and is not yet available,
-             * i.e., it may depend on analysis/compilation derived data.
-             */
-            return false;
-        }
-
-        /*
-         * The foldable field values are collected during parsing of the class initializer. If the
-         * class initializer is not parsed yet, parsing needs to be forced so that {@link
-         * StaticFinalFieldFoldingFeature#onAnalysisMethodParsed} determines which fields can be
-         * optimized.
-         */
-        classInitializer.ensureGraphParsed(feature.bb);
-
-        JavaConstant initializedValue = feature.foldedFieldValues.get(aField);
-        if (initializedValue == null) {
-            /* Field cannot be optimized. */
-            return false;
-        }
-
-        /*
-         * Create a if-else structure with a PhiNode that either has the optimized value of the
-         * field, or the uninitialized value. The initialization status array and the index into
-         * that array are not known yet during bytecode parsing, so the array access will be created
-         * lazily.
-         */
-        ValueNode fieldCheckStatusNode = b.add(new IsStaticFinalFieldInitializedNode(field));
-        LogicNode isUninitializedNode = b.add(IntegerEqualsNode.create(fieldCheckStatusNode, ConstantNode.forBoolean(false), NodeView.DEFAULT));
-
-        JavaConstant uninitializedValue = b.getConstantReflection().readFieldValue(field, null);
-        ConstantNode uninitializedValueNode = ConstantNode.forConstant(uninitializedValue, b.getMetaAccess());
-        ConstantNode initializedValueNode = ConstantNode.forConstant(initializedValue, b.getMetaAccess());
-
-        EndNode uninitializedEndNode = b.getGraph().add(new EndNode());
-        EndNode initializedEndNode = b.getGraph().add(new EndNode());
-        b.add(new IfNode(isUninitializedNode, uninitializedEndNode, initializedEndNode, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE));
-
-        MergeNode merge = b.append(new MergeNode());
-        merge.addForwardEnd(uninitializedEndNode);
-        merge.addForwardEnd(initializedEndNode);
-
-        ConstantNode[] phiValueNodes = {uninitializedValueNode, initializedValueNode};
-        ValuePhiNode phi = new ValuePhiNode(StampTool.meet(Arrays.asList(phiValueNodes)), merge, phiValueNodes);
-        b.setStateAfter(merge);
-
-        b.addPush(field.getJavaKind(), phi);
-        return true;
-    }
-
-    @Override
-    public boolean handleStoreStaticField(GraphBuilderContext b, ResolvedJavaField field, ValueNode value) {
-        assert field.isStatic();
-        if (!field.isFinal()) {
-            return false;
-        }
-
-        /*
-         * We don't know at this time if the field is really going to be optimized. This is only
-         * known after static analysis. This node then replaces itself with an array store.
-         */
-        b.add(new MarkStaticFinalFieldInitializedNode(field));
-
-        /* Always emit the regular field store. It is necessary also for optimized fields. */
-        return false;
-    }
-}
-
-/**
- * Node that marks a static final field as initialized. This is basically just a store of the value
- * true in the {@link StaticFinalFieldFoldingFeature#fieldInitializationStatus} array. But we cannot
- * immediately emit a {@link StoreIndexedNode} in the bytecode parser because we do not know at the
- * time of parsing if the field can actually be optimized or not. So this node is emitted for every
- * static final field store, and then just removed if the field cannot be optimized.
- */
-@NodeInfo(size = NodeSize.SIZE_1, cycles = NodeCycles.CYCLES_1)
-final class MarkStaticFinalFieldInitializedNode extends AbstractStateSplit implements Simplifiable {
-    public static final NodeClass<MarkStaticFinalFieldInitializedNode> TYPE = NodeClass.create(MarkStaticFinalFieldInitializedNode.class);
-
-    private final ResolvedJavaField field;
-
-    protected MarkStaticFinalFieldInitializedNode(ResolvedJavaField field) {
-        super(TYPE, StampFactory.forVoid());
-        this.field = field;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-
-        if (feature.fieldInitializationStatus == null) {
-            /* Static analysis is still running, we do not know yet which fields are optimized. */
-            return;
-        }
-
-        Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
-        if (fieldCheckIndex != null) {
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
-            ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
-            ConstantNode trueNode = ConstantNode.forBoolean(true, graph());
-            StoreIndexedNode replacementNode = graph().add(new StoreIndexedNode(fieldInitializationStatusNode, fieldCheckIndexNode, null, null, JavaKind.Boolean, trueNode));
-
-            graph().addBeforeFixed(this, replacementNode);
-            replacementNode.setStateAfter(stateAfter());
-        } else {
-            /* Field is not optimized, just remove ourselves. */
-        }
-        graph().removeFixed(this);
-    }
-}
-
-/**
- * Node that checks if a static final field is initialized. This is basically just a load of the
- * value in the {@link StaticFinalFieldFoldingFeature#fieldInitializationStatus} array. But we
- * cannot immediately emit a {@link LoadIndexedNode} in the bytecode parser because we do not know
- * at the time of parsing if the declaring class of the field is initialized at image build time.
- */
-@NodeInfo(size = NodeSize.SIZE_1, cycles = NodeCycles.CYCLES_1)
-final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode implements Simplifiable {
-    public static final NodeClass<IsStaticFinalFieldInitializedNode> TYPE = NodeClass.create(IsStaticFinalFieldInitializedNode.class);
-
-    private final ResolvedJavaField field;
-
-    protected IsStaticFinalFieldInitializedNode(ResolvedJavaField field) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
-        this.field = field;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-
-        if (feature.fieldInitializationStatus == null) {
-            /*
-             * Static analysis is still running, we do not know yet if class will get initialized at
-             * image build time after static analysis.
-             */
-            return;
-        }
-
-        ValueNode replacementNode;
-        if (field.getDeclaringClass().isInitialized()) {
-            /*
-             * The declaring class of the field has been initialized late after static analysis. So
-             * we can also constant fold the field now unconditionally.
-             */
-            replacementNode = ConstantNode.forBoolean(true, graph());
-
-        } else {
-            Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
-            assert fieldCheckIndex != null : "Field must be optimizable: " + field;
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
-            ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
-
-            replacementNode = graph().addOrUniqueWithInputs(LoadIndexedNode.create(graph().getAssumptions(), fieldInitializationStatusNode, fieldCheckIndexNode,
-                            null, JavaKind.Boolean, tool.getMetaAccess(), tool.getConstantReflection()));
-        }
-
-        graph().replaceFixed(this, replacementNode);
     }
 }

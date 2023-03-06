@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -51,6 +52,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
+
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
@@ -131,6 +133,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     boolean canEndsGuestSafepoint;
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
+
+    @OptionalInput(InputType.Association) ValueNode precedingLoop;
 
     public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
     public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
@@ -326,17 +330,9 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return result;
     }
 
-    public boolean isSingleEntryLoop() {
-        return (forwardEndCount() == 1);
-    }
-
     public EndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
-    }
-
-    public int splits() {
-        return splits;
     }
 
     public void incrementSplits() {
@@ -391,7 +387,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         } else {
             return super.forwardEndIndex((EndNode) pred);
         }
-        throw ValueNodeUtil.shouldNotReachHere("unknown pred : " + pred);
+        throw GraalError.shouldNotReachHere("unknown pred : " + pred);
     }
 
     @Override
@@ -406,7 +402,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 return end;
             }
         }
-        throw ValueNodeUtil.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere("unknown index: " + index);
     }
 
     @Override
@@ -470,6 +466,15 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public void setOverflowGuard(GuardingNode overflowGuard) {
         updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
+    }
+
+    public ValueNode getPrecedingLoop() {
+        return precedingLoop;
+    }
+
+    public void setPrecedingLoop(ValueNode precedingLoop) {
+        updateUsages(this.precedingLoop, precedingLoop);
+        this.precedingLoop = precedingLoop;
     }
 
     private static final int NO_INCREMENT = Integer.MIN_VALUE;

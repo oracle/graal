@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
-import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -39,7 +37,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -52,42 +49,17 @@ public class Containers {
     public static class Options {
         @Option(help = "Enable detection and runtime container configuration support.")//
         public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
-
-        @Option(help = "Calculate the container CPU availability based on the value of quotas (if set), when true. " +
-                        "Otherwise, use the CPU shares value, provided it is less than quota.")//
-        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
     }
 
     /** Sentinel used when the value is unknown. */
     public static final int UNKNOWN = -1;
 
-    /*-
-     * PER_CPU_SHARES has been set to 1024 because CPU shares' quota
-     * is commonly used in cloud frameworks like Kubernetes[1],
-     * AWS[2] and Mesos[3] in a similar way. They spawn containers with
-     * --cpu-shares option values scaled by PER_CPU_SHARES. Thus, we do
-     * the inverse for determining the number of possible available
-     * CPUs to the JVM inside a container. See JDK-8216366.
-     *
-     * [1] https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu
-     *     In particular:
-     *        When using Docker:
-     *          The spec.containers[].resources.requests.cpu is converted to its core value, which is potentially
-     *          fractional, and multiplied by 1024. The greater of this number or 2 is used as the value of the
-     *          --cpu-shares flag in the docker run command.
-     * [2] https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_ContainerDefinition.html
-     * [3] https://github.com/apache/mesos/blob/3478e344fb77d931f6122980c6e94cd3913c441d/src/docker/docker.cpp#L648
-     *     https://github.com/apache/mesos/blob/3478e344fb77d931f6122980c6e94cd3913c441d/src/slave/containerizer/mesos/isolators/cgroups/constants.hpp#L30
-     */
-    private static final int PER_CPU_SHARES = 1024;
-
     /**
      * Calculates an appropriate number of active processors for the VM to use. The calculation is
-     * based on these three inputs:
+     * based on these two inputs:
      * <ul>
      * <li>cpu affinity
      * <li>cpu quota & cpu period
-     * <li>cpu shares
      * </ul>
      *
      * @return number of CPUs
@@ -101,21 +73,12 @@ public class Containers {
          * If user specified a quota (quota != -1), calculate the number of
          * required CPUs by dividing quota by period.
          *
-         * If shares are in effect (shares != -1), calculate the number
-         * of CPUs required for the shares by dividing the share value
-         * by PER_CPU_SHARES.
-         *
          * All results of division are rounded up to the next whole number.
          *
-         * If neither shares nor quotas have been specified, return the
+         * If quotas have not been specified, return the
          * number of active processors in the system.
          *
-         * If both shares and quotas have been specified, the results are
-         * based on the flag PreferContainerQuotaForCPUCount.  If true,
-         * return the quota value.  If false return the smallest value
-         * between shares and quotas.
-         *
-         * If shares and/or quotas have been specified, the resulting number
+         * If quotas have been specified, the resulting number
          * returned will never exceed the number of active processors.
          */
         int cpuCount = Jvm.JVM_ActiveProcessorCount();
@@ -126,29 +89,15 @@ public class Containers {
             if (info.isContainerized()) {
                 long quota = info.getCpuQuota();
                 long period = info.getCpuPeriod();
-                long shares = info.getCpuShares();
 
                 int quotaCount = 0;
                 if (quota > -1 && period > 0) {
                     quotaCount = (int) Math.ceil(((double) quota) / period);
                 }
 
-                int shareCount = 0;
-                if (shares > -1) {
-                    shareCount = (int) Math.ceil(((double) shares) / PER_CPU_SHARES);
-                }
-
-                if (quotaCount != 0 && shareCount != 0) {
-                    /* Both shares and quotas are specified. */
-                    if (PreferContainerQuotaForCPUCount.getValue()) {
-                        limitCount = quotaCount;
-                    } else {
-                        limitCount = Math.min(quotaCount, shareCount);
-                    }
-                } else if (quotaCount != 0) {
+                /* Use quotas. */
+                if (quotaCount != 0) {
                     limitCount = quotaCount;
-                } else if (shareCount != 0) {
-                    limitCount = shareCount;
                 }
             }
         }

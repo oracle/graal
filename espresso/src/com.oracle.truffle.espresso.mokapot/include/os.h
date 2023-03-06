@@ -44,6 +44,10 @@ typedef uint16_t jushort;
 typedef uint32_t juint;
 typedef uint64_t julong;
 
+#ifndef _GNU_SOURCE
+typedef unsigned int uint;
+#endif
+
 // Platform-independent error return values from OS functions
 enum OSReturn {
   OS_OK         =  0,        // Operation was successful

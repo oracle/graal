@@ -62,6 +62,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Scanning is triggered when:
@@ -154,9 +155,10 @@ public abstract class ImageHeapScanner {
          * reachability status. The field value is processed when a field is marked as reachable, in
          * onFieldValueReachable().
          */
-        AnalysisField[] staticFields = type.getStaticFields();
+        ResolvedJavaField[] staticFields = type.getStaticFields();
         TypeData data = new TypeData(staticFields.length);
-        for (AnalysisField field : staticFields) {
+        for (ResolvedJavaField javaField : staticFields) {
+            AnalysisField field = (AnalysisField) javaField;
             ValueSupplier<JavaConstant> rawFieldValue = readHostedFieldValue(field, null);
             data.setFieldTask(field, new AnalysisFuture<>(() -> {
                 JavaConstant value = onFieldValueReachable(field, rawFieldValue, new FieldScan(field));
@@ -255,7 +257,8 @@ public abstract class ImageHeapScanner {
             ImageHeapInstance instance = (ImageHeapInstance) object;
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type, reason);
-            for (AnalysisField field : type.getInstanceFields(true)) {
+            for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+                AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead() && isValueAvailable(field)) {
                     final JavaConstant fieldValue = instance.readFieldValue(field);
                     /* If field is read scan its value immediately. */
@@ -270,17 +273,17 @@ public abstract class ImageHeapScanner {
                     instance.setFieldTask(field, new AnalysisFuture<>(() -> {
                         /*
                          * After scanning a field of an injected ImageHeapInstance that references a
-                         * regular JavaConstant object should the field value be replaced with the
+                         * regular JavaConstant object, should the field value be replaced with the
                          * snapshot version, i.e., an ImageHeapInstance, or should it keep pointing
                          * to the original value? In the long term it should be replaced, but that's
                          * not yet generally possible. First ImageHeapInstance needs to have
                          * complete support for all use cases, it needs to be a complete replacement
                          * for JavaConstant. For example, it needs to be able to efficiently
                          * represent string values and be able to extract the String object.
-                         * 
+                         *
                          * So for now we just reinstall the original JavaConstant value when the
                          * future is completed.
-                         * 
+                         *
                          * More specifically, the long term plan is that after scanning
                          * instance.field will refer to the `scannedFieldValue`, so any future read
                          * of `instance.field` will return an ImageHeapInstance. Moreover,
@@ -361,9 +364,10 @@ public abstract class ImageHeapScanner {
              */
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type, reason);
-            AnalysisField[] instanceFields = type.getInstanceFields(true);
+            ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
             newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
-            for (AnalysisField field : instanceFields) {
+            for (ResolvedJavaField javaField : instanceFields) {
+                AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {
                     rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
@@ -435,14 +439,14 @@ public abstract class ImageHeapScanner {
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable " + field.format("%H.%n"));
+        AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
 
         /*
          * Check if the field value is available. If not, trying to access it is an error. This
          * forces the callers to only trigger the execution of the future task when the value is
          * ready to be materialized.
          */
-        AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for " + field.format("%H.%n"));
+        AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for %s", field);
 
         JavaConstant transformedValue;
         try {
@@ -524,7 +528,8 @@ public abstract class ImageHeapScanner {
 
         if (imageHeapConstant instanceof ImageHeapInstance) {
             ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
-            for (AnalysisField field : objectType.getInstanceFields(true)) {
+            for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
+                AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead() && isValueAvailable(field)) {
                     snapshotFieldValue(field, imageHeapInstance.getFieldValue(field));
                 }
@@ -544,7 +549,7 @@ public abstract class ImageHeapScanner {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void snapshotFieldValue(AnalysisField field, Object fieldTask) {
         if (fieldTask instanceof AnalysisFuture<?>) {
-            AnalysisError.guarantee(field.isReachable(), "Field value snapshot computed for field not reachable " + field.format("%H.%n"));
+            AnalysisError.guarantee(field.isReachable(), "Field value snapshot computed for field not reachable: %s", field);
             postTask((AnalysisFuture<JavaConstant>) fieldTask);
         }
     }

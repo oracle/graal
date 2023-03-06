@@ -46,21 +46,17 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 public final class WasmCodeEntry {
 
     private final WasmFunction function;
-    @CompilationFinal(dimensions = 1) private final byte[] data;
+    @CompilationFinal(dimensions = 1) private final byte[] bytecode;
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    private final int maxStackSize;
-    private final BranchProfile errorBranch = BranchProfile.create();
-    @CompilationFinal(dimensions = 1) private final int[] extraData;
     @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
+    private final BranchProfile errorBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
 
-    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, byte[] resultTypes, int maxStackSize, int[] extraData) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes) {
         this.function = function;
-        this.data = data;
+        this.bytecode = bytecode;
         this.localTypes = localTypes;
-        this.maxStackSize = maxStackSize;
-        this.extraData = extraData;
         this.numLocals = localTypes.length;
         this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
@@ -70,28 +66,20 @@ public final class WasmCodeEntry {
         return function;
     }
 
-    public byte[] data() {
-        return data;
-    }
-
-    public int maxStackSize() {
-        return maxStackSize;
+    public byte[] bytecode() {
+        return bytecode;
     }
 
     public byte localType(int index) {
         return localTypes[index];
     }
 
-    public int numLocals() {
+    public int localCount() {
         return numLocals;
     }
 
     public int functionIndex() {
         return function.index();
-    }
-
-    public int[] extraData() {
-        return extraData;
     }
 
     public int resultCount() {

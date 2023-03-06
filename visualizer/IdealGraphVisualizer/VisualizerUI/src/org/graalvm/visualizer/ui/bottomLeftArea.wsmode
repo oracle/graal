@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><mode version="2.4">
+    <name unique="bottomLeftArea"/>
+  <kind type="view"/>
+  <state type="joined"/>
+  <constraints>
+    <path orientation="horizontal" number="20" weight="0.3" />
+    <path orientation="vertical" number="40" weight="0.5" />
+  </constraints>
+  <relative-bounds x="10" y="30" width="35" height="45" />
+  <frame state="0"/>
+    <empty-behavior permanent="true"/>
+</mode>

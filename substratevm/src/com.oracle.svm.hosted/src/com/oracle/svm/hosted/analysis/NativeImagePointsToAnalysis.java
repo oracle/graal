@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -42,6 +46,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -71,8 +76,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow) {
-        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow, flowsGraph, graphKind);
     }
 
     @Override
@@ -103,7 +108,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public void onTypeInitialized(AnalysisType type) {
+    public void onTypeReachable(AnalysisType type) {
         postTask(d -> initializeMetaData(type));
     }
 
@@ -114,9 +119,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
         if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrappedWithoutResolve();
+            return ((AnalysisType) type).getWrapped();
         } else if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+            return ((HostedType) type).getWrapped().getWrapped();
         } else {
             return type;
         }
@@ -138,5 +143,72 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public SubstrateReplacements getReplacements() {
         return (SubstrateReplacements) super.getReplacements();
+    }
+
+    /** See {@link IncompatibleClassChangeFallbackMethod} for documentation. */
+    @Override
+    public AnalysisMethod fallbackResolveConcreteMethod(AnalysisType resolvingType, AnalysisMethod method) {
+        if (!resolvingType.isAbstract() && !resolvingType.isInterface() && !method.isStatic() && method.getDeclaringClass().isAssignableFrom(resolvingType)) {
+            /*
+             * We are resolving an instance method for a concrete (non-abstract) class that is a
+             * subtype of the method's declared type. So this is a method invocation that can happen
+             * at run time, and we need to return a method that throws an exception when being
+             * executed.
+             */
+
+            if (method.getWrapped() instanceof IncompatibleClassChangeFallbackMethod) {
+                /*
+                 * We are re-resolving a method that we already processed. Nothing to do, we already
+                 * have the appropriate fallback method.
+                 */
+                return method;
+            }
+            return getUniverse().lookup(new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+        }
+        return super.fallbackResolveConcreteMethod(resolvingType, method);
+    }
+
+    /**
+     * Finding the correct exception that needs to be thrown at run time is a bit tricky, since
+     * JVMCI does not report that information back when method resolution fails. We need to look
+     * down the class hierarchy to see if there would be an appropriate method with a matching
+     * signature which is just not accessible.
+     *
+     * We do all the method lookups (to search for a method with the same signature as searchMethod)
+     * using reflection and not JVMCI because the lookup can throw all sorts of errors, and we want
+     * to ignore the errors without any possible side effect on AnalysisType and AnalysisMethod.
+     */
+    private static Class<? extends IncompatibleClassChangeError> findResolutionError(AnalysisType resolvingType, Executable searchMethod) {
+        if (searchMethod != null) {
+            Class<?>[] searchSignature = searchMethod.getParameterTypes();
+            for (Class<?> cur = resolvingType.getJavaClass(); cur != null; cur = cur.getSuperclass()) {
+                Method found;
+                try {
+                    found = cur.getDeclaredMethod(searchMethod.getName(), searchSignature);
+                } catch (Throwable ex) {
+                    /*
+                     * Method does not exist, a linkage error was thrown, or something else random
+                     * is wrong with the class files. Ignore this class.
+                     */
+                    continue;
+                }
+                if (Modifier.isAbstract(found.getModifiers()) || Modifier.isPrivate(found.getModifiers()) || Modifier.isStatic(found.getModifiers())) {
+                    /*
+                     * We found a method with a matching signature, but it does not have an
+                     * implementation, or it is a private / static method that does not count from
+                     * the point of view of method resolution.
+                     */
+                    return AbstractMethodError.class;
+                } else {
+                    /*
+                     * We found a method with a matching signature, but it must have the wrong
+                     * access modifier (otherwise method resolution would have returned it).
+                     */
+                    return IllegalAccessError.class;
+                }
+            }
+        }
+        /* Not matching method found at all. */
+        return AbstractMethodError.class;
     }
 }

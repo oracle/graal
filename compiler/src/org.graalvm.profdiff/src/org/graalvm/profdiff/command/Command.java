@@ -24,9 +24,9 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents one use case of the program that can be invoked from the command line using
@@ -59,13 +59,5 @@ public interface Command {
      *
      * @param writer the writer to use for standard output of the command
      */
-    void invoke(Writer writer) throws Exception;
-
-    /**
-     * Sets the {@link HotCompilationUnitPolicy} for the command. The policy's parameters are parsed
-     * in the common part of the command line.
-     *
-     * @param hotCompilationUnitPolicy the policy of marking hot methods to be used by this command
-     */
-    void setHotCompilationUnitPolicy(HotCompilationUnitPolicy hotCompilationUnitPolicy);
+    void invoke(Writer writer) throws ExperimentParserError;
 }

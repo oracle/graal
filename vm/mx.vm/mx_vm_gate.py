@@ -35,6 +35,7 @@ import mx_sdk_vm_impl
 import functools
 import glob
 import re
+import os
 import sys
 import atexit
 from mx_gate import Task
@@ -297,7 +298,28 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
         cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
-        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+        err = mx.OutputCapture()
+        exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
+        if err.data:
+            mx.log(err.data)
+            if 'Could not find or load main class com.oracle.truffle.sl.launcher.SLMain' in err.data:
+                # Extra diagnostics to debug GR-43161
+
+                # Can we find the class with javap?
+                cmd = [join(graalvm_home, 'bin', 'javap'), '-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain']
+                mx.log(' '.join(cmd))
+                mx.run(cmd, nonZeroIsFatal=False)
+
+                # Maybe the class files are disappearing?
+                for p in ('com.oracle.truffle.sl', 'com.oracle.truffle.sl.launcher'):
+                    classes_dir = mx.project(p).output_dir()
+                    mx.log(f'Contents of {classes_dir}:')
+                    for root, dirnames, filenames in os.walk(classes_dir):
+                        for name in dirnames + filenames:
+                            mx.log('  ' + join(root, name))
+
+                # Ignore this transient failure until it's clear what is causing it
+                return
 
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
@@ -363,14 +385,14 @@ def _test_libgraal_truffle(extra_vm_arguments):
             unittest_args = ["--blacklist", fp.name]
     else:
         unittest_args = []
-    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
+    unittest_args += ["--enable-timing", "--verbose"]
     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
         "-Dpolyglot.engine.AllowExperimentalOptions=true",
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dgraalvm.locatorDisabled=true",
-        "truffle"])
+        "truffle", "LibGraalCompilerTest"])
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
@@ -610,8 +632,9 @@ def gate_svm_truffle_tck_python(tasks):
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+        import json
         import mx_compiler
-        build_options = [] + options
+        build_options = ['-H:+GenerateBuildArtifactsFile'] + options
         if shared_lib:
             build_options = build_options + ['--shared']
         build_deps = []
@@ -636,21 +659,18 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
         if additional_deps:
             build_deps = build_deps + additional_deps
         extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
-        tests_image = native_image(build_options + extra_image_args)
-        import configparser
-        artifacts = configparser.RawConfigParser(allow_no_value=True)
-        artifacts_file_path = tests_image + '.build_artifacts.txt'
+        native_image(build_options + extra_image_args)
+        artifacts_file_path = join(image_dir, 'build-artifacts.json')
         if not exists(artifacts_file_path):
-            mx.abort('Tests image build artifacts not found.')
-        artifacts.read(artifacts_file_path)
-        if shared_lib:
-            if not any(s == 'SHARED_LIB' for s in artifacts.sections()):
-                mx.abort('Shared lib not found in image build artifacts.')
-            tests_image_path = join(image_dir, str(artifacts.items('SHARED_LIB')[0][0]))
-        else:
-            if not any(s == 'EXECUTABLE' for s in artifacts.sections()):
-                mx.abort('Executable not found in image build artifacts.')
-            tests_image_path = join(image_dir, str(artifacts.items('EXECUTABLE')[0][0]))
+            mx.abort(f'{artifacts_file_path} for tests image not found.')
+        with open(artifacts_file_path) as f:
+            artifacts = json.load(f)
+        kind = 'shared_libraries' if shared_lib else 'executables'
+        if kind not in artifacts:
+            mx.abort(f'{kind} not found in {artifacts_file_path}.')
+        if len(artifacts[kind]) != 1:
+            mx.abort(f"Expected {kind} list with one element, found {len(artifacts[kind])}: {', '.join(artifacts[kind])}.")
+        tests_image_path = join(image_dir, artifacts[kind][0])
         mx.logv(f'Test image path: {tests_image_path}')
         return tests_image_path, unittests_file
 

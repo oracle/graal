@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
@@ -52,7 +59,7 @@ import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.runtime.SLBigInteger;
 
 /**
  * SL node that performs the "+" operation, which performs addition on arbitrary precision numbers,
@@ -70,7 +77,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the
      * arbitrary-precision arithmetic. We need to check for overflows of the addition, and switch to
-     * the {@link #add(SLBigNumber, SLBigNumber) slow path}. Therefore, we use an
+     * the {@link #add(SLBigInteger, SLBigInteger) slow path}. Therefore, we use an
      * {@link Math#addExact(long, long) addition method that throws an exception on overflow}. The
      * {@code rewriteOn} attribute on the {@link Specialization} annotation automatically triggers
      * the node rewriting on the exception.
@@ -83,17 +90,17 @@ public abstract class SLAddNode extends SLBinaryNode {
      * operand are {@code long} values.
      */
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long add(long left, long right) {
+    protected long doLong(long left, long right) {
         return Math.addExact(left, right);
     }
 
     /**
-     * This is the slow path of the arbitrary-precision arithmetic. The {@link SLBigNumber} type of
+     * This is the slow path of the arbitrary-precision arithmetic. The {@link SLBigInteger} type of
      * Java is doing everything we need.
      * <p>
      * This specialization is automatically selected by the Truffle DSL if both the left and right
-     * operand are {@link SLBigNumber} values. Because the type system defines an
-     * {@link ImplicitCast implicit conversion} from {@code long} to {@link SLBigNumber} in
+     * operand are {@link SLBigInteger} values. Because the type system defines an
+     * {@link ImplicitCast implicit conversion} from {@code long} to {@link SLBigInteger} in
      * {@link SLTypes#castBigNumber(long)}, this specialization is also taken if the left or the
      * right operand is a {@code long} value. Because the {@link #add(long, long) long}
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
@@ -101,8 +108,33 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization
     @TruffleBoundary
-    protected SLBigNumber add(SLBigNumber left, SLBigNumber right) {
-        return new SLBigNumber(left.getValue().add(right.getValue()));
+    protected SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+        return new SLBigInteger(left.getValue().add(right.getValue()));
+    }
+
+    /**
+     * This is the most general slow path of the arbitrary-precision arithmetic. In addition to what
+     * {@link #doSLBigInteger(SLBigInteger, SLBigInteger)} can handle, it also handles foreign
+     * objects that fit into {@link java.math.BigInteger}, e.g. host objects representing
+     * {@link java.math.BigInteger} instances or big integer representations from other languages.
+     * <p>
+     * This specialization is automatically selected by the Truffle DSL if both the left and the
+     * right operand {@link InteropLibrary#fitsInBigInteger(Object) fit} into
+     * {@link java.math.BigInteger}, but at least one of them cannot be coverted to
+     * {@link SLBigInteger} by {@link ImplicitCast implicit conversion}. Once this specialization
+     * has been selected, it replaces the {@link #doSLBigInteger(SLBigInteger, SLBigInteger)}
+     * specialization which is then never used again.
+     */
+    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+    @TruffleBoundary
+    protected SLBigInteger doInteropBigInteger(Object left, Object right,
+                    @CachedLibrary("left") InteropLibrary leftLibrary,
+                    @CachedLibrary("right") InteropLibrary rightLibrary) {
+        try {
+            return new SLBigInteger(leftLibrary.asBigInteger(left).add(rightLibrary.asBigInteger(right)));
+        } catch (UnsupportedMessageException e) {
+            throw shouldNotReachHere(e);
+        }
     }
 
     /**
@@ -115,11 +147,12 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected TruffleString add(Object left, Object right,
+    protected static TruffleString doString(Object left, Object right,
+                    @Bind("this") Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
                     @Cached TruffleString.ConcatNode concatNode) {
-        return concatNode.execute(toTruffleStringNodeLeft.execute(left), toTruffleStringNodeRight.execute(right), SLLanguage.STRING_ENCODING, true);
+        return concatNode.execute(toTruffleStringNodeLeft.execute(node, left), toTruffleStringNodeRight.execute(node, right), SLLanguage.STRING_ENCODING, true);
     }
 
     /**

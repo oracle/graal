@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.match;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.dominates;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 
 import java.util.ArrayList;
@@ -47,7 +45,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 /**
@@ -131,7 +129,7 @@ public class MatchContext {
 
     private ConsumedNodes consumed = new ConsumedNodes();
 
-    private Block rootBlock;
+    private HIRBlock rootBlock;
     private int rootIndex;
 
     /**
@@ -140,7 +138,7 @@ public class MatchContext {
      * the Read is.
      */
     private int emitIndex;
-    private Block emitBlock;
+    private HIRBlock emitBlock;
 
     private final NodeLIRBuilder builder;
 
@@ -154,7 +152,7 @@ public class MatchContext {
         }
     }
 
-    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, int index, Node node, Block rootBlock, StructuredGraph.ScheduleResult schedule) {
+    public MatchContext(NodeLIRBuilder builder, MatchStatement rule, int index, Node node, HIRBlock rootBlock, StructuredGraph.ScheduleResult schedule) {
         this.builder = builder;
         this.rule = rule;
         this.root = node;
@@ -199,13 +197,13 @@ public class MatchContext {
     private Result findEarlyPosition() {
         int startIndexSideEffect = -1;
         int endIndexSideEffect = -1;
-        final NodeMap<Block> nodeToBlockMap = schedule.getNodeToBlockMap();
+        final NodeMap<HIRBlock> nodeToBlockMap = schedule.getNodeToBlockMap();
         final BlockMap<List<Node>> blockToNodesMap = schedule.getBlockToNodesMap();
 
         // Nodes affected by side effects must be in the same block
         for (ConsumedNode cn : consumed) {
             if (!cn.ignoresSideEffects) {
-                Block b = nodeToBlockMap.get(cn.node);
+                HIRBlock b = nodeToBlockMap.get(cn.node);
                 if (emitBlock == null) {
                     emitBlock = b;
                     startIndexSideEffect = endIndexSideEffect = blockToNodesMap.get(b).indexOf(cn.node);
@@ -310,13 +308,13 @@ public class MatchContext {
         // Is there an input that's not part of the match that's after the emit position?
         for (Node in : node.inputs()) {
             if (in instanceof PhiNode) {
-                Block b = schedule.getNodeToBlockMap().get(((PhiNode) in).merge());
-                if (dominates(b, emitBlock)) {
+                HIRBlock b = schedule.getNodeToBlockMap().get(((PhiNode) in).merge());
+                if (b.dominates(emitBlock)) {
                     continue;
                 }
             } else {
-                Block b = schedule.getNodeToBlockMap().get(in);
-                if (strictlyDominates(b, emitBlock) || (b == emitBlock && schedule.getBlockToNodesMap().get(emitBlock).indexOf(in) <= emitIndex)) {
+                HIRBlock b = schedule.getNodeToBlockMap().get(in);
+                if (b.strictlyDominates(emitBlock) || (b == emitBlock && schedule.getBlockToNodesMap().get(emitBlock).indexOf(in) <= emitIndex)) {
                     continue;
                 }
             }

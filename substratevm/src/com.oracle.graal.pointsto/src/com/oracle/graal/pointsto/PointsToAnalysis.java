@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
@@ -83,6 +84,7 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link java.lang.Object}. */
@@ -158,8 +160,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return reportAnalysisStatistics;
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        return new MethodTypeFlowBuilder(bb, method);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
@@ -180,7 +182,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeLoad.initFlow(this);
+            unsafeLoad.forceUpdate(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for
@@ -193,7 +195,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeStore.initFlow(this);
+            unsafeStore.forceUpdate(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for
@@ -256,14 +258,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return metaAccess.lookupJavaType(org.graalvm.compiler.graph.NodeList.class);
     }
 
-    public AnalysisType getThrowableType() {
-        return metaAccess.lookupJavaType(Throwable.class);
-    }
-
-    public AnalysisType getThreadType() {
-        return metaAccess.lookupJavaType(Thread.class);
-    }
-
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
     }
@@ -298,6 +292,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
+        assert aMethod.isOriginalMethod();
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
@@ -314,10 +309,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             postTask(() -> {
                 pointsToMethod.registerAsDirectRootMethod();
                 pointsToMethod.registerAsImplementationInvoked("root method");
-                MethodFlowsGraph methodFlowsGraph = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                 for (int idx = 0; idx < paramCount; idx++) {
                     AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
-                    FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);
+                    FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
                     if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
                         TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
                         initialParameterFlow.addUse(this, parameter);
@@ -349,7 +344,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 } else {
                     pointsToMethod.registerAsVirtualRootMethod();
                 }
-                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial);
+                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, pointsToMethod.getMultiMethodKey());
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
@@ -394,7 +389,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
-        for (AnalysisField field : type.getInstanceFields(false)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
@@ -418,7 +414,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @SuppressWarnings("try")
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
-        for (AnalysisField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
                 field.registerAsAccessed("root field");
                 /*

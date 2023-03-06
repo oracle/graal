@@ -34,10 +34,10 @@ public class WrappedSignature implements Signature {
     private final Signature wrapped;
     private final ResolvedJavaType defaultAccessingClass;
 
-    public WrappedSignature(Universe universe, Signature wrapped, WrappedJavaType defaultAccessingClass) {
+    public WrappedSignature(Universe universe, Signature wrapped, ResolvedJavaType defaultAccessingClass) {
         this.universe = universe;
         this.wrapped = wrapped;
-        this.defaultAccessingClass = defaultAccessingClass.getWrapped();
+        this.defaultAccessingClass = defaultAccessingClass;
     }
 
     @Override

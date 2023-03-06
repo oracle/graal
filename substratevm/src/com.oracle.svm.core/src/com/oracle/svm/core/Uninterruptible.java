@@ -202,6 +202,7 @@ public @interface Uninterruptible {
         public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
             boolean callerUninterruptible = isUninterruptible(caller);
             boolean calleeUninterruptible = isUninterruptible(callee);
+
             if (callerUninterruptible) {
                 /*
                  * When a caller is uninterruptible, the callee must be too. Even when the

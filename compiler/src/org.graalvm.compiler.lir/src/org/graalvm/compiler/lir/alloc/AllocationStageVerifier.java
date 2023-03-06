@@ -28,7 +28,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.EnumSet;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
@@ -51,12 +51,12 @@ public class AllocationStageVerifier extends AllocationPhase {
     }
 
     protected void verifyLIR(LIR lir) {
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             verifyBlock(lir, block);
         }
     }
 
-    protected void verifyBlock(LIR lir, AbstractBlockBase<?> block) {
+    protected void verifyBlock(LIR lir, BasicBlock<?> block) {
         for (LIRInstruction inst : lir.getLIRforBlock(block)) {
             verifyInstruction(inst);
         }

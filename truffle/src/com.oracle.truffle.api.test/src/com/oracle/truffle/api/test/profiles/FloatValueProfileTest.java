@@ -40,32 +40,23 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.profiles.PrimitiveValueProfileTest.exactCompare;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoint;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
-import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.profiles.InlinedFloatValueProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class FloatValueProfileTest {
+public class FloatValueProfileTest extends AbstractProfileTest {
 
-    @DataPoint public static final float VALUE0 = Float.MIN_VALUE;
-    @DataPoint public static final float VALUE1 = -0.0f;
-    @DataPoint public static final float VALUE2 = +0.0f;
-    @DataPoint public static final float VALUE3 = 14.5f;
-    @DataPoint public static final float VALUE4 = Float.MAX_VALUE;
+    private static float[] VALUES = new float[]{Float.MIN_VALUE, -0.0f, +0.0f, 14.5f, Float.MAX_VALUE};
 
     private static final float FLOAT_DELTA = 0.00001f;
 
@@ -74,90 +65,188 @@ public class FloatValueProfileTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private FloatValueProfile profile;
-
-    @Before
-    public void create() {
-        profile = ReflectionUtils.newInstance(FloatValueProfile.class);
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 1, 0, 0);
     }
 
-    private static boolean isGeneric(FloatValueProfile profile) {
-        return (boolean) invoke(profile, "isGeneric");
-    }
-
-    private static boolean isUninitialized(FloatValueProfile profile) {
-        return (boolean) invoke(profile, "isUninitialized");
-    }
-
-    private static float getCachedValue(FloatValueProfile profile) {
-        return (float) invoke(profile, "getCachedValue");
+    @Test
+    public void testNotCrashing() {
+        FloatValueProfile profile = createEnabled(FloatValueProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
     }
 
     @Test
     public void testInitial() {
+        FloatValueProfile profile = createEnabled(FloatValueProfile.class);
         assertThat(isGeneric(profile), is(false));
         assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileOneFloat(float value) {
-        float result = profile.profile(value);
+    @Test
+    public void testProfileOneFloat() {
+        for (float value : VALUES) {
+            FloatValueProfile profile = createEnabled(FloatValueProfile.class);
+            float result = profile.profile(value);
 
-        assertThat(result, is(value));
-        assertEquals(getCachedValue(profile), value, FLOAT_DELTA);
-        assertThat(isUninitialized(profile), is(false));
+            assertThat(result, is(value));
+            assertEquals((float) getCachedValue(profile), value, FLOAT_DELTA);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
+        }
+    }
+
+    @Test
+    public void testProfileTwoFloat() {
+        for (float value0 : VALUES) {
+            for (float value1 : VALUES) {
+                FloatValueProfile profile = createEnabled(FloatValueProfile.class);
+                float result0 = profile.profile(value0);
+                float result1 = profile.profile(value1);
+
+                assertEquals(result0, value0, FLOAT_DELTA);
+                assertEquals(result1, value1, FLOAT_DELTA);
+
+                if (exactCompare(value0, value1)) {
+                    assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeFloat() {
+        for (float value0 : VALUES) {
+            for (float value1 : VALUES) {
+                for (float value2 : VALUES) {
+                    FloatValueProfile profile = createEnabled(FloatValueProfile.class);
+                    float result0 = profile.profile(value0);
+                    float result1 = profile.profile(value1);
+                    float result2 = profile.profile(value2);
+
+                    assertEquals(result0, value0, FLOAT_DELTA);
+                    assertEquals(result1, value1, FLOAT_DELTA);
+                    assertEquals(result2, value2, FLOAT_DELTA);
+
+                    if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
+                        assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedFloatValueProfile profile = createEnabled(InlinedFloatValueProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testInitialInlined() {
+        InlinedFloatValueProfile profile = createEnabled(InlinedFloatValueProfile.class);
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @SuppressWarnings("deprecation")
-    @Theory
-    public void testProfileTwoFloat(float value0, float value1) {
-        float result0 = profile.profile(value0);
-        float result1 = profile.profile(value1);
+    @Test
+    public void testProfileOneFloatInlined() {
+        for (float value : VALUES) {
+            InlinedFloatValueProfile profile = createEnabled(InlinedFloatValueProfile.class);
+            float result = profile.profile(state, value);
 
-        assertEquals(result0, value0, FLOAT_DELTA);
-        assertEquals(result1, value1, FLOAT_DELTA);
-
-        if (exactCompare(value0, value1)) {
-            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
+            assertThat(result, is(value));
+            assertEquals((float) getCachedValue(profile), value, FLOAT_DELTA);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
         }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
     }
 
-    @SuppressWarnings("deprecation")
-    @Theory
-    public void testProfileThreeFloat(float value0, float value1, float value2) {
-        float result0 = profile.profile(value0);
-        float result1 = profile.profile(value1);
-        float result2 = profile.profile(value2);
+    @Test
+    public void testProfileTwoFloatInlined() {
+        for (float value0 : VALUES) {
+            for (float value1 : VALUES) {
+                InlinedFloatValueProfile profile = createEnabled(InlinedFloatValueProfile.class);
+                float result0 = profile.profile(state, value0);
+                float result1 = profile.profile(state, value1);
 
-        assertEquals(result0, value0, FLOAT_DELTA);
-        assertEquals(result1, value1, FLOAT_DELTA);
-        assertEquals(result2, value2, FLOAT_DELTA);
+                assertEquals(result0, value0, FLOAT_DELTA);
+                assertEquals(result1, value1, FLOAT_DELTA);
 
-        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
-            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
+                if (exactCompare(value0, value1)) {
+                    assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
         }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testProfileThreeFloatInlined() {
+        for (float value0 : VALUES) {
+            for (float value1 : VALUES) {
+                for (float value2 : VALUES) {
+                    InlinedFloatValueProfile profile = createEnabled(InlinedFloatValueProfile.class);
+                    float result0 = profile.profile(state, value0);
+                    float result1 = profile.profile(state, value1);
+                    float result2 = profile.profile(state, value2);
+
+                    assertEquals(result0, value0, FLOAT_DELTA);
+                    assertEquals(result1, value1, FLOAT_DELTA);
+                    assertEquals(result2, value2, FLOAT_DELTA);
+
+                    if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
+                        assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
     }
 
     @Test
     public void testDisabled() {
         FloatValueProfile p = FloatValueProfile.getUncached();
-        assertThat(p.profile(VALUE0), is(VALUE0));
-        assertThat(p.profile(VALUE1), is(VALUE1));
-        assertThat(p.profile(VALUE2), is(VALUE2));
-        assertThat(p.profile(VALUE3), is(VALUE3));
-        assertThat(p.profile(VALUE4), is(VALUE4));
+        for (float value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedFloatValueProfile p = InlinedFloatValueProfile.getUncached();
+        for (float value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
         p.toString(); // test that it is not crashing
     }
 

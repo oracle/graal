@@ -130,11 +130,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of additional security service types (fully qualified class names) for automatic registration. Note that these must be JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Comma-separated list of additional security provider fully qualified class names to mark as used." +
                         "Note that this option is only necessary if you use custom engine classes not available in JCA that are not JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     /*

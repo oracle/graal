@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 
@@ -72,9 +71,8 @@ public class InnerLiteral {
         return literal;
     }
 
-    public Object getLiteralContent(boolean tString) {
-        CompilerAsserts.partialEvaluationConstant(tString);
-        return tString ? literalTString : literal.content();
+    public TruffleString getLiteralContent() {
+        return literalTString;
     }
 
     /**
@@ -84,9 +82,8 @@ public class InnerLiteral {
         return mask;
     }
 
-    public Object getMaskContent(boolean tString) {
-        CompilerAsserts.partialEvaluationConstant(tString);
-        return mask == null ? null : tString ? maskTString : mask.content();
+    public TruffleString.WithMask getMaskContent() {
+        return mask == null ? null : maskTString;
     }
 
     /**

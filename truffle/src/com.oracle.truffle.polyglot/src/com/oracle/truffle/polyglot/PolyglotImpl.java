@@ -476,6 +476,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
@@ -487,6 +492,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
         return ProcessHandlers.isDefault(processHandler);
+    }
+
+    @Override
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return FileSystems.isInternal(getRootImpl(), fileSystem);
     }
 
     @Override
@@ -528,7 +538,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        TruffleFile truffleFile;
+        try {
+            truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        } catch (UnsupportedOperationException | IllegalArgumentException e) {
+            throw new AssertionError("Inconsistent path", e);
+        }
         return truffleFile.detectMimeType();
     }
 
@@ -611,7 +626,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             synchronized (this) {
                 res = defaultFileSystemContext;
                 if (res == null) {
-                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
+                    EmbedderFileSystemContext context = new EmbedderFileSystemContext(this);
                     res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
                     defaultFileSystemContext = res;
                 }
@@ -621,6 +636,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static final class EmbedderFileSystemContext {
+
+        private final PolyglotImpl impl;
+
+        EmbedderFileSystemContext(PolyglotImpl impl) {
+            this.impl = Objects.requireNonNull(impl);
+        }
+
+        PolyglotImpl getImpl() {
+            return impl;
+        }
 
         final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
         final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ public class MethodHandleFeature implements InternalFeature {
     private Method memberNameIsMethod;
     private Method memberNameIsConstructor;
     private Method memberNameIsField;
-    private Method memberNameGetParameterTypes;
+    private Method memberNameGetMethodType;
     private Field methodHandleInternalForm;
     private Field lambdaFormNames;
     private Field lambdaFormArity;
@@ -121,7 +121,7 @@ public class MethodHandleFeature implements InternalFeature {
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
-        memberNameGetParameterTypes = ReflectionUtil.lookupMethod(memberNameClass, "getParameterTypes");
+        memberNameGetMethodType = ReflectionUtil.lookupMethod(memberNameClass, "getMethodType");
 
         lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
         lambdaFormNames = ReflectionUtil.lookupField(lambdaFormClass, "names");
@@ -361,7 +361,11 @@ public class MethodHandleFeature implements InternalFeature {
             boolean isConstructor = (boolean) memberNameIsConstructor.invoke(memberName);
             boolean isField = (boolean) memberNameIsField.invoke(memberName);
             String name = (isMethod || isField) ? (String) memberNameGetName.invoke(memberName) : null;
-            Class<?>[] paramTypes = (isMethod || isConstructor) ? (Class<?>[]) memberNameGetParameterTypes.invoke(memberName) : null;
+            Class<?>[] paramTypes = null;
+            if (isMethod || isConstructor) {
+                MethodType methodType = (MethodType) memberNameGetMethodType.invoke(memberName);
+                paramTypes = methodType.parameterArray();
+            }
             if (isMethod) {
                 RuntimeReflection.register(declaringClass.getDeclaredMethod(name, paramTypes));
             } else if (isConstructor) {

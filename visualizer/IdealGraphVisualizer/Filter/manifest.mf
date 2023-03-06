@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+OpenIDE-Module: org.graalvm.visualizer.filter
+OpenIDE-Module-Layer: org/graalvm/visualizer/filter/resources/layer.xml
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/filter/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.3

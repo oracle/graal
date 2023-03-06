@@ -90,7 +90,7 @@ public final class LocationMarkerPhase extends FinalCodeAnalysisPhase {
         @Override
         protected void processState(LIRInstruction op, LIRFrameState info, RegStackValueSet values) {
             if (!info.hasDebugInfo()) {
-                info.initDebugInfo(frameMap, !op.destroysCallerSavedRegisters() || !frameMap.getRegisterConfig().areAllAllocatableRegistersCallerSaved());
+                info.initDebugInfo();
             }
 
             ReferenceMapBuilder refMap = frameMap.newReferenceMapBuilder();

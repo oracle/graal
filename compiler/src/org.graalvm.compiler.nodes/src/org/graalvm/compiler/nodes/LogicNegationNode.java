@@ -44,7 +44,7 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
     public static final NodeClass<LogicNegationNode> TYPE = NodeClass.create(LogicNegationNode.class);
     @Input(Condition) LogicNode value;
 
-    public LogicNegationNode(LogicNode value) {
+    protected LogicNegationNode(LogicNode value) {
         super(TYPE);
         this.value = value;
     }

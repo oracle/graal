@@ -107,7 +107,7 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
-            ExecuteVMOperationEvent.emit(this, requestingThread, startTicks);
+            ExecuteVMOperationEvent.emit(this, getQueuingThreadId(data), startTicks);
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread, false);
         }
     }
@@ -178,15 +178,16 @@ public abstract class VMOperation {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected abstract void markAsQueued(NativeVMOperationData data);
+
+    protected abstract void markAsFinished(NativeVMOperationData data);
+
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setQueuingThread(NativeVMOperationData data, IsolateThread value);
+    protected abstract long getQueuingThreadId(NativeVMOperationData data);
 
     protected abstract boolean isFinished(NativeVMOperationData data);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setFinished(NativeVMOperationData data, boolean value);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Whitelisted because some operations may allocate.")
     protected abstract void operate(NativeVMOperationData data);

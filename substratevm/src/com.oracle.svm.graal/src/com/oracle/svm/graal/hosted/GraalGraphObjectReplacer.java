@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -204,6 +205,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         assert dest != null;
         String className = dest.getClass().getName();
         assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
+        assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
         assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
         assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
         assert !SubstrateUtil.isBuildingLibgraal() || !className.contains(".svm.hosted.snippets.") : "Hosted snippet object in image " + className;
@@ -222,6 +224,9 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else {
             aMethod = aUniverse.lookup(original);
         }
+        aMethod = aMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+        assert aMethod != null;
+
         SubstrateMethod sMethod = methods.get(aMethod);
         if (sMethod == null) {
             assert !(original instanceof HostedMethod) : "too late to create new method";

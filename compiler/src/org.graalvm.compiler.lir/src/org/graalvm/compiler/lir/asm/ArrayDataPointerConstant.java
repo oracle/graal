@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,14 +42,6 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
         data = array.clone();
     }
 
-    public ArrayDataPointerConstant(char[] array, int alignment) {
-        super(alignment);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 2);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        byteBuffer.asCharBuffer().put(array);
-        data = byteBuffer.array();
-    }
-
     public ArrayDataPointerConstant(short[] array, int alignment) {
         super(alignment);
         ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 2);
@@ -71,22 +63,6 @@ public class ArrayDataPointerConstant extends DataPointerConstant {
         ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         byteBuffer.asFloatBuffer().put(array);
-        data = byteBuffer.array();
-    }
-
-    public ArrayDataPointerConstant(double[] array, int alignment) {
-        super(alignment);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 8);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        byteBuffer.asDoubleBuffer().put(array);
-        data = byteBuffer.array();
-    }
-
-    public ArrayDataPointerConstant(long[] array, int alignment) {
-        super(alignment);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(array.length * 8);
-        byteBuffer.order(ByteOrder.nativeOrder());
-        byteBuffer.asLongBuffer().put(array);
         data = byteBuffer.array();
     }
 

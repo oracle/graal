@@ -54,6 +54,12 @@ public abstract class DerivedInductionVariable extends InductionVariable {
         return copy(newBase, copyValue(newBase, false/* no gvn */));
     }
 
+    @Override
+    public InductionVariable duplicateWithNewInit(ValueNode newInit) {
+        InductionVariable newBase = base.duplicateWithNewInit(newInit);
+        return copy(newBase, copyValue(newBase, false/* no gvn */));
+    }
+
     public abstract ValueNode copyValue(InductionVariable newBase);
 
     public abstract ValueNode copyValue(InductionVariable newBase, boolean gvn);

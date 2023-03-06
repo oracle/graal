@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.core.gen;
 
 import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.BCI;
-import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.END;
 import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.INSTRUCTION;
 import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.USE;
 import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.VALUE;
@@ -77,17 +76,6 @@ public class InstructionPrinter {
         }
 
         /**
-         * Prints this column's label to a given stream after padding the stream with '_' characters
-         * until its {@linkplain LogStream#position() position} is equal to this column's position.
-         *
-         * @param out the print stream
-         */
-        public void printLabel(LogStream out) {
-            out.fillTo(position + out.indentationLevel(), '_');
-            out.print(label);
-        }
-
-        /**
          * Prints space characters to a given stream until its {@linkplain LogStream#position()
          * position} is equal to this column's position.
          *
@@ -106,19 +94,6 @@ public class InstructionPrinter {
 
     public LogStream out() {
         return out;
-    }
-
-    /**
-     * Prints a header for the tabulated data printed by {@link #printInstructionListing(ValueNode)}
-     * .
-     */
-    public void printInstructionListingHeader() {
-        BCI.printLabel(out);
-        USE.printLabel(out);
-        VALUE.printLabel(out);
-        INSTRUCTION.printLabel(out);
-        END.printLabel(out);
-        out.println();
     }
 
     /**

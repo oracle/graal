@@ -54,7 +54,7 @@ public interface DeoptimizingNode extends NodeWithState {
      * Interface for nodes that need a {@link FrameState} for deoptimizing to a point before their
      * execution.
      */
-    public interface DeoptBefore extends DeoptimizingNode {
+    interface DeoptBefore extends DeoptimizingNode {
 
         /**
          * Sets the {@link FrameState} describing the program state before the execution of this
@@ -73,14 +73,14 @@ public interface DeoptimizingNode extends NodeWithState {
      * Interface for nodes that need a {@link FrameState} for deoptimizing to a point after their
      * execution.
      */
-    public interface DeoptAfter extends DeoptimizingNode, StateSplit {
+    interface DeoptAfter extends DeoptimizingNode, StateSplit {
     }
 
     /**
      * Interface for nodes that need a special {@link FrameState} for deoptimizing during their
      * execution (e.g. {@link Invoke}).
      */
-    public interface DeoptDuring extends DeoptimizingNode, StateSplit {
+    interface DeoptDuring extends DeoptimizingNode, StateSplit {
 
         FrameState stateDuring();
 

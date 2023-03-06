@@ -36,21 +36,87 @@ import java.util.Objects;
 public interface BinaryMarshaller<T> {
 
     /**
-     * Reads the object value from the {@code input} and returns the recreated object.
-     */
-    T read(BinaryInput input);
-
-    /**
-     * Writes the {@code object}'s value into the {@code output}.
+     * Decomposes and serializes the given object passed to a foreign method.
      */
     void write(BinaryOutput output, T object);
 
     /**
+     * Deserializes and recreates an object passed to a foreign method.
+     */
+    T read(BinaryInput input);
+
+    /**
      * Estimates a size in bytes needed to marshall given object. The returned value is used to
-     * pre-allocate the {@link BinaryOutput}'s buffer.
+     * pre-allocate the {@link BinaryOutput}'s buffer. The accuracy of the estimate affects the
+     * speed of marshalling. If the estimate is too small, the pre-allocated buffer must be
+     * re-allocated and the already marshalled data must be copied. Too large a value may cause the
+     * static buffer to be unused and the dynamic buffer to be unnecessarily allocated.
      */
     default int inferSize(@SuppressWarnings("unused") T object) {
         return Long.BYTES;
+    }
+
+    /**
+     * Decomposes and serializes the mutable state of a given object to support {@link Out}
+     * semantics. Marshallers that do not support {@link Out} parameters do not need to implement
+     * this method. The default implementation throws {@link UnsupportedOperationException}. To
+     * support {@link Out} parameters the {@link BinaryMarshaller} must implement also
+     * {@link #readUpdate(BinaryInput, Object)} and {@link #inferUpdateSize(Object)}.
+     * <p>
+     * The {@link Out} parameters are passed in the following way:
+     * <ol>
+     * <li>The start point method writes the parameter using
+     * {@link #write(BinaryOutput, Object)}.</li>
+     * <li>A foreign method call is made.</li>
+     * <li>The end point method reads the parameter using {@link #read(BinaryInput)}.</li>
+     * <li>The end point receiver method is called with the unmarshalled parameter.</li>
+     * <li>After calling the receiver method, the end point method writes the mutated {@link Out}
+     * parameter state using {@link #writeUpdate(BinaryOutput, Object)}.</li>
+     * <li>A foreign method returns.</li>
+     * <li>The state of the {@link Out} parameter is updated using
+     * {@link #readUpdate(BinaryInput, Object)}.</li>
+     * </ol>
+     * <p>
+     *
+     * @see BinaryMarshaller#readUpdate(BinaryInput, Object)
+     * @see BinaryMarshaller#inferUpdateSize(Object)
+     */
+    @SuppressWarnings("unused")
+    default void writeUpdate(BinaryOutput output, T object) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Deserializes and updates the mutable state of a given object to support {@link Out}
+     * semantics. Marshallers that do not support {@link Out} parameters do not need to implement
+     * this method. The default implementation throws {@link UnsupportedOperationException}. To
+     * support {@link Out} parameters the {@link BinaryMarshaller} must implement also
+     * {@link #writeUpdate(BinaryOutput, Object)} and {@link #inferUpdateSize(Object)}.
+     *
+     * @see BinaryMarshaller#writeUpdate(BinaryOutput, Object)
+     * @see BinaryMarshaller#inferUpdateSize(Object)
+     */
+    @SuppressWarnings("unused")
+    default void readUpdate(BinaryInput input, T object) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Estimates a size in bytes needed to marshall {@link Out} parameter passed back to caller from
+     * a foreign method call. The accuracy of the estimate affects the speed of marshalling. If the
+     * estimate is too small, the pre-allocated buffer must be re-allocated and the already
+     * marshalled data must be copied. Too large a value may cause the static buffer to be unused
+     * and the dynamic buffer to be unnecessarily allocated. Marshallers that do not support
+     * {@link Out} parameters do not need to implement this method. The default implementation
+     * throws {@link UnsupportedOperationException}. To support {@link Out} parameters the
+     * {@link BinaryMarshaller} must implement also {@link #writeUpdate(BinaryOutput, Object)} and
+     * {@link #readUpdate(BinaryInput, Object)}.
+     *
+     * @see BinaryMarshaller#writeUpdate(BinaryOutput, Object)
+     * @see BinaryMarshaller#readUpdate(BinaryInput, Object)
+     */
+    default int inferUpdateSize(@SuppressWarnings("unused") T object) {
+        throw new UnsupportedOperationException();
     }
 
     /**

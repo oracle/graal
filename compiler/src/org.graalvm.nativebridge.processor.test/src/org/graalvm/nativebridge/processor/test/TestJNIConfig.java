@@ -30,6 +30,7 @@ import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.JNIConfig;
 import org.graalvm.polyglot.TypeLiteral;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -58,7 +59,8 @@ public final class TestJNIConfig {
         };
         TypeLiteral<Map<String, String>> stringMap = new TypeLiteral<>() {
         };
-        return JNIConfig.newBuilder().registerMarshaller(stringList, unsupportedMarshaller()).registerMarshaller(stringMap, unsupportedMarshaller()).build();
+        return JNIConfig.newBuilder().registerMarshaller(Duration.class, unsupportedMarshaller()).registerMarshaller(stringList, unsupportedMarshaller()).registerMarshaller(stringMap,
+                        unsupportedMarshaller()).build();
     }
 
     @SuppressWarnings("unchecked")

@@ -172,13 +172,13 @@ public class CInterfaceTutorial {
     protected static CCharPointerHolder pin;
 
     protected static void dump(MyData data) {
-        System.out.format("**** In Java ****\n");
-        System.out.format("primitive: %d\n", data.getPrimitive());
-        System.out.format("length: %d\n", getDataLength());
+        System.out.format("**** In Java ****%n");
+        System.out.format("primitive: %d%n", data.getPrimitive());
+        System.out.format("length: %d%n", getDataLength());
         for (int i = 0; i < getDataLength(); i++) {
             System.out.format("%d ", data.addressOfArray().read(i));
         }
-        System.out.format("\n");
+        System.out.format("%n");
 
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         /* Call a C function directly. */
@@ -232,7 +232,7 @@ public class CInterfaceTutorial {
         /* Retrieve the object we have stored in a handle. */
         ObjectHandle handle = data.getJavaObject();
         String javaObject = ObjectHandles.getGlobal().get(handle);
-        System.out.format("javaObject: %s\n", javaObject);
+        System.out.format("javaObject: %s%n", javaObject);
         /* Free the handle. After this call, the handle must not be used anymore. */
         ObjectHandles.getGlobal().destroy(handle);
 

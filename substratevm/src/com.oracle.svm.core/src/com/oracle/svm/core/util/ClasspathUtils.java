@@ -24,43 +24,12 @@
  */
 package com.oracle.svm.core.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.regex.Pattern;
-
-import com.oracle.svm.core.OS;
 
 public final class ClasspathUtils {
-
-    public static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
-
-    public static Path stringToClasspath(String cp) {
-        String separators = Pattern.quote(File.separator);
-        if (OS.getCurrent().equals(OS.WINDOWS)) {
-            separators += "/"; /* on Windows also / is accepted as valid separator */
-        }
-        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals("*")) {
-                components[i] = cpWildcardSubstitute;
-            }
-        }
-        return Paths.get(String.join(File.separator, components));
-    }
-
-    public static String classpathToString(Path cp) {
-        String[] components = cp.toString().split(Pattern.quote(File.separator), Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals(cpWildcardSubstitute)) {
-                components[i] = "*";
-            }
-        }
-        return String.join(File.separator, components);
-    }
 
     public static boolean isJar(Path p) {
         Path fn = p.getFileName();

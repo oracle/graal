@@ -193,4 +193,9 @@ public final class LinkedKlass {
     public StaticShape<StaticObjectFactory> getShape(boolean isStatic) {
         return isStatic ? staticShape : instanceShape;
     }
+
+    @Override
+    public String toString() {
+        return "LinkedKlass<" + getType() + ">";
+    }
 }

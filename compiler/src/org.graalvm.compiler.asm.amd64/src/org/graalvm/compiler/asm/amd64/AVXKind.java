@@ -42,27 +42,20 @@ import jdk.vm.ci.meta.Value;
 public final class AVXKind {
 
     public enum AVXSize implements VectorSize {
-        DWORD,
-        QWORD,
-        XMM,
-        YMM,
-        ZMM;
+        DWORD(4),
+        QWORD(8),
+        XMM(16),
+        YMM(32),
+        ZMM(64);
+
+        private final int size;
+
+        AVXSize(int size) {
+            this.size = size;
+        }
 
         public int getBytes() {
-            switch (this) {
-                case DWORD:
-                    return 4;
-                case QWORD:
-                    return 8;
-                case XMM:
-                    return 16;
-                case YMM:
-                    return 32;
-                case ZMM:
-                    return 64;
-                default:
-                    return 0;
-            }
+            return size;
         }
 
         /**

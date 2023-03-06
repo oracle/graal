@@ -40,6 +40,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -47,7 +48,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -80,9 +80,9 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -246,7 +246,9 @@ public class FeatureImpl {
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
             return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
-                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(AnalysisMethod::getJavaMethod)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
@@ -532,19 +534,21 @@ public class FeatureImpl {
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
         protected final NativeImageHeap heap;
-        protected final SharedRuntimeConfigurationBuilder runtimeBuilder;
+        protected final RuntimeConfiguration runtimeConfiguration;
+        protected final NativeLibraries nativeLibraries;
 
         CompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, NativeImageHeap heap, DebugContext debugContext,
-                        SharedRuntimeConfigurationBuilder runtimeBuilder) {
+                        RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
             super(featureHandler, imageClassLoader, debugContext);
             this.aUniverse = aUniverse;
             this.hUniverse = hUniverse;
-            this.runtimeBuilder = runtimeBuilder;
             this.heap = heap;
+            this.runtimeConfiguration = runtimeConfiguration;
+            this.nativeLibraries = nativeLibraries;
         }
 
         public NativeLibraries getNativeLibraries() {
-            return runtimeBuilder.getNativeLibraries();
+            return nativeLibraries;
         }
 
         @Override
@@ -613,7 +617,7 @@ public class FeatureImpl {
         }
 
         public Providers getProviders() {
-            return runtimeBuilder.getRuntimeConfig().getProviders();
+            return runtimeConfiguration.getProviders();
         }
 
         public HostedUniverse getUniverse() {
@@ -636,12 +640,12 @@ public class FeatureImpl {
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
 
         public BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
-                        NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
-            super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
+                        NativeImageHeap heap, DebugContext debugContext, RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
+            super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeConfiguration, nativeLibraries);
         }
 
-        public SharedRuntimeConfigurationBuilder getRuntimeBuilder() {
-            return runtimeBuilder;
+        public RuntimeConfiguration getRuntimeConfiguration() {
+            return runtimeConfiguration;
         }
     }
 
@@ -651,8 +655,8 @@ public class FeatureImpl {
 
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
                         Map<HostedMethod, CompileTask> compilations, NativeImageCodeCache codeCache, NativeImageHeap heap, DebugContext debugContext,
-                        SharedRuntimeConfigurationBuilder runtimeBuilder) {
-            super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
+                        RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
+            super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeConfiguration, nativeLibraries);
             this.compilations = compilations;
             this.codeCache = codeCache;
         }

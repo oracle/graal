@@ -38,13 +38,9 @@ public class LocalJfr implements Jfr {
 
     @Override
     public Recording createRecording(String recordingName) throws Exception {
-        return createRecording(new Recording(), recordingName);
-    }
-
-    @Override
-    public Recording createRecording(String recordingName, String configName) throws Exception {
-        Configuration c = Configuration.getConfiguration(configName);
-        return createRecording(new Recording(c), recordingName);
+        /* Enable a lot of events by default to increase the test coverage. */
+        Configuration defaultConfig = Configuration.getConfiguration("default");
+        return createRecording(new Recording(defaultConfig), recordingName);
     }
 
     @Override

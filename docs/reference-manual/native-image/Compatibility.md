@@ -103,9 +103,9 @@ These interfaces are built on the assumption that Java bytecodes are available a
 Because the `native-image` builder generates a native executable, users must use native debuggers and monitoring tools (such as GDB or VTune) rather than tools targeted for Java.
 JVMTI and other bytecode-based tools are not supported with Native Image.
 
-# Limitations on Linux ARM64 Architecture
+# Limitations on Linux AArch64 Architecture
 
-Mostly all Native Image features are supported on Linux ARM 64-bit architecture, except for the limitations described below.
+Mostly all Native Image features are supported on Linux AArch64 architecture, except for the limitations described below.
 
 * `-R:[+|-]WriteableCodeCache`: must be disabled.
 * `--libc=<value>`: `musl` is not supported.
@@ -113,7 +113,7 @@ Mostly all Native Image features are supported on Linux ARM 64-bit architecture,
 
 Find a complete list of options to the `native-image` builder [here](BuildOptions.md).
 
-### Further Reading
+### Related Documentation
 
 * [Class Initialization in Native Image](ClassInitialization.md)
 * [Reachability Metadata](ReachabilityMetadata.md)

@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -83,15 +82,15 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                             if (graph.isNew(before, boxUsageOnBoxedVal) || graph.isNew(before, box)) {
                                 continue boxedValUsageLoop;
                             }
-                            Block boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
-                            Block originalBoxBlock = cfg.blockFor(box);
+                            HIRBlock boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
+                            HIRBlock originalBoxBlock = cfg.blockFor(box);
                             if (boxUsageOnBoxedValBlock.getLoop() != null) {
                                 if (originalBoxBlock.getLoop() != boxUsageOnBoxedValBlock.getLoop()) {
                                     // avoid proxy creation for now
                                     continue boxedValUsageLoop;
                                 }
                             }
-                            if (AbstractControlFlowGraph.dominates(boxUsageOnBoxedValBlock, originalBoxBlock)) {
+                            if (boxUsageOnBoxedValBlock.dominates(originalBoxBlock)) {
                                 if (boxUsageOnBoxedValBlock == originalBoxBlock) {
                                     // check dominance within one block
                                     for (FixedNode f : boxUsageOnBoxedValBlock.getNodes()) {

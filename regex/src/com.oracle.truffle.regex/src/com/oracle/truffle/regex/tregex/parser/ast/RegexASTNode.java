@@ -59,23 +59,27 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_ENDS_WITH_DOLLAR = 1 << 5;
     static final int FLAG_BACK_REFERENCE_IS_NESTED = 1 << 6;
     static final int FLAG_BACK_REFERENCE_IS_FORWARD = 1 << 7;
-    static final int FLAG_GROUP_LOOP = 1 << 8;
-    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 9;
-    static final int FLAG_EMPTY_GUARD = 1 << 10;
-    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 11;
-    static final int FLAG_HAS_LOOPS = 1 << 12;
-    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 13;
-    static final int FLAG_HAS_QUANTIFIERS = 1 << 14;
-    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 15;
-    static final int FLAG_HAS_LOOK_AHEADS = 1 << 16;
-    static final int FLAG_HAS_BACK_REFERENCES = 1 << 17;
-    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 18;
+    static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE = 1 << 8;
+    static final int FLAG_GROUP_LOOP = 1 << 9;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 10;
+    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 11;
+    static final int FLAG_EMPTY_GUARD = 1 << 12;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 13;
+    static final int FLAG_HAS_LOOPS = 1 << 14;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 15;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 16;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 17;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 18;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 19;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 20;
 
     private int id = -1;
     private RegexASTNode parent;
     private int flags;
     private int minPath = 0;
     private int maxPath = 0;
+    private int prefixLengthMin = 0;
+    private int prefixLengthMax = 0;
 
     protected RegexASTNode() {
     }
@@ -412,6 +416,26 @@ public abstract class RegexASTNode implements JsonConvertible {
         maxPath += n;
     }
 
+    public int getPrefixLengthMin() {
+        return prefixLengthMin;
+    }
+
+    public void setPrefixLengthMin(int prefixLengthMin) {
+        this.prefixLengthMin = prefixLengthMin;
+    }
+
+    public int getPrefixLengthMax() {
+        return prefixLengthMax;
+    }
+
+    public void setPrefixLengthMax(int prefixLengthMax) {
+        this.prefixLengthMax = prefixLengthMax;
+    }
+
+    public boolean hasVariablePrefixLength() {
+        return getPrefixLengthMin() != getPrefixLengthMax();
+    }
+
     /**
      * Returns the subtree root node that this node is a part of. If this node is nested inside
      * several look-around assertion nodes, returns the innermost one that contains this node. Every
@@ -448,6 +472,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public boolean isGroup() {
         return this instanceof Group;
+    }
+
+    public boolean isConditionalBackReferenceGroup() {
+        return this instanceof ConditionalBackReferenceGroup;
     }
 
     public boolean isLookAroundAssertion() {
@@ -510,6 +538,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return (Group) this;
     }
 
+    public ConditionalBackReferenceGroup asConditionalBackReferenceGroup() {
+        return (ConditionalBackReferenceGroup) this;
+    }
+
     public LookAroundAssertion asLookAroundAssertion() {
         return (LookAroundAssertion) this;
     }
@@ -551,6 +583,9 @@ public abstract class RegexASTNode implements JsonConvertible {
                         Json.prop("type", typeName),
                         Json.prop("parent", astNodeId(parent)),
                         Json.prop("minPath", minPath),
+                        Json.prop("maxPath", maxPath),
+                        Json.prop("prefixLengthMin", prefixLengthMin),
+                        Json.prop("prefixLengthMax", prefixLengthMax),
                         Json.prop("isPrefix", isPrefix()),
                         Json.prop("isDead", isDead()));
     }

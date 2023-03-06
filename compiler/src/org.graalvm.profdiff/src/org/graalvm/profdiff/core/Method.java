@@ -28,7 +28,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
  * Represents a named Java method, which may have been compiled by Graal several times. The class is
@@ -108,6 +110,19 @@ public class Method {
     }
 
     /**
+     * Creates and adds a compilation fragment to the method.
+     *
+     * @param parentCompilationUnit the parent compilation unit of the fragment
+     * @param rootNode the root inlining node of the compilation fragment
+     * @return the added compilation fragment
+     */
+    public CompilationFragment addCompilationFragment(CompilationUnit parentCompilationUnit, InliningTreeNode rootNode) {
+        CompilationFragment compilationFragment = new CompilationFragment(this, parentCompilationUnit, rootNode);
+        compilationUnits.add(compilationFragment);
+        return compilationFragment;
+    }
+
+    /**
      * Gets the sum of execution periods of the method's compilation units.
      */
     public long getTotalPeriod() {
@@ -119,6 +134,13 @@ public class Method {
      */
     public List<CompilationUnit> getCompilationUnits() {
         return compilationUnits;
+    }
+
+    /**
+     * Gets an iterable over {@link CompilationFragment the compilation fragments} of this method.
+     */
+    public Iterable<CompilationFragment> getCompilationFragments() {
+        return () -> compilationUnits.stream().filter(compilation -> compilation instanceof CompilationFragment).map(compilation -> (CompilationFragment) compilation).iterator();
     }
 
     /**
@@ -160,6 +182,21 @@ public class Method {
                 writer.writeln(" (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
             } else {
                 writer.writeln();
+            }
+            if (compilationUnit instanceof CompilationFragment) {
+                CompilationFragment fragment = (CompilationFragment) compilationUnit;
+                boolean first = true;
+                for (InliningPath.PathElement element : fragment.getPathFromRoot().elements()) {
+                    writer.write(first ? "  |_ a fragment of " : "                   ");
+                    writer.write(element.getMethodName());
+                    if (element.getCallsiteBCI() == Optimization.UNKNOWN_BCI) {
+                        writer.writeln();
+                    } else {
+                        writer.write(" at bci ");
+                        writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                    }
+                    first = false;
+                }
             }
         }
         writer.decreaseIndent(2);

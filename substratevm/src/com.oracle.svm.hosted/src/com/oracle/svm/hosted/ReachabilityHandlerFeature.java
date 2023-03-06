@@ -42,15 +42,15 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
-public class ReachabilityHandlerFeature implements InternalFeature, ReachabilityHandler {
+public class ReachabilityHandlerFeature extends ReachabilityHandler implements InternalFeature {
 
     private final IdentityHashMap<Object, Set<Object>> activeHandlers = new IdentityHashMap<>();
     private final IdentityHashMap<Object, Map<Object, Set<Object>>> triggeredHandlers = new IdentityHashMap<>();
@@ -66,25 +66,20 @@ public class ReachabilityHandlerFeature implements InternalFeature, Reachability
 
     @Override
     public void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-        registerReachabilityHandler(a, callback, new Executable[]{baseMethod}, false);
+        registerReachabilityHandler(a, callback, new Executable[]{baseMethod});
     }
 
     @Override
     public void registerSubtypeReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass}, false);
-    }
-
-    @Override
-    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccessImpl a, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-        registerReachabilityHandler(a, callback, new Class<?>[]{clazz}, true);
+        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass});
     }
 
     @Override
     public void registerReachabilityHandler(BeforeAnalysisAccessImpl a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
-        registerReachabilityHandler(a, callback, triggers, false);
+        registerReachabilityHandler(a, (Object) callback, triggers);
     }
 
-    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers, boolean triggerOnClassInitializer) {
+    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers) {
         if (triggeredHandlers.containsKey(callback)) {
             /* Handler has already been triggered from another registration, so nothing to do. */
             return;
@@ -97,14 +92,13 @@ public class ReachabilityHandlerFeature implements InternalFeature, Reachability
 
         for (Object trigger : triggers) {
             if (trigger instanceof Class) {
-                AnalysisType aType = metaAccess.lookupJavaType((Class<?>) trigger);
-                triggerSet.add(triggerOnClassInitializer ? aType.getClassInitializer() : aType);
+                triggerSet.add(metaAccess.lookupJavaType((Class<?>) trigger));
             } else if (trigger instanceof Field) {
                 triggerSet.add(metaAccess.lookupJavaField((Field) trigger));
             } else if (trigger instanceof Executable) {
                 triggerSet.add(metaAccess.lookupJavaMethod((Executable) trigger));
             } else {
-                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: %s", trigger.getClass().getTypeName());
+                throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s", trigger.getClass().getTypeName());
             }
         }
 
@@ -190,7 +184,10 @@ public class ReachabilityHandlerFeature implements InternalFeature, Reachability
                 Set<Object> prevReachable = handledTriggers.computeIfAbsent(trigger, c -> new HashSet<>());
                 newReachable.removeAll(prevReachable);
                 for (AnalysisMethod reachable : newReachable) {
-                    toOverrideCallback(callback).accept(access, reachable.getJavaMethod());
+                    Executable javaMethod = reachable.getJavaMethod();
+                    if (javaMethod != null) {
+                        toOverrideCallback(callback).accept(access, javaMethod);
+                    }
                     prevReachable.add(reachable);
                 }
             } else {

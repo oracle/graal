@@ -29,12 +29,11 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
 
 /**
  * This class provides a "fake" constant pool to be used while parsing encoded annotation values in
@@ -55,7 +54,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public Class<?> getClassAt(int index) {
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(CodeInfoTable.getImageCodeInfo()), index);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getClass(index);
     }
 
     @Substitute
@@ -132,7 +131,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public String getStringAt(int index) {
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(CodeInfoTable.getImageCodeInfo()), index);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getString(index);
     }
 
     @Substitute

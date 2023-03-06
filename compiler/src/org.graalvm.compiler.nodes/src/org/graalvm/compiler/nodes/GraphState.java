@@ -612,6 +612,7 @@ public final class GraphState {
         VALUE_PROXY_REMOVAL,
         SAFEPOINTS_INSERTION,
         MID_TIER_LOWERING,
+        OPTIMISTIC_ALIASING,
         FSA,
         NODE_VECTORIZATION,
         VECTOR_MATERIALIZATION,

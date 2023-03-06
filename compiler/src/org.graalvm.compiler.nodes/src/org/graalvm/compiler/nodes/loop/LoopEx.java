@@ -53,10 +53,10 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -67,8 +67,8 @@ import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
 import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
@@ -77,7 +77,7 @@ import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class LoopEx {
-    protected final Loop<Block> loop;
+    protected final Loop<HIRBlock> loop;
     protected LoopFragmentInside inside;
     protected LoopFragmentWhole whole;
     protected CountedLoopInfo counted;
@@ -86,7 +86,7 @@ public class LoopEx {
     protected boolean countedLoopChecked;
     protected int size = -1;
 
-    protected LoopEx(Loop<Block> loop, LoopsData data) {
+    protected LoopEx(Loop<HIRBlock> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }
@@ -99,7 +99,7 @@ public class LoopEx {
         return data.getCFG().localLoopFrequencySource(loopBegin());
     }
 
-    public Loop<Block> loop() {
+    public Loop<HIRBlock> loop() {
         return loop;
     }
 
@@ -386,7 +386,7 @@ public class LoopEx {
     }
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {
-        Block block = data.getCFG().blockFor(begin);
+        HIRBlock block = data.getCFG().blockFor(begin);
         return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
     }
 
@@ -397,19 +397,29 @@ public class LoopEx {
     public void nodesInLoopBranch(NodeBitMap branchNodes, AbstractBeginNode branch) {
         EconomicSet<AbstractBeginNode> blocks = EconomicSet.create();
         Collection<AbstractBeginNode> exits = new LinkedList<>();
-        Queue<Block> work = new LinkedList<>();
+        Queue<HIRBlock> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
-        work.add(cfg.blockFor(branch));
+        NodeBitMap visited = cfg.graph.createNodeBitMap();
+        HIRBlock firstSuccBlock = cfg.blockFor(branch);
+        work.add(firstSuccBlock);
         while (!work.isEmpty()) {
-            Block b = work.remove();
+            HIRBlock b = work.remove();
             if (loop().isLoopExit(b)) {
                 assert !exits.contains(b.getBeginNode());
                 exits.add(b.getBeginNode());
             } else if (blocks.add(b.getBeginNode())) {
-                Block d = b.getDominatedSibling();
+                HIRBlock d = b.getDominatedSibling();
                 while (d != null) {
-                    if (loop.getBlocks().contains(d)) {
-                        work.add(d);
+                    /*
+                     * if the post dominator is reachable via a branch block it means it was a merge
+                     * of the current split. this is generally not part of the branch, but after the
+                     * branch.
+                     */
+                    if (loop.getBlocks().contains(d) && firstSuccBlock.getPostdominator() != d) {
+                        if (!visited.isMarked(d.getBeginNode())) {
+                            visited.mark(d.getBeginNode());
+                            work.add(d);
+                        }
                     }
                     d = d.getDominatedSibling();
                 }

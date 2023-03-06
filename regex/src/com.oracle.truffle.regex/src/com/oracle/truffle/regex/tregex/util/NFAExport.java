@@ -207,15 +207,22 @@ public final class NFAExport {
         ArrayList<NFAState> curStates = new ArrayList<>();
         ArrayList<NFAState> nextStates = new ArrayList<>();
         int entryOffset = nfa.getAnchoredEntry().length - 1;
-        NFAState lastAnchoredEntry = nfa.getAnchoredEntry()[entryOffset].getTarget();
-        NFAState lastUnAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset].getTarget();
-        visited.add(lastAnchoredEntry);
-        visited.add(lastUnAnchoredEntry);
-        curStates.add(lastAnchoredEntry);
-        printLaTexState(lastAnchoredEntry, null, null);
-        if (lastAnchoredEntry != lastUnAnchoredEntry) {
-            curStates.add(lastUnAnchoredEntry);
-            printLaTexState(lastUnAnchoredEntry, lastAnchoredEntry, "below");
+        while (nfa.getAnchoredEntry()[entryOffset] == null && nfa.getUnAnchoredEntry()[entryOffset] == null) {
+            entryOffset--;
+        }
+        NFAState lastAnchoredEntry = nfa.getAnchoredEntry()[entryOffset] == null ? null : nfa.getAnchoredEntry()[entryOffset].getTarget();
+        if (nfa.getAnchoredEntry()[entryOffset] != null) {
+            visited.add(lastAnchoredEntry);
+            curStates.add(lastAnchoredEntry);
+            printLaTexState(lastAnchoredEntry, null, null);
+        }
+        NFAState lastUnAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset] == null ? null : nfa.getUnAnchoredEntry()[entryOffset].getTarget();
+        if (nfa.getUnAnchoredEntry()[entryOffset] != null) {
+            visited.add(lastUnAnchoredEntry);
+            if (lastAnchoredEntry != lastUnAnchoredEntry) {
+                curStates.add(lastUnAnchoredEntry);
+                printLaTexState(lastUnAnchoredEntry, lastAnchoredEntry, "below");
+            }
         }
         entryOffset--;
         while (!curStates.isEmpty()) {
@@ -227,12 +234,12 @@ public final class NFAExport {
                 }
             }
             if (entryOffset >= 0) {
-                NFAState anchoredEntry = nfa.getAnchoredEntry()[entryOffset].getTarget();
-                if (visited.add(anchoredEntry)) {
+                NFAState anchoredEntry = nfa.getAnchoredEntry()[entryOffset] == null ? null : nfa.getAnchoredEntry()[entryOffset].getTarget();
+                if (anchoredEntry != null && visited.add(anchoredEntry)) {
                     nextStates.add(anchoredEntry);
                 }
-                NFAState unAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset].getTarget();
-                if (visited.add(unAnchoredEntry)) {
+                NFAState unAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset] == null ? null : nfa.getUnAnchoredEntry()[entryOffset].getTarget();
+                if (unAnchoredEntry != null && visited.add(unAnchoredEntry)) {
                     nextStates.add(unAnchoredEntry);
                 }
                 entryOffset--;
@@ -386,6 +393,9 @@ public final class NFAExport {
         }
         if (fullLabels && state.isMustAdvance()) {
             sb.append("_ma");
+        }
+        if (fullLabels && !state.getMatchedConditionGroupsDebug().isEmpty()) {
+            sb.append("_?(").append(state.getMatchedConditionGroupsDebug()).append(")");
         }
         return sb.toString();
     }

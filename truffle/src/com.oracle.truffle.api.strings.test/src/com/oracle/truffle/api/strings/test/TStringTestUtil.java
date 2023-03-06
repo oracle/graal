@@ -79,12 +79,16 @@ public final class TStringTestUtil {
     }
 
     public static void writeValue(byte[] array, int stride, int index, int value) {
+        writeValue(array, stride, index, value, ByteOrder.nativeOrder());
+    }
+
+    public static void writeValue(byte[] array, int stride, int index, int value, ByteOrder byteOrder) {
         int i = index << stride;
         if (stride == 0) {
             array[i] = (byte) value;
             return;
         }
-        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
+        if (byteOrder.equals(ByteOrder.LITTLE_ENDIAN)) {
             if (stride == 1) {
                 array[i] = (byte) value;
                 array[i + 1] = (byte) (value >> 8);
@@ -121,6 +125,15 @@ public final class TStringTestUtil {
             sb.append(String.format(" 0x%02x", array[i]));
         }
         return sb.toString();
+    }
+
+    static char[] toCharArrayPunned(byte[] array) {
+        assert (array.length & 1) == 0;
+        char[] charArray = new char[array.length / 2];
+        for (int i = 0; i < charArray.length; i++) {
+            charArray[i] = (char) readValue(array, 1, i);
+        }
+        return charArray;
     }
 
     public static int[] toIntArray(byte[] array) {
@@ -162,8 +175,10 @@ public final class TStringTestUtil {
 
     public static int[] intRange(int start, int length, int stride) {
         int[] ret = new int[length];
-        for (int i = 0; i < length; i += stride) {
-            ret[i] = start + i;
+        int value = start;
+        for (int i = 0; i < length; i++) {
+            ret[i] = value;
+            value += stride;
         }
         return ret;
     }

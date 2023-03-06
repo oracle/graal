@@ -165,10 +165,8 @@ class NativeImageVM(GraalVm):
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
-            self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
-            self.image_build_stats_file = bm_suite.image_build_stats_file(self, args)
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g']
+            self.base_image_build_args += ['--no-fallback', '-H:Debug=2'] # GR-43934
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
@@ -177,9 +175,10 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += self.executable
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
-            self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintAnalysisStatistics']
             self.base_image_build_args += ['-H:+PrintCallEdges']
-            self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_stats_file]
+            self.base_image_build_args += ['-H:+CollectImageBuildStatistics']
+            self.image_build_stats_file = os.path.join(self.output_dir, 'reports', 'image_build_statistics.json')
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
@@ -205,7 +204,6 @@ class NativeImageVM(GraalVm):
             mx.warn(f"Ignoring: {kwargs}")
 
         self.vm_args = None
-        self.pgo_aot_inline = False
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
         self.is_gate = False
@@ -240,7 +238,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
@@ -297,9 +295,6 @@ class NativeImageVM(GraalVm):
             inliner = matching.group("inliner")[:-1]
             if self.pgo_instrumented_iterations < 1:
                 mx.abort(f"The selected inliner require PGO! Invalid configuration: {config_name}")
-            if inliner == "aot-inline":
-                mx.logv(f"'aot-inline' is enabled for {config_name}")
-                self.pgo_aot_inline = True
             elif inliner == "iterative":
                 mx.logv(f"'iterative' inliner is enabled for {config_name}")
                 self.pgo_instrumented_iterations = 3
@@ -750,8 +745,8 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
 
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
-                           'write']
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
+                           'image', 'write']
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -812,15 +807,10 @@ class NativeImageVM(GraalVm):
             s.execute_command()
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
-        executable_name_args = ['-H:Name=' + instrumentation_image_name]
+        executable_name_args = ['-H:Name=' + instrumentation_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
-        pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.gc == 'G1' or self.is_llvm:
-            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        else:
-            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
 
@@ -833,8 +823,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.pgo_aot_inline and self.gc != 'G1' and not self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.is_llvm:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
@@ -854,10 +844,9 @@ class NativeImageVM(GraalVm):
             self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
-        executable_name_args = ['-H:Name=' + config.final_image_name]
+        executable_name_args = ['-H:Name=' + config.final_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
-        pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
         if self.cached_jdk_pgo:
@@ -1401,7 +1390,8 @@ mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
 
 def register_graalvm_vms():
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
-    host_vm_names = ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else []) + [default_host_vm_name]
+    short_host_vm_name = re.sub('-java[0-9]+$', '', default_host_vm_name)
+    host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
@@ -1416,12 +1406,10 @@ def register_graalvm_vms():
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = [f"{analysis_component}-no-inline" for analysis_component in analysis_context_sensitivity]
-    pgo_aot_inline_context_sensitivity = [f"pgo-aot-inline-{analysis_component}" for analysis_component in analysis_context_sensitivity]
-    pgo_aot_inline_context_sensitivity += [f"pgo-aot-inline-{analysis_component}" for analysis_component in analysis_context_sensitivity_no_inline]
 
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break

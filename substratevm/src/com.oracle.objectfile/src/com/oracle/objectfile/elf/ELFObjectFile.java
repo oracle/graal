@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ public class ELFObjectFile extends ObjectFile {
     private char abiVersion;
     private ELFClass fileClass = ELFClass.getSystemNativeValue();
     private ELFMachine machine;
-    private long processorSpecificFlags; // FIXME: to encapsulate (EF_* in elf.h)
+    private long processorFlags; // FIXME: to encapsulate (EF_* in elf.h)
     private final boolean runtimeDebugInfoGeneration;
 
     private ELFObjectFile(int pageSize, ELFMachine machine, boolean runtimeDebugInfoGeneration) {
@@ -89,7 +89,7 @@ public class ELFObjectFile extends ObjectFile {
         this.runtimeDebugInfoGeneration = runtimeDebugInfoGeneration;
         // Create the elements of an empty ELF file:
         // 1. create header
-        header = new ELFHeader("ELFHeader");
+        header = new ELFHeader("ELFHeader", machine.flags());
         this.machine = machine;
         // 2. create shstrtab
         shstrtab = new SectionHeaderStrtab();
@@ -542,7 +542,7 @@ public class ELFObjectFile extends ObjectFile {
 
                 @Override
                 public String toString() {
-                    return String.format("ELF Ident:\n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
+                    return String.format("ELF Ident:%n\t[class %s, encoding %s, version %d, OS/ABI %s, ABI version %d]", fileClass, dataEncoding, (int) version, osabi, (int) abiVersion);
                 }
             }
 
@@ -584,9 +584,13 @@ public class ELFObjectFile extends ObjectFile {
         }
 
         public ELFHeader(String name) { // create an "empty" default ELF header
+            this(name, 0);
+        }
+
+        public ELFHeader(String name, int processorFlags) { // create an "empty" default ELF header
             super(name);
             ELFObjectFile.this.version = 1;
-            ELFObjectFile.this.processorSpecificFlags = 0;
+            ELFObjectFile.this.processorFlags = processorFlags;
         }
 
         @Override
@@ -882,12 +886,12 @@ public class ELFObjectFile extends ObjectFile {
                 return "SHT NULL Entry";
             }
             return new StringBuilder("SHT Entry: ")
-                            .append(String.format("\n  %s", type))
-                            .append(String.format("\n  flags %#x", flags))
-                            .append(String.format("\n  virtual address %#x", virtualAddress))
-                            .append(String.format("\n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
-                            .append(String.format("\n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
-                            .append("\n").toString();
+                            .append(String.format("%n  %s", type))
+                            .append(String.format("%n  flags %#x", flags))
+                            .append(String.format("%n  virtual address %#x", virtualAddress))
+                            .append(String.format("%n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
+                            .append(String.format("%n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
+                            .append(String.format("%n")).toString();
         }
 
         public boolean isNullEntry() {
@@ -1129,7 +1133,7 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     public long getFlags() {
-        return processorSpecificFlags;
+        return processorFlags;
     }
 
     @SuppressWarnings("unused")

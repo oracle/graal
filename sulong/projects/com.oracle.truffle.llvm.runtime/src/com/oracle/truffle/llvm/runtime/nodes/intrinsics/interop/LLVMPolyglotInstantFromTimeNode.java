@@ -55,7 +55,7 @@ public abstract class LLVMPolyglotInstantFromTimeNode extends LLVMExpressionNode
     }
 
     @Specialization
-    public Object executeLong(long epochSecond) {
+    public Object doLong(long epochSecond) {
         return LLVMManagedPointer.create(instantOfEpochSecond(epochSecond));
     }
 

@@ -104,8 +104,7 @@ public class OptionProcessor extends AbstractProcessor {
         if (roundEnv.processingOver()) {
             return true;
         }
-        ProcessorContext context = ProcessorContext.enter(processingEnv);
-        try {
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
             Map<Element, OptionsInfo> map = new HashMap<>();
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Option))) {
@@ -148,7 +147,7 @@ public class OptionProcessor extends AbstractProcessor {
                 while (listIterator.hasNext()) {
                     OptionInfo info = listIterator.next();
                     if (info.valid) {
-                        ExpectError.assertNoErrorExpected(processingEnv, info.field);
+                        ExpectError.assertNoErrorExpected(info.field);
                     } else {
                         listIterator.remove();
                     }
@@ -167,8 +166,6 @@ public class OptionProcessor extends AbstractProcessor {
                     handleThrowable(t, info.type);
                 }
             }
-        } finally {
-            ProcessorContext.leave();
         }
 
         return true;
@@ -331,7 +328,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static void error(Element element, AnnotationMirror annotation, String message, Object... args) {
         ProcessingEnvironment processingEnv = ProcessorContext.getInstance().getEnvironment();
         String formattedMessage = String.format(message, args);
-        if (ExpectError.isExpectedError(processingEnv, element, formattedMessage)) {
+        if (ExpectError.isExpectedError(element, formattedMessage)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, formattedMessage, element, annotation);
@@ -344,7 +341,7 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(element, overrideType), null);
+        unit.accept(new FixWarningsVisitor(overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {

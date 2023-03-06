@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,19 +29,9 @@ import org.graalvm.compiler.graph.Node;
 public abstract class NodePredicates {
 
     private static final TautologyPredicate TAUTOLOGY = new TautologyPredicate();
-    private static final ContradictionPredicate CONTRADICTION = new ContradictionPredicate();
-    private static final IsNullPredicate IS_NULL = new IsNullPredicate();
 
     public static NodePredicate alwaysTrue() {
         return TAUTOLOGY;
-    }
-
-    public static NodePredicate alwaysFalse() {
-        return CONTRADICTION;
-    }
-
-    public static NodePredicate isNull() {
-        return IS_NULL;
     }
 
     public static NegativeTypePredicate isNotA(Class<? extends Node> clazz) {
@@ -65,19 +55,6 @@ public abstract class NodePredicates {
         }
     }
 
-    static final class ContradictionPredicate implements NodePredicate {
-
-        @Override
-        public boolean apply(Node n) {
-            return false;
-        }
-
-        @Override
-        public NodePredicate and(NodePredicate np) {
-            return this;
-        }
-    }
-
     static final class AndPredicate implements NodePredicate {
 
         private final NodePredicate a;
@@ -91,33 +68,6 @@ public abstract class NodePredicates {
         @Override
         public boolean apply(Node n) {
             return a.apply(n) && b.apply(n);
-        }
-    }
-
-    static final class NotPredicate implements NodePredicate {
-
-        private final NodePredicate a;
-
-        NotPredicate(NodePredicate n) {
-            this.a = n;
-        }
-
-        @Override
-        public boolean apply(Node n) {
-            return !a.apply(n);
-        }
-
-        @Override
-        public NodePredicate negate() {
-            return a;
-        }
-    }
-
-    static final class IsNullPredicate implements NodePredicate {
-
-        @Override
-        public boolean apply(Node n) {
-            return n == null;
         }
     }
 

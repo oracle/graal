@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Assembler.InstructionCounter;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
@@ -76,12 +76,12 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
         }
 
         public void run() {
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
                 doBlock(block);
             }
         }
 
-        public void doBlock(AbstractBlockBase<?> block) {
+        public void doBlock(BasicBlock<?> block) {
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.size() >= 2 : "Malformed block: " + block + ", " + instructions;
             assert instructions.get(instructions.size() - 1) instanceof BlockEndOp : "Not a BlockEndOp: " + instructions.get(instructions.size() - 1);
@@ -114,10 +114,11 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     public static void countInstructions(LIR lir, Assembler<?> asm) {
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof InstructionCounterOp) {
                     InstructionCounterOp currentOp = (InstructionCounterOp) inst;

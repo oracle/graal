@@ -24,10 +24,9 @@
  */
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
@@ -35,12 +34,15 @@ import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.LightImmutableCollection;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -49,7 +51,7 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
     /**
      * Contexts of the resolved method.
      */
-    private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+    private final Set<MethodFlowsGraph> calleesFlows = new ConcurrentHashMap<MethodFlowsGraph, Boolean>(4, 0.75f, 1).keySet(Boolean.TRUE);
 
     /**
      * Context of the caller.
@@ -57,8 +59,8 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
     private AnalysisContext callerContext;
 
     BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     private BytecodeSensitiveSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
@@ -74,24 +76,27 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
         /* The receiver state has changed. Process the invoke. */
-
-        initCallee();
+        initializeCallees(bb);
 
         TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
         for (AnalysisObject receiverObject : invokeState.objects(bb)) {
-            AnalysisContext calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).calleeContext(bb, receiverObject, (BytecodeAnalysisContext) callerContext, callee);
-            MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
+            LightImmutableCollection.forEach(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> {
+                CallSiteSensitiveMethodTypeFlow calleeTypeFlow = (CallSiteSensitiveMethodTypeFlow) callee.getTypeFlow();
 
-            if (calleesFlows.putIfAbsent(calleeFlows, Boolean.TRUE) == null) {
-                linkCallee(bb, false, calleeFlows);
-            }
+                AnalysisContext calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).calleeContext(bb, receiverObject, (BytecodeAnalysisContext) callerContext, calleeTypeFlow);
+                MethodFlowsGraphInfo calleeFlows = calleeTypeFlow.addContext(bb, calleeContext, this);
 
-            updateReceiver(bb, calleeFlows, receiverObject);
+                if (calleesFlows.add((MethodFlowsGraph) calleeFlows)) {
+                    linkCallee(bb, false, calleeFlows);
+                }
+
+                updateReceiver(bb, calleeFlows, receiverObject);
+            });
         }
     }
 
     @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        return new ArrayList<>(calleesFlows.keySet());
+    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+        return calleesFlows;
     }
 }

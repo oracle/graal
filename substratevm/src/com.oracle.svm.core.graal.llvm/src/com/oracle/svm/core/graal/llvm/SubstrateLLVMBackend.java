@@ -39,7 +39,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -144,7 +144,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
 
     private static void generate(NodeLLVMBuilder nodeBuilder, StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        for (Block b : schedule.getCFG().getBlocks()) {
+        for (HIRBlock b : schedule.getCFG().getBlocks()) {
             nodeBuilder.doBlock(b, graph, schedule.getBlockToNodesMap());
         }
         nodeBuilder.finish();

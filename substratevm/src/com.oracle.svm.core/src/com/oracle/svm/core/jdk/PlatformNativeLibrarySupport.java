@@ -86,7 +86,8 @@ public abstract class PlatformNativeLibrarySupport {
 
     private static final String[] defaultBuiltInPkgNativesBlacklist = {
                     "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
-                    "sun_security_krb5_Config_getWindowsDirectory"
+                    "sun_security_krb5_Config_getWindowsDirectory",
+                    "jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl",
     };
 
     public static PlatformNativeLibrarySupport singleton() {

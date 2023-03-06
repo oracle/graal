@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Xor;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -115,6 +115,14 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
                 }
             }
             return reassociateMatchedValues(self != null ? self : (XorNode) new XorNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+        }
+        if (forX instanceof NotNode && forY instanceof NotNode) {
+            // ~x ^ ~y |-> x ^ y
+            return XorNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view);
+        }
+        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
+            // x ^ ~x |-> -1
+            return ConstantNode.forIntegerStamp(forX.stamp(NodeView.DEFAULT), -1L);
         }
         return self != null ? self : new XorNode(forX, forY).maybeCommuteInputs();
     }

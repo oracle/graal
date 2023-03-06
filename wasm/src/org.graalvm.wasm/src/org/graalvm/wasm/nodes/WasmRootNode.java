@@ -91,7 +91,7 @@ public class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(function.getInstance());
+        context.linker().tryLink(function.instance());
     }
 
     @Override
@@ -113,7 +113,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int localCount = function.getLocalCount();
+        final int localCount = function.localCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -121,7 +121,7 @@ public class WasmRootNode extends RootNode {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        final int resultCount = function.getResultCount();
+        final int resultCount = function.resultCount();
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (resultCount > 1) {
             context.resizeMultiValueStack(resultCount);
@@ -136,7 +136,7 @@ public class WasmRootNode extends RootNode {
         if (resultCount == 0) {
             return WasmConstant.VOID;
         } else if (resultCount == 1) {
-            final byte resultType = function.getResultType(0);
+            final byte resultType = function.resultType(0);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.VOID_TYPE:
@@ -167,7 +167,7 @@ public class WasmRootNode extends RootNode {
         final long[] multiValueStack = context.primitiveMultiValueStack();
         final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
         for (int i = 0; i < resultCount; i++) {
-            final int resultType = function.getResultType(i);
+            final int resultType = function.resultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE:
@@ -195,11 +195,11 @@ public class WasmRootNode extends RootNode {
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int paramCount = function.getParamCount();
+        int paramCount = function.paramCount();
         assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
         for (int i = 0; i != paramCount; ++i) {
             final Object arg = args[i];
-            byte type = function.getLocalType(i);
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -223,9 +223,9 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int paramCount = function.getParamCount();
-        for (int i = paramCount; i != function.getLocalCount(); ++i) {
-            byte type = function.getLocalType(i);
+        int paramCount = function.paramCount();
+        for (int i = paramCount; i != function.localCount(); ++i) {
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
@@ -257,7 +257,7 @@ public class WasmRootNode extends RootNode {
         if (function == null) {
             return "function";
         }
-        return function.getName();
+        return function.name();
     }
 
     @Override
@@ -265,7 +265,7 @@ public class WasmRootNode extends RootNode {
         if (function == null) {
             return getName();
         }
-        return function.getQualifiedName();
+        return function.qualifiedName();
     }
 
     @Override
@@ -274,7 +274,7 @@ public class WasmRootNode extends RootNode {
             return null;
         } else {
             if (sourceSection == null) {
-                sourceSection = function.getInstance().module().source().createUnavailableSection();
+                sourceSection = function.instance().module().source().createUnavailableSection();
             }
             return sourceSection;
         }

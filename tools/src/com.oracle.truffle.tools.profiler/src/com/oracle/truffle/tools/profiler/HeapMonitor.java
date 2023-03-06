@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -86,7 +89,8 @@ public final class HeapMonitor implements Closeable {
     private final ConcurrentLinkedQueue<ObjectWeakReference> newReferences = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<ObjectWeakReference> processedReferences = new ConcurrentLinkedQueue<>();
     private final Map<LanguageInfo, Map<String, HeapSummary>> summaryData = new LinkedHashMap<>();
-    private Thread referenceThread;
+    private ExecutorService referenceExecutorService;
+    private Future<?> referenceFuture;
 
     private volatile boolean closed;
     private boolean collecting;
@@ -134,16 +138,24 @@ public final class HeapMonitor implements Closeable {
             activeBinding.dispose();
             activeBinding = null;
         }
-        if (closed && referenceThread != null && referenceThread.isAlive()) {
-            referenceThread.interrupt();
-            referenceThread = null;
+        if (closed && referenceFuture != null) {
+            referenceFuture.cancel(true);
+            referenceFuture = null;
         }
         if (!collecting || closed) {
             return;
         }
         clearData();
-        if (referenceThread == null) {
-            this.referenceThread = new Thread(() -> {
+        if (referenceExecutorService == null) {
+            referenceExecutorService = JoinableExecutors.newSingleThreadExecutor((r) -> {
+                Thread t = env.createSystemThread(r);
+                t.setName("HeapMonitor Cleanup");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        if (referenceFuture == null) {
+            referenceFuture = referenceExecutorService.submit(() -> {
                 while (!closed) {
                     cleanReferenceQueue();
                     try {
@@ -153,10 +165,7 @@ public final class HeapMonitor implements Closeable {
                     }
                 }
             });
-            this.referenceThread.setName("HeapMonitor Cleanup");
-            this.referenceThread.setDaemon(true);
         }
-        referenceThread.start();
         this.activeBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new Listener());
     }
 
@@ -332,10 +341,28 @@ public final class HeapMonitor implements Closeable {
      * @since 19.0
      */
     @Override
-    public synchronized void close() {
-        closed = true;
-        resetMonitor();
-        clearData();
+    public void close() {
+        ExecutorService toShutDown;
+        synchronized (this) {
+            closed = true;
+            resetMonitor();
+            clearData();
+            toShutDown = referenceExecutorService;
+        }
+        if (toShutDown != null) {
+            toShutDown.shutdownNow();
+            while (true) {
+                try {
+                    if (toShutDown.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)) {
+                        break;
+                    } else {
+                        throw new RuntimeException("Failed to shutdown background thread.");
+                    }
+                } catch (InterruptedException ie) {
+                    // continue to awaitTermination
+                }
+            }
+        }
     }
 
     private void cleanReferenceQueue() {

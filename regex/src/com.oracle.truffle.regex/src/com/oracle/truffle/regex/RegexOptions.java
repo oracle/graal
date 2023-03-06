@@ -61,8 +61,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>Flavor</b>: specifies the regex dialect to use. Possible values:
  * <ul>
  * <li><b>ECMAScript</b>: ECMAScript/JavaScript syntax (default).</li>
- * <li><b>PythonStr</b>: Python 3 syntax, as executed on {@code str} objects.</li>
- * <li><b>PythonBytes</b>: Python 3 syntax, as executed on {@code bytes}-like objects.</li>
+ * <li><b>Python</b>: Python 3 syntax</li>
  * <li><b>Ruby</b>: Ruby syntax.</li>
  * </ul>
  * </li>
@@ -133,11 +132,9 @@ public final class RegexOptions {
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
-    public static final String FLAVOR_PYTHON_STR = "PythonStr";
-    public static final String FLAVOR_PYTHON_BYTES = "PythonBytes";
     public static final String FLAVOR_RUBY = "Ruby";
     public static final String FLAVOR_ECMASCRIPT = "ECMAScript";
-    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_PYTHON_STR, FLAVOR_PYTHON_BYTES, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
+    private static final String[] FLAVOR_OPTIONS = {FLAVOR_PYTHON, FLAVOR_RUBY, FLAVOR_ECMASCRIPT};
 
     public static final String ENCODING_NAME = "Encoding";
 
@@ -473,19 +470,7 @@ public final class RegexOptions {
                     return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
                 case 'P':
                     flavor = PythonFlavor.INSTANCE;
-                    if (iVal + 6 >= src.length()) {
-                        return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
-                    }
-                    switch (src.charAt(iVal + 6)) {
-                        case 'B':
-                            encoding = Encodings.LATIN_1;
-                            return expectValue(iVal, FLAVOR_PYTHON_BYTES, FLAVOR_OPTIONS);
-                        case 'S':
-                            encoding = Encodings.UTF_32;
-                            return expectValue(iVal, FLAVOR_PYTHON_STR, FLAVOR_OPTIONS);
-                        default:
-                            return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
-                    }
+                    return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
                 default:
                     throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
             }

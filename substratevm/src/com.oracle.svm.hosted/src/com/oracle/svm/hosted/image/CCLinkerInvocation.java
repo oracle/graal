@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -56,6 +57,7 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -67,7 +69,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -213,6 +215,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
         cmd.addAll(getNativeLinkerOptions());
 
+        /* RISC-V always needs the -latomic option */
+        if (Platform.includedIn(Platform.RISCV64.class)) {
+            cmd.add("-latomic");
+        }
+
         return cmd;
     }
 
@@ -263,9 +270,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
                 exportedSymbols.append("global:\n");
-                for (String symbol : getImageSymbols(true)) {
-                    exportedSymbols.append('\"').append(symbol).append("\";\n");
-                }
+                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
+                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");
@@ -510,6 +516,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
+            if (JavaVersionUtil.JAVA_SPEC >= 20) {
+                /* JDK-8295231 removed implicit linking via pragma directives in source files. */
+                cmd.add("mswsock.lib");
+            }
 
             if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == AbstractImage.NativeImageKind.EXECUTABLE) {
                 /*

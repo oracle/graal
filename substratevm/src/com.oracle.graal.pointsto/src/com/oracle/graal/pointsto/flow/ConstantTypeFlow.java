@@ -67,6 +67,11 @@ public class ConstantTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "ConstantFlow<" + getState() + ">";
     }

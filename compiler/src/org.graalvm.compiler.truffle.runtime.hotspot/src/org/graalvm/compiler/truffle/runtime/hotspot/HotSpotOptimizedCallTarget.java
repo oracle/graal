@@ -166,7 +166,7 @@ public final class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
 
     @Override
     public long getCodeAddress() {
-        return installedCode.getAddress();
+        return installedCode.getStart();
     }
 
     @Override

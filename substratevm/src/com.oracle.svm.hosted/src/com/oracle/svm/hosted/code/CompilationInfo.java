@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
+import com.oracle.svm.hosted.code.CompileQueue.ParseHooks;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 public class CompilationInfo {
@@ -70,6 +71,11 @@ public class CompilationInfo {
     protected ParseFunction customParseFunction;
     protected CompileFunction customCompileFunction;
 
+    /*
+     * Custom parsing hook which is called during the default parse method.
+     */
+    protected ParseHooks customParseHooks;
+
     /* Statistics collected before/during compilation. */
     protected long numNodesAfterParsing;
     protected long numNodesBeforeCompilation;
@@ -88,16 +94,7 @@ public class CompilationInfo {
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
-    }
-
-    /**
-     * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link SubstrateCompilationDirectives#registerDeoptEntry}.
-     */
-    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return method.isDeoptTarget() && SubstrateCompilationDirectives.singleton().isDeoptTarget(method) &&
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     public boolean canDeoptForTesting() {
@@ -169,7 +166,11 @@ public class CompilationInfo {
         return customCompileFunction;
     }
 
-    public boolean hasDefaultParseFunction() {
-        return customCompileFunction == null;
+    public void setCustomParseHooks(ParseHooks parseHooks) {
+        this.customParseHooks = parseHooks;
+    }
+
+    public ParseHooks getCustomParseHooks() {
+        return customParseHooks;
     }
 }

@@ -35,4 +35,11 @@ public final class GdsCommands {
     public static final String LONG_OPTION_GDS_CONFIG = "config";
     public static final String OPTION_SHOW_TOKEN = "}";
     public static final String LONG_OPTION_SHOW_TOKEN = "show-ee-token";
+
+    public static final String OPTION_REVOKE_TOKEN = "{";
+    public static final String LONG_OPTION_REVOKE_TOKEN = "revoke-token";
+    public static final String OPTION_REVOKE_CURRENT_TOKEN = "~";
+    public static final String LONG_OPTION_REVOKE_CURRENT_TOKEN = "revoke-current-token";
+    public static final String OPTION_REVOKE_ALL_TOKENS = "1";
+    public static final String LONG_OPTION_REVOKE_ALL_TOKENS = "revoke-all-tokens";
 }

@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
@@ -42,10 +42,10 @@ import jdk.vm.ci.meta.Value;
  */
 class DefUseTree {
     private final LoadConstantOp instruction;
-    private final AbstractBlockBase<?> block;
+    private final BasicBlock<?> block;
     private final List<UseEntry> uses;
 
-    DefUseTree(LIRInstruction instruction, AbstractBlockBase<?> block) {
+    DefUseTree(LIRInstruction instruction, BasicBlock<?> block) {
         assert LoadConstantOp.isLoadConstantOp(instruction) : "Not a LoadConstantOp: " + instruction;
         this.instruction = LoadConstantOp.asLoadConstantOp(instruction);
         this.block = block;
@@ -64,7 +64,7 @@ class DefUseTree {
         return (LIRInstruction) instruction;
     }
 
-    public AbstractBlockBase<?> getBlock() {
+    public BasicBlock<?> getBlock() {
         return block;
     }
 
@@ -73,7 +73,7 @@ class DefUseTree {
         return "DefUseTree [" + instruction + "|" + block + "," + uses + "]";
     }
 
-    public void addUsage(AbstractBlockBase<?> b, LIRInstruction inst, Value value) {
+    public void addUsage(BasicBlock<?> b, LIRInstruction inst, Value value) {
         uses.add(new UseEntry(b, inst, value));
     }
 

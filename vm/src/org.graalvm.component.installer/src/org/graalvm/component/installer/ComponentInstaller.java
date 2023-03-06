@@ -359,6 +359,14 @@ public class ComponentInstaller extends Launcher {
             GDSTokenStorage.printToken(env, input);
             return 0;
         }
+        if (env.hasOption(GdsCommands.OPTION_REVOKE_TOKEN) || env.hasOption(GdsCommands.OPTION_REVOKE_CURRENT_TOKEN)) {
+            GDSTokenStorage.revokeToken(env, input, env.optValue(GdsCommands.OPTION_REVOKE_TOKEN));
+            return 0;
+        }
+        if (env.hasOption(GdsCommands.OPTION_REVOKE_ALL_TOKENS)) {
+            GDSTokenStorage.revokeAllTokens(env, input, env.optValue(GdsCommands.OPTION_REVOKE_ALL_TOKENS));
+            return 0;
+        }
 
         // check only after the version option:
         if (cmdHandler == null) {

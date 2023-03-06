@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.analysis;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.parser.RegexLexer;
+import com.oracle.truffle.regex.tregex.parser.JSRegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
 /**
@@ -55,13 +55,13 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 public final class RegexUnifier {
 
     private final RegexSource source;
-    private final RegexLexer lexer;
+    private final JSRegexLexer lexer;
 
     private final StringBuilder dump;
 
     public RegexUnifier(RegexSource source) {
         this.source = source;
-        this.lexer = new RegexLexer(source, RegexFlags.parseFlags(source));
+        this.lexer = new JSRegexLexer(source, RegexFlags.parseFlags(source));
         this.dump = new StringBuilder(source.getPattern().length());
     }
 

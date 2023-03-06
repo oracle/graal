@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -50,8 +49,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
@@ -213,6 +212,10 @@ public class CountedLoopInfo {
         return maxTripCountNode(assumeLoopEntered, getCounterIntegerHelper());
     }
 
+    protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
+        return maxTripCountNode(assumeLoopEntered, integerHelper, getBodyIV().initNode(), getTripCountLimit());
+    }
+
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
      * this loop assuming it is not exited by an other exit than the {@link #getLimitTest() count
@@ -222,9 +225,14 @@ public class CountedLoopInfo {
      *
      * THIS VALUE SHOULD BE TREATED AS UNSIGNED.
      *
+     * Warning: In order to calculate the max trip count it can be necessary to perform a devision
+     * operation in the generated code before the loop header. If {@code stride is not a power of 2}
+     * we have to perform an integer division of the range of the induction variable and the stride.
+     *
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
+     *
      */
-    protected ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper) {
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
         StructuredGraph graph = getBodyIV().valueNode().graph();
         Stamp stamp = getBodyIV().valueNode().stamp(NodeView.DEFAULT);
 
@@ -233,13 +241,13 @@ public class CountedLoopInfo {
         ValueNode absStride;
         if (getBodyIV().direction() == Direction.Up) {
             absStride = getBodyIV().strideNode();
-            max = getTripCountLimit();
-            min = getBodyIV().initNode();
+            max = tripCountLimit;
+            min = initNode;
         } else {
             assert getBodyIV().direction() == Direction.Down;
             absStride = NegateNode.create(getBodyIV().strideNode(), NodeView.DEFAULT);
-            max = getBodyIV().initNode();
-            min = getTripCountLimit();
+            max = initNode;
+            min = tripCountLimit;
         }
         ValueNode range = sub(max, min);
 
@@ -281,14 +289,14 @@ public class CountedLoopInfo {
         if (cfg.getNodeToBlock().isNew(loop.loopBegin())) {
             return null;
         }
-        Block loopBlock = cfg.blockFor(loop.loopBegin());
+        HIRBlock loopBlock = cfg.blockFor(loop.loopBegin());
         for (Node checkUsage : noEntryCheck.usages()) {
             if (checkUsage instanceof IfNode) {
                 IfNode ifCheck = (IfNode) checkUsage;
                 if (cfg.getNodeToBlock().isNew(ifCheck.falseSuccessor())) {
                     continue;
                 }
-                if (AbstractControlFlowGraph.dominates(cfg.blockFor(ifCheck.falseSuccessor()), loopBlock)) {
+                if (cfg.blockFor(ifCheck.falseSuccessor()).dominates(loopBlock)) {
                     return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), ifCheck.falseSuccessor()));
                 }
             }

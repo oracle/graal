@@ -480,6 +480,11 @@ public interface TruffleCompilerRuntime {
     boolean isInInterpreter(ResolvedJavaMethod targetMethod);
 
     /**
+     * Determines if {@code method} is the inInterpeterFastPath method from HostCompilerDirectives.
+     */
+    boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod);
+
+    /**
      * Determines if {@code method} is a method is a transferToInterpreter method from
      * CompilerDirectives.
      */

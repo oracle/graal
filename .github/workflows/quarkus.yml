@@ -16,12 +16,12 @@ env:
   DB_PASSWORD: hibernate_orm_test
   DB_USER: hibernate_orm_test
   GRAALVM_HOME: ${{ github.workspace }}/graalvm
-  JAVA_HOME: ${{ github.workspace }}/jdk
+  LABSJDK_HOME: ${{ github.workspace }}/jdk
   LANG: en_US.UTF-8 # Workaround testsuite locale issue
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
   MX_PYTHON: python3.8
-  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
+  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
 
 permissions: {}
@@ -72,9 +72,10 @@ jobs:
     - name: Fetch LabsJDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-17 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-20 --to jdk-dl --alias ${LABSJDK_HOME}
     - name: Build graalvm native-image
       run: |
+        export JAVA_HOME=${LABSJDK_HOME}
         cd substratevm
         ${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" build
         mv $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
@@ -148,13 +149,18 @@ jobs:
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzf maven-repo.tgz -C ~
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          version: 'latest'
+          java-version: '17'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build with Maven
         if: startsWith(matrix.os-name, 'ubuntu')
         env:
           TEST_MODULES: ${{matrix.test-modules}}
         run: |
+          export GRAALVM_HOME=${{ github.workspace }}/graalvm
           cd ${QUARKUS_PATH}
-          export JAVA_HOME=${GRAALVM_HOME}
           ${GRAALVM_HOME}/bin/native-image --version
           ./mvnw $COMMON_MAVEN_ARGS -f integration-tests -pl "$TEST_MODULES" $NATIVE_TEST_MAVEN_ARGS
       - name: Prepare failure archive (if maven failed)

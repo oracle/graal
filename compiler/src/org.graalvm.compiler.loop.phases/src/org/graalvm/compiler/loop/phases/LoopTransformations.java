@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,7 +152,7 @@ public abstract class LoopTransformations {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
                         s.simplify(defaultSimplifier);
-                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopCfgSimplification", n);
+                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopFullUnrollCfgSimplification", n);
                     }
                 }
                 if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
@@ -705,12 +705,8 @@ public abstract class LoopTransformations {
     private static void updatePreLoopLimit(CountedLoopInfo preCounted) {
         // Update the pre loops limit test
         // Make new limit one iteration
-        ValueNode newLimit = null;
-        if (preCounted.isInverted()) {
-            newLimit = preCounted.getBodyIVStart();
-        } else {
-            newLimit = AddNode.add(preCounted.getBodyIVStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
-        }
+        ValueNode newLimit = AddNode.add(preCounted.getBodyIVStart(), preCounted.getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
+
         // Fetch the variable we are not replacing and configure the one we are
         ValueNode ub = preCounted.getLimit();
         IntegerHelper helper = preCounted.getCounterIntegerHelper();

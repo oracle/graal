@@ -68,7 +68,7 @@ public final class Runner implements TruffleObject {
         @ExportMessage
         static final class Execute {
 
-            @Specialization(guards = "callNode.getCallTarget() == self.workload")
+            @Specialization(guards = "callNode.getCallTarget() == self.workload", limit = "3")
             static Object doCached(Workload self, Object[] args,
                             @Cached("create(self.workload)") DirectCallNode callNode) {
                 assert args.length == 0;

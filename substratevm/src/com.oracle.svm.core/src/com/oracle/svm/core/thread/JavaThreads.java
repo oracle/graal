@@ -27,6 +27,7 @@ package com.oracle.svm.core.thread;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,14 +36,18 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.events.ThreadSleepEvent;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jfr.events.ThreadSleepEventJDK17;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -344,13 +349,33 @@ public final class JavaThreads {
     }
 
     static void sleep(long millis) throws InterruptedException {
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+        /* Starting with JDK 19, the thread sleep event is implemented as a Java-level event. */
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
+                Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
+                try {
+                    event.time = TimeUnit.MILLISECONDS.toNanos(millis);
+                    event.begin();
+                    sleep0(millis);
+                } finally {
+                    event.commit();
+                }
+            } else {
+                sleep0(millis);
+            }
+        } else {
+            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+            sleep0(millis);
+            ThreadSleepEventJDK17.emit(millis, startTicks);
+        }
+    }
+
+    private static void sleep0(long millis) throws InterruptedException {
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread()) && !LoomSupport.isEnabled()) {
             VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
         }
-        ThreadSleepEvent.emit(millis, startTicks);
     }
 
     static boolean isAlive(Thread thread) {
@@ -394,10 +419,39 @@ public final class JavaThreads {
     public static long getCurrentThreadId() {
         long id = PlatformThreads.currentVThreadId.get();
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(id == getThreadId(Thread.currentThread()), "ids must match");
+            ReplacementsUtil.dynamicAssert(id != 0 && id == getThreadId(Thread.currentThread()), "ids must match");
         } else {
-            assert id == getThreadId(Thread.currentThread());
+            assert id != 0 && id == getThreadId(Thread.currentThread());
         }
         return id;
     }
+
+    /**
+     * Similar to {@link #getCurrentThreadId()} but returns 0 if the thread id is not present. There
+     * is a small number of situations where the thread id might not be available, e.g., when a
+     * freshly attached thread causes a GC (before it initializes its {@link java.lang.Thread}
+     * object) or when a VM operation is enqueued by a non-Java thread.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentThreadIdOrZero() {
+        if (CurrentIsolate.getCurrentThread().isNonNull()) {
+            return PlatformThreads.currentVThreadId.get();
+        }
+        return 0L;
+    }
+}
+
+/* GR-43733: this class can be removed when we drop the JDK 17 support. */
+@TargetClass(className = "jdk.internal.event.ThreadSleepEvent", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_event_ThreadSleepEvent {
+    @Alias public long time;
+
+    @Alias
+    public static native boolean isTurnedOn();
+
+    @Alias
+    public native void begin();
+
+    @Alias
+    public native void commit();
 }

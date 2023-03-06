@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 
+@SuppressWarnings("truffle-inlining")
 public final class BuiltinTestObject extends BuiltinObject {
 
     private static final BuiltinDescriptor DESCRIPTOR = describe(BuiltinTestObjectFactory.getFactories());

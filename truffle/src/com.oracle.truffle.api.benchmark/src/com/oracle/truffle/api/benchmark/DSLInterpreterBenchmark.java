@@ -54,6 +54,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.CachedDSLNodeGen;
 import com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -195,6 +197,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
         abstract int execute(Object v);
     }
 
+    @GenerateInline(false)
     abstract static class SimpleDSLNode extends AbstractNode {
 
         @Specialization
@@ -209,6 +212,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
 
     }
 
+    @SuppressWarnings("truffle-inlining")
     abstract static class CachedDSLNode extends AbstractNode {
 
         @Specialization
@@ -221,7 +225,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
             return (int) v;
         }
 
-        static final int CACHED = 42;
+        @NeverDefault static final int CACHED = 42;
 
     }
 

@@ -44,8 +44,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
-import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
@@ -78,49 +76,6 @@ public final class GraphEffectList extends EffectList {
         super.clear();
         virtualizationDelta = 0;
         allocationNodeDelta = 0;
-    }
-
-    public void addCounterBefore(String group, String name, int increment, boolean addContext, FixedNode position) {
-        add(new SimpleEffect("add counter") {
-            @Override
-            public void apply(StructuredGraph graph) {
-                DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position);
-            }
-
-            @Override
-            void format(StringBuilder str) {
-                format(str, new String[]{"group", "name", "increment", "addContext", "position"}, new Object[]{group, name, increment, addContext, position});
-            }
-        });
-    }
-
-    public void addCounterAfter(String group, String name, int increment, boolean addContext, FixedWithNextNode position) {
-        FixedNode nextPosition = position.next();
-        add(new SimpleEffect("add counter after") {
-            @Override
-            public void apply(StructuredGraph graph) {
-                DynamicCounterNode.addCounterBefore(group, name, increment, addContext, nextPosition);
-            }
-
-            @Override
-            void format(StringBuilder str) {
-                format(str, new String[]{"group", "name", "increment", "addContext", "position"}, new Object[]{group, name, increment, addContext, position});
-            }
-        });
-    }
-
-    public void addWeakCounterCounterBefore(String group, String name, int increment, boolean addContext, ValueNode checkedValue, FixedNode position) {
-        add(new SimpleEffect("add weak counter") {
-            @Override
-            public void apply(StructuredGraph graph) {
-                WeakCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position);
-            }
-
-            @Override
-            void format(StringBuilder str) {
-                format(str, new String[]{"group", "name", "increment", "addContext", "position"}, new Object[]{group, name, increment, addContext, position});
-            }
-        });
     }
 
     /**

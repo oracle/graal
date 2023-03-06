@@ -27,7 +27,6 @@ package org.graalvm.compiler.asm.amd64;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.core.common.Stride;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -108,13 +107,6 @@ public final class AMD64Address extends AbstractAddress {
         this.instructionStartPosition = instructionStartPosition;
 
         assert stride != null;
-    }
-
-    /**
-     * Determines if the scaling factor {@code scale} is supported.
-     */
-    public static boolean isScaleSupported(int scale) {
-        return CodeUtil.isPowerOf2(scale) && scale <= 8;
     }
 
     /**

@@ -46,9 +46,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
@@ -66,12 +66,15 @@ import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -82,6 +85,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.NeverInlineTrivial;
@@ -112,8 +116,11 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.SVMParsingSupport;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -141,7 +148,6 @@ public class SVMHost extends HostVM {
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
-    private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -159,17 +165,24 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
+    private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         super(options, classLoader);
         this.classInitializationSupport = classInitializationSupport;
-        this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
         this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
+        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
+            multiMethodAnalysisPolicy = ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
+        } else {
+            /* Install the default so no other policy can be installed. */
+            ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
+            multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+        }
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -259,7 +272,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType analysisType) {
+    public void onTypeReachable(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
@@ -293,7 +306,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
     }
 
     @Override
@@ -308,9 +321,8 @@ public class SVMHost extends HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables())
-                        .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
-                        .withFullInfopoints(SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        return config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass())).withFullInfopoints(
+                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
     }
 
     private boolean retainLocalVariables() {
@@ -515,7 +527,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(originalSnippetReflection, type);
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
@@ -527,16 +539,25 @@ public class SVMHost extends HostVM {
         }
     }
 
+    protected boolean deoptsForbidden(AnalysisMethod method) {
+        /*
+         * Runtime compiled methods can deoptimize.
+         */
+        return method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+    }
+
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            if (deoptsForbidden(method)) {
+                graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            }
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
                 UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
-                optimizeAfterParsing(bb, graph);
+                optimizeAfterParsing(bb, method, graph);
                 /*
                  * Do a complete Canonicalizer run once before graph encoding, to clean up any
                  * leftover uncanonicalized nodes.
@@ -548,9 +569,14 @@ public class SVMHost extends HostVM {
         }
     }
 
-    protected void optimizeAfterParsing(BigBang bb, StructuredGraph graph) {
-        new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-        new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
+    protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions()) && !method.isDeoptTarget()) {
+            /*
+             * Deoptimization Targets cannot have virtual objects in frame states.
+             */
+            new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+            new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
+        }
     }
 
     @Override
@@ -698,8 +724,15 @@ public class SVMHost extends HostVM {
     private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this);
 
     @Override
-    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy() {
-        return inlineBeforeAnalysisPolicy;
+    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
+        /*
+         * Currently we only allow inlining before analysis in the original methods.
+         */
+        if (multiMethodKey == MultiMethod.ORIGINAL_METHOD) {
+            return inlineBeforeAnalysisPolicy;
+        } else {
+            return InlineBeforeAnalysisPolicy.NO_INLINING;
+        }
     }
 
     public static class Options {
@@ -729,14 +762,34 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(originalSnippetReflection, (ResolvedJavaType) element).getPackage();
+            ResolvedJavaType javaType = (ResolvedJavaType) element;
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
                 return false;
             }
         }
         if (element instanceof Class) {
-            Package p = ((Class<?>) element).getPackage();
+            Class<?> clazz = (Class<?>) element;
+            Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            Class<?> enclosingClass;
+            try {
+                enclosingClass = clazz.getEnclosingClass();
+            } catch (LinkageError e) {
+                enclosingClass = null;
+            }
+            if (enclosingClass != null && !platformSupported(enclosingClass)) {
                 return false;
             }
         }
@@ -801,5 +854,52 @@ public class SVMHost extends HostVM {
     public boolean preventConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
         return finalFieldsInitializedOutsideOfConstructor.contains(aField);
+    }
+
+    @Override
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
+        if (ImageSingletons.contains(SVMParsingSupport.class)) {
+            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, debug, method);
+        } else {
+            return super.parseGraph(bb, debug, method);
+        }
+    }
+
+    @Override
+    public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
+        if (ImageSingletons.contains(SVMParsingSupport.class)) {
+            return ImageSingletons.lookup(SVMParsingSupport.class).validateGraph(bb, graph);
+        } else {
+            return super.validateGraph(bb, graph);
+        }
+    }
+
+    @Override
+    public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
+        if (ImageSingletons.contains(SVMParsingSupport.class)) {
+            if (ImageSingletons.lookup(SVMParsingSupport.class).allowAssumptions(method)) {
+                return StructuredGraph.AllowAssumptions.YES;
+            }
+        }
+        return super.allowAssumptions(method);
+    }
+
+    @Override
+    public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
+        return multiMethodAnalysisPolicy;
+    }
+
+    @Override
+    public boolean ignoreInstanceOfTypeDisallowed() {
+        if (ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime.getValue()) {
+            /*
+             * Compatibility mode for Helidon MP: It initializes all classes at build time, and
+             * relies on the side effect of a class initializer of a class that is only used in an
+             * instanceof. See https://github.com/oracle/graal/pull/5224#issuecomment-1279586997 for
+             * details.
+             */
+            return true;
+        }
+        return super.ignoreInstanceOfTypeDisallowed();
     }
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -33,7 +34,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -59,7 +59,7 @@ public final class DeletedFieldsPlugin implements NodePlugin {
         return handleField(b, field, false);
     }
 
-    private static boolean handleField(GraphBuilderContext b, ResolvedJavaField field, boolean isLoad) {
+    private static boolean handleField(GraphBuilderContext b, ResolvedJavaField field, @SuppressWarnings("unused") boolean isLoad) {
         Delete deleteAnnotation = field.getAnnotation(Delete.class);
         if (deleteAnnotation == null) {
             return false;
@@ -69,16 +69,8 @@ public final class DeletedFieldsPlugin implements NodePlugin {
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod reportErrorMethod = b.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
         b.handleReplacedInvoke(InvokeKind.Static, reportErrorMethod, new ValueNode[]{msgNode}, false);
-
-        JavaKind returnKind = reportErrorMethod.getSignature().getReturnKind();
-        if (returnKind != JavaKind.Void) {
-            b.pop(returnKind);
-        }
-        if (isLoad) {
-            // Push dummy value.
-            b.addPush(field.getJavaKind(), ConstantNode.defaultForKind(field.getJavaKind()));
-        }
-
+        // reportErrorMethod always throws an exception, e.g. never returns.
+        b.add(new DeadEndNode());
         return true;
     }
 }

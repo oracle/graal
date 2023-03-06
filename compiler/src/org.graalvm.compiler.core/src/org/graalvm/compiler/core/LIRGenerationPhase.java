@@ -26,7 +26,7 @@ package org.graalvm.compiler.core;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.CounterKey;
@@ -40,7 +40,7 @@ import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -69,19 +69,19 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         NodeLIRBuilder nodeLirBuilder = context.nodeLirBuilder;
         StructuredGraph graph = context.graph;
         ScheduleResult schedule = context.schedule;
-        AbstractBlockBase<?>[] blocks = lirGenRes.getLIR().getControlFlowGraph().getBlocks();
-        for (AbstractBlockBase<?> b : blocks) {
-            matchBlock(nodeLirBuilder, (Block) b, schedule);
+        BasicBlock<?>[] blocks = lirGenRes.getLIR().getControlFlowGraph().getBlocks();
+        for (BasicBlock<?> b : blocks) {
+            matchBlock(nodeLirBuilder, (HIRBlock) b, schedule);
         }
-        for (AbstractBlockBase<?> b : blocks) {
-            emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
+        for (BasicBlock<?> b : blocks) {
+            emitBlock(nodeLirBuilder, lirGenRes, (HIRBlock) b, graph, schedule.getBlockToNodesMap());
         }
         ((LIRGenerator) context.lirGen).beforeRegisterAllocation();
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
         nodeCount.add(graph.getDebug(), graph.getNodeCount());
     }
 
-    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+    private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, HIRBlock b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         assert !isProcessed(lirGenRes, b) : "Block already processed " + b;
         assert verifyPredecessors(lirGenRes, b);
         nodeLirGen.doBlock(b, graph, blockMap);
@@ -90,12 +90,13 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         instructionCounter.add(debug, lir.getLIRforBlock(b).size());
     }
 
-    private static void matchBlock(NodeLIRBuilder nodeLirGen, Block b, ScheduleResult schedule) {
+    private static void matchBlock(NodeLIRBuilder nodeLirGen, HIRBlock b, ScheduleResult schedule) {
         nodeLirGen.matchBlock(b, schedule);
     }
 
-    private static boolean verifyPredecessors(LIRGenerationResult lirGenRes, Block block) {
-        for (Block pred : block.getPredecessors()) {
+    private static boolean verifyPredecessors(LIRGenerationResult lirGenRes, HIRBlock block) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            HIRBlock pred = block.getPredecessorAt(i);
             if (!block.isLoopHeader() || !pred.isLoopEnd()) {
                 assert isProcessed(lirGenRes, pred) : "Predecessor not yet processed " + pred;
             }
@@ -103,7 +104,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         return true;
     }
 
-    private static boolean isProcessed(LIRGenerationResult lirGenRes, Block b) {
+    private static boolean isProcessed(LIRGenerationResult lirGenRes, HIRBlock b) {
         return lirGenRes.getLIR().getLIRforBlock(b) != null;
     }
 

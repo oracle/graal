@@ -28,6 +28,8 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.Arrays;
 
+import com.oracle.svm.core.code.CodeInfoDecoder;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -55,14 +57,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
-import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
-import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
-import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -958,10 +955,7 @@ public class SubstrateDiagnostics {
     }
 
     private static class ImageCodeLocationInfoPrinter {
-        private final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
-        private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
-        private final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
-        private final FrameInfoState frameInfoState = new FrameInfoState();
+        private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
 
         /**
          * If {@code value} points into AOT compiled code, then this method prints information about
@@ -970,40 +964,37 @@ public class SubstrateDiagnostics {
          * NOTE: this method may only be called by a single thread.
          */
         public boolean printLocationInfo(Log log, UnsignedWord value) {
-            CodeInfo info = CodeInfoTable.getImageCodeInfo();
-            if (info.equal(value)) {
+            CodeInfo imageCodeInfo = CodeInfoTable.getImageCodeInfo();
+            if (imageCodeInfo.equal(value)) {
                 log.string("is the image CodeInfo object");
                 return true;
             }
 
-            UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(CodeInfoAccess.getSizeOfCodeInfo());
-            if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
-                log.string("points inside the image CodeInfo object ").zhex(info);
+            UnsignedWord codeInfoEnd = ((UnsignedWord) imageCodeInfo).add(CodeInfoAccess.getSizeOfCodeInfo());
+            if (value.aboveOrEqual((UnsignedWord) imageCodeInfo) && value.belowThan(codeInfoEnd)) {
+                log.string("points inside the image CodeInfo object ").zhex(imageCodeInfo);
                 return true;
             }
 
-            if (CodeInfoAccess.contains(info, (CodePointer) value)) {
-                log.string("points into AOT compiled code ");
-
-                frameInfoReader.reset();
-                frameInfoState.reset();
-                CodeInfoAccess.initFrameInfoReader(info, (CodePointer) value, frameInfoReader, frameInfoState);
-                if (frameInfoState.entryOffset >= 0) {
-                    FrameInfoQueryResult frameInfo;
-                    FrameInfoQueryResult rootInfo = null;
-                    do {
-                        frameInfo = CodeInfoAccess.nextFrameInfo(info, frameInfoReader, singleShotFrameInfoQueryResultAllocator.reload(), dummyValueInfoAllocator, frameInfoState);
-                        if (frameInfo != null) {
-                            rootInfo = frameInfo;
-                        }
-                    } while (frameInfo != null);
-
-                    rootInfo.log(log);
+            if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
+                FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
+                if (compilationRoot != null) {
+                    log.string("points into AOT compiled code ");
+                    compilationRoot.log(log);
                 }
                 return true;
             }
 
             return false;
+        }
+
+        private FrameInfoQueryResult getCompilationRoot(CodeInfo imageCodeInfo, CodePointer ip) {
+            FrameInfoQueryResult rootInfo = null;
+            frameInfoCursor.initialize(imageCodeInfo, ip);
+            while (frameInfoCursor.advance()) {
+                rootInfo = frameInfoCursor.get();
+            }
+            return rootInfo;
         }
     }
 

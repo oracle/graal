@@ -94,7 +94,7 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
      */
     LocationIdentity NO_LOCATION = new NoLocation();
 
-    class NoLocation extends LocationIdentity {
+    final class NoLocation extends LocationIdentity {
         private NoLocation() {
             // only a single instance of this should ever live
         }

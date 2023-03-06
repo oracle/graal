@@ -31,7 +31,6 @@ import java.nio.ByteBuffer;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -48,13 +47,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
-
-    /**
-     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
-     */
-    private static boolean isSupportedJavaVersion() {
-        return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 17 || JavaVersionUtil.JAVA_SPEC >= 19;
-    }
 
     @Before
     public void setup() {
@@ -113,14 +105,14 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue(isSupportedJavaVersion());
+        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         AbstractTestNode result = new BufferGetPutTestNode(bufferClass());
         testCommon(result, "byteBufferAccess");
     }
 
     @Test
     public void byteBufferAccessIndex() {
-        Assume.assumeTrue(isSupportedJavaVersion());
+        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         AbstractTestNode result = new BufferGetPutIndexTestNode(bufferClass());
         testCommon(result, "byteBufferAccessIndex");
     }
@@ -149,7 +141,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void testExceptionSpeculationCommon(AbstractTestNode testNode, String testName, boolean expectException) {
-        Assume.assumeTrue(isSupportedJavaVersion());
+        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         RootNode rootNode = new RootTestNode(testName, testNode);
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         Object[] arguments = {newBuffer()};

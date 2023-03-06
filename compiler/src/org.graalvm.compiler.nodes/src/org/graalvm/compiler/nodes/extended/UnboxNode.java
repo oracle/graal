@@ -54,10 +54,6 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
 
     public static final NodeClass<UnboxNode> TYPE = NodeClass.create(UnboxNode.class);
 
-    public UnboxNode(ValueNode value, JavaKind boxingKind, FieldLocationIdentity location) {
-        super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), location);
-    }
-
     public UnboxNode(ValueNode value, JavaKind boxingKind, MetaAccessProvider metaAccess) {
         super(TYPE, value, boxingKind, StampFactory.forKind(boxingKind.getStackKind()), new FieldLocationIdentity(getValueField(getResultType(metaAccess, boxingKind))));
     }

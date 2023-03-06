@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
@@ -107,7 +108,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
-        for (AnalysisField field : type.getInstanceFields(false)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
@@ -126,7 +128,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
-        for (AnalysisField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
                 field.registerAsAccessed("root field");
                 return field.getType();
@@ -323,7 +326,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         while (!queue.isEmpty()) {
             ReachabilityAnalysisMethod method = queue.removeFirst();
             for (InvokeInfo invoke : method.getInvokes()) {
-                for (AnalysisMethod c : invoke.getCallees()) {
+                for (AnalysisMethod c : invoke.getAllCallees()) {
                     ReachabilityAnalysisMethod callee = (ReachabilityAnalysisMethod) c;
                     callee.addCaller(invoke.getPosition());
                     if (seen.add(callee)) {

@@ -82,15 +82,6 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     }
 
     @Override
-    protected boolean asyncExceptionLiveness() {
-        /*
-         * Only methods which can deoptimize need to consider live locals from asynchronous
-         * exception handlers.
-         */
-        return isDeoptimizationEnabled() && getMethod().canDeoptimize();
-    }
-
-    @Override
     protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
         super.build(startInstruction, startFrameState);
 

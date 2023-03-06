@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -537,6 +537,24 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testInstantiateModuleWithCallTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("exportTwice", "(func (nop)) (func (export \"a\") (call 0))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            wasm.moduleInstantiate(module, importObject);
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            final Object func = WebAssembly.instanceExport(instance, "a");
+            try {
+                InteropLibrary.getUncached(func).execute(func);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -812,11 +830,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -1954,22 +1972,22 @@ public class WasmJsApiSuite {
                         "(global $global7 (import \"globals\" \"global7\") i32)\n" +
                         "(global $global8 (import \"globals\" \"global8\") i32)\n" +
                         "(func (export \"sum\") (result i32)\n" +
-                        "    get_global $global0\n" +
-                        "    get_global $global1\n" +
+                        "    global.get $global0\n" +
+                        "    global.get $global1\n" +
                         "    i32.add\n" +
-                        "    get_global $global2\n" +
+                        "    global.get $global2\n" +
                         "    i32.add\n" +
-                        "    get_global $global3\n" +
+                        "    global.get $global3\n" +
                         "    i32.add\n" +
-                        "    get_global $global4\n" +
+                        "    global.get $global4\n" +
                         "    i32.add\n" +
-                        "    get_global $global5\n" +
+                        "    global.get $global5\n" +
                         "    i32.add\n" +
-                        "    get_global $global6\n" +
+                        "    global.get $global6\n" +
                         "    i32.add\n" +
-                        "    get_global $global7\n" +
+                        "    global.get $global7\n" +
                         "    i32.add\n" +
-                        "    get_global $global8\n" +
+                        "    global.get $global8\n" +
                         "    i32.add\n" +
                         ")\n" +
                         ")";
@@ -2096,7 +2114,6 @@ public class WasmJsApiSuite {
 
     private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
-        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }
@@ -2158,8 +2175,8 @@ public class WasmJsApiSuite {
     // (module
     // (func $inc (import "host" "inc") (param i32) (result i32))
     // (func $addPlusOne (param $lhs i32) (param $rhs i32) (result i32)
-    // get_local $lhs
-    // get_local $rhs
+    // local.get $lhs
+    // local.get $rhs
     // i32.add
     // call $inc
     // )
@@ -2238,8 +2255,8 @@ public class WasmJsApiSuite {
     // (module
     // (table $defaultTable (export "defaultTable") 4 anyfunc)
     // (func $square (param i32) (result i32)
-    // get_local 0
-    // get_local 0
+    // local.get 0
+    // local.get 0
     // i32.mul
     // )
     // (elem (i32.const 0) $square)
@@ -2257,12 +2274,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result i32)))
     // (global $global1 (import "host" "defaultGlobal") i32)
-    // (global $global2 i32 (get_global $global1))
+    // (global $global2 i32 (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i32)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i32)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportI32 = new byte[]{
@@ -2279,12 +2296,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result i64)))
     // (global $global1 (import "host" "defaultGlobal") i64)
-    // (global $global2 i64 (get_global $global1))
+    // (global $global2 i64 (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i64)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i64)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportI64 = new byte[]{
@@ -2301,12 +2318,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result f32)))
     // (global $global1 (import "host" "defaultGlobal") f32)
-    // (global $global2 f32 (get_global $global1))
+    // (global $global2 f32 (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f32)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f32)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportF32 = new byte[]{
@@ -2323,12 +2340,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result f64)))
     // (global $global1 (import "host" "defaultGlobal") f64)
-    // (global $global2 f64 (get_global $global1))
+    // (global $global2 f64 (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f64)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f64)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportF64 = new byte[]{
@@ -2345,12 +2362,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result funcref)))
     // (global $global1 (import "host" "defaultGlobal") funcref)
-    // (global $global2 funcref (get_global $global1))
+    // (global $global2 funcref (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result funcref)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result funcref)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportAnyfunc = new byte[]{
@@ -2367,12 +2384,12 @@ public class WasmJsApiSuite {
     // (module
     // (type $t0 (func (result externref)))
     // (global $global1 (import "host" "defaultGlobal") externref)
-    // (global $global2 externref (get_global $global1))
+    // (global $global2 externref (global.get $global1))
     // (func $readGlobal1 (export "readGlobal1") (type $t0) (result externref)
-    // get_global $global1
+    // global.get $global1
     // )
     // (func $readGlobal2 (export "readGlobal2") (type $t0) (result externref)
-    // get_global $global2
+    // global.get $global2
     // )
     // )
     private static final byte[] binaryWithGlobalImportExternref = new byte[]{
@@ -2390,11 +2407,11 @@ public class WasmJsApiSuite {
     // (global i32 (i32.const 1096))
     // (global (mut i32) (i32.const 2345))
     // (func $setGlobal (export "setGlobal") (param i32)
-    // get_local 0
-    // set_global 1
+    // local.get 0
+    // global.set 1
     // )
     // (func $getGlobal (export "getGlobal") (result i32)
-    // get_global 1
+    // global.get 1
     // )
     // (export "exportedGlobal" (global 0))
     // )

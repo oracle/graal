@@ -39,17 +39,9 @@ public final class OptionsEncoder {
     }
 
     /**
-     * Determines if {@code value} is supported by {@link #encode(Map)}.
-     */
-    public static boolean isValueSupported(Object value) {
-        return TypedDataOutputStream.isValueSupported(value);
-    }
-
-    /**
      * Encodes {@code options} into a byte array.
      *
-     * @throws IllegalArgumentException if any value in {@code options} is not
-     *             {@linkplain #isValueSupported(Object) supported}
+     * @throws IllegalArgumentException if any value in {@code options} is not supported
      */
     public static byte[] encode(final Map<String, Object> options) {
         try (ByteArrayOutputStream baout = new ByteArrayOutputStream()) {

@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -450,13 +451,13 @@ final class SubstrateVirtualThread extends Thread {
             PlatformThreads.setCurrentThread(carrier, carrier);
             token = this;
         }
-        MonitorSupport.singleton().monitorEnter(interruptLock());
+        MonitorSupport.singleton().monitorEnter(interruptLock(), MonitorInflationCause.VM_INTERNAL);
         return token;
     }
 
     /** @see #acquireInterruptLockMaybeSwitch */
     private void releaseInterruptLockMaybeSwitchBack(Object token) {
-        MonitorSupport.singleton().monitorExit(interruptLock());
+        MonitorSupport.singleton().monitorExit(interruptLock(), MonitorInflationCause.VM_INTERNAL);
         if (token != null) {
             assert token == this && Thread.currentThread() == carrierThread;
             PlatformThreads.setCurrentThread(carrierThread, this);

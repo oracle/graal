@@ -36,7 +36,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -68,7 +67,8 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
                  * InvocationPlugins.resolvedRegistrations map reachable from
                  * SubstrateReplacements.snippetInvocationPlugins.
                  */
-                ((AnalysisType) targetMethod.getDeclaringClass()).registerAsReachable("declared method " + targetMethod.format("%H.%n(%p)") + " is inlined");
+                AnalysisMethod aTargetMethod = (AnalysisMethod) targetMethod;
+                aTargetMethod.getDeclaringClass().registerAsReachable("declared method " + aTargetMethod.getQualifiedName() + " is inlined");
             }
             return inlineInfo;
         }

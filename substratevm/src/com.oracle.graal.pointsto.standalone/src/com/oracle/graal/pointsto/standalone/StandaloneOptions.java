@@ -33,4 +33,7 @@ public class StandaloneOptions {
 
     @Option(help = "File system splitor separated classpath for the analysis target application.")//
     public static final OptionKey<String> AnalysisTargetAppCP = new OptionKey<>(null);
+
+    @Option(help = "file:doc-files/AnalysisEntryPointsFileHelp.txt")//
+    public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
 }

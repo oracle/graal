@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,7 +76,7 @@ public final class NFIContextExtension extends NativeContextExtension {
      * The current well-known functions that are used through this interface are:
      *
      * <pre>
-     * - `__sulong_fp80_*` (5 operations)
+     * - `__sulong_longdouble_*` (5 operations)
      * - `__sulong_posix_syscall`
      * - `identity`
      * </pre>
@@ -385,11 +385,14 @@ public final class NFIContextExtension extends NativeContextExtension {
     private static String getNativeType(Type type) throws UnsupportedNativeTypeException {
         if (type instanceof FunctionType) {
             return getNativeSignature((FunctionType) type, 0);
-        } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
-            FunctionType functionType = (FunctionType) ((PointerType) type).getPointeeType();
-            return getNativeSignature(functionType, 0);
         } else if (type instanceof PointerType) {
-            return "POINTER";
+            PointerType ptr = (PointerType) type;
+            if (!ptr.isOpaque() && ptr.getPointeeType() instanceof FunctionType) {
+                FunctionType functionType = (FunctionType) ptr.getPointeeType();
+                return getNativeSignature(functionType, 0);
+            } else {
+                return "POINTER";
+            }
         } else if (type instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) type;
             PrimitiveKind kind = primitiveType.getPrimitiveKind();
@@ -409,6 +412,8 @@ public final class NFIContextExtension extends NativeContextExtension {
                     return "DOUBLE";
                 case X86_FP80:
                     return "FP80";
+                case F128:
+                    return "FP128";
                 default:
                     throw new UnsupportedNativeTypeException(primitiveType);
 

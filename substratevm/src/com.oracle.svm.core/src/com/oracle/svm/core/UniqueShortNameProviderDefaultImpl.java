@@ -93,7 +93,7 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
     public static class UseDefault implements BooleanSupplier {
 
         public static boolean useDefaultProvider() {
-            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0);
+            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue());
         }
 
         @Override

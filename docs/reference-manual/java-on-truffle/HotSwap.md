@@ -76,26 +76,7 @@ Feel free to try this out on your own applications or by following these instruc
 
     ![](images/debug-6.png)
 
-Watch video version of the enhanced HotSwap capabilities with Java on Truffle demo.
-
-<div class="row">
-  <div class="col-sm-12">
-    <div class="vlog__video">
-      <img src="images/enhanced-hotswap-capabilities-demo.png" alt="video_1">
-          <a href="#" data-video="gfuvvV6mplo" class="btn btn-primary btn-primary--filled js-popup">watch video</a>
-    </div>
-  </div>
-</div>
-
-<div id="video-view" class="modal-window">
-  <div class="modal-window__content">
-    <button type="button" title="Close" id="js-close" class="modal-window__close"><img src="/resources/img/btn-close.svg" alt="close_video"></button>
-    <div class="modal-window__video">
-      <div id="player"></div>
-    </div>
-  </div>
-</div>
-<br>
+Watch the video [version of the enhanced HotSwap capabilities with Java on Truffle demo](https://www.youtube.com/watch?v=gfuvvV6mplo).
 
 ### Supported Changes
 

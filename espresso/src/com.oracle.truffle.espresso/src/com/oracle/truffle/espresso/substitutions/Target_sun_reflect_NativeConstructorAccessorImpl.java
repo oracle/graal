@@ -35,6 +35,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
 public final class Target_sun_reflect_NativeConstructorAccessorImpl {
+    private static final String[] NAMES = {
+                    "Target_sun_reflect_NativeConstructorAccessorImpl",
+                    "Target_jdk_internal_reflect_NativeConstructorAccessorImpl",
+                    "Target_jdk_internal_reflect_DirectConstructorHandleAccessor$NativeAccessor"
+    };
 
     @Substitution(methodName = "newInstance0")
     abstract static class NewInstance0 extends SubstitutionNode {
@@ -44,7 +49,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
                         @Inject EspressoLanguage language,
                         @Inject Meta meta);
 
-        @Specialization()
+        @Specialization
         public @JavaType(Object.class) StaticObject newInstance(
                         @JavaType(Constructor.class) StaticObject constructor,
                         @JavaType(Object[].class) StaticObject args0,
@@ -65,10 +70,6 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
     }
 
     public static class SharedNativeConstructorAccessorImpl extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        TARGET_SUN_REFLECT_NATIVECONSTRUCTORACCESSORIMPL,
-                        TARGET_JDK_INTERNAL_REFLECT_NATIVECONSTRUCTORACCESSORIMPL
-        };
         public static SubstitutionNamesProvider INSTANCE = new SharedNativeConstructorAccessorImpl();
 
         @Override
@@ -77,6 +78,4 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
         }
     }
 
-    private static final String TARGET_SUN_REFLECT_NATIVECONSTRUCTORACCESSORIMPL = "Target_sun_reflect_NativeConstructorAccessorImpl";
-    private static final String TARGET_JDK_INTERNAL_REFLECT_NATIVECONSTRUCTORACCESSORIMPL = "Target_jdk_internal_reflect_NativeConstructorAccessorImpl";
 }

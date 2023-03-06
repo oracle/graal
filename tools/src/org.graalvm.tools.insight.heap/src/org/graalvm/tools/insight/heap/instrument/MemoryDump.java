@@ -24,19 +24,8 @@
  */
 package org.graalvm.tools.insight.heap.instrument;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import static org.graalvm.tools.insight.heap.instrument.HeapGenerator.asIntOrNull;
+import static org.graalvm.tools.insight.heap.instrument.HeapGenerator.asStringOrNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,8 +38,22 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.tools.insight.heap.HeapDump;
-import static org.graalvm.tools.insight.heap.instrument.HeapGenerator.asIntOrNull;
-import static org.graalvm.tools.insight.heap.instrument.HeapGenerator.asStringOrNull;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 /**
  * Dump of heap memory. This object accumulates memory dump events.
@@ -383,9 +386,11 @@ final class MemoryDump implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long index, @Cached BranchProfile exception) throws InvalidArrayIndexException {
+        Object readArrayElement(long index,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
             return members[(int) index];

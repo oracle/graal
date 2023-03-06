@@ -115,6 +115,14 @@ import java.lang.annotation.Target;
 public @interface GenerateUncached {
 
     /**
+     * If <code>true</code> enables the generation of an uncached version of this
+     * {@link Specialization specializing} node. It is disabled by default.
+     *
+     * @since 19.0
+     */
+    boolean value() default true;
+
+    /**
      * Inherits the semantics of the annotation to subclasses.
      *
      * @since 19.1.0

@@ -38,7 +38,7 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected AccessFieldTypeFlow(BytecodePosition accessLocation, AnalysisField field) {
         /* The declared type of a field access node is the field declared type. */
-        super(accessLocation, field.getType());
+        super(accessLocation, filterUncheckedInterface(field.getType()));
         this.field = field;
     }
 

@@ -56,7 +56,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         PARSE("(parse)"),
         INLINE("(inline)"),
         COMPILE("(compile)"),
-        LAYOUT("(layout)"),
+        LAYOUT("layout"),
         DEBUG_INFO("dbginfo"),
         IMAGE("image"),
         WRITE("write");

@@ -96,7 +96,7 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
         this.xmmTempValue4 = tool.newVariable(lirKind);
     }
 
-    private ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
+    static ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
             // @formatter:on
@@ -107,7 +107,7 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
         VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, xmmShufMask);
     }
 
-    static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, CompilationResultBuilder crb, ArrayDataPointerConstant keyShuffleMask) {
+    static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, CompilationResultBuilder crb) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
         VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, recordExternalAddress(crb, keyShuffleMask));
     }

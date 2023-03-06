@@ -81,6 +81,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -105,9 +106,21 @@ public class GraalSupport {
     private LIRSuites firstTierLirSuites;
     private Providers firstTierProviders;
 
+    /*
+     * The following four fields are set late in the image build process. To ensure their values are
+     * not prematurely constant folded we must mark them as unknown object fields.
+     */
+
+    @UnknownObjectField(types = SubstrateMethod[].class) //
     private SubstrateMethod[] methodsToCompile;
+
+    @UnknownObjectField(types = byte[].class) //
     private byte[] graphEncoding;
+
+    @UnknownObjectField(types = Object[].class) //
     private Object[] graphObjects;
+
+    @UnknownObjectField(types = NodeClass[].class) //
     private NodeClass<?>[] graphNodeTypes;
 
     public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();

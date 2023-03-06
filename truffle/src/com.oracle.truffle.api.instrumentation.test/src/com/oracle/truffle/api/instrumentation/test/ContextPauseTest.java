@@ -191,7 +191,7 @@ public class ContextPauseTest {
                             stop.set(true);
                             for (Future<Void> pauseFuture : pauseFutures) {
                                 for (Future<?> future : guestActionFutures) {
-                                    AbstractPolyglotTest.assertFails(() -> future.get(100, TimeUnit.MILLISECONDS), TimeoutException.class);
+                                    AbstractPolyglotTest.assertFails(() -> future.get(10, TimeUnit.MILLISECONDS), TimeoutException.class);
                                 }
                                 truffleContext.resume(pauseFuture);
                             }
@@ -199,7 +199,7 @@ public class ContextPauseTest {
     }
 
     @Test
-    public void testPauseFiniteCountOfInifiniteLoops() throws ExecutionException, InterruptedException {
+    public void testPauseFiniteCountOfInfiniteLoops() throws ExecutionException, InterruptedException {
         testCommon(
                         (c, pauseLatch, stop) -> {
                             if (stop.get()) {
@@ -224,7 +224,7 @@ public class ContextPauseTest {
                             stop.set(true);
                             for (Future<Void> pauseFuture : pauseFutures) {
                                 for (Future<?> future : guestActionFutures) {
-                                    AbstractPolyglotTest.assertFails(() -> future.get(100, TimeUnit.MILLISECONDS), TimeoutException.class);
+                                    AbstractPolyglotTest.assertFails(() -> future.get(10, TimeUnit.MILLISECONDS), TimeoutException.class);
                                 }
                                 truffleContext.resume(pauseFuture);
                             }

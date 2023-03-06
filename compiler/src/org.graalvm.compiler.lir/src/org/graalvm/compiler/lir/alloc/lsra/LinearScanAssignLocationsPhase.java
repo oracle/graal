@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -95,7 +95,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
 
         if (opId != -1) {
             if (allocator.detailedAsserts) {
-                AbstractBlockBase<?> block = allocator.blockForId(opId);
+                BasicBlock<?> block = allocator.blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == allocator.getLastLirInstructionId(block)) {
                     /*
                      * Check if spill moves could have been appended at the end of this block, but
@@ -133,7 +133,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         }
         int tempOpId = op.id();
         OperandMode mode = OperandMode.USE;
-        AbstractBlockBase<?> block = allocator.blockForId(tempOpId);
+        BasicBlock<?> block = allocator.blockForId(tempOpId);
         if (block.getSuccessorCount() == 1 && tempOpId == allocator.getLastLirInstructionId(block)) {
             /*
              * Generating debug information for the last instruction of a block. If this instruction
@@ -146,7 +146,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
-                    tempOpId = allocator.getFirstLirInstructionId(block.getSuccessors()[0]);
+                    tempOpId = allocator.getFirstLirInstructionId(block.getSuccessorAt(0));
                     mode = OperandMode.DEF;
                 }
             }
@@ -297,7 +297,8 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
     private void assignLocations() {
         DebugContext debug = allocator.getDebug();
         try (Indent indent = debug.logAndIndent("assign locations")) {
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 try (Indent indent2 = debug.logAndIndent("assign locations in block B%d", block.getId())) {
                     assignLocations(allocator.getLIR().getLIRforBlock(block));
                 }

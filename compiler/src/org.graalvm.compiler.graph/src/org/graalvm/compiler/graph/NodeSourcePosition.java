@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,10 +155,6 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
         return substitution(null, method, bci);
     }
 
-    public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method) {
-        return substitution(caller, method, BytecodeFrame.INVALID_FRAMESTATE_BCI);
-    }
-
     public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
         return new NodeSourcePosition(caller, method, bci, Substitution);
     }
@@ -190,16 +186,6 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
         return hashCode;
     }
 
-    public int depth() {
-        int d = 0;
-        NodeSourcePosition pos = this;
-        while (pos != null) {
-            d++;
-            pos = pos.getCaller();
-        }
-        return d;
-    }
-
     public SourceLanguagePosition getSourceLanguage() {
         return sourceLanguagePosition;
     }
@@ -215,10 +201,6 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
 
     public NodeSourcePosition addCaller(NodeSourcePosition link) {
         return addCaller(null, link, false);
-    }
-
-    public NodeSourcePosition addCaller(NodeSourcePosition link, boolean isSubstitution) {
-        return addCaller(null, link, isSubstitution);
     }
 
     public NodeSourcePosition addCaller(SourceLanguagePosition newSourceLanguagePosition, NodeSourcePosition link, boolean isSubstitution) {
@@ -263,12 +245,6 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
                 sb.append(disassembly);
             }
         }
-    }
-
-    String shallowToString() {
-        StringBuilder sb = new StringBuilder(100);
-        format(sb, this);
-        return sb.toString();
     }
 
     public boolean verify() {

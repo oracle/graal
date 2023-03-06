@@ -28,7 +28,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -68,46 +67,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         emitCode(crb, masm, config, false, thread, scratch, state);
     }
 
-    /**
-     * Conservatively checks whether we can load the safepoint polling address with a single ldr
-     * instruction or not.
-     *
-     * @return true if it is guaranteed that polling page offset will always fit into a 21-bit
-     *         signed integer, false otherwise.
-     */
-    private static boolean isPollingPageFar(GraalHotSpotVMConfig config) {
-        final long pollingPageAddress = config.safepointPollingAddress;
-        return !NumUtil.isSignedNbit(21, pollingPageAddress - config.codeCacheLowBound) || !NumUtil.isSignedNbit(21, pollingPageAddress - config.codeCacheHighBound);
-    }
-
     public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch, LIRFrameState state) {
-        if (config.useThreadLocalPolling) {
-            emitThreadLocalPoll(crb, masm, config, onReturn, thread, scratch, state);
-        } else {
-            emitGlobalPoll(crb, masm, config, onReturn, scratch, state);
-        }
-    }
-
-    private static void emitGlobalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register scratch, LIRFrameState state) {
-        if (isPollingPageFar(config)) {
-            crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-            masm.movNativeAddress(scratch, config.safepointPollingAddress);
-            crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-            if (state != null) {
-                crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
-            }
-            masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
-        } else {
-            crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_NEAR : HotSpotMarkId.POLL_NEAR);
-            if (state != null) {
-                crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
-            }
-            masm.deadLoad(32, AArch64Address.createPCLiteralAddress(32), false);
-        }
-    }
-
-    private static void emitThreadLocalPoll(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch,
-                    LIRFrameState state) {
         assert config.threadPollingPageOffset >= 0;
         masm.ldr(64, scratch, masm.makeAddress(64, thread, config.threadPollingPageOffset));
         crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
@@ -116,5 +76,4 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         }
         masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
     }
-
 }

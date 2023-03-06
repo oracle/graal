@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,10 +29,11 @@
 #
 --- a/llvm-reduce.cpp
 +++ b/llvm-reduce.cpp
-@@ -18,9 +18,13 @@
+@@ -18,9 +18,14 @@
  #include "llvm/FuzzMutate/FuzzerCLI.h"
  #include "llvm/FuzzMutate/IRMutator.h"
  #include "llvm/FuzzMutate/Operations.h"
++#include "llvm/FuzzMutate/Random.h"
 +#include "llvm/FuzzMutate/RandomIRBuilder.h"
  #include "llvm/IR/Constants.h"
  #include "llvm/IR/LLVMContext.h"
@@ -43,7 +44,7 @@
  #include "llvm/IR/Module.h"
  #include "llvm/IR/Verifier.h"
  #include "llvm/IRReader/IRReader.h"
-@@ -28,8 +32,10 @@
+@@ -28,8 +33,10 @@
  #include "llvm/Support/CommandLine.h"
  #include "llvm/Support/DataTypes.h"
  #include "llvm/Support/Debug.h"
@@ -54,7 +55,7 @@
  #include "llvm/Target/TargetMachine.h"
  
  #define DEBUG_TYPE "isel-fuzzer"
-@@ -48,38 +54,52 @@ OptLevel("O",
+@@ -46,38 +53,52 @@ static cl::opt<char>
  
  static cl::opt<std::string>
  TargetTriple("mtriple", cl::desc("Override target triple for module"));
@@ -126,7 +127,7 @@
  extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
    if (Size <= 1)
      // We get bogus data given an empty corpus - ignore it.
-@@ -92,23 +112,30 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+@@ -90,23 +111,30 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
      return 0;
    }
  
@@ -166,7 +167,7 @@
    dbgs() << "LLVM ERROR: " << Message << "\n"
           << "Aborting to trigger fuzzer exit handling.\n";
    abort();
-@@ -168,6 +195,11 @@ extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
+@@ -166,6 +194,11 @@ extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
    install_fatal_error_handler(handleLLVMFatalError, nullptr);
  
    // Finally, create our mutator.

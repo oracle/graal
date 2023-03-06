@@ -24,13 +24,10 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.Objects;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -41,41 +38,6 @@ import jdk.vm.ci.services.Services;
  * running on.
  */
 public class HotSpotGraalServices {
-
-    // NOTE: The use of reflection to access JVMCI API is to support
-    // compiling on JDKs with varying versions of JVMCI.
-
-    private static final Method runtimeExitHotSpot;
-    private static final Method scopeOpenLocalScope;
-    private static final Method scopeEnterGlobalScope;
-
-    private static final Constructor<? extends HotSpotSpeculationLog> hotSpotSpeculationLogConstructor;
-
-    static {
-        Method enterGlobalScope = null;
-        Method openLocalScope = null;
-        Method exitHotSpot = null;
-        Constructor<? extends HotSpotSpeculationLog> hslConstructor = null;
-        boolean firstFound = false;
-        try {
-            Class<?> scopeClass = Class.forName("jdk.vm.ci.hotspot.HotSpotObjectConstantScope");
-            enterGlobalScope = scopeClass.getDeclaredMethod("enterGlobalScope");
-            firstFound = true;
-            openLocalScope = scopeClass.getDeclaredMethod("openLocalScope", Object.class);
-            exitHotSpot = HotSpotJVMCIRuntime.class.getDeclaredMethod("exitHotSpot", Integer.TYPE);
-            hslConstructor = HotSpotSpeculationLog.class.getDeclaredConstructor(Long.TYPE);
-        } catch (Exception e) {
-            // If the very first method is unavailable assume nothing is available. Otherwise only
-            // some are missing so complain about it.
-            if (firstFound) {
-                throw new InternalError("some JVMCI features are unavailable", e);
-            }
-        }
-        runtimeExitHotSpot = exitHotSpot;
-        scopeEnterGlobalScope = enterGlobalScope;
-        scopeOpenLocalScope = openLocalScope;
-        hotSpotSpeculationLogConstructor = hslConstructor;
-    }
 
     /**
      * Enters the global context. This is useful to escape a local context for execution that will
@@ -88,16 +50,8 @@ public class HotSpotGraalServices {
      *         this thread is currently in the global context
      */
     public static CompilationContext enterGlobalCompilationContext() {
-        if (scopeEnterGlobalScope != null) {
-            try {
-                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke(null);
-                return impl == null ? null : new CompilationContext(impl);
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        } else {
-            return null;
-        }
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.enterGlobalScope();
+        return impl == null ? null : new CompilationContext(impl);
     }
 
     /**
@@ -109,16 +63,8 @@ public class HotSpotGraalServices {
      * @return {@code null} if the current runtime does not support remote object references
      */
     public static CompilationContext openLocalCompilationContext(Object description) {
-        if (scopeOpenLocalScope != null) {
-            try {
-                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(null, Objects.requireNonNull(description));
-                return impl == null ? null : new CompilationContext(impl);
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        } else {
-            return null;
-        }
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.openLocalScope(Objects.requireNonNull(description));
+        return impl == null ? null : new CompilationContext(impl);
     }
 
     /**
@@ -129,25 +75,13 @@ public class HotSpotGraalServices {
      */
     public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         if (Services.IS_IN_NATIVE_IMAGE) {
-            try {
-                runtimeExitHotSpot.invoke(runtime, status);
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
+            runtime.exitHotSpot(status);
         } else {
             System.exit(status);
         }
     }
 
     public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
-        if (hotSpotSpeculationLogConstructor != null) {
-            try {
-                return hotSpotSpeculationLogConstructor.newInstance(cachedFailedSpeculationsAddress);
-            } catch (Throwable e) {
-                throw new InternalError(e);
-            }
-        } else {
-            throw shouldNotReachHere();
-        }
+        return new HotSpotSpeculationLog(cachedFailedSpeculationsAddress);
     }
 }

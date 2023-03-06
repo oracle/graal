@@ -50,7 +50,7 @@ public interface MethodRefConstant extends MemberRefConstant {
         public void validate(ConstantPool pool) {
             super.validate(pool);
             // <clinit> method name is allowed here.
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, true);
         }
     }
 }

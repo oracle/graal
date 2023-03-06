@@ -38,7 +38,7 @@ import java.util.Set;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -78,7 +78,7 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -86,6 +86,7 @@ import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -94,7 +95,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
-import com.oracle.svm.core.graal.llvm.LLVMGenerator.SpecialRegister;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering.LLVMAddressValue;
 import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
@@ -113,9 +113,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -133,7 +131,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     private final DebugInfoBuilder debugInfoBuilder;
 
     private Map<Node, LLVMValueWrapper> valueMap = new HashMap<>();
-    private final Set<AbstractBlockBase<?>> processedBlocks = new HashSet<>();
+    private final Set<BasicBlock<?>> processedBlocks = new HashSet<>();
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long nextCGlobalId = 0L;
 
@@ -143,7 +141,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
-        for (Block block : graph.getLastSchedule().getCFG().getBlocks()) {
+        for (HIRBlock block : graph.getLastSchedule().getCFG().getBlocks()) {
             gen.appendBasicBlock(block);
         }
     }
@@ -172,7 +170,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     @Override
-    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+    public void doBlock(HIRBlock block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         assert !processedBlocks.contains(block) : "Block already processed " + block;
         assert verifyPredecessors(block);
 
@@ -185,13 +183,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             gen.getCompilationResult().recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);
 
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-                int offset = (gen.isEntryPoint() ? 0 : SpecialRegister.count());
-                LLVMValueRef paramValue = builder.getFunctionParam(param.index() + offset);
+                LLVMValueRef paramValue = builder.getFunctionParam(param.index());
                 setResult(param, paramValue);
-            }
-
-            for (SpecialRegister reg : SpecialRegister.registers()) {
-                gen.setInitialSpecialRegisterValue(reg, gen.isEntryPoint() ? builder.constantNull(builder.wordType()) : builder.getFunctionParam(reg.getIndex()));
             }
 
             gen.getDebugInfoPrinter().printFunction(graph, this);
@@ -201,27 +194,14 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             AbstractBeginNode begin = block.getBeginNode();
             if (begin instanceof AbstractMergeNode) {
                 AbstractMergeNode merge = (AbstractMergeNode) begin;
-
-                for (SpecialRegister reg : SpecialRegister.registers()) {
-                    List<LLVMValueRef> forwardPredValues = new ArrayList<>();
-                    List<LLVMBasicBlockRef> forwardBlocks = new ArrayList<>();
-                    for (Block predecessor : block.getPredecessors()) {
-                        if (processedBlocks.contains(predecessor)) {
-                            forwardPredValues.add(block.isExceptionEntry() ? gen.getHandlerSpecialRegisterValue(reg, predecessor) : gen.getSpecialRegisterValue(reg, predecessor));
-                            forwardBlocks.add(gen.getBlockEnd(predecessor));
-                        }
-                    }
-                    LLVMValueRef registerPhi = builder.buildPhi(builder.wordType(), forwardPredValues.toArray(new LLVMValueRef[0]), forwardBlocks.toArray(new LLVMBasicBlockRef[0]));
-                    gen.setInitialSpecialRegisterValue(reg, registerPhi);
-                }
-
                 for (ValuePhiNode phiNode : merge.valuePhis()) {
                     List<LLVMValueRef> forwardPhis = new ArrayList<>();
                     List<LLVMBasicBlockRef> forwardBlocks = new ArrayList<>();
                     LLVMTypeRef phiType = getLLVMType(phiNode);
 
                     boolean hasBackwardIncomingEdges = false;
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        HIRBlock predecessor = block.getPredecessorAt(i);
                         if (processedBlocks.contains(predecessor)) {
                             ValueNode phiValue = phiNode.valueAt((AbstractEndNode) predecessor.getEndNode());
                             LLVMValueRef value;
@@ -230,7 +210,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                                  * The pending read may need to perform instructions to load the
                                  * value, so we put them at the end of the predecessor block
                                  */
-                                Block currentBlock = (Block) gen.getCurrentBlock();
+                                HIRBlock currentBlock = (HIRBlock) gen.getCurrentBlock();
                                 gen.editBlock(predecessor);
                                 value = llvmOperand(phiValue);
                                 gen.resumeBlock(currentBlock);
@@ -258,10 +238,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 }
             } else {
                 assert block.getPredecessorCount() == 1;
-                Block predecessor = block.getFirstPredecessor();
-                for (SpecialRegister reg : SpecialRegister.registers()) {
-                    gen.setInitialSpecialRegisterValue(reg, block.isExceptionEntry() ? gen.getHandlerSpecialRegisterValue(reg, predecessor) : gen.getSpecialRegisterValue(reg, predecessor));
-                }
             }
         }
 
@@ -303,8 +279,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         processedBlocks.add(block);
     }
 
-    private boolean verifyPredecessors(Block block) {
-        for (Block pred : block.getPredecessors()) {
+    private boolean verifyPredecessors(HIRBlock block) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            HIRBlock pred = block.getPredecessorAt(i);
             assert block.isLoopHeader() && pred.isLoopEnd() || processedBlocks.contains(pred) : "Predecessor not yet processed " + pred;
         }
         return true;
@@ -360,7 +337,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             return builder.buildIsNull(and);
         }
         if (condition instanceof SafepointCheckNode) {
-            LLVMValueRef threadData = gen.getSpecialRegisterValue(SpecialRegister.ThreadPointer);
+            LLVMValueRef threadData = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
             LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Safepoint.getThreadLocalSafepointRequestedOffset()));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
@@ -460,15 +437,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitLoopEnd(LoopEndNode i) {
-        LLVMBasicBlockRef[] basicBlocks = new LLVMBasicBlockRef[]{gen.getBlockEnd((Block) gen.getCurrentBlock())};
+        LLVMBasicBlockRef[] basicBlocks = new LLVMBasicBlockRef[]{gen.getBlockEnd((HIRBlock) gen.getCurrentBlock())};
 
         assert gen.getCurrentBlock().getSuccessorCount() == 1;
-        for (SpecialRegister reg : SpecialRegister.registers()) {
-            Block successor = ((Block) gen.getCurrentBlock()).getFirstSuccessor();
-            LLVMValueRef phi = gen.getInitialSpecialRegisterValue(reg, successor);
-            assert LLVM.LLVMGetInstructionOpcode(phi) == LLVM.LLVMPHI;
-            builder.addIncoming(phi, new LLVMValueRef[]{gen.getSpecialRegisterValue(reg)}, basicBlocks);
-        }
 
         for (ValuePhiNode phiNode : i.merge().valuePhis()) {
             LLVMValueRef phi = backwardsPhi.get(phiNode);
@@ -487,12 +458,12 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         NodeInputList<ValueNode> arguments = callTarget.arguments();
         LIRFrameState state = state(i);
-        state.initDebugInfo(null, false);
+        state.initDebugInfo();
         DebugInfo debugInfo = state.debugInfo();
 
         LLVMValueRef callee;
         boolean isVoid;
-        LLVMValueRef[] args = getCallArguments(arguments, callTarget.callType());
+        LLVMValueRef[] args = getCallArguments(arguments);
         long patchpointId = LLVMGenerator.nextPatchpointId.getAndIncrement();
         if (callTarget instanceof DirectCallTargetNode) {
             callee = gen.getFunction(targetMethod);
@@ -570,7 +541,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            LLVMValueRef threadLocalArea = gen.getSpecialRegisterValue(SpecialRegister.ThreadPointer);
+            LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
             LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
             LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
             LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
@@ -580,16 +551,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         LLVMValueRef wrapper = gen.createJNIWrapper(callee, nativeABI, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
 
         LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
-        if (!nativeABI) {
-            System.arraycopy(args, 0, newArgs, 0, SpecialRegister.count());
-            newArgs[SpecialRegister.count() + 0] = anchor;
-            newArgs[SpecialRegister.count() + 1] = callee;
-            System.arraycopy(args, SpecialRegister.count(), newArgs, 2 + SpecialRegister.count(), args.length - SpecialRegister.count());
-        } else {
-            newArgs[0] = anchor;
-            newArgs[1] = callee;
-            System.arraycopy(args, 0, newArgs, 2, args.length);
-        }
+        newArgs[0] = anchor;
+        newArgs[1] = callee;
+        System.arraycopy(args, 0, newArgs, 2, args.length);
         return emitCallInstruction(invoke, nativeABI, wrapper, patchpointId, newArgs);
     }
 
@@ -602,36 +566,22 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             call = gen.buildStatepointInvoke(callee, nativeABI, successor, handler, patchpointId, args);
         } else {
-            call = gen.buildStatepointCall(callee, nativeABI, patchpointId, args);
+            call = gen.buildStatepointCall(callee, patchpointId, args);
         }
 
         return call;
     }
 
-    private LLVMValueRef[] getCallArguments(NodeInputList<ValueNode> arguments, CallingConvention.Type callType) {
-        LLVMValueRef[] args = arguments.stream().map(this::llvmOperand).toArray(LLVMValueRef[]::new);
-        return gen.getCallArguments(args, callType);
+    private LLVMValueRef[] getCallArguments(NodeInputList<ValueNode> arguments) {
+        return arguments.stream().map(this::llvmOperand).toArray(LLVMValueRef[]::new);
     }
 
     private LLVMTypeRef getUnknownCallReturnType(LoweredCallTargetNode callTarget) {
-        LLVMTypeRef retType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
-        if (!((SubstrateCallingConventionType) callTarget.callType()).nativeABI()) {
-            boolean voidReturnType = LLVMIRBuilder.isVoidType(retType);
-            LLVMTypeRef[] returnTypes = new LLVMTypeRef[SpecialRegister.count() + (voidReturnType ? 0 : 1)];
-            for (SpecialRegister reg : SpecialRegister.registers()) {
-                returnTypes[reg.getIndex()] = builder.wordType();
-            }
-            if (!voidReturnType) {
-                returnTypes[SpecialRegister.count()] = retType;
-            }
-            retType = builder.structType(returnTypes);
-        }
-        return retType;
+        return gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
     }
 
     private LLVMTypeRef[] getUnknownCallArgumentTypes(LoweredCallTargetNode callTarget) {
-        LLVMTypeRef[] types = Arrays.stream(callTarget.signature()).map(argType -> gen.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
-        return gen.getUnknownCallArgumentTypes(types, callTarget.callType());
+        return Arrays.stream(callTarget.signature()).map(argType -> gen.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
     }
 
     /* Other nodes */
@@ -639,8 +589,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     @Override
     public void emitReadExceptionObject(ValueNode node) {
         LLVMValueRef retrieveExceptionFunction = gen.getFunction(LLVMExceptionUnwind.getRetrieveExceptionMethod(gen.getMetaAccess()));
-        LLVMValueRef[] arguments = gen.getCallArguments(new LLVMValueRef[0], SubstrateCallingConventionKind.Java.toType(true));
-        LLVMValueRef exception = gen.buildStatepointCall(retrieveExceptionFunction, false, LLVMGenerator.nextPatchpointId.getAndIncrement(), arguments);
+        LLVMValueRef[] args = new LLVMValueRef[0];
+        SubstrateCallingConventionKind.Java.toType(true);
+        LLVMValueRef[] arguments = args;
+        LLVMValueRef exception = gen.buildStatepointCall(retrieveExceptionFunction, LLVMGenerator.nextPatchpointId.getAndIncrement(), arguments);
         setResult(node, exception);
     }
 

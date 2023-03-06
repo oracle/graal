@@ -60,9 +60,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -231,10 +235,12 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @ExportMessage
-    public static boolean setDynamicType(DynamicObject object, @SuppressWarnings("unused") Object objectType,
+    @SuppressWarnings("unused")
+    public static boolean setDynamicType(DynamicObject object, Object objectType,
+                    @Bind("$node") Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached SetDynamicTypeNode setCache) {
-        return setCache.execute(object, cachedShape, objectType);
+        return setCache.execute(node, object, cachedShape, objectType);
     }
 
     @ExportMessage
@@ -245,9 +251,10 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static boolean setShapeFlags(DynamicObject object, @SuppressWarnings("unused") int flags,
+                    @Bind("$node") Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached SetFlagsNode setCache) {
-        return setCache.execute(object, cachedShape, flags);
+        return setCache.execute(node, object, cachedShape, flags);
     }
 
     @ExportMessage
@@ -258,9 +265,10 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static void markShared(DynamicObject object,
+                    @Bind("$node") Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached MakeSharedNode setCache) {
-        setCache.execute(object, cachedShape);
+        setCache.execute(node, object, cachedShape);
     }
 
     @ExportMessage
@@ -280,9 +288,10 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static boolean resetShape(DynamicObject object, Shape otherShape,
+                    @Bind("$node") Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached ResetShapeNode setCache) {
-        return setCache.execute(object, cachedShape, otherShape);
+        return setCache.execute(node, object, cachedShape, otherShape);
     }
 
     @ExportMessage
@@ -540,6 +549,7 @@ abstract class DynamicObjectLibraryImpl {
             return false;
         }
 
+        @NeverDefault
         static KeyCacheNode create(Shape cachedShape, Object key) {
             if (key == null) {
                 return getUncached();
@@ -547,6 +557,7 @@ abstract class DynamicObjectLibraryImpl {
             return AnyKey.create(key, cachedShape);
         }
 
+        @NeverDefault
         static KeyCacheEntry getUncached() {
             return Generic.instance();
         }
@@ -1740,8 +1751,10 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @GenerateUncached
+    @GenerateInline
+    @GenerateCached(false)
     abstract static class SetFlagsNode extends Node {
-        abstract boolean execute(DynamicObject object, Shape cachedShape, int flags);
+        abstract boolean execute(Node node, DynamicObject object, Shape cachedShape, int flags);
 
         @Specialization(guards = {"flags == newFlags"}, limit = "3")
         static boolean doCached(DynamicObject object, Shape cachedShape, @SuppressWarnings("unused") int flags,
@@ -1772,8 +1785,10 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @GenerateUncached
+    @GenerateInline
+    @GenerateCached(false)
     abstract static class SetDynamicTypeNode extends Node {
-        abstract boolean execute(DynamicObject object, Shape cachedShape, Object objectType);
+        abstract boolean execute(Node node, DynamicObject object, Shape cachedShape, Object objectType);
 
         @Specialization(guards = {"objectType == newObjectType"}, limit = "3")
         static boolean doCached(DynamicObject object, Shape cachedShape, @SuppressWarnings("unused") Object objectType,
@@ -1804,12 +1819,14 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @GenerateUncached
+    @GenerateInline
+    @GenerateCached(false)
     abstract static class MakeSharedNode extends Node {
-        abstract void execute(DynamicObject object, Shape cachedShape);
+        abstract void execute(Node node, DynamicObject object, Shape cachedShape);
 
         @Specialization
         static void doCached(DynamicObject object, Shape cachedShape,
-                        @Cached(value = "makeSharedShape(cachedShape)", allowUncached = true) Shape newShape) {
+                        @Cached(value = "makeSharedShape(cachedShape)", allowUncached = true, neverDefault = true) Shape newShape) {
             assert newShape != cachedShape &&
                             ((ShapeImpl) cachedShape).getObjectArrayCapacity() == ((ShapeImpl) newShape).getObjectArrayCapacity() &&
                             ((ShapeImpl) cachedShape).getPrimitiveArrayCapacity() == ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
@@ -1822,10 +1839,12 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @GenerateUncached
+    @GenerateInline
+    @GenerateCached(false)
     abstract static class ResetShapeNode extends Node {
-        abstract boolean execute(DynamicObject object, Shape cachedShape, Shape newShape);
+        abstract boolean execute(Node node, DynamicObject object, Shape cachedShape, Shape newShape);
 
-        @Specialization(guards = "otherShape == cachedOtherShape")
+        @Specialization(guards = "otherShape == cachedOtherShape", limit = "3")
         static boolean doCached(DynamicObject object, Shape cachedShape, @SuppressWarnings("unused") Shape otherShape,
                         @Cached(value = "verifyResetShape(cachedShape, otherShape)", allowUncached = true) Shape cachedOtherShape) {
             if (cachedShape == cachedOtherShape) {

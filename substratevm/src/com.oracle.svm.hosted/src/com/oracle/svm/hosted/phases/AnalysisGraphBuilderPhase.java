@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    private final SVMHost hostVM;
+    protected final SVMHost hostVM;
 
     public AnalysisGraphBuilderPhase(CoreProviders providers,
                     GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
@@ -61,7 +61,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
@@ -69,8 +69,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         private final SVMHost hostVM;
 
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, SVMHost hostVM) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
+                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
             this.hostVM = hostVM;
         }
 
@@ -121,7 +121,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 var result = plugin.convertInvokeDynamic(this, bootstrap);
                 if (result != null) {
-                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight());
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight(), null);
                     return true;
                 }
             }

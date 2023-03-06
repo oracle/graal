@@ -647,7 +647,7 @@ class PointsToJsonObject extends JsonObject {
         // Perform flow-type specific tasks for certain flow-types.
         if (flow instanceof InvokeTypeFlow) {
             // A callsite gets its callees as uses.
-            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
+            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getAllCallees();
             flowWrapper.calleeNames = new ArrayList<>();
             for (AnalysisMethod callee : callees) {
                 int calleeId = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().id();

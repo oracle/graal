@@ -45,7 +45,8 @@ final class ReciprocalLeastSquareFit {
     private double a;
     private double b;
 
-    ReciprocalLeastSquareFit(int effectiveHistoryLength) {
+    ReciprocalLeastSquareFit(double effectiveHistoryLength) {
+        assert effectiveHistoryLength > 0;
         this.discount = (effectiveHistoryLength - 1.0) / effectiveHistoryLength;
     }
 

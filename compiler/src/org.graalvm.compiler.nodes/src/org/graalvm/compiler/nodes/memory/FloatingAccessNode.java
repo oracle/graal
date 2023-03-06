@@ -42,12 +42,6 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
 
     protected BarrierType barrierType;
 
-    protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp) {
-        super(c, stamp);
-        this.address = address;
-        this.location = location;
-    }
-
     protected FloatingAccessNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(c, stamp, guard);
         this.address = address;

@@ -40,13 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Test;
 
 public class PythonByteTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonBytes";
+        return "Flavor=Python";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.LATIN_1;
     }
 
     @Test

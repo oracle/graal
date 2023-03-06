@@ -70,7 +70,7 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType type) {
+    public void onTypeReachable(AnalysisType type) {
         if (!type.isReachable()) {
             AnalysisError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + type);
         }

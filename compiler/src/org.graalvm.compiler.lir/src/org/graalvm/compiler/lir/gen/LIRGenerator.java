@@ -41,7 +41,7 @@ import java.util.Optional;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -104,7 +104,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     private final CodeGenProviders providers;
 
-    private AbstractBlockBase<?> currentBlock;
+    private BasicBlock<?> currentBlock;
 
     private LIRGenerationResult res;
 
@@ -329,7 +329,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return op;
     }
 
-    public boolean hasBlockEnd(AbstractBlockBase<?> block) {
+    public boolean hasBlockEnd(BasicBlock<?> block) {
         ArrayList<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
@@ -339,7 +339,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     private final class BlockScopeImpl extends BlockScope {
 
-        private BlockScopeImpl(AbstractBlockBase<?> block) {
+        private BlockScopeImpl(BasicBlock<?> block) {
             currentBlock = block;
         }
 
@@ -371,7 +371,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
 
         @Override
-        public AbstractBlockBase<?> getCurrentBlock() {
+        public BasicBlock<?> getCurrentBlock() {
             return currentBlock;
         }
 
@@ -382,7 +382,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     }
 
-    public final BlockScope getBlockScope(AbstractBlockBase<?> block) {
+    public final BlockScope getBlockScope(BasicBlock<?> block) {
         BlockScopeImpl blockScope = new BlockScopeImpl(block);
         blockScope.doBlockStart();
         return blockScope;
@@ -390,7 +390,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     private final class MatchScope implements DebugCloseable {
 
-        private MatchScope(AbstractBlockBase<?> block) {
+        private MatchScope(BasicBlock<?> block) {
             currentBlock = block;
         }
 
@@ -401,7 +401,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     }
 
-    public final DebugCloseable getMatchScope(AbstractBlockBase<?> block) {
+    public final DebugCloseable getMatchScope(BasicBlock<?> block) {
         MatchScope matchScope = new MatchScope(block);
         return matchScope;
     }
@@ -568,18 +568,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return stamp.getLIRKind(lirKindTool);
     }
 
-    protected LIRKind getAddressKind(Value base, long displacement, Value index) {
-        if (LIRKind.isValue(base) && (index.equals(Value.ILLEGAL) || LIRKind.isValue(index))) {
-            return LIRKind.value(target().arch.getWordKind());
-        } else if (base.getValueKind() instanceof LIRKind && base.getValueKind(LIRKind.class).isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
-            return LIRKind.reference(target().arch.getWordKind());
-        } else {
-            return LIRKind.unknownReference(target().arch.getWordKind());
-        }
-    }
-
     @Override
-    public AbstractBlockBase<?> getCurrentBlock() {
+    public BasicBlock<?> getCurrentBlock() {
         return currentBlock;
     }
 

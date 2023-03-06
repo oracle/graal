@@ -58,6 +58,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 
 public abstract class CodeElement<E extends Element> implements Element, GeneratedElement {
@@ -69,6 +70,7 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
 
     private Element generatorElement;
     private AnnotationMirror generatorAnnotationMirror;
+    private CodeTree docTree;
 
     public CodeElement(Set<Modifier> modifiers) {
         this.modifiers = new LinkedHashSet<>(modifiers);
@@ -87,6 +89,21 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     @Override
     public AnnotationMirror getGeneratorAnnotationMirror() {
         return generatorAnnotationMirror;
+    }
+
+    public final CodeTree getDocTree() {
+        return docTree;
+    }
+
+    public final void setDocTree(CodeTree docTree) {
+        this.docTree = docTree;
+    }
+
+    public final CodeTreeBuilder createDocBuilder() {
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        builder.setEnclosingElement(this);
+        this.docTree = builder.getTree();
+        return builder;
     }
 
     @Override
@@ -131,10 +148,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         return element;
     }
 
-    public void remove(E element) {
-        getEnclosedElements().remove(element);
-    }
-
     @Override
     public Set<Modifier> getModifiers() {
         return modifiers;
@@ -162,15 +175,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
      * @param annotationType
      */
     public <A extends Annotation> A[] getAnnotationsByType(Class<A> annotationType) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Support for some JDK8 builds. (remove after jdk8 is released)
-     *
-     * @param annotationType
-     */
-    public <A extends Annotation> A[] getAnnotations(Class<A> annotationType) {
         throw new UnsupportedOperationException();
     }
 
@@ -210,23 +214,32 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     @Override
     public String toString() {
         StringBuilderCodeWriter codeWriter = new StringBuilderCodeWriter();
-        accept(codeWriter, null);
-        return codeWriter.getString();
+        String s;
+        try {
+            accept(codeWriter, null);
+            s = codeWriter.getString();
+        } catch (Exception t) {
+            s = ElementUtils.printException(t);
+        }
+        return s;
     }
 
     private static class StringBuilderCodeWriter extends AbstractCodeWriter {
 
+        private final CharArrayWriter charWriter;
+
         StringBuilderCodeWriter() {
-            this.writer = new CharArrayWriter();
+            this.charWriter = new CharArrayWriter();
+            this.writer = charWriter;
         }
 
         @Override
         protected Writer createWriter(CodeTypeElement clazz) throws IOException {
-            return writer;
+            return this.charWriter;
         }
 
         public String getString() {
-            return new String(((CharArrayWriter) writer).toCharArray()).trim();
+            return new String(this.charWriter.toCharArray()).trim();
         }
 
     }

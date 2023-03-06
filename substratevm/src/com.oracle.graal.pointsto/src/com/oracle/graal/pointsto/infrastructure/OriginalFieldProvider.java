@@ -26,28 +26,36 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Provides a mapping back from a {@link jdk.vm.ci.meta.ResolvedJavaField} to a
+ * {@link java.lang.reflect.Field}, i.e., a mapping from JVMCI back to Java reflection. This is a
+ * best effort operation, all users must be aware that the return value can be null.
+ *
+ * A null return value means that there is 1) no reflection representation at all - the provided
+ * JVMCI field is a synthetic field without any class backing, or 2) that looking up the reflection
+ * object is not possible due to linking errors.
+ */
 public interface OriginalFieldProvider {
 
-    static Field getJavaField(SnippetReflectionProvider reflectionProvider, ResolvedJavaField field) {
+    static Field getJavaField(ResolvedJavaField field) {
         if (field instanceof OriginalFieldProvider) {
             return ((OriginalFieldProvider) field).getJavaField();
         } else {
-            return reflectionProvider.originalField(field);
+            try {
+                return GraalAccess.getOriginalSnippetReflection().originalField(field);
+            } catch (LinkageError ignored) {
+                /*
+                 * Ignore any linking problems and incompatible class change errors. Looking up a
+                 * reflective representation of a JVMCI field is always a best effort operation.
+                 */
+                return null;
+            }
         }
     }
 
-    /**
-     * Returns the original reflecton field. First the original Java class corresponding to the
-     * field's declaring class is retrieved. Then the field is accesed using
-     * Class.getDeclaredField(name). This method can return null if the field's declaring class
-     * references types missing from the classpath or the field is either missing or hidden from
-     * reflection.
-     * 
-     * @return original reflecton field, or {@code null}
-     */
     Field getJavaField();
 }

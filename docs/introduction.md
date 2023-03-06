@@ -55,7 +55,7 @@ It is a complete Java VM that includes all core components, implements the same 
 GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 11 and Java 17.
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
-GraalVM is available for Linux and macOS on x86 64-bit and ARM 64-bit systems, and for Windows on x86 64-bit systems.
+GraalVM is available for Linux and macOS on x86 64-bit and AArch64 systems, and for Windows on x86 64-bit architecture.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
@@ -105,7 +105,7 @@ The development team welcomes feedback on experimental features, but users shoul
 
 The following table lists production-ready and experimental features in GraalVM Community Edition 22.1 by platform.
 
-| Feature         | Linux AMD64  | Linux ARM64   | macOS        | macOS ARM64   | Windows       |
+| Feature         | Linux AMD64  | Linux AArch64 | macOS AMD64  | macOS AArch64 | Windows AMD64 |
 |-----------------|--------------|---------------|--------------|---------------|---------------|
 | Native Image    | stable       | stable        | stable       | experimental  | stable        |
 | LLVM runtime    | stable       | stable        | stable       | experimental  | not available |
@@ -116,13 +116,13 @@ The following table lists production-ready and experimental features in GraalVM 
 | Python          | experimental | not available | experimental | not available | not available |
 | Ruby            | experimental | experimental  | experimental | experimental  | not available |
 | R               | experimental | not available | experimental | not available | not available |
-| WebAssembly     | experimental | experimental  | experimental | experimental  | experimental  |
+| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
 
 ## What to Read Next
 
 Whether you are new to GraalVM or have little experience using it, continue to [Get Started with GraalVM](getting-started/graalvm-community/get-started-graalvm-community.md).
 Install GraalVM on your local machine, try running the examples provided in the guide, or test GraalVM with your workload.
-After that we suggest you to look at more complex [Examples Applications](examples/examples.md).
+After that we suggest you to look at more complex [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
 
 Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](reference-manual/reference-manuals.md) for in-depth coverage of GraalVM technologies.
 

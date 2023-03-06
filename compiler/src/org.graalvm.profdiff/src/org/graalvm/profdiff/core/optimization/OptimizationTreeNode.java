@@ -30,6 +30,7 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.core.inlining.InliningPath;
 
 /**
  * Marks a node in the optimization tree. The nodes in the optimization tree are phases and
@@ -98,4 +99,16 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
             }
         }
     }
+
+    /**
+     * Clones the optimization subtree for a given inlining path. The cloned subtree includes all
+     * {@link OptimizationPhase phase nodes} and includes an optimization iff the given inlining
+     * path is a prefix of the inlining path to the optimization's
+     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing method}.
+     *
+     * @param prefix the inlining path which is tested as a prefix of an optimization's enclosing
+     *            methods
+     * @return the cloned optimization subtree
+     */
+    public abstract OptimizationTreeNode cloneMatchingPath(InliningPath prefix);
 }

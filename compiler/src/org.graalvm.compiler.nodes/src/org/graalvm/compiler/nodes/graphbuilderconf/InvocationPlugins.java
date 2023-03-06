@@ -54,7 +54,6 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -198,14 +197,6 @@ public class InvocationPlugins {
         private final Type declaringType;
         private final Replacements replacements;
         private boolean allowOverwrite;
-
-        public Class<?> getReceiverType() {
-            return Receiver.class;
-        }
-
-        public Type getDeclaringType() {
-            return declaringType;
-        }
 
         /**
          * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
@@ -946,14 +937,6 @@ public class InvocationPlugins {
             }
         }
         return res;
-    }
-
-    /**
-     * Gets the invocation plugins {@linkplain #lookupInvocation searched} before searching in this
-     * object.
-     */
-    public InvocationPlugins getParent() {
-        return parent;
     }
 
     @Override

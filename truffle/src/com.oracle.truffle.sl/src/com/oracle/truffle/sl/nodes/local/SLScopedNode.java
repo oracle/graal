@@ -44,6 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
@@ -162,6 +164,7 @@ public abstract class SLScopedNode extends Node {
      *
      * @return the block node, always non-null. Either SLBlockNode, or SLRootNode.
      */
+    @NeverDefault
     public final Node findBlock() {
         Node parent = getParent();
         while (parent != null) {
@@ -319,7 +322,7 @@ public abstract class SLScopedNode extends Node {
             @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
             @SuppressWarnings("unused")
             static boolean doCached(ArgumentsObject receiver, String member,
-                            @Cached("member") String cachedMember,
+                            @Exclusive @Cached("member") String cachedMember,
                             // We cache the member existence for fast-path access
                             @Cached("doGeneric(receiver, member)") boolean cachedResult) {
                 assert cachedResult == doGeneric(receiver, member);
@@ -345,7 +348,7 @@ public abstract class SLScopedNode extends Node {
             @Specialization(limit = "LIMIT", guards = {"cachedMember.equals(member)"})
             @SuppressWarnings("unused")
             static boolean doCached(ArgumentsObject receiver, String member,
-                            @Cached("member") String cachedMember,
+                            @Exclusive @Cached("member") String cachedMember,
                             // We cache the member existence for fast-path access
                             @Cached("receiver.hasArgumentIndex(member)") boolean cachedResult) {
                 return cachedResult && receiver.frame != null;
@@ -491,7 +494,8 @@ public abstract class SLScopedNode extends Node {
         private final Frame frame;          // the current frame
         protected final SLScopedNode node;  // the current node
         final boolean nodeEnter;            // whether the node was entered or is about to be exited
-        protected final SLBlockNode block;  // the inner-most block of the current node
+        @NeverDefault protected final SLBlockNode block;  // the inner-most block of the current
+                                                          // node
 
         VariablesObject(Frame frame, SLScopedNode node, boolean nodeEnter, SLBlockNode blockNode) {
             this.frame = frame;
@@ -763,9 +767,9 @@ public abstract class SLScopedNode extends Node {
         @ExportMessage
         @SuppressWarnings("static-method")
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                        @Cached(value = "this.block.getDeclaredLocalVariables()", adopt = false, dimensions = 1, allowUncached = true) SLWriteLocalVariableNode[] writeNodes,
-                        @Cached(value = "this.getVisibleVariablesIndex()", allowUncached = true) int visibleVariablesIndex,
-                        @Cached(value = "this.block.getParentBlockIndex()", allowUncached = true) int parentBlockIndex) {
+                        @Cached(value = "this.block.getDeclaredLocalVariables()", adopt = false, neverDefault = false, dimensions = 1, allowUncached = true) SLWriteLocalVariableNode[] writeNodes,
+                        @Cached(value = "this.getVisibleVariablesIndex()", allowUncached = true, neverDefault = false) int visibleVariablesIndex,
+                        @Cached(value = "this.block.getParentBlockIndex()", allowUncached = true, neverDefault = false) int parentBlockIndex) {
             return new KeysArray(writeNodes, visibleVariablesIndex, parentBlockIndex);
         }
 

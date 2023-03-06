@@ -72,10 +72,6 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     private boolean hasIdentity;
 
-    private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
-        this(TYPE, value, resultType, boxingKind);
-    }
-
     private BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         super(c, value, boxingKind, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)), new FieldLocationIdentity(getValueField(resultType)));
         this.value = value;
@@ -169,10 +165,6 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
         protected AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
             super(TYPE, value, resultType, boxingKind);
-        }
-
-        protected AllocatingBoxNode(NodeClass<? extends AllocatingBoxNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity location) {
-            super(c, value, boxingKind, s, location);
         }
 
         @Override

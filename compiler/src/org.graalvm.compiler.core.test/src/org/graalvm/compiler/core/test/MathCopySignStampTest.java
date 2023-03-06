@@ -90,6 +90,22 @@ public class MathCopySignStampTest extends GraalCompilerTest {
         }
     }
 
+    public static int badCopyStampGR43958(short magnitude) {
+        /*
+         * Previously the stamp of the copySign would be incorrect.
+         */
+        return (short) Math.copySign(magnitude, -942.5804f);
+    }
+
+    @Test
+    public void testGR43958() throws InvalidInstalledCodeException {
+        short[] shortValues = {42, -42, 95};
+        for (short magnitude : shortValues) {
+            InstalledCode code = getCode(getResolvedJavaMethod("badCopyStampGR43958"), null, true);
+            Assert.assertEquals(badCopyStampGR43958(magnitude), (int) code.executeVarargs(magnitude), 0);
+        }
+    }
+
     private static final double[] doubleValues = {
                     0.0d,
                     -0.0d,

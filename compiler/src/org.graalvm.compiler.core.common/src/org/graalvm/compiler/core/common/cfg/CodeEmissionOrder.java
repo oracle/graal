@@ -30,7 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 /**
  * Interface to compute an ordering of the blocks that can be used by the machine code generator.
  */
-public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
+public interface CodeEmissionOrder<T extends BasicBlock<T>> {
 
     /** Specify when the code emitting order is computed. */
     enum ComputationTime {
@@ -43,5 +43,5 @@ public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
      *
      * @return sorted list of blocks
      */
-    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
+    char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -237,6 +238,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isIteratorAccessible(HostAccess access);
 
         public abstract boolean isMapAccessible(HostAccess access);
+
+        public abstract boolean isBigIntegerAccessibleAsNumber(HostAccess access);
 
         public abstract boolean allowsPublicAccess(HostAccess hostAccess);
 
@@ -796,9 +799,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object findStaticClass(Object context, String classValue);
 
-        public abstract Object createToHostTypeNode();
-
-        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+        public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
         public abstract boolean isHostValue(Object value);
 
@@ -961,6 +962,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract long asLong(Object context, Object receiver);
+
+        public boolean fitsInBigInteger(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract BigInteger asBigInteger(Object context, Object receiver);
 
         public boolean fitsInDouble(Object context, Object receiver) {
             return false;
@@ -1145,12 +1152,20 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newReadOnlyFileSystem(fileSystem);
     }
 
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return getNext().newNIOFileSystem(fileSystem);
+    }
+
     public ProcessHandler newDefaultProcessHandler() {
         return getNext().newDefaultProcessHandler();
     }
 
     public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
         return getNext().isDefaultProcessHandler(processHandler);
+    }
+
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return getNext().isInternalFileSystem(fileSystem);
     }
 
     public ThreadScope createThreadScope() {

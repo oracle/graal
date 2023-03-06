@@ -98,8 +98,14 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) root.getCallTarget();
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph graph = partialEval(compilable, arguments, compilationId);
-        this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
-                        newTask());
+        this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph,
+                        methodName,
+                        null,
+                        compilable,
+                        asCompilationRequest(compilationId),
+                        null,
+                        newTask(),
+                        null);
         this.lastCompiledGraph = graph;
         return compilable;
     }
@@ -122,23 +128,32 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
 
-    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
-        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) expected.getCallTarget();
-        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) actual.getCallTarget();
-
+    protected OptimizedCallTarget assertPartialEvalEquals(OptimizedCallTarget expectedTarget, OptimizedCallTarget actualTarget, Object[] arguments, boolean checkConstants) {
         BailoutException lastBailout = null;
         for (int i = 0; i < 10; i++) {
             try {
                 CompilationIdentifier expectedId = getCompilationId(expectedTarget);
                 StructuredGraph expectedGraph = partialEval(expectedTarget, arguments, expectedId);
-                getTruffleCompiler(expectedTarget).compilePEGraph(expectedGraph, "expectedTest", getSuite(expectedTarget), expectedTarget, asCompilationRequest(expectedId), null,
-                                newTask());
+                getTruffleCompiler(expectedTarget).compilePEGraph(expectedGraph,
+                                "expectedTest",
+                                getSuite(expectedTarget),
+                                expectedTarget,
+                                asCompilationRequest(expectedId),
+                                null,
+                                newTask(),
+                                null);
                 removeFrameStates(expectedGraph);
 
                 CompilationIdentifier actualId = getCompilationId(actualTarget);
                 StructuredGraph actualGraph = partialEval(actualTarget, arguments, actualId);
-                getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
-                                newTask());
+                getTruffleCompiler(actualTarget).compilePEGraph(actualGraph,
+                                "actualTest",
+                                getSuite(actualTarget),
+                                actualTarget,
+                                asCompilationRequest(actualId),
+                                null,
+                                newTask(),
+                                null);
                 removeFrameStates(actualGraph);
                 assertEquals(expectedGraph, actualGraph, false, checkConstants, true);
                 return actualTarget;
@@ -154,6 +169,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             throw lastBailout;
         }
         return actualTarget;
+    }
+
+    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
+        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) expected.getCallTarget();
+        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) actual.getCallTarget();
+        return assertPartialEvalEquals(expectedTarget, actualTarget, arguments, checkConstants);
     }
 
     private static TruffleCompilationTask newTask() {
@@ -209,7 +230,14 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     protected void compile(OptimizedCallTarget compilable, StructuredGraph graph) {
         String methodName = "test";
         CompilationIdentifier compilationId = getCompilationId(compilable);
-        getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, newTask());
+        getTruffleCompiler(compilable).compilePEGraph(graph,
+                        methodName,
+                        getSuite(compilable),
+                        compilable,
+                        asCompilationRequest(compilationId),
+                        null,
+                        newTask(),
+                        null);
     }
 
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId) {
@@ -258,6 +286,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                                 handler);
                 try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
                     truffleTier.apply(context.graph, context);
+                    lastCompiledGraph = context.graph;
                     return context.graph;
                 }
             }
@@ -323,6 +352,23 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             }
         }
         return result;
+    }
+
+    /**
+     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
+     */
+    protected static boolean isByteBufferPartialEvaluationSupported() {
+        if (Runtime.version().feature() == 20) {
+            try {
+                Class.forName("jdk.internal.foreign.Scoped");
+                // Unsupported early access version.
+                return false;
+            } catch (ClassNotFoundException e) {
+                return true;
+            }
+        } else {
+            return Runtime.version().feature() == 17 || Runtime.version().feature() >= 21;
+        }
     }
 
     /**

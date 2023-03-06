@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.hub.DynamicHub;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,14 +41,15 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -403,7 +407,7 @@ public final class Space {
 
         Object copy = copyAlignedObject(original);
         if (copy != null) {
-            ObjectHeaderImpl.installForwardingPointer(original, copy);
+            ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
         }
         return copy;
     }
@@ -416,9 +420,10 @@ public final class Space {
 
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
         int hubOffset = ObjectHeaderImpl.getHubOffset();
-        UnsignedWord originalHeader = originalMemory.readWord(hubOffset);
+        Word originalHeader = originalMemory.readWord(hubOffset);
+        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
-            return ObjectHeaderImpl.getForwardedObject(originalMemory, originalHeader);
+            return ohi.getForwardedObject(originalMemory, originalHeader);
         }
 
         // We need forwarding pointer to point somewhere, so we speculatively allocate memory here.
@@ -435,7 +440,7 @@ public final class Space {
         }
 
         // Install forwarding pointer into the original header
-        Object forward = ObjectHeaderImpl.installForwardingPointerParallel(original, originalHeader, copy);
+        Object forward = ohi.installForwardingPointerParallel(original, originalHeader, copy);
         if (forward == copy) {
             // We have won the race, now we must copy the object bits. First install the original header
             copyMemory.writeWord(hubOffset, originalHeader);
@@ -461,9 +466,10 @@ public final class Space {
     }
 
     @AlwaysInline("GC performance")
-    public static UnsignedWord getSizeFromHeader(Object obj, UnsignedWord header) {
-        int encoding = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header).getLayoutEncoding();
-        return LayoutEncoding.getSizeFromEncoding(obj, encoding);
+    public static UnsignedWord getSizeFromHeader(Object obj, Word header) {
+        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header);
+        int encoding = hub.getLayoutEncoding();
+        return LayoutEncoding.getSizeFromEncoding(obj, hub, encoding, false);
     }
 
     @AlwaysInline("GC performance")
@@ -471,8 +477,18 @@ public final class Space {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
 
-        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(originalObj);
-        Pointer copyMemory = allocateMemory(size);
+        UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
+        UnsignedWord copySize = originalSize;
+        boolean addIdentityHashField = false;
+        if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
+            Word header = ObjectHeaderImpl.readHeaderFromObject(originalObj);
+            if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
+                addIdentityHashField = true;
+                copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);
+            }
+        }
+
+        Pointer copyMemory = allocateMemory(copySize);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
             return null;
         }
@@ -483,9 +499,16 @@ public final class Space {
          * later on anyways (the card table is also updated at that point if necessary).
          */
         Pointer originalMemory = Word.objectToUntrackedPointer(originalObj);
-        UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, size);
+        UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, originalSize);
 
         Object copy = copyMemory.toObject();
+        if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
+            // Must do first: ensures correct object size below and in other places
+            int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
+            int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
+            ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+            ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
+        }
         if (isOldSpace()) {
             // If the object was promoted to the old gen, we need to take care of the remembered
             // set bit and the first object table (even when promoting from old to old).

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
 
     @Child private ShortCircuitOpNode op;
 
-    private final ConditionProfile evaluateRightProfile = ConditionProfile.createCountingProfile();
+    private final ConditionProfile evaluateRightProfile = ConditionProfile.create();
 
     public DebugExprShortCircuitEvaluationNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode, ShortCircuitOpNode op) {
         this.leftNode = leftNode;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,6 +130,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
 
         java_lang_String = knownKlass(Type.java_lang_String);
+        java_lang_CharSequence = knownKlass(Type.java_lang_CharSequence);
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -224,9 +225,12 @@ public final class Meta extends ContextAccessImpl {
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.requireDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
+        java_lang_Throwable_getMessage = java_lang_Throwable.requireDeclaredMethod(Name.getMessage, Signature.String);
+        java_lang_Throwable_getCause = java_lang_Throwable.requireDeclaredMethod(Name.getCause, Signature.Throwable);
         HIDDEN_FRAMES = java_lang_Throwable.requireHiddenField(Name.HIDDEN_FRAMES);
         HIDDEN_EXCEPTION_WRAPPER = java_lang_Throwable.requireHiddenField(Name.HIDDEN_EXCEPTION_WRAPPER);
         java_lang_Throwable_backtrace = java_lang_Throwable.requireDeclaredField(Name.backtrace, Type.java_lang_Object);
+        java_lang_Throwable_stackTrace = java_lang_Throwable.requireDeclaredField(Name.stackTrace, Type.java_lang_StackTraceElement_array);
         java_lang_Throwable_detailMessage = java_lang_Throwable.requireDeclaredField(Name.detailMessage, Type.java_lang_String);
         java_lang_Throwable_cause = java_lang_Throwable.requireDeclaredField(Name.cause, Type.java_lang_Throwable);
         if (getJavaVersion().java9OrLater()) {
@@ -385,7 +389,6 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
-        java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
@@ -407,6 +410,21 @@ public final class Meta extends ContextAccessImpl {
             HIDDEN_THREAD_WAITED_COUNT = null;
         }
 
+        if (getJavaVersion().java19OrLater()) {
+            java_lang_BaseVirtualThread = knownKlass(Type.java_lang_BaseVirtualThread);
+            java_lang_Thread_threadGroup = null;
+            java_lang_Thread$FieldHolder = knownKlass(Type.java_lang_Thread_FieldHolder);
+            java_lang_Thread$Constants = knownKlass(Type.java_lang_Thread_Constants);
+            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
+            java_lang_Thread$Constants_VTHREAD_GROUP = java_lang_Thread$Constants.requireDeclaredField(Name.VTHREAD_GROUP, Type.java_lang_ThreadGroup);
+        } else {
+            java_lang_BaseVirtualThread = null;
+            java_lang_Thread$FieldHolder = null;
+            java_lang_Thread$Constants = null;
+            java_lang_Thread_threadGroup = java_lang_Thread.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
+            java_lang_Thread$FieldHolder_group = null;
+            java_lang_Thread$Constants_VTHREAD_GROUP = null;
+        }
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
         if (getJavaVersion().java17OrEarlier()) {
             java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
@@ -419,14 +437,12 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Thread_interrupt = java_lang_Thread.requireDeclaredMethod(Name.interrupt, Signature._void);
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
+        java_lang_Thread_getThreadGroup = java_lang_Thread.requireDeclaredMethod(Name.getThreadGroup, Signature.ThreadGroup);
         if (getJavaVersion().java17OrEarlier()) {
             java_lang_Thread_holder = null;
 
             java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
             java_lang_Thread$FieldHolder_threadStatus = null;
-
-            java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
-            java_lang_Thread$FieldHolder_group = null;
 
             java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
             java_lang_Thread$FieldHolder_priority = null;
@@ -438,9 +454,6 @@ public final class Meta extends ContextAccessImpl {
 
             java_lang_Thread_threadStatus = null;
             java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
-
-            java_lang_Thread_group = null;
-            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
 
             java_lang_Thread_priority = null;
             java_lang_Thread$FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
@@ -484,13 +497,12 @@ public final class Meta extends ContextAccessImpl {
         java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
-        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
+        java_lang_invoke_MethodType_ptypes = java_lang_invoke_MethodType.requireDeclaredField(Name.ptypes, Type.java_lang_Class_array);
+        java_lang_invoke_MethodType_rtype = java_lang_invoke_MethodType.requireDeclaredField(Name.rtype, Type.java_lang_Class);
 
         java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
         HIDDEN_VMINDEX = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMINDEX);
         HIDDEN_VMTARGET = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMTARGET);
-        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.requireDeclaredMethod(Name.getSignature, Signature.String);
         java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.requireDeclaredField(Name.clazz, Type.java_lang_Class);
         java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.requireDeclaredField(Name.name, Type.java_lang_String);
         java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.requireDeclaredField(Name.type, Type.java_lang_Object);
@@ -582,8 +594,9 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(Name.platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
-            java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
-            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
+            java_lang_StackStreamFactory_AbstractStackWalker = knownKlass(Type.java_lang_StackStreamFactory_AbstractStackWalker);
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = java_lang_StackStreamFactory_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk,
+                            Signature.Object_long_int_int_int_int);
 
             java_lang_StackStreamFactory = knownKlass(Type.java_lang_StackStreamFactory);
 
@@ -600,8 +613,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
-            java_lang_AbstractStackWalker = null;
-            java_lang_AbstractStackWalker_doStackWalk = null;
+            java_lang_StackStreamFactory_AbstractStackWalker = null;
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = null;
 
             java_lang_StackStreamFactory = null;
 
@@ -755,17 +768,20 @@ public final class Meta extends ContextAccessImpl {
         java_time_Instant_nanos = java_time_Instant.requireDeclaredField(Name.nanos, Type._int);
         java_time_Instant_atZone = java_time_Instant.requireDeclaredMethod(Name.atZone, Signature.ZonedDateTime_ZoneId);
         assert java_time_Instant_atZone.isFinalFlagSet() || java_time_Instant.isFinalFlagSet();
+        java_time_Instant_ofEpochSecond = java_time_Instant.requireDeclaredMethod(Name.ofEpochSecond, Signature.Instant_long_long);
 
         java_time_LocalTime = knownKlass(Type.java_time_LocalTime);
         java_time_LocalTime_hour = java_time_LocalTime.requireDeclaredField(Name.hour, Type._byte);
         java_time_LocalTime_minute = java_time_LocalTime.requireDeclaredField(Name.minute, Type._byte);
         java_time_LocalTime_second = java_time_LocalTime.requireDeclaredField(Name.second, Type._byte);
         java_time_LocalTime_nano = java_time_LocalTime.requireDeclaredField(Name.nano, Type._int);
+        java_time_LocalTime_of = java_time_LocalTime.requireDeclaredMethod(Name.of, Signature.LocalTime_int_int_int_int);
 
         java_time_LocalDateTime = knownKlass(Type.java_time_LocalDateTime);
         java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
         java_time_LocalDateTime_toLocalTime = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
         assert java_time_LocalDateTime_toLocalTime.isFinalFlagSet() || java_time_LocalDateTime.isFinalFlagSet();
+        java_time_LocalDateTime_of = java_time_LocalDateTime.requireDeclaredMethod(Name.of, Signature.LocalDateTime_LocalDate_LocalTime);
 
         java_time_LocalDate = knownKlass(Type.java_time_LocalDate);
         java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Name.year, Type._int);
@@ -774,6 +790,7 @@ public final class Meta extends ContextAccessImpl {
         assert java_time_LocalDate_month.getKind() == JavaKind.Short;
         java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Name.day, Type._short);
         assert java_time_LocalDate_day.getKind() == JavaKind.Short;
+        java_time_LocalDate_of = java_time_LocalDate.requireDeclaredMethod(Name.of, Signature.LocalDate_int_int_int);
 
         java_time_ZonedDateTime = knownKlass(Type.java_time_ZonedDateTime);
         java_time_ZonedDateTime_toLocalTime = java_time_ZonedDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
@@ -786,9 +803,11 @@ public final class Meta extends ContextAccessImpl {
         assert java_time_ZonedDateTime_getZone.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
         java_time_ZonedDateTime_toInstant = java_time_ZonedDateTime.requireMethod(Name.toInstant, Signature.Instant); // default
         assert java_time_ZonedDateTime_toInstant.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+        java_time_ZonedDateTime_ofInstant = java_time_ZonedDateTime.requireDeclaredMethod(Name.ofInstant, Signature.ZonedDateTime_Instant_ZoneId);
 
         java_util_Date = knownKlass(Type.java_util_Date);
         java_util_Date_toInstant = java_util_Date.requireDeclaredMethod(Name.toInstant, Signature.Instant);
+        java_util_Date_from = java_util_Date.requireDeclaredMethod(Name.from, Signature.Date_Instant);
         java_time_ZoneId = knownKlass(Type.java_time_ZoneId);
         java_time_ZoneId_getId = java_time_ZoneId.requireDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.requireDeclaredMethod(Name.of, Signature.ZoneId_String);
@@ -971,6 +990,7 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_lang_String;
     public final ObjectKlass java_lang_Class;
+    public final ObjectKlass java_lang_CharSequence;
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
@@ -1170,9 +1190,12 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
+    public final Method java_lang_Throwable_getMessage;
+    public final Method java_lang_Throwable_getCause;
     public final Field HIDDEN_FRAMES;
     public final Field HIDDEN_EXCEPTION_WRAPPER;
     public final Field java_lang_Throwable_backtrace;
+    public final Field java_lang_Throwable_stackTrace;
     public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
     public final Field java_lang_Throwable_depth;
@@ -1225,6 +1248,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_nio_ByteOrder;
     public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
 
+    public final ObjectKlass java_lang_BaseVirtualThread;
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
     public final Method java_lang_Thread_dispatchUncaughtException;
@@ -1234,7 +1258,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
     public final Field java_lang_Thread$FieldHolder_threadStatus;
+    public final Field java_lang_Thread_threadGroup;
+    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_tid;
+    public final ObjectKlass java_lang_Thread$Constants;
+    public final Field java_lang_Thread$Constants_VTHREAD_GROUP;
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
     public final Method java_lang_Thread_init_ThreadGroup_String;
@@ -1243,6 +1271,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_Thread_run;
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
+    public final Method java_lang_Thread_getThreadGroup;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_INTERRUPTED;
@@ -1253,8 +1282,6 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
-    public final Field java_lang_Thread_group;
-    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
     public final Field java_lang_Thread$FieldHolder_priority;
@@ -1300,11 +1327,10 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_security_AccessController;
 
     public final ObjectKlass java_lang_invoke_MethodType;
-    public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
-    public final Method java_lang_invoke_MethodType_fromMethodDescriptorString;
+    public final Field java_lang_invoke_MethodType_ptypes;
+    public final Field java_lang_invoke_MethodType_rtype;
 
     public final ObjectKlass java_lang_invoke_MemberName;
-    public final Method java_lang_invoke_MemberName_getSignature;
 
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;
@@ -1375,9 +1401,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method sun_reflect_Reflection_getCallerClass;
 
     public final ObjectKlass java_lang_StackWalker;
-    public final ObjectKlass java_lang_AbstractStackWalker;
+    public final ObjectKlass java_lang_StackStreamFactory_AbstractStackWalker;
     public final ObjectKlass java_lang_StackStreamFactory;
-    public final Method java_lang_AbstractStackWalker_doStackWalk;
+    public final Method java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk;
 
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;
@@ -1405,29 +1431,35 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_time_Instant_seconds;
     public final Field java_time_Instant_nanos;
     public final Method java_time_Instant_atZone;
+    public final Method java_time_Instant_ofEpochSecond;
 
     public final ObjectKlass java_time_LocalTime;
     public final Field java_time_LocalTime_hour;
     public final Field java_time_LocalTime_minute;
     public final Field java_time_LocalTime_second;
     public final Field java_time_LocalTime_nano;
+    public final Method java_time_LocalTime_of;
 
     public final ObjectKlass java_time_LocalDate;
     public final Field java_time_LocalDate_year;
     public final Field java_time_LocalDate_month;
     public final Field java_time_LocalDate_day;
+    public final Method java_time_LocalDate_of;
 
     public final ObjectKlass java_time_LocalDateTime;
     public final Method java_time_LocalDateTime_toLocalTime;
     public final Method java_time_LocalDateTime_toLocalDate;
+    public final Method java_time_LocalDateTime_of;
     public final ObjectKlass java_time_ZonedDateTime;
     public final Method java_time_ZonedDateTime_toLocalTime;
     public final Method java_time_ZonedDateTime_toLocalDate;
     public final Method java_time_ZonedDateTime_getZone;
     public final Method java_time_ZonedDateTime_toInstant;
+    public final Method java_time_ZonedDateTime_ofInstant;
 
     public final ObjectKlass java_util_Date;
     public final Method java_util_Date_toInstant;
+    public final Method java_util_Date_from;
     public final ObjectKlass java_time_ZoneId;
     public final Method java_time_ZoneId_getId;
     public final Method java_time_ZoneId_of;

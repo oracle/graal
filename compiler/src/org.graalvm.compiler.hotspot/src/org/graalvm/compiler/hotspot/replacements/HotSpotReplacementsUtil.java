@@ -398,11 +398,6 @@ public class HotSpotReplacementsUtil {
         return config.invocationCounterShift;
     }
 
-    @Fold
-    public static int stackBias(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.stackBias;
-    }
-
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
     public static native int readLayoutHelper(KlassPointer object);
 

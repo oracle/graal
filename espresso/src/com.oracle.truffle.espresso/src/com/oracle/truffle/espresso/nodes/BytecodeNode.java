@@ -549,8 +549,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     void initializeFrame(VirtualFrame frame) {
         initArguments(frame);
-        // initialize the bci slot
-        setBCI(frame, 0);
     }
 
     // region OSR support
@@ -568,8 +566,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
     }
 
+    @SuppressWarnings("serial")
     private static final class EspressoOSRReturnException extends ControlFlowException {
-        private static final long serialVersionUID = 117347248600170993L;
         private final Object result;
         private final Throwable throwable;
 
@@ -1719,42 +1717,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
             }
         } else {
+            boolean equal = InterpreterToVM.referenceIdentityEqual(operand1, operand2, getLanguage());
             switch (opcode) {
                 case IF_ACMPEQ: {
-                    if (operand1 == operand2) {
-                        return true;
-                    }
-                    // Espresso null == foreign null
-                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
-                        return true;
-                    }
-                    // an Espresso object can never be identical to a foreign object
-                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
-                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
-                        return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
-                    }
-                    return false;
+                    return equal;
                 }
                 case IF_ACMPNE: {
-                    if (operand1 == operand2) {
-                        return false;
-                    }
-                    // Espresso null == foreign null
-                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
-                        return false;
-                    }
-                    // an Espresso object can never be identical to a foreign object
-                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
-                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
-                        return !operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
-                    }
-                    return operand1 != operand2;
+                    return !equal;
                 }
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2230,6 +2199,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
         InvokeQuickNode invoke;
         Method resolved = resolutionSeed;
+        int resolvedOpCode = opcode;
         switch (opcode) {
             case INVOKESTATIC:
                 // Otherwise, if the resolved method is an instance method, the invokestatic
@@ -2247,6 +2217,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     enterLinkageExceptionProfile();
                     throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
+                if (resolved.getITableIndex() < 0) {
+                    if (resolved.isPrivate()) {
+                        assert getJavaVersion().java9OrLater();
+                        // Interface private methods do not appear in itables.
+                        resolvedOpCode = INVOKESPECIAL;
+                    } else {
+                        // Can happen in old classfiles that calls j.l.Object on interfaces.
+                        resolvedOpCode = INVOKEVIRTUAL;
+                    }
+                }
                 break;
             case INVOKEVIRTUAL:
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
@@ -2254,6 +2234,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
                     throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
+                    resolvedOpCode = INVOKESPECIAL;
                 }
                 break;
             case INVOKESPECIAL:
@@ -2296,7 +2279,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                     declaringKlass.getSuperKlass() != null &&
                                     symbolicRef != declaringKlass.getSuperKlass() &&
                                     symbolicRef.isAssignableFrom(declaringKlass)) {
-                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), declaringKlass, Klass.LookupMode.INSTANCE_ONLY);
+                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
                     }
                 }
                 break;
@@ -2309,7 +2292,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert lockIsHeld();
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
-            invoke = InlinedMethodNode.createFor(resolutionSeed, top, opcode, curBCI, statementIndex);
+            invoke = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
             if (invoke != null) {
                 return invoke;
             }
@@ -2317,27 +2300,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
-        } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
-            if (resolved.isPrivate()) {
-                assert getJavaVersion().java9OrLater();
-                // Interface private methods do not appear in itables.
-                invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
-            } else {
-                // Can happen in old classfiles that calls j.l.Object on interfaces.
-                invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);
-            }
-        } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
-            invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
         } else {
             // @formatter:off
-            switch (opcode) {
+            switch (resolvedOpCode) {
                 case INVOKESTATIC    : invoke = new InvokeStaticQuickNode(resolved, top, curBCI);         break;
                 case INVOKEINTERFACE : invoke = new InvokeInterfaceQuickNode(resolved, top, curBCI); break;
                 case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
                 case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
+                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(resolvedOpCode));
             }
             // @formatter:on
         }

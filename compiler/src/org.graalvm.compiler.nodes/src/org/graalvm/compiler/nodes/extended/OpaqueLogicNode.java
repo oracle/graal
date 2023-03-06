@@ -31,37 +31,21 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.LIRLowerableLogicNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Condition})
-public final class OpaqueLogicNode extends LogicNode implements LIRLowerable, NodeWithIdentity {
+public final class OpaqueLogicNode extends LIRLowerableLogicNode implements NodeWithIdentity {
     public static final NodeClass<OpaqueLogicNode> TYPE = NodeClass.create(OpaqueLogicNode.class);
 
-    @Input(InputType.Condition) protected ValueNode value;
+    @Input(InputType.Condition) protected LogicNode value;
 
-    public OpaqueLogicNode(ValueNode value) {
+    public OpaqueLogicNode(LogicNode value) {
         super(TYPE);
         this.value = value;
     }
 
-    public ValueNode getValue() {
+    public LogicNode value() {
         return value;
-    }
-
-    public void setValue(ValueNode value) {
-        this.updateUsages(this.value, value);
-        this.value = value;
-    }
-
-    public void remove() {
-        replaceAndDelete(getValue());
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(value));
     }
 }

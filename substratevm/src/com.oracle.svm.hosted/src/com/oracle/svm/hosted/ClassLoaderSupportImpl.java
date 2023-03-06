@@ -59,6 +59,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
@@ -110,7 +111,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
+                    scanDirectory(classpathFile, resourceCollector);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
@@ -142,7 +143,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, NativeImageClassLoaderSupport support) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -166,8 +167,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
-                    if (support.excludeDirectoriesRoot.equals(entry)) {
-                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
                 }

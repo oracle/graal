@@ -157,7 +157,7 @@ public final class MemoryFileSystem implements FileSystem {
     public Path parsePath(URI uri) {
         try {
             return Paths.get(uri);
-        } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+        } catch (FileSystemNotFoundException e) {
             throw new UnsupportedOperationException(e);
         }
     }

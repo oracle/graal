@@ -45,6 +45,9 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class Stride {
 
+    static final String STRIDE_CACHE_LIMIT = "3";
+    static final int STRIDE_UNROLL = 3;
+
     static boolean isStride(int stride) {
         return 0 <= stride && stride <= 2;
     }
@@ -59,11 +62,30 @@ final class Stride {
         }
     }
 
+    static int fromCodeRangeAllowImprecise(int codeRange, Encoding encoding) {
+        if (TStringGuards.isUTF16(encoding)) {
+            return fromCodeRangeUTF16AllowImprecise(codeRange);
+        } else if (TStringGuards.isUTF32(encoding)) {
+            return fromCodeRangeUTF32AllowImprecise(codeRange);
+        } else {
+            return 0;
+        }
+    }
+
     static int fromCodeRangeUTF16(int codeRange) {
         return TSCodeRange.toStrideUTF16(codeRange);
+    }
+
+    static int fromCodeRangeUTF16AllowImprecise(int codeRange) {
+        return TSCodeRange.toStrideUTF16AllowImprecise(codeRange);
     }
 
     static int fromCodeRangeUTF32(int codeRange) {
         return TSCodeRange.toStrideUTF32(codeRange);
     }
+
+    static int fromCodeRangeUTF32AllowImprecise(int codeRange) {
+        return TSCodeRange.toStrideUTF32AllowImprecise(codeRange);
+    }
+
 }

@@ -28,10 +28,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 
-import javax.management.MBeanNotificationInfo;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationFilter;
-import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
@@ -48,8 +44,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
 
-public abstract class AbstractMemoryMXBean implements MemoryMXBean, NotificationEmitter {
-    protected static final long UNDEFINED_MEMORY_USAGE = -1L;
+public abstract class AbstractMemoryMXBean extends AbstractMXBean implements MemoryMXBean {
 
     private final MemoryMXBeanCodeInfoVisitor codeInfoVisitor;
 
@@ -91,23 +86,6 @@ public abstract class AbstractMemoryMXBean implements MemoryMXBean, Notification
     @Override
     public void gc() {
         System.gc();
-    }
-
-    @Override
-    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-    }
-
-    @Override
-    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
-    }
-
-    @Override
-    public void removeNotificationListener(NotificationListener listener) {
-    }
-
-    @Override
-    public MBeanNotificationInfo[] getNotificationInfo() {
-        return new MBeanNotificationInfo[0];
     }
 
     private static final class MemoryMXBeanCodeInfoVisitor implements CodeInfoVisitor {

@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.expression;
 
-public class InvalidExpressionException extends RuntimeException {
+public final class InvalidExpressionException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    public InvalidExpressionException(String message) {
+    InvalidExpressionException(String message) {
         super(message);
     }
 }

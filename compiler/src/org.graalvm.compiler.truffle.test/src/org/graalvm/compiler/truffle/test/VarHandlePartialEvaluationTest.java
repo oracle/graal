@@ -29,7 +29,6 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
@@ -42,13 +41,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
-
-    /**
-     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
-     */
-    private static boolean isSupportedJavaVersion() {
-        return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 17 || JavaVersionUtil.JAVA_SPEC >= 19;
-    }
 
     static final VarHandle byteArrayHandle = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
     static final VarHandle byteBufferHandle = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.nativeOrder());
@@ -76,7 +68,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleGet() {
-        Assume.assumeTrue(isSupportedJavaVersion());
+        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, false), "byteBufferHandleGetInt", byteBuffer, 0);
     }
@@ -86,7 +78,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandleSet() {
-        Assume.assumeTrue(isSupportedJavaVersion());
+        Assume.assumeTrue(isByteBufferPartialEvaluationSupported());
         ByteBuffer byteBuffer = ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42);
         testCommon(new VarHandleTestNode(false, true), "byteArrayHandleSetInt", byteBuffer, 0, 42);
     }

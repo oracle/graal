@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,21 +82,5 @@ public class Bytes {
      */
     public static int beS4(byte[] data, int bci) {
         return (data[bci] << 24) | ((data[bci + 1] & 0xff) << 16) | ((data[bci + 2] & 0xff) << 8) | (data[bci + 3] & 0xff);
-    }
-
-    /**
-     * Gets either a signed 2-byte or a signed 4-byte big-endian value.
-     *
-     * @param data the array containing the data
-     * @param bci the start index of the value to retrieve
-     * @param fourByte if true, this method will return a 4-byte value
-     * @return the signed 2 or 4-byte, big-endian, value at index {@code bci} in array {@code data}
-     */
-    public static int beSVar(byte[] data, int bci, boolean fourByte) {
-        if (fourByte) {
-            return beS4(data, bci);
-        } else {
-            return beS2(data, bci);
-        }
     }
 }

@@ -31,13 +31,12 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * The {@code LogicConstantNode} represents a boolean constant.
  */
 @NodeInfo(nameTemplate = "{p#value}", cycles = CYCLES_0, size = SIZE_0)
-public final class LogicConstantNode extends LogicNode implements LIRLowerable {
+public final class LogicConstantNode extends LIRLowerableLogicNode implements LIRLowerable {
 
     public static final NodeClass<LogicConstantNode> TYPE = NodeClass.create(LogicConstantNode.class);
     protected final boolean value;
@@ -98,10 +97,5 @@ public final class LogicConstantNode extends LogicNode implements LIRLowerable {
 
     public boolean getValue() {
         return value;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool generator) {
-        // nothing to do
     }
 }

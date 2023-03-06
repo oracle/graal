@@ -269,7 +269,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
 
         Stub stub = gen.getStub();
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
+        AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, config.preserveFramePointer);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());

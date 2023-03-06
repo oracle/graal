@@ -29,8 +29,6 @@ package com.oracle.svm.core.monitor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -60,9 +58,13 @@ import jdk.internal.misc.Unsafe;
  * </ul>
  */
 abstract class JavaMonitorQueuedSynchronizer {
+    // Node.status field values
     static final int WAITING = 1; // must be 1
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
+
+    /** Return value of {@link #trySpinAcquire} if successfully acquired. */
+    protected static final int SPIN_SUCCESS = -1;
 
     // see AbstractQueuedLongSynchronizer.Node
     abstract static class Node {
@@ -229,12 +231,36 @@ abstract class JavaMonitorQueuedSynchronizer {
         signalNext(head);
     }
 
+    /**
+     * Attempt to acquire as part of spinning, returning {@link #SPIN_SUCCESS} if successful, else
+     * the number of remaining attempts.
+     */
+    protected int trySpinAcquire(int spins, long arg) {
+        assert spins > 0;
+        if (tryAcquire(arg)) {
+            return SPIN_SUCCESS;
+        }
+        return spins - 1;
+    }
+
+    /**
+     * Given the number of previous park operations, returns the number of attempts for
+     * {@link #trySpinAcquire}, provided that the thread is eligible to acquire the lock (not queued
+     * yet or first in the queue).
+     */
+    protected int getSpinAttempts(int parks) {
+        if (parks < 0 || parks > 8) {
+            return 0xff;
+        }
+        return (1 << parks) - 1;
+    }
+
     // see AbstractQueuedLongSynchronizer.acquire(Node, long, boolean, boolean, boolean, long)
     @SuppressWarnings("all")
     final int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
-        byte spins = 0;
-        byte postSpins = 0;
+        int parks = 0;
+        int spins = getSpinAttempts(parks);
         boolean first = false;
         Node pred = null;
 
@@ -251,7 +277,13 @@ abstract class JavaMonitorQueuedSynchronizer {
             if (first || pred == null) {
                 boolean acquired;
                 try {
-                    acquired = tryAcquire(arg);
+                    if (spins > 0) {
+                        spins = trySpinAcquire(spins, arg);
+                        acquired = (spins == SPIN_SUCCESS);
+                        assert !acquired || isHeldExclusively();
+                    } else {
+                        acquired = tryAcquire(arg);
+                    }
                 } catch (Throwable ex) {
                     cancelAcquire(node);
                     throw ex;
@@ -279,13 +311,13 @@ abstract class JavaMonitorQueuedSynchronizer {
                 } else {
                     t.next = node;
                 }
-            } else if (first && spins != 0) {
-                --spins; // reduce unfairness on rewaits
+            } else if (first && spins > 0) {
                 Thread.onSpinWait();
             } else if (node.status == 0) {
                 node.status = WAITING; // enable signal and recheck
             } else {
-                spins = postSpins = (byte) ((postSpins << 1) | 1);
+                parks++;
+                spins = getSpinAttempts(parks);
                 LockSupport.park(this);
                 node.clearStatus();
             }
@@ -377,7 +409,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                     lastWaiter = null;
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
-                    first.notifierJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+                    first.notifierJfrTid = SubstrateJVM.getCurrentThreadId();
                     enqueue(first);
                     if (!all) {
                         break;

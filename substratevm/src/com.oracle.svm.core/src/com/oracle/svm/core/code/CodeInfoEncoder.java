@@ -171,6 +171,10 @@ public class CodeInfoEncoder {
         this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders);
     }
 
+    public Encoders getEncoders() {
+        return encoders;
+    }
+
     public static int getEntryOffset(Infopoint infopoint) {
         if (infopoint instanceof Call || infopoint instanceof DeoptEntryInfopoint) {
             int offset = infopoint.pcOffset;
@@ -221,9 +225,8 @@ public class CodeInfoEncoder {
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
                         added = deoptEntryBcis.add(encodedBci);
                         if (!added) {
-                            String errorMessage = String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)\nmethod: %s", encodedBci, FrameInfoDecoder.readableBci(encodedBci),
-                                            method);
-                            throw VMError.shouldNotReachHere(errorMessage);
+                            throw VMError.shouldNotReachHere(String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)%nmethod: %s",
+                                            encodedBci, FrameInfoDecoder.readableBci(encodedBci), method));
                         }
                     }
                 }
@@ -543,7 +546,7 @@ class CodeInfoVerifier {
             assert lock.isEliminated() == actualValue.isEliminatedMonitor();
             expectedValue = lock.getOwner();
         } else {
-            assert actualValue.isEliminatedMonitor() == false;
+            assert !actualValue.isEliminatedMonitor();
         }
 
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {

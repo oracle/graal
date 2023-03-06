@@ -56,8 +56,8 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -170,10 +170,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     public static CanonicalizerPhase createWithoutReadCanonicalization() {
         return new CanonicalizerPhase(defaultFeaturesWithout(READ_CANONICALIZATION));
-    }
-
-    public static CanonicalizerPhase createWithoutGVN() {
-        return new CanonicalizerPhase(defaultFeaturesWithout(GVN));
     }
 
     public static CanonicalizerPhase createWithoutCFGSimplification() {
@@ -597,7 +593,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             return false;
         } else {
             Node canonical = newCanonical;
-            tool.debug.log("Canonicalizer: replacing %1s with %1s", node, canonical);
+            tool.debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: replacing %1s with %1s", node, canonical);
             COUNTER_CANONICALIZED_NODES.increment(tool.debug);
             StructuredGraph graph = (StructuredGraph) node.graph();
             if (canonical != null && !canonical.isAlive()) {
@@ -606,8 +602,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
             if (node instanceof FloatingNode) {
                 assert canonical == null || !(canonical instanceof FixedNode) ||
-                                (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node +
-                                                " -> " + canonical + " : replacement should be floating or fixed and connected";
+                                (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node + " -> " + canonical +
+                                                " : replacement should be floating or fixed and connected";
                 node.replaceAtUsages(canonical);
                 GraphUtil.killWithUnusedFloatingInputs(node, true);
             } else {

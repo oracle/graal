@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -514,7 +514,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
                         // NodeSuccessorList fields should not be final since they are
                         // written (via Unsafe) in clearSuccessors()
-                        GraalError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field % should not be final", field);
+                        GraalError.guarantee(!Modifier.isFinal(modifiers), "NodeSuccessorList successor field %s should not be final", field);
                         GraalError.guarantee(!Modifier.isPublic(modifiers), "NodeSuccessorList successor field %s should not be public", field);
                     } else {
                         GraalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
@@ -985,10 +985,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeClass<? super T> getSuperNodeClass() {
         return superNodeClass;
-    }
-
-    public long inputsIteration() {
-        return inputsIteration;
     }
 
     /**

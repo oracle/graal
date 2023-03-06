@@ -60,12 +60,6 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
-    public static Fields forClass(Class<?> clazz, Class<?> endClazz, boolean includeTransient, FieldsScanner.CalcOffset calcOffset) {
-        FieldsScanner scanner = new FieldsScanner(calcOffset == null ? new FieldsScanner.DefaultCalcOffset() : calcOffset);
-        scanner.scan(clazz, endClazz, includeTransient);
-        return create(scanner.data);
-    }
-
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];

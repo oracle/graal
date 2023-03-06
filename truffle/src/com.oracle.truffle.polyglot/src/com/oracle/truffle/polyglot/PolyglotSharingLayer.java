@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,6 +101,7 @@ final class PolyglotSharingLayer {
         @CompilationFinal ContextPolicy contextPolicy;
         Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions;
         final WeakAssumedValue<PolyglotContextImpl> singleContextValue = new WeakAssumedValue<>("single context");
+        private volatile Object[] fastThreadLocalsCache;
         /*
          * Configuration that is common to all contexts created from this layer.
          */
@@ -126,6 +127,18 @@ final class PolyglotSharingLayer {
             this.preinitConfig = newConfig;
         }
 
+        Object[] getFastThreadLocals(PolyglotEngineImpl engine) {
+            Object[] data = fastThreadLocalsCache;
+            if (data == null) {
+                data = PolyglotFastThreadLocals.createFastThreadLocals(engine, instances);
+                fastThreadLocalsCache = data;
+            }
+            return data;
+        }
+
+        void resetFastThreadLocalsCache() {
+            fastThreadLocalsCache = null;
+        }
     }
 
     PolyglotSharingLayer(PolyglotEngineImpl engine) {
@@ -401,6 +414,7 @@ final class PolyglotSharingLayer {
         if (instance == null) {
             instance = language.createInstance(this);
             s.instances[language.engineIndex] = instance;
+            s.resetFastThreadLocalsCache();
 
             if (!isSingleContext()) {
                 EngineAccessor.LANGUAGE.initializeMultiContext(instance.spi);
@@ -465,6 +479,14 @@ final class PolyglotSharingLayer {
             }
             return instance.singleLanguageContext.getConstant();
         }
+    }
+
+    Object[] getFastThreadLocals() {
+        Shared s = this.shared;
+        if (s == null) {
+            return null;
+        }
+        return s.getFastThreadLocals(engine);
     }
 
     public ContextPolicy getContextPolicy() {

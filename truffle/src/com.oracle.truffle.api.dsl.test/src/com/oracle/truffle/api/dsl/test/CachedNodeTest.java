@@ -55,7 +55,7 @@ import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.MultipleParametersN
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.ValidDSLCachedNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class CachedNodeTest {
 
     public static class ValidNode1 extends Node {
@@ -195,6 +195,7 @@ public class CachedNodeTest {
     }
 
     @GenerateUncached
+
     public abstract static class ValidDSLNode extends Node {
 
         abstract String execute(Object arg);
@@ -234,6 +235,7 @@ public class CachedNodeTest {
     }
 
     @GenerateUncached
+
     public abstract static class CustomCreateTakesPrecedence extends Node {
 
         abstract String execute(Object arg);
@@ -304,7 +306,7 @@ public class CachedNodeTest {
     public abstract static class SupportTrivialUncached2 extends Node {
         abstract Object execute(Object arg0);
 
-        @Specialization(guards = "cachedArg0 == arg0.getClass()")
+        @Specialization(guards = "cachedArg0 == arg0.getClass()", limit = "3")
         static Object s0(Object arg0,
                         @Cached("arg0.getClass()") Class<?> cachedArg0) {
             return "cached";

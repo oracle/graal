@@ -36,7 +36,7 @@ import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.util.VMError;
 
 public class TraceFileWriter extends Tracer implements TracingResultWriter {

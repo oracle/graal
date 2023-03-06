@@ -110,6 +110,8 @@ import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
@@ -121,8 +123,8 @@ import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
@@ -379,6 +381,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private static final List<Pair<String, List<String>>> IGNORE_FILTER = Arrays.asList(
+                    Pair.create("java.lang.invoke.MethodHandle", Collections.singletonList("bindTo")), // Class.cast()
                     Pair.create("java.lang.invoke.MethodHandles", Arrays.asList("dropArguments", "filterReturnValue", "foldArguments", "insertArguments")),
                     Pair.create("java.lang.invoke.Invokers", Collections.singletonList("spreadInvoker")));
 
@@ -416,7 +419,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (argType != null) {
                     // TODO For trustInterfaces = false, we cannot be more specific here
                     // (i.e. we cannot use TypeReference.createExactTrusted here)
-                    TypeReference typeref = TypeReference.createWithoutAssumptions(NativeImageUtil.toOriginal(argType));
+                    TypeReference typeref = TypeReference.createWithoutAssumptions(toOriginalWithResolve(argType));
                     argStamp = StampTool.isPointerNonNull(argStamp) ? StampFactory.objectNonNull(typeref) : StampFactory.object(typeref);
                 }
                 return new ParameterNode(index, StampPair.createSingle(argStamp));
@@ -501,7 +504,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
     }
 
-    private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
@@ -557,7 +560,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * If both, the MethodHandle and the MethodType are constant, we can evaluate
                      * asType eagerly and embed the result as a constant in the graph.
                      */
-                    SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
+                    SnippetReflectionProvider snippetReflection = GraalAccess.getOriginalSnippetReflection();
                     MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
                     MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
                     if (mh == null || mt == null) {
@@ -586,7 +589,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
+        if (!reason.duringAnalysis() && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
             return false;
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -612,7 +615,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         DebugContext debug = b.getDebug();
         StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)
-                        .method(NativeImageUtil.toOriginal(methodHandleMethod))
+                        .method(toOriginal(methodHandleMethod))
                         .recordInlinedMethods(false)
                         .build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
@@ -634,7 +637,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             try {
                 transplanter.graph(graph);
 
-                if (reason == ParsingReason.PointsToAnalysis) {
+                if (reason.duringAnalysis()) {
                     /*
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
@@ -895,7 +898,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return (ValueNode) tNode;
         }
 
-        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+        private void transplantInvoke(InvokeNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
             maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
 
             if (invokeResultKind == JavaKind.Void) {
@@ -918,7 +921,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 }
             }
 
-            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false, lookup(oNode.callTarget().referencedType()));
 
             if (invokeResultKind != JavaKind.Void) {
                 /*
@@ -1039,6 +1042,26 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private JavaConstant toOriginal(JavaConstant constant) {
         return aUniverse.toHosted(constant);
+    }
+
+    private static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
+        if (method instanceof HostedMethod) {
+            return ((HostedMethod) method).wrapped.wrapped;
+        } else if (method instanceof AnalysisMethod) {
+            return ((AnalysisMethod) method).wrapped;
+        } else {
+            return method;
+        }
+    }
+
+    private static ResolvedJavaType toOriginalWithResolve(ResolvedJavaType type) {
+        if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithResolve();
+        } else if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithResolve();
+        } else {
+            return type;
+        }
     }
 }
 

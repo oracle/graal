@@ -31,16 +31,16 @@ import com.oracle.truffle.espresso.descriptors.Validation;
 
 public final class Utf8Constant implements PoolConstant {
 
-    private static final int VALID_CLASS_NAME = 0x01;
-    private static final int VALID_METHOD_NAME = 0x02;
-    private static final int VALID_METHOD_NAME_OR_CLINIT = 0x4;
-    private static final int VALID_FIELD_NAME = 0x08;
-    private static final int VALID_SIGNATURE = 0x10;
+    private static final byte VALID_CLASS_NAME = 0x01;
+    private static final byte VALID_METHOD_NAME = 0x02;
+    private static final byte VALID_METHOD_NAME_OR_CLINIT = 0x4;
+    private static final byte VALID_FIELD_NAME = 0x08;
+    private static final byte VALID_SIGNATURE = 0x10;
 
-    private static final int VALID_UTF8 = 0x20;
-    private static final int VALID_TYPE = 0x40;
+    private static final byte VALID_UTF8 = 0x20;
+    private static final byte VALID_TYPE = 0x40;
 
-    private static final int VALID_INIT_SIGNATURE = 0x80;
+    private static final byte VALID_INIT_SIGNATURE = (byte) 0x80;
 
     private byte validationCache;
 
@@ -97,7 +97,7 @@ public final class Utf8Constant implements PoolConstant {
 
     public void validateMethodName(boolean allowClinit) {
         validateUTF8();
-        int mask = allowClinit ? VALID_METHOD_NAME_OR_CLINIT : VALID_METHOD_NAME;
+        byte mask = allowClinit ? VALID_METHOD_NAME_OR_CLINIT : VALID_METHOD_NAME;
         if ((validationCache & mask) == 0) {
             if (!Validation.validMethodName(value, allowClinit)) {
                 throw ConstantPool.classFormatError("Invalid method name: " + value);
@@ -122,7 +122,7 @@ public final class Utf8Constant implements PoolConstant {
 
     public void validateSignature(boolean isInitOrClinit) {
         validateUTF8();
-        int mask;
+        byte mask;
         if (isInitOrClinit) {
             mask = VALID_INIT_SIGNATURE;
         } else {
@@ -132,13 +132,13 @@ public final class Utf8Constant implements PoolConstant {
             if (!Validation.validSignatureDescriptor(value, isInitOrClinit)) {
                 throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
             }
-            validationCache |= (mask | VALID_SIGNATURE);
+            validationCache |= (byte) (mask | VALID_SIGNATURE);
         }
     }
 
     public int validateSignatureGetSlots(boolean isInitOrClinit) {
         validateUTF8();
-        int mask;
+        byte mask;
         if (isInitOrClinit) {
             mask = VALID_INIT_SIGNATURE;
         } else {
@@ -148,7 +148,7 @@ public final class Utf8Constant implements PoolConstant {
         if (slots < 0) {
             throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
         }
-        validationCache |= (mask | VALID_SIGNATURE);
+        validationCache |= (byte) (mask | VALID_SIGNATURE);
         return slots;
     }
 

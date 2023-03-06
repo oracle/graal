@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,7 @@ class GraalWasmDefaultTags:
     wasmconstantspolicyextratest = "wasmconstantspolicyextratest"
     wasmextratest = "wasmextratest"
     wasmbenchtest = "wasmbenchtest"
+    coverage = "coverage"
 
 
 def wat2wasm_binary():
@@ -97,21 +98,22 @@ def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
-    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
+
+    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"])
-    with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest]) as t:
+            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"], test_report_tags={'task': t.title})
+    with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest], report=True) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
-                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"])
-    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest]) as t:
+                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
+
+    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["CSuite"])
-            unittest(["WatSuite"])
-    with Task("ConstantsPolicyExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicyextratest]) as t:
+            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+    with Task("ConstantsPolicyExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicyextratest], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite"])
-            unittest(["-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WatSuite"])
+            unittest(["--suite", "wasm", "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
     with Task("BenchTest", tasks, tags=[GraalWasmDefaultTags.wasmbenchtest]) as t:
@@ -577,3 +579,14 @@ def wasm(args, **kwargs):
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)
+
+@mx.command(_suite.name, "wasm-memory-layout")
+def wasm_memory_layout(args, **kwargs):
+    """Run WebAssembly memory layout extractor."""
+    mx.get_opts().jdk = "jvmci"
+    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    path_args = mx.get_runtime_jvm_args([
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.memory",
+    ])
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, **kwargs)

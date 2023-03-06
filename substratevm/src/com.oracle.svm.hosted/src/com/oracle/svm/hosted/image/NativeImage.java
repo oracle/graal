@@ -152,12 +152,6 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     @Override
-    public Section getTextSection() {
-        assert textSection != null;
-        return textSection;
-    }
-
-    @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
     protected final void write(DebugContext context, Path outputFile) {
@@ -184,7 +178,7 @@ public abstract class NativeImage extends AbstractImage {
         }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {
             for (Element e : objectFile.getElements()) {
-                System.out.printf("PrintImageElementSizes:  size: %15d  name: %s\n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
+                System.out.printf("PrintImageElementSizes:  size: %15d  name: %s%n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
             }
         }
     }
@@ -245,7 +239,7 @@ public abstract class NativeImage extends AbstractImage {
         writer.appendln("#endif");
 
         Path headerFile = writer.writeFile(header.name() + dynamicSuffix);
-        BuildArtifacts.singleton().add(ArtifactType.HEADER, headerFile);
+        BuildArtifacts.singleton().add(ArtifactType.C_HEADER, headerFile);
     }
 
     /**

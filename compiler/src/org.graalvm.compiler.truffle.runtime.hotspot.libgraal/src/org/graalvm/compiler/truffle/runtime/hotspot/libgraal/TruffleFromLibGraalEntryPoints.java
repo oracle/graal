@@ -458,7 +458,7 @@ final class TruffleFromLibGraalEntryPoints {
     static Object readMethodCache(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         TruffleCompilerRuntime truffleCompilerRuntime = (TruffleCompilerRuntime) truffleRuntime;
-        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create(new byte[19]);
+        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create(new byte[20]);
         TruffleCompilerRuntime.LoopExplosionKind loopExplosionKind = truffleCompilerRuntime.getLoopExplosionKind(method);
         out.writeInt(loopExplosionKind.ordinal());
         TruffleCompilerRuntime.InlineKind inlineKind = truffleCompilerRuntime.getInlineKind(method, true);
@@ -470,6 +470,7 @@ final class TruffleFromLibGraalEntryPoints {
         out.writeBoolean(truffleCompilerRuntime.isBytecodeInterpreterSwitch(method));
         out.writeBoolean(truffleCompilerRuntime.isBytecodeInterpreterSwitchBoundary(method));
         out.writeBoolean(truffleCompilerRuntime.isInInterpreter(method));
+        out.writeBoolean(truffleCompilerRuntime.isInInterpreterFastPath(method));
         out.writeBoolean(truffleCompilerRuntime.isTransferToInterpreterMethod(method));
         out.writeBoolean(truffleCompilerRuntime.isInliningCutoff(method));
         return out.getArray();

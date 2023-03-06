@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* Copyright (c) 2022 Unicode, Inc.
+/* Copyright (c) 2023 Unicode, Inc.
  * Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
  * For terms of use, see http://www.unicode.org/terms_of_use.html
  */
@@ -49,7 +49,7 @@ import org.graalvm.collections.EconomicMap;
 
 public class UnicodeCharacterAliases {
 
-    public static final EconomicMap<String, Integer> CHARACTER_ALIASES = EconomicMap.create(470);
+    public static final EconomicMap<String, Integer> CHARACTER_ALIASES = EconomicMap.create(473);
 
     static {
         CHARACTER_ALIASES.put("ACK", 0x0006);
@@ -58,6 +58,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("ALM", 0x061C);
         CHARACTER_ALIASES.put("APC", 0x009F);
         CHARACTER_ALIASES.put("APPLICATION PROGRAM COMMAND", 0x009F);
+        CHARACTER_ALIASES.put("ARABIC SMALL HIGH LIGATURE ALEF WITH YEH BARREE", 0x0616);
         CHARACTER_ALIASES.put("BACKSPACE", 0x0008);
         CHARACTER_ALIASES.put("BEL", 0x0007);
         CHARACTER_ALIASES.put("BOM", 0xFEFF);
@@ -94,6 +95,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("DEVICE CONTROL THREE", 0x0013);
         CHARACTER_ALIASES.put("DEVICE CONTROL TWO", 0x0012);
         CHARACTER_ALIASES.put("DLE", 0x0010);
+        CHARACTER_ALIASES.put("EM", 0x0019);
         CHARACTER_ALIASES.put("END OF GUARDED AREA", 0x0097);
         CHARACTER_ALIASES.put("END OF LINE", 0x000A);
         CHARACTER_ALIASES.put("END OF MEDIUM", 0x0019);
@@ -248,6 +250,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("STX", 0x0002);
         CHARACTER_ALIASES.put("SUB", 0x001A);
         CHARACTER_ALIASES.put("SUBSTITUTE", 0x001A);
+        CHARACTER_ALIASES.put("SUNDANESE LETTER ARCHAIC I", 0x1BBD);
         CHARACTER_ALIASES.put("SYN", 0x0016);
         CHARACTER_ALIASES.put("SYNCHRONOUS IDLE", 0x0016);
         CHARACTER_ALIASES.put("SYRIAC SUBLINEAR COLON SKEWED LEFT", 0x0709);

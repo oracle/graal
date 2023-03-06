@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.code;
 
-import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.VALUE_AND_OFFSET;
 import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.OFFSET_ONLY;
+import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.VALUE_AND_OFFSET;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -315,11 +315,6 @@ public class HexCodeFile {
 
         Error error(int offset, String message) {
             throw new Error(errorMessage(offset, message));
-        }
-
-        void warning(int offset, String message) {
-            PrintStream err = System.err;
-            err.println("Warning: " + errorMessage(offset, message));
         }
 
         String errorMessage(int offset, String message) {

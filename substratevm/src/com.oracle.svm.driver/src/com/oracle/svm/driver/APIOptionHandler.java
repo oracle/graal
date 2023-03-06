@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.driver;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -46,10 +48,12 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.common.option.LocatableOption;
+import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -60,6 +64,7 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.util.StringUtil;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -69,7 +74,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final String builderOption;
         final String defaultValue;
         final String helpText;
-        final boolean hasPathArguments;
         final boolean defaultFinal;
         final String deprecationWarning;
         final boolean extra;
@@ -77,14 +81,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final List<Function<Object, Object>> valueTransformers;
         final APIOptionGroup group;
 
-        OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
+        OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean defaultFinal, String deprecationWarning,
                         List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
             this.variants = variants;
             this.valueSeparator = valueSeparator;
             this.builderOption = builderOption;
             this.defaultValue = defaultValue;
             this.helpText = helpText;
-            this.hasPathArguments = hasPathArguments;
             this.defaultFinal = defaultFinal;
             this.deprecationWarning = deprecationWarning;
             this.valueTransformers = valueTransformers;
@@ -97,28 +100,44 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    static final class PathsOptionInfo {
+        private final String delimiter;
+        private final BundleMember.Role role;
+
+        PathsOptionInfo(String delimiter, BundleMember.Role role) {
+            this.delimiter = delimiter;
+            this.role = role;
+        }
+    }
+
     private final SortedMap<String, OptionInfo> apiOptions;
     private final Map<String, GroupInfo> groupInfos;
+    private final Map<String, PathsOptionInfo> pathOptions;
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
         if (NativeImage.IS_AOT) {
             APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
             groupInfos = support.groupInfos;
+            pathOptions = support.pathOptions;
             apiOptions = support.options;
         } else {
             groupInfos = new HashMap<>();
-            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos);
+            pathOptions = new HashMap<>();
+            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos, pathOptions);
         }
     }
 
-    static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos) {
+    static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos, Map<String, PathsOptionInfo> pathOptions) {
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
-        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances));
+        hostedOptions.getValues().forEach(o -> {
+            extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances);
+            extractPathOption(NativeImage.oH, o, pathOptions);
+        });
         runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupInfos, groupInstances));
         groupInfos.forEach((groupName, groupInfo) -> {
             if (groupInfo.defaultValues.size() > 1) {
@@ -131,138 +150,153 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
                     Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances) {
-        try {
-            Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
-            APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
 
-            for (APIOption apiAnnotation : apiAnnotations) {
-                String builderOption = optionPrefix;
-                if (apiAnnotation.name().length <= 0) {
-                    VMError.shouldNotReachHere(String.format("APIOption for %s does not provide a name entry", optionDescriptor.getLocation()));
-                }
-                String apiOptionName = APIOption.Utils.optionName(apiAnnotation.name()[0]);
-                String rawOptionName = optionDescriptor.getName();
-                APIOptionGroup group = null;
-                String defaultValue = null;
+        for (APIOption apiAnnotation : getAnnotationsByType(optionDescriptor, APIOption.class)) {
+            String builderOption = optionPrefix;
+            if (apiAnnotation.name().length <= 0) {
+                VMError.shouldNotReachHere(String.format("APIOption for %s does not provide a name entry", optionDescriptor.getLocation()));
+            }
+            String apiOptionName = APIOption.Utils.optionName(apiAnnotation.name()[0]);
+            String rawOptionName = optionDescriptor.getName();
+            APIOptionGroup group = null;
+            String defaultValue = null;
 
-                boolean booleanOption = false;
-                Class<?> optionValueType = optionDescriptor.getOptionValueType();
-                if (optionValueType.isArray()) {
-                    VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
-                    optionValueType = optionValueType.getComponentType();
-                }
-                boolean hasFixedValue = apiAnnotation.fixedValue().length > 0;
-                if (optionValueType.equals(Boolean.class)) {
-                    if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
-                        try {
-                            Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
-                            APIOptionGroup g = group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
-                            String groupName = APIOption.Utils.groupName(group);
-                            GroupInfo groupInfo = groupInfos.computeIfAbsent(groupName, (n) -> new GroupInfo(g));
-                            if (group.helpText() == null || group.helpText().isEmpty()) {
-                                VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
-                            }
-                            String groupMember = apiAnnotation.name()[0];
-                            groupInfo.supportedValues.add(groupMember);
-
-                            apiOptionName = groupName + groupMember;
-
-                            Boolean isEnabled = (Boolean) optionDescriptor.getOptionKey().getDefaultValue();
-                            if (isEnabled) {
-                                groupInfo.defaultValues.add(groupMember);
-                                /* Use OptionInfo.defaultValue to remember group default value */
-                                defaultValue = groupMember;
-                            }
-                        } catch (ReflectionUtilError ex) {
-                            throw VMError.shouldNotReachHere(
-                                            "Class specified as group for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + apiAnnotation.group().getTypeName(), ex.getCause());
-                        }
-                    }
-                    if (apiAnnotation.kind().equals(APIOptionKind.Paths)) {
-                        VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOptionKind.Paths", apiOptionName, rawOptionName));
-                    }
-                    if (apiAnnotation.defaultValue().length > 0) {
-                        VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.defaultValue", apiOptionName, rawOptionName));
-                    }
-                    if (hasFixedValue) {
-                        VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.fixedValue", apiOptionName, rawOptionName));
-                    }
-                    builderOption += apiAnnotation.kind().equals(APIOptionKind.Negated) ? "-" : "+";
-                    builderOption += rawOptionName;
-                    booleanOption = true;
-                } else {
-                    if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
-                        VMError.shouldNotReachHere(String.format("Using @APIOption.group not supported for non-boolean APIOption %s(%s)", apiOptionName, rawOptionName));
-                    }
-                    if (apiAnnotation.kind().equals(APIOptionKind.Negated)) {
-                        VMError.shouldNotReachHere(String.format("Non-boolean APIOption %s(%s) cannot use APIOptionKind.Negated", apiOptionName, rawOptionName));
-                    }
-                    if (apiAnnotation.defaultValue().length > 1) {
-                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) cannot have more than one APIOption.defaultValue", apiOptionName, rawOptionName));
-                    }
-                    if (apiAnnotation.fixedValue().length > 1) {
-                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) cannot have more than one APIOption.fixedValue", apiOptionName, rawOptionName));
-                    }
-                    if (hasFixedValue && apiAnnotation.defaultValue().length > 0) {
-                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) APIOption.defaultValue and APIOption.fixedValue cannot be combined", apiOptionName, rawOptionName));
-                    }
-                    if (apiAnnotation.defaultValue().length > 0) {
-                        defaultValue = apiAnnotation.defaultValue()[0];
-                    }
-                    if (hasFixedValue) {
-                        defaultValue = apiAnnotation.fixedValue()[0];
-                    }
-
-                    builderOption += rawOptionName;
-                    builderOption += "=";
-                }
-
-                String helpText = optionDescriptor.getHelp();
-                if (!apiAnnotation.customHelp().isEmpty()) {
-                    helpText = apiAnnotation.customHelp();
-                }
-                if (helpText == null || helpText.isEmpty()) {
-                    VMError.shouldNotReachHere(String.format("APIOption %s(%s) needs to provide help text", apiOptionName, rawOptionName));
-                }
-                if (group == null) {
-                    /* Regular help text needs to start with lower-case letter */
-                    helpText = startLowerCase(helpText);
-                }
-
-                List<Function<Object, Object>> valueTransformers = new ArrayList<>(apiAnnotation.valueTransformer().length);
-                for (Class<? extends Function<Object, Object>> transformerClass : apiAnnotation.valueTransformer()) {
+            boolean booleanOption = false;
+            Class<?> optionValueType = optionDescriptor.getOptionValueType();
+            if (optionValueType.isArray()) {
+                VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
+                optionValueType = optionValueType.getComponentType();
+            }
+            boolean hasFixedValue = apiAnnotation.fixedValue().length > 0;
+            if (optionValueType.equals(Boolean.class)) {
+                if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                     try {
-                        valueTransformers.add(ReflectionUtil.newInstance(transformerClass));
+                        Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
+                        APIOptionGroup g = group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
+                        String groupName = APIOption.Utils.groupName(group);
+                        GroupInfo groupInfo = groupInfos.computeIfAbsent(groupName, (n) -> new GroupInfo(g));
+                        if (group.helpText() == null || group.helpText().isEmpty()) {
+                            VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
+                        }
+                        String groupMember = apiAnnotation.name()[0];
+                        groupInfo.supportedValues.add(groupMember);
+
+                        apiOptionName = groupName + groupMember;
+
+                        Boolean isEnabled = (Boolean) optionDescriptor.getOptionKey().getDefaultValue();
+                        if (isEnabled) {
+                            groupInfo.defaultValues.add(groupMember);
+                            /* Use OptionInfo.defaultValue to remember group default value */
+                            defaultValue = groupMember;
+                        }
                     } catch (ReflectionUtilError ex) {
                         throw VMError.shouldNotReachHere(
-                                        "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
+                                        "Class specified as group for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + apiAnnotation.group().getTypeName(), ex.getCause());
                     }
                 }
-                if (apiAnnotation.valueSeparator().length == 0) {
-                    throw VMError.shouldNotReachHere(String.format("APIOption %s(%s) does not specify any valueSeparator", apiOptionName, rawOptionName));
+                if (apiAnnotation.defaultValue().length > 0) {
+                    VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.defaultValue", apiOptionName, rawOptionName));
                 }
-                for (char valueSeparator : apiAnnotation.valueSeparator()) {
-                    if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
-                        String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
-                        if (booleanOption) {
-                            throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
-                        }
-                        if (hasFixedValue) {
-                            VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
-                        }
-                        if (defaultValue != null) {
-                            VMError.shouldNotReachHere(String.format("APIOption %s(%s) with default value" + msgTail, apiOptionName, rawOptionName));
-                        }
-                    }
+                if (hasFixedValue) {
+                    VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.fixedValue", apiOptionName, rawOptionName));
                 }
-                boolean defaultFinal = booleanOption || hasFixedValue;
-                apiOptions.put(apiOptionName,
-                                new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
-                                                apiAnnotation.kind().equals(APIOptionKind.Paths),
-                                                defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
+                builderOption += apiAnnotation.kind().equals(APIOptionKind.Negated) ? "-" : "+";
+                builderOption += rawOptionName;
+                booleanOption = true;
+            } else {
+                if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
+                    VMError.shouldNotReachHere(String.format("Using @APIOption.group not supported for non-boolean APIOption %s(%s)", apiOptionName, rawOptionName));
+                }
+                if (apiAnnotation.kind().equals(APIOptionKind.Negated)) {
+                    VMError.shouldNotReachHere(String.format("Non-boolean APIOption %s(%s) cannot use APIOptionKind.Negated", apiOptionName, rawOptionName));
+                }
+                if (apiAnnotation.defaultValue().length > 1) {
+                    VMError.shouldNotReachHere(String.format("APIOption %s(%s) cannot have more than one APIOption.defaultValue", apiOptionName, rawOptionName));
+                }
+                if (apiAnnotation.fixedValue().length > 1) {
+                    VMError.shouldNotReachHere(String.format("APIOption %s(%s) cannot have more than one APIOption.fixedValue", apiOptionName, rawOptionName));
+                }
+                if (hasFixedValue && apiAnnotation.defaultValue().length > 0) {
+                    VMError.shouldNotReachHere(String.format("APIOption %s(%s) APIOption.defaultValue and APIOption.fixedValue cannot be combined", apiOptionName, rawOptionName));
+                }
+                if (apiAnnotation.defaultValue().length > 0) {
+                    defaultValue = apiAnnotation.defaultValue()[0];
+                }
+                if (hasFixedValue) {
+                    defaultValue = apiAnnotation.fixedValue()[0];
+                }
+
+                builderOption += rawOptionName;
+                builderOption += "=";
             }
+
+            String helpText = optionDescriptor.getHelp();
+            if (!apiAnnotation.customHelp().isEmpty()) {
+                helpText = apiAnnotation.customHelp();
+            }
+            if (helpText == null || helpText.isEmpty()) {
+                VMError.shouldNotReachHere(String.format("APIOption %s(%s) needs to provide help text", apiOptionName, rawOptionName));
+            }
+            if (group == null) {
+                /* Regular help text needs to start with lower-case letter */
+                helpText = startLowerCase(helpText);
+            }
+
+            List<Function<Object, Object>> valueTransformers = new ArrayList<>(apiAnnotation.valueTransformer().length);
+            for (Class<? extends Function<Object, Object>> transformerClass : apiAnnotation.valueTransformer()) {
+                try {
+                    valueTransformers.add(ReflectionUtil.newInstance(transformerClass));
+                } catch (ReflectionUtilError ex) {
+                    throw VMError.shouldNotReachHere(
+                                    "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
+                }
+            }
+            if (apiAnnotation.valueSeparator().length == 0) {
+                throw VMError.shouldNotReachHere(String.format("APIOption %s(%s) does not specify any valueSeparator", apiOptionName, rawOptionName));
+            }
+            for (char valueSeparator : apiAnnotation.valueSeparator()) {
+                if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
+                    String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
+                    if (booleanOption) {
+                        throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
+                    }
+                    if (hasFixedValue) {
+                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
+                    }
+                    if (defaultValue != null) {
+                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with default value" + msgTail, apiOptionName, rawOptionName));
+                    }
+                }
+            }
+            boolean defaultFinal = booleanOption || hasFixedValue;
+            apiOptions.put(apiOptionName,
+                            new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
+                                            defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
+        }
+    }
+
+    private static void extractPathOption(String optionPrefix, OptionDescriptor optionDescriptor, Map<String, PathsOptionInfo> pathOptions) {
+        Object defaultValue = optionDescriptor.getOptionKey().getDefaultValue();
+        if (defaultValue instanceof MultiOptionValue) {
+            var multiOptionDefaultValue = ((MultiOptionValue<?>) defaultValue);
+            if (Path.class.isAssignableFrom(multiOptionDefaultValue.getValueType())) {
+                String rawOptionName = optionDescriptor.getName();
+                String builderOption = optionPrefix + rawOptionName;
+                BundleMember.Role role = BundleMember.Role.Ignore;
+                for (BundleMember bundleMember : getAnnotationsByType(optionDescriptor, BundleMember.class)) {
+                    role = bundleMember.role();
+                }
+                pathOptions.put(builderOption, new PathsOptionInfo(multiOptionDefaultValue.getDelimiter(), role));
+            }
+        }
+    }
+
+    private static <T extends Annotation> List<T> getAnnotationsByType(OptionDescriptor optionDescriptor, Class<T> annotationClass) {
+        try {
+            Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
+            return List.of(optionField.getAnnotationsByType(annotationClass));
         } catch (NoSuchFieldException e) {
-            /* Does not qualify as APIOption */
+            return List.of();
         }
     }
 
@@ -349,12 +383,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 optionValue = optionNameAndOptionValue[1];
             }
             if (optionValue != null) {
-                if (option.hasPathArguments) {
-                    optionValue = Arrays.stream(SubstrateUtil.split(optionValue, ","))
-                                    .filter(s -> !s.isEmpty())
-                                    .map(this::tryCanonicalize)
-                                    .collect(Collectors.joining(","));
-                }
                 Object transformed = optionValue;
                 for (Function<Object, Object> transformer : option.valueTransformers) {
                     transformed = transformer.apply(transformed);
@@ -368,12 +396,82 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return null;
     }
 
-    private String tryCanonicalize(String path) {
+    String transformBuilderArgument(String builderArgument, BiFunction<Path, BundleMember.Role, Path> transformFunction) {
+        BuilderArgumentParts argumentParts = BuilderArgumentParts.from(builderArgument);
+        if (argumentParts.optionValue == null) {
+            /* Option has no value that could need transforming -> early exit */
+            return builderArgument;
+        }
+        PathsOptionInfo pathsOptionInfo = pathOptions.get(argumentParts.option.name);
+        if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+            /* Not an option that request value-transforming -> early exit */
+            return builderArgument;
+        }
+
+        /*
+         * Option requests value-transformations, first split value aggregate into individual values
+         */
+        List<String> rawEntries;
+        String delimiter = pathsOptionInfo.delimiter;
+        if (delimiter.isEmpty()) {
+            rawEntries = List.of(argumentParts.optionValue);
+        } else {
+            rawEntries = List.of(StringUtil.split(argumentParts.optionValue, delimiter));
+        }
+
+        /* Perform value-transformation on individual values with given transformFunction */
         try {
-            return nativeImage.canonicalize(Paths.get(path)).toString();
+            String transformedOptionValue = rawEntries.stream()
+                            .filter(s -> !s.isEmpty())
+                            .map(this::tryCanonicalize)
+                            .map(src -> transformFunction.apply(src, pathsOptionInfo.role))
+                            .map(Path::toString)
+                            .collect(Collectors.joining(delimiter));
+            /* Update argumentParts with transformed aggregate value and return as string */
+            argumentParts.optionValue = transformedOptionValue;
+            return argumentParts.toString();
+        } catch (BundleSupport.BundlePathSubstitutionError error) {
+            String originStr = argumentParts.option.origin;
+            Object optionOrigin = OptionOrigin.from(originStr, false);
+            if (optionOrigin == null && originStr != null) {
+                /* If we cannot get an OptionOrigin, fallback to the raw originStr */
+                optionOrigin = originStr;
+            }
+            String fromPart = optionOrigin != null ? " from '" + optionOrigin + "'" : "";
+            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + argumentParts.option.name + fromPart + " for bundle inclusion.", error);
+        }
+    }
+
+    static final class BuilderArgumentParts {
+
+        final LocatableOption option;
+        String optionValue;
+
+        private BuilderArgumentParts(LocatableOption option, String optionValue) {
+            this.option = option;
+            this.optionValue = optionValue;
+        }
+
+        static BuilderArgumentParts from(String builderArgument) {
+            String[] nameAndValue = StringUtil.split(builderArgument, "=", 2);
+            String optionValue = nameAndValue.length != 2 ? null : nameAndValue[1];
+            return new BuilderArgumentParts(LocatableOption.from(nameAndValue[0]), optionValue);
+        }
+
+        @Override
+        public String toString() {
+            String optionName = option.rawName();
+            return optionValue == null ? optionName : optionName + "=" + optionValue;
+        }
+    }
+
+    private Path tryCanonicalize(String path) {
+        Path origPath = Paths.get(path);
+        try {
+            return nativeImage.canonicalize(origPath);
         } catch (NativeImage.NativeImageError e) {
             /* Allow features to handle the path string. */
-            return path;
+            return origPath;
         }
     }
 
@@ -394,7 +492,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 options.add(option);
             } else {
                 /* Start with space efficient singletonList */
-                optionInfo.put(groupOrOptionName, Collections.singletonList(option));
+                optionInfo.put(groupOrOptionName, List.of(option));
             }
         });
         optionInfo.forEach((optionName, options) -> {
@@ -470,10 +568,12 @@ final class APIOptionSupport {
 
     final Map<String, GroupInfo> groupInfos;
     final SortedMap<String, APIOptionHandler.OptionInfo> options;
+    final Map<String, APIOptionHandler.PathsOptionInfo> pathOptions;
 
-    APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options) {
+    APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options, Map<String, APIOptionHandler.PathsOptionInfo> pathOptions) {
         this.groupInfos = groupInfos;
         this.options = options;
+        this.pathOptions = pathOptions;
     }
 }
 
@@ -489,8 +589,9 @@ final class APIOptionFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         Map<String, GroupInfo> groupInfos = new HashMap<>();
+        Map<String, APIOptionHandler.PathsOptionInfo> pathOptions = new HashMap<>();
         ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class, accessImpl.getImageClassLoader().getClassLoader());
-        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos);
-        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options));
+        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions));
     }
 }

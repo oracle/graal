@@ -51,7 +51,7 @@ public class Fcntl {
     public static native int O_CREAT();
 
     public static class NoTransitions {
-        @CFunction(transition = Transition.NO_TRANSITION)
+        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
         public static native int open(CCharPointer pathname, int flags, int mode);
     }
 }

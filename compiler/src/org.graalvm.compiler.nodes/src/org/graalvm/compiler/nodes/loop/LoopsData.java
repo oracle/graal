@@ -36,7 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
@@ -45,7 +45,11 @@ public class LoopsData {
     private final List<LoopEx> loops;
 
     static LoopsData compute(final StructuredGraph graph) {
-        return new LoopsData(graph);
+        return new LoopsData(graph, null);
+    }
+
+    static LoopsData compute(final ControlFlowGraph cfg) {
+        return new LoopsData(cfg.graph, cfg);
     }
 
     protected LoopsData(ControlFlowGraph cfg, List<LoopEx> loops, EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx) {
@@ -55,17 +59,21 @@ public class LoopsData {
     }
 
     @SuppressWarnings("try")
-    protected LoopsData(final StructuredGraph graph) {
+    protected LoopsData(final StructuredGraph graph, ControlFlowGraph preComputedCFG) {
         loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
-            cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        } catch (Throwable e) {
-            throw debug.handle(e);
+        if (preComputedCFG == null) {
+            try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
+                this.cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        } else {
+            this.cfg = preComputedCFG;
         }
         assert checkLoopOrder(cfg.getLoops());
         loops = new ArrayList<>(cfg.getLoops().size());
-        for (Loop<Block> loop : cfg.getLoops()) {
+        for (Loop<HIRBlock> loop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(loop, this);
             loops.add(ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
@@ -75,9 +83,9 @@ public class LoopsData {
     /**
      * Checks that loops are ordered such that outer loops appear first.
      */
-    protected static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
-        EconomicSet<Loop<Block>> seen = EconomicSet.create(Equivalence.IDENTITY);
-        for (Loop<Block> loop : loops) {
+    protected static boolean checkLoopOrder(Iterable<Loop<HIRBlock>> loops) {
+        EconomicSet<Loop<HIRBlock>> seen = EconomicSet.create(Equivalence.IDENTITY);
+        for (Loop<HIRBlock> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;
             }
@@ -89,7 +97,7 @@ public class LoopsData {
     /**
      * Get the {@link LoopEx} corresponding to {@code loop}.
      */
-    public LoopEx loop(Loop<Block> loop) {
+    public LoopEx loop(Loop<HIRBlock> loop) {
         return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 

@@ -1,16 +1,14 @@
 {
-  local common_json = import '../../common.json',
   local common = import '../../ci/ci_common/common.jsonnet',
   local bench_hw = (import '../../ci/ci_common/bench-common.libsonnet').bench_hw,
-  local composable = (import '../../ci/ci_common/common-utils.libsonnet').composable,
   local top_level_ci = (import '../../ci/ci_common/common-utils.libsonnet').top_level_ci,
-  local devkits = composable(common_json.devkits),
+  local devkits = common.devkits,
 
   local darwin_amd64 = common.darwin_amd64,
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
 
-  local truffle_common = composable(common_json.deps.common) + common.mx + {
+  local truffle_common = {
     setup+: [
       ["cd", "./truffle"],
     ],
@@ -20,11 +18,11 @@
 
   local guard = {
     guard: {
-        includes: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
+      includes: ["<graal>/sdk/**", "<graal>/truffle/**", "**.jsonnet"] + top_level_ci,
     }
   },
 
-  local bench_common = composable(common_json.deps.common) + common.mx + {
+  local bench_common = {
     environment+: {
       BENCH_RESULTS_FILE_PATH: "bench-results.json",
     },
@@ -103,7 +101,7 @@
     ],
   },
 
-  local truffle_gate = truffle_common + common.eclipse + common.jdt {
+  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt {
     name: 'gate-truffle-oraclejdk-' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
@@ -151,7 +149,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + common.eclipse + common.jdt + guard + {
+    truffle_common + linux_amd64 + common.oraclejdk17 + common.deps.eclipse + common.deps.jdt + guard + {
       name: "weekly-truffle-coverage-17-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],

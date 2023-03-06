@@ -340,10 +340,17 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         assert cmpSize.getBytes() == loadSize.getBytes() * 2;
         assert cmpSize == YMM || cmpSize == XMM;
         masm.cmplAndJcc(length, getElementsPerVector(loadSize, maxStride), ConditionFlag.Less, nextTail, false);
-        masm.pmovSZx(loadSize, extendMode, vector1, maxStride, arrayA, strideA, 0);
-        masm.pmovSZx(loadSize, extendMode, vector2, maxStride, arrayB, strideB, 0);
-        masm.pmovSZx(loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
-        masm.pmovSZx(loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        if (loadSize == QWORD) {
+            masm.pmovSZxQWORD(extendMode, vector1, maxStride, arrayA, strideA, Register.None, 0);
+            masm.pmovSZxQWORD(extendMode, vector2, maxStride, arrayB, strideB, Register.None, 0);
+            masm.pmovSZxQWORD(extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
+            masm.pmovSZxQWORD(extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        } else {
+            masm.pmovSZx(loadSize, extendMode, vector1, maxStride, arrayA, strideA, Register.None, 0);
+            masm.pmovSZx(loadSize, extendMode, vector2, maxStride, arrayB, strideB, Register.None, 0);
+            masm.pmovSZx(loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
+            masm.pmovSZx(loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        }
         if (cmpSize == YMM) {
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector1, vector3, vector1, 0x02);
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector2, vector4, vector2, 0x02);

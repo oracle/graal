@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -77,9 +77,9 @@ public final class LLVMIVarBitLarge extends LLVMIVarBit {
 
             boolean isNegative = signExtend && ((arr[0] & (1 << ((bits - 1) % Byte.SIZE))) != 0);
             if (isNegative) {
-                this.array[0] |= 0xFF << (bits % Byte.SIZE);
+                this.array[0] |= (byte) (0xFF << (bits % Byte.SIZE));
             } else {
-                this.array[0] &= 0xFF >>> (8 - (bits % Byte.SIZE));
+                this.array[0] &= (byte) (0xFF >>> (8 - (bits % Byte.SIZE)));
             }
         }
 

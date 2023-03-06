@@ -32,9 +32,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -58,7 +57,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.test.HostInliningTestFactory.IfNodeGen;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -69,8 +73,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImplicitCast;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -131,6 +142,12 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testConstantFolding");
         runTest("testDirectIntrinsics");
         runTest("testIndirectIntrinsics");
+        runTest("testCountingConditionProfile");
+        runTest("testInterpreterCaller");
+        runTest("testIndirectThrow");
+        runTest("testThrow");
+        runTest("testRangeCheck");
+        runTest("testImplicitCast");
     }
 
     @SuppressWarnings("try")
@@ -148,8 +165,14 @@ public class HostInliningTest extends GraalCompilerTest {
         try {
             // call it so all method are initialized
             getMethod(methodName).invoke(null, 5);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+        } catch (IllegalAccessException | IllegalArgumentException e) {
             throw new AssertionError(e);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof ExpectedException) {
+                // ignore
+            } else {
+                throw new AssertionError(e);
+            }
         }
 
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
@@ -169,7 +192,7 @@ public class HostInliningTest extends GraalCompilerTest {
                 assertEquals(compareGraph, graph);
             }
 
-            assertInvokesFound(graph, notInlined != null ? notInlined.value() : null);
+            assertInvokesFound(graph, notInlined != null ? notInlined.name() : null, notInlined != null ? notInlined.count() : null);
 
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
@@ -206,34 +229,43 @@ public class HostInliningTest extends GraalCompilerTest {
         });
     }
 
-    static void assertInvokesFound(StructuredGraph graph, String[] notInlined) {
-        Set<String> found = new HashSet<>();
+    public static void assertInvokesFound(StructuredGraph graph, String[] notInlined, int[] counts) {
+        Map<String, Integer> found = new HashMap<>();
         List<Invoke> invokes = new ArrayList<>();
         invokes.addAll(graph.getNodes().filter(InvokeNode.class).snapshot());
         invokes.addAll(graph.getNodes().filter(InvokeWithExceptionNode.class).snapshot());
 
-        for (Invoke invoke : invokes) {
+        invoke: for (Invoke invoke : invokes) {
             ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();
             if (notInlined == null) {
                 Assert.fail("Unexpected node type found in the graph: " + invoke);
             } else {
-                for (String expectedMethodName : notInlined) {
+                for (int i = 0; i < notInlined.length; i++) {
+                    String expectedMethodName = notInlined[i];
                     if (expectedMethodName.equals(invokedMethod.getName())) {
-                        if (found.contains(invokedMethod.getName())) {
-                            Assert.fail("Found multiple calls to " + invokedMethod.getName() + " but expected one.");
+                        int expectedCount = counts[i];
+                        int currentCount = found.getOrDefault(invokedMethod.getName(), 0);
+                        if (expectedCount >= 0) {
+                            currentCount++;
+
+                            if (currentCount > expectedCount) {
+                                Assert.fail("Expected " + expectedCount + " calls to " + invokedMethod.getName() + " but got " + currentCount + ".");
+                            }
+                            found.put(invokedMethod.getName(), currentCount);
                         }
-                        found.add(invokedMethod.getName());
+                        continue invoke;
                     }
                 }
-                if (!found.contains(invokedMethod.getName())) {
-                    Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + Arrays.toString(notInlined));
-                }
+                Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + Arrays.toString(notInlined));
             }
         }
         if (notInlined != null) {
-            for (String expectedMethodName : notInlined) {
-                if (!found.contains(expectedMethodName)) {
-                    Assert.fail("Expected not inlinined method with name " + expectedMethodName + " but not found.");
+            for (int i = 0; i < notInlined.length; i++) {
+                String expectedMethodName = notInlined[i];
+                int expectedCount = counts[i];
+                int currentCount = found.getOrDefault(expectedMethodName, 0);
+                if (expectedCount >= 0 && currentCount < expectedCount) {
+                    Assert.fail("Expected " + expectedCount + " calls to " + expectedMethodName + " but got " + currentCount + ".");
                 }
             }
         }
@@ -281,7 +313,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"trivialMethod", "traceTransferToInterpreter"})
+    @ExpectNotInlined(name = {"trivialMethod", "traceTransferToInterpreter"}, count = {1, 1})
     private static int testDominatedDeopt(int value) {
         if (value == 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate(); // inlined
@@ -316,7 +348,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("truffleBoundary")
+    @ExpectNotInlined(name = "truffleBoundary", count = 1)
     private static int testTruffleBoundary(int value) {
         if (value == 1) {
             truffleBoundary(); // cutoff
@@ -329,7 +361,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"propagateDeopt", "trivialMethod"})
+    @ExpectNotInlined(name = {"propagateDeopt", "trivialMethod"}, count = {1, 1})
     private static int testPropagateDeopt(int value) {
         if (value == 1) {
             propagateDeopt(); // inlined
@@ -343,7 +375,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"trivialMethod", "propagateDeoptLevelTwo"})
+    @ExpectNotInlined(name = {"trivialMethod", "propagateDeoptLevelTwo"}, count = {1, 1})
     private static int testPropagateDeoptTwoLevels(int value) {
         if (value == 1) {
             propagateDeoptLevelTwo(); // inlined
@@ -357,7 +389,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("recursive")
+    @ExpectNotInlined(name = "recursive", count = 1)
     private static int testRecursive(int value) {
         recursive(value); // inlined
         return value;
@@ -371,7 +403,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("notExplorable")
+    @ExpectNotInlined(name = "notExplorable", count = 1)
     private static int testNotExplorable(int value) {
         notExplorable(value); // cutoff -> charAt not explorable
         return value;
@@ -446,7 +478,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("foo")
+    @ExpectNotInlined(name = "foo", count = 1)
     private static int testVirtualCall(int value) {
         A a = value == 42 ? new B_extends_A() : new C_extends_A();
         a.foo(); // virtual -> not inlined
@@ -454,7 +486,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     private static int testInInterpreter1(int value) {
         otherTrivalMethod(); // inlined
         if (CompilerDirectives.inInterpreter()) {
@@ -465,7 +497,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     private static int testInInterpreter2(int value) {
         otherTrivalMethod(); // inlined
         if (value == 24) {
@@ -482,7 +514,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     private static int testInInterpreter3(int value) {
         otherTrivalMethod(); // inlined
         if (CompilerDirectives.inInterpreter() && value == 24) {
@@ -515,7 +547,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     private static int testInInterpreter6(int value) {
         otherTrivalMethod(); // inlined
         boolean condition = CompilerDirectives.inInterpreter();
@@ -527,7 +559,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("foo")
+    @ExpectNotInlined(name = "foo", count = 1)
     private static int testInInterpreter7(int value) {
         testInInterpreter7Impl(new B_extends_A());
         return value;
@@ -540,7 +572,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("foo")
+    @ExpectNotInlined(name = "foo", count = 1)
     static int testInInterpreter8(int value) {
         boolean b = constant();
         A type = b ? new B_extends_A() : new C_extends_A();
@@ -565,7 +597,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     static int testInInterpreter10(int value) {
         if (!CompilerDirectives.inInterpreter()) {
             GraalDirectives.deoptimizeAndInvalidate();
@@ -576,7 +608,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("trivialMethod")
+    @ExpectNotInlined(name = "trivialMethod", count = 1)
     static int testInInterpreter11(int value) {
         if (!CompilerDirectives.inInterpreter()) {
             GraalDirectives.deoptimizeAndInvalidate();
@@ -603,7 +635,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("explorationDepth0")
+    @ExpectNotInlined(name = "explorationDepth0", count = 1)
     @ExplorationDepth(0)
     static int testExplorationDepth0Fail(int value) {
         explorationDepth0();
@@ -621,7 +653,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("explorationDepth1")
+    @ExpectNotInlined(name = "explorationDepth1", count = 1)
     @ExplorationDepth(1)
     static int testExplorationDepth1Fail(int value) {
         explorationDepth1();
@@ -640,7 +672,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("explorationDepth2")
+    @ExpectNotInlined(name = "explorationDepth2", count = 1)
     @ExplorationDepth(2)
     static int testExplorationDepth2Fail(int value) {
         explorationDepth2();
@@ -659,7 +691,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"truffleBoundary"})
+    @ExpectNotInlined(name = "truffleBoundary", count = 1)
     static int testBytecodeSwitchtoBytecodeSwitch(int value) {
         int result = 0;
         for (int i = 0; i < 8; i++) {
@@ -715,7 +747,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"inliningCutoff"})
+    @ExpectNotInlined(name = "inliningCutoff", count = 1)
     static int testInliningCutoff(int value) {
         return inliningCutoff(value);
     }
@@ -743,7 +775,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"truffleBoundary"})
+    @ExpectNotInlined(name = "truffleBoundary", count = 1)
     static int testConstantFolding(int value) {
         return constantFolding(1) + constantFolding(12) + value;
     }
@@ -818,6 +850,117 @@ public class HostInliningTest extends GraalCompilerTest {
         return ret;
     }
 
+    @SuppressWarnings("truffle-inlining")
+    abstract static class IfNode extends Node {
+
+        abstract int execute(boolean condition);
+
+        @Specialization
+        int doDefault(boolean condition, @Cached InlinedCountingConditionProfile profile) {
+            if (profile.profile(this, condition)) {
+                return 20;
+            } else {
+                return 21;
+            }
+        }
+
+    }
+
+    static final IfNode IF_NODE = IfNodeGen.create();
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = "traceTransferToInterpreter", count = -1 /* any number of calls ok */)
+    static int testCountingConditionProfile(@SuppressWarnings("unused") int value) {
+        return IF_NODE.execute(true) + IF_NODE.execute(false);
+    }
+
+    static final Context c = Context.create();
+    static final OptimizedCallTarget TARGET;
+    static final OptimizedDirectCallNode CALL;
+
+    @BeforeClass
+    public static void enterContext() {
+        c.enter();
+    }
+
+    public static void closeContext() {
+        c.close();
+    }
+
+    static {
+        c.enter();
+        TARGET = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
+        CALL = (OptimizedDirectCallNode) DirectCallNode.create(TARGET);
+        c.leave();
+    }
+
+    /*
+     * This test might fail and needs to be updated if something in the call code changes.
+     */
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = {"traceTransferToInterpreter", "callBoundary", "profileExceptionType", "addStackFrameInfo",
+                    "profileArgumentsSlow", "<init>", "beforeCall"}, count = {-1, 1, -1, -1, 1, -1, 1})
+    static int testInterpreterCaller(@SuppressWarnings("unused") int value) {
+        return (int) CALL.call();
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = "<init>", count = 1)
+    static int testThrow(int value) {
+        if (value == 5) {
+            throw new ExpectedException();
+        }
+        return value;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = {"indirectThrow", "trivialMethod"}, count = {1, 1})
+    static int testIndirectThrow(int value) {
+        if (value == 5) {
+            indirectThrow();
+            trivialMethod();
+        }
+        return value;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined(name = "<init>", count = 1)
+    static int testRangeCheck(int value) {
+        if (value == 6) {
+            rangeCheck(10, 10, 11);
+        }
+        return value;
+    }
+
+    static void rangeCheck(int arrayLength, int fromIndex, int toIndex) {
+        if (fromIndex > toIndex) {
+            throw new ExpectedException();
+        }
+        if (fromIndex < 0) {
+            throw new ExpectedException();
+        }
+        if (toIndex > arrayLength) {
+            throw new ExpectedException();
+        }
+    }
+
+    private static void indirectThrow() {
+        throw new ExpectedException();
+    }
+
+    @TypeSystem
+    static class MyTypes {
+        @ImplicitCast
+        public static double intToDouble(int value) {
+            return value;
+        }
+    }
+
+    @BytecodeInterpreterSwitch
+    static int testImplicitCast(int value) {
+        return (int) MyTypesGen.asImplicitDouble(0, value);
+    }
+
     static int testIndirectIntrinsicsImpl(A a) {
         return a.intrinsic(); // inlined and intrinsic
     }
@@ -831,7 +974,9 @@ public class HostInliningTest extends GraalCompilerTest {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     @interface ExpectNotInlined {
-        String[] value();
+        String[] name();
+
+        int[] count();
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -850,6 +995,16 @@ public class HostInliningTest extends GraalCompilerTest {
 
         Object call(int argument);
 
+    }
+
+    @SuppressWarnings("serial")
+    static class ExpectedException extends RuntimeException {
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
     }
 
     static class MakeRuntimeCompileReachable extends RootNode {

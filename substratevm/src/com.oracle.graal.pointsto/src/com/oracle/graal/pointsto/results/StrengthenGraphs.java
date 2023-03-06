@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.results;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -72,6 +74,9 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
@@ -117,8 +122,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
+    public static class Options {
+        @Option(help = "Perform constant folding in StrengthenGraphs")//
+        public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
+    }
+
+    private final boolean strengthenGraphWithConstants;
+
     public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
+        strengthenGraphWithConstants = Options.StrengthenGraphWithConstants.getValue(bb.getOptions());
     }
 
     private PointsToAnalysis getAnalysis() {
@@ -128,6 +141,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
     @Override
     @SuppressWarnings("try")
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
+        if (!m.isImplementationInvoked()) {
+            return StaticAnalysisResults.NO_RESULTS;
+        }
         PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
         MethodTypeFlow methodTypeFlow = method.getTypeFlow();
         if (!methodTypeFlow.flowsGraphCreated()) {
@@ -139,7 +155,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph)).apply(graph, bb.getProviders());
+                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders());
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
@@ -193,6 +209,30 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
     protected abstract void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile);
 
     protected abstract String getTypeName(AnalysisType type);
+
+    // Wrapper to clearly identify phase
+    class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
+        final CanonicalizerPhase phase;
+
+        AnalysisStrengthenGraphsPhase(PointsToAnalysisMethod method, StructuredGraph graph) {
+            phase = CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph));
+        }
+
+        @Override
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+            return phase.notApplicableTo(graphState);
+        }
+
+        @Override
+        protected void run(StructuredGraph graph, CoreProviders context) {
+            phase.apply(graph, context);
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "AnalysisStrengthenGraphs";
+        }
+    }
 
     class StrengthenSimplifier implements CustomSimplification {
 
@@ -382,7 +422,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
             InvokeTypeFlow invokeFlow = (InvokeTypeFlow) getNodeFlow(node);
-            Collection<AnalysisMethod> callees = invokeFlow.getCallees();
+            Collection<AnalysisMethod> callees = invokeFlow.getOriginalCallees();
             if (callees.isEmpty()) {
                 unreachableInvoke(invoke, tool);
                 /* Invoke is unreachable, there is no point in improving any types further. */
@@ -428,7 +468,13 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            optimizeReturnedParameter(callees, arguments, node, tool);
+            if (getAnalysis().optimizeReturnedParameter() && !methodFlow.getMethod().isDeoptTarget()) {
+                /*
+                 * Optimizing the return parameter can make new values live across deoptimization
+                 * entrypoints.
+                 */
+                optimizeReturnedParameter(callees, arguments, node, tool);
+            }
 
             FixedWithNextNode anchorPointAfterInvoke = (FixedWithNextNode) (invoke instanceof InvokeWithExceptionNode ? invoke.next() : invoke);
             Object newStampOrConstant = strengthenStampFromTypeFlow(node, invokeFlow.getResult(), anchorPointAfterInvoke, tool);
@@ -484,8 +530,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
-                            ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + invoke +
+                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
         }
 
         /**
@@ -593,7 +639,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
 
-            if (!nodeTypeState.canBeNull()) {
+            if (strengthenGraphWithConstants && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
                 if (constantValue instanceof ImageHeapConstant) {
                     /*
@@ -622,14 +668,15 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
             for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
-                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
+                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isJavaLangObject() || oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
             }
 
             if (typeStateTypes.size() == 0) {
                 if (nonNull) {
-                    makeUnreachable(anchorPoint.next(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                    makeUnreachable(anchorPoint.next(), tool,
+                                    () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
                     return null;
                 } else {
                     return StampFactory.alwaysNull();
@@ -653,6 +700,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert typeStateTypes.size() > 1;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
+                    if (baseType.isJavaLangObject()) {
+                        break;
+                    }
                     baseType = baseType.findLeastCommonAncestor(typeStateTypes.get(i));
                 }
 

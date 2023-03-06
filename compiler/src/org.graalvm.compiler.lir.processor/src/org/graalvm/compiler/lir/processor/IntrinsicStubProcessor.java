@@ -229,7 +229,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 }
             }
         }
-        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "Could not find runtime checked flags variant. " +
+        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, method + ": Could not find runtime checked flags variant. " +
                         "For every method annotated with @GenerateStub, a second @NodeIntrinsic method with the same signature + an additional @ConstantNodeParameter EnumSet<CPUFeature> parameter for runtime checked CPU flags is required.",
                         method, annotation);
         return null;

@@ -28,19 +28,14 @@ import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -132,15 +127,6 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public NodeInputList<ValueNode> arguments() {
         return arguments;
-    }
-
-    public static Stamp createReturnStamp(Assumptions assumptions, JavaType returnType) {
-        JavaKind kind = returnType.getJavaKind();
-        if (kind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
-            return StampFactory.object(TypeReference.create(assumptions, (ResolvedJavaType) returnType));
-        } else {
-            return StampFactory.forKind(kind);
-        }
     }
 
     public StampPair returnStamp() {

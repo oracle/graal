@@ -99,6 +99,13 @@ public final class Signatures {
         if (!isValid(signatureString)) {
             return null;
         }
+        return symbols.lookup(signatureString);
+    }
+
+    public Symbol<Signature> symbolifyValidSignature(String signatureString) {
+        if (!isValid(signatureString)) {
+            return null;
+        }
         return symbols.symbolify(ByteSequence.create(signatureString));
     }
 

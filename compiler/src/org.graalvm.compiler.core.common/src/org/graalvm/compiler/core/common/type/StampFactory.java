@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -146,22 +146,6 @@ public class StampFactory {
 
     public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound) {
         return forInteger(kind.getBitCount(), lowerBound, upperBound);
-    }
-
-    /**
-     * Create a new stamp use {@code newLowerBound} and {@code newUpperBound} computing the
-     * appropriate {@link IntegerStamp#upMask} and {@link IntegerStamp#downMask} and incorporating
-     * any mask information from {@code maskStamp}.
-     *
-     * @param bits
-     * @param newLowerBound
-     * @param newUpperBound
-     * @param maskStamp
-     * @return a new stamp with the appropriate bounds and masks
-     */
-    public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, IntegerStamp maskStamp) {
-        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
-        return IntegerStamp.create(bits, newLowerBound, newUpperBound, limit.downMask() | maskStamp.downMask(), limit.upMask() & maskStamp.upMask());
     }
 
     public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newDownMask, long newUpMask) {

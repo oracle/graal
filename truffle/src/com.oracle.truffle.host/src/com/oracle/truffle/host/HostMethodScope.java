@@ -46,6 +46,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,7 +55,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 
 import sun.misc.Unsafe;
@@ -77,9 +79,9 @@ final class HostMethodScope {
         this.nextDynamicIndex = 0;
     }
 
-    static HostMethodScope openDynamic(SingleMethod method, int argumentCount, BranchProfile seenScope) {
+    static HostMethodScope openDynamic(Node node, SingleMethod method, int argumentCount, InlinedBranchProfile seenScope) {
         if (method.hasScopedParameters()) {
-            seenScope.enter();
+            seenScope.enter(node);
             return new HostMethodScope(argumentCount);
         }
         return null;
@@ -127,7 +129,7 @@ final class HostMethodScope {
         }
     }
 
-    static void closeStatic(HostMethodScope scope, SingleMethod method, BranchProfile seenDynamicScope) {
+    static void closeStatic(Node node, HostMethodScope scope, SingleMethod method, InlinedBranchProfile seenDynamicScope) {
         if (method.hasScopedParameters()) {
             int[] scopePos = method.getScopedParameters();
             ScopedObject[] array = scope.scope;
@@ -139,7 +141,7 @@ final class HostMethodScope {
                 }
             }
             for (int i = scopePos.length; i < array.length; i++) {
-                seenDynamicScope.enter();
+                seenDynamicScope.enter(node);
                 ScopedObject o = array[i];
                 // static scoped objects may be null on error of the host invocation
                 if (o != null) {
@@ -228,16 +230,17 @@ final class HostMethodScope {
 
         @ExportMessage
         Object send(Message message, Object[] args,
+                        @Bind("$node") Node node,
                         @CachedLibrary(limit = "5") ReflectionLibrary library,
-                        @Cached BranchProfile seenError,
-                        @Cached BranchProfile seenOther) throws Exception {
+                        @Cached InlinedBranchProfile seenError,
+                        @Cached InlinedBranchProfile seenOther) throws Exception {
             if (message.getLibraryClass() != InteropLibrary.class) {
-                seenOther.enter();
+                seenOther.enter(node);
                 return fallbackSend(message, args);
             }
             Object d = this.delegate;
             if (d == null) {
-                seenError.enter();
+                seenError.enter(node);
                 throw createReleaseException("Released objects cannot be accessed. " +
                                 "Avoid accessing scoped objects after their corresponding method has finished execution. " +
                                 "Alternatively, use Value.pin() to prevent a scoped object from being released after the host call completed.");

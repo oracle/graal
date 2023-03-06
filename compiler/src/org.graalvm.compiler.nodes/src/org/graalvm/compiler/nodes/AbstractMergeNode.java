@@ -119,10 +119,6 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         ends.remove(end);
     }
 
-    public void clearEnds() {
-        ends.clear();
-    }
-
     public NodeInputList<EndNode> forwardEnds() {
         return ends;
     }

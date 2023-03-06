@@ -43,7 +43,15 @@ import java.util.regex.Pattern;
  */
 public final class JVMCIVersionCheck {
 
-    private static final Version JVMCI_MIN_VERSION = new Version(20, 2, 1);
+    /**
+     * Minimum JVMCI version supported by Graal.
+     */
+    private static final Version JVMCI_MIN_VERSION = new Version(23, 0, 8);
+
+    /**
+     * Minimum Java release supported by Graal.
+     */
+    private static final int JAVA_MIN_RELEASE = 17;
 
     public static class Version {
         private final int major;
@@ -123,10 +131,10 @@ public final class JVMCIVersionCheck {
         errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
-        if (javaSpecVersion.compareTo("11") == 0 && vmVersion.contains("-jvmci-")) {
+        if (vmVersion.contains("-jvmci-")) {
             errorMessage.format("Download the latest Labs OpenJDK from " + OPEN_LABSJDK_RELEASE_URL_PATTERN);
         } else {
-            errorMessage.format("Download JDK 11 or later.");
+            errorMessage.format("Download JDK %s or later.", JAVA_MIN_RELEASE);
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
@@ -168,8 +176,8 @@ public final class JVMCIVersionCheck {
     }
 
     private void run(boolean exitOnFailure, Version minVersion, boolean quiet) {
-        if (javaSpecVersion.compareTo("11") < 0) {
-            failVersionCheck(exitOnFailure, "Graal requires JDK 11 or later.%n");
+        if (javaSpecVersion.compareTo(Integer.toString(JAVA_MIN_RELEASE)) < 0) {
+            failVersionCheck(exitOnFailure, "Graal requires JDK " + JAVA_MIN_RELEASE + " or later.%n");
         } else {
             if (vmVersion.contains("SNAPSHOT")) {
                 return;
@@ -185,15 +193,20 @@ public final class JVMCIVersionCheck {
                     if (!quiet) {
                         System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
                     }
-                    if (v.isLessThan(minVersion)) {
-                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
+                    Version actualMinVersion = minVersion;
+                    if (javaSpecVersion.equals("19")) {
+                        // Last JVMCI update for JDK 19
+                        actualMinVersion = new Version(23, 0, 5);
+                    }
+                    if (v.isLessThan(actualMinVersion)) {
+                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, actualMinVersion);
                     }
                     return;
                 }
                 failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
                                 "Cannot read JVMCI version from java.vm.version property: %s.%n", vmVersion);
             } else {
-                // Graal is compatible with all JDK versions as of 11 GA.
+                // Graal is compatible with all JDK versions as of JAVA_MIN_RELEASE
             }
         }
     }

@@ -48,7 +48,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
-        StaticObject executeImpl(
+        StaticObject doDefault(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules,
                         @Bind("getMeta()") Meta meta,
                         @Cached("create(meta.jdk_internal_module_SystemModuleFinders_of.getCallTargetNoSubstitution())") DirectCallNode original) {
@@ -70,7 +70,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
-        StaticObject executeImpl(
+        StaticObject doDefault(
                         @Bind("getMeta()") Meta meta,
                         @Cached("create(meta.jdk_internal_module_SystemModuleFinders_ofSystem.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct ModuleFinders that can locate our Espresso-specific platform modules

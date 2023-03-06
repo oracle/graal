@@ -53,7 +53,7 @@ public class HostedHeapDumpFeature implements InternalFeature {
     static class Options {
         @Option(help = "Dump the heap at a specific time during image building." +
                         "The option accepts a list of comma separated phases, any of: during-analysis, after-analysis, before-compilation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
 
     enum Phases {

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -47,13 +49,13 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -368,8 +370,16 @@ public class HostedUniverse implements Universe {
         return fields.get(field);
     }
 
+    private static void ensureOriginalMethod(JavaMethod method) {
+        if (method instanceof MultiMethod) {
+            MultiMethod.MultiMethodKey key = ((MultiMethod) method).getMultiMethodKey();
+            VMError.guarantee(key == ORIGINAL_METHOD, "looking up method with wrong id: %s", key);
+        }
+    }
+
     @Override
     public HostedMethod lookup(JavaMethod method) {
+        ensureOriginalMethod(method);
         JavaMethod result = lookupAllowUnresolved(method);
         if (result instanceof ResolvedJavaMethod) {
             return (HostedMethod) result;
@@ -380,6 +390,7 @@ public class HostedUniverse implements Universe {
 
     @Override
     public JavaMethod lookupAllowUnresolved(JavaMethod method) {
+        ensureOriginalMethod(method);
         if (!(method instanceof ResolvedJavaMethod)) {
             return method;
         }
@@ -388,6 +399,7 @@ public class HostedUniverse implements Universe {
     }
 
     public HostedMethod optionalLookup(JavaMethod method) {
+        ensureOriginalMethod(method);
         return methods.get(method);
     }
 
@@ -400,13 +412,13 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass) {
+    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert signatures.containsKey(signature) : signature;
         return signatures.get(signature);
     }
 
     @Override
-    public WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass) {
         assert constantPools.containsKey(constantPool) : constantPool;
         return constantPools.get(constantPool);
     }
@@ -459,21 +471,21 @@ public class HostedUniverse implements Universe {
 
             if (!o1.getClass().equals(o2.getClass())) {
                 int result = Integer.compare(ordinal(o1), ordinal(o2));
-                VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: %s, %s", o1, o2);
                 return result;
             }
 
             if (o1.isPrimitive() && o2.isPrimitive()) {
                 assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
                 int result = o1.getJavaKind().compareTo(o2.getJavaKind());
-                VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: %s, %s", o1, o2);
                 return result;
             }
 
             if (o1.isArray() && o2.isArray()) {
                 assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
                 int result = compare(o1.getComponentType(), o2.getComponentType());
-                VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: %s, %s", o1, o2);
                 return result;
             }
 
@@ -485,7 +497,7 @@ public class HostedUniverse implements Universe {
             ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
             ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
             result = SubstrateUtil.classLoaderNameAndId(l1).compareTo(SubstrateUtil.classLoaderNameAndId(l2));
-            VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: " + o1 + ", " + o2);
+            VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: %s, %s", o1, o2);
             return result;
         }
 

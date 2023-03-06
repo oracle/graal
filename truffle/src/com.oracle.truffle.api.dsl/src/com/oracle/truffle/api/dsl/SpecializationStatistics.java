@@ -503,7 +503,7 @@ public final class SpecializationStatistics {
 
         private String getDisplayName() {
             String className = nodeClass.getSimpleName();
-            if (className.equals("Uncached")) {
+            if (className.equals("Uncached") || className.equals("Inlined")) {
                 Class<?> enclosing = nodeClass.getEnclosingClass();
                 if (enclosing != null) {
                     className = enclosing.getSimpleName() + "." + className;

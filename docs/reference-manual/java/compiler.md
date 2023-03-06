@@ -85,5 +85,3 @@ For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce 
 Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](../../tools/ideal-graph-visualizer.md).
 This requires the `-Dgraal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
 This network endpoint can be configured with the `-Dgraal.PrintGraphHost` and `-Dgraal.PrintGraphPort` options.
-
-Note: the Ideal Graph Visualizer is available with Oracle GraalVM Enterprise Edition.

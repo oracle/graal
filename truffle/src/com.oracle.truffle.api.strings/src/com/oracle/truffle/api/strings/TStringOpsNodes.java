@@ -40,11 +40,12 @@
  */
 package com.oracle.truffle.api.strings;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 
 final class TStringOpsNodes {
 
@@ -56,24 +57,24 @@ final class TStringOpsNodes {
      */
     static final String LIMIT_STRIDE = "9";
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawReadValueNode extends Node {
+    static final String SINGLE_LIMIT_STRIDE = "3";
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int i);
+    abstract static class RawReadValueNode extends AbstractInternalNode {
 
-        @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, int i,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.readValue(a, arrayA, cachedStrideA, i);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int i);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
+        static int cached(Node node, AbstractTruffleString a, Object arrayA, int i,
+                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return TStringOps.readValue(a, arrayA, cachedCompaction.getStride(), i);
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class IndexOfAnyCharNode extends Node {
+    abstract static class IndexOfAnyCharNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values);
 
         @Specialization(guards = {"isStride0(a)", "values.length == 1"})
         int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
@@ -82,27 +83,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
         int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final char[] stride0Values;
-            if (n != values.length) {
-                stride0Values = new char[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xff) {
-                        stride0Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride0Values = values;
-            }
-            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
         @Specialization(guards = "isStride1(a)")
@@ -111,11 +92,9 @@ final class TStringOpsNodes {
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class IndexOfAnyIntNode extends Node {
+    abstract static class IndexOfAnyIntNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values);
 
         @Specialization(guards = {"isStride0(a)", "values.length == 1"})
         int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
@@ -124,27 +103,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
         int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final int[] stride0Values;
-            if (n != values.length) {
-                stride0Values = new int[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xff) {
-                        stride0Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride0Values = values;
-            }
-            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
         @Specialization(guards = {"isStride1(a)", "values.length == 1"})
@@ -154,27 +113,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride1(a)", "values.length > 1"})
         int stride1MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xffff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final int[] stride1Values;
-            if (n != values.length) {
-                stride1Values = new int[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xffff) {
-                        stride1Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride1Values = values;
-            }
-            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, stride1Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xffff));
         }
 
         @Specialization(guards = "isStride2(a)")
@@ -183,76 +122,76 @@ final class TStringOpsNodes {
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawIndexOfCodePointNode extends Node {
+    abstract static class RawIndexOfCodePointNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
 
-        @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.indexOfCodePointWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
+        static int cached(Node node, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
+                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return TStringOps.indexOfCodePointWithStride(node, a, arrayA, cachedCompaction.getStride(), fromIndex, toIndex, codepoint);
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawLastIndexOfCodePointNode extends Node {
+    abstract static class RawLastIndexOfCodePointNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
 
-        @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint, 0);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
+        static int cached(Node node, AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
+                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, a, arrayA, cachedCompaction.getStride(), fromIndex, toIndex, codepoint, 0);
         }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawIndexOfStringNode extends Node {
+    abstract static class RawIndexOfStringNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
 
-        @Specialization(guards = {"length(b) == 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            final int b0 = TStringOps.readValue(b, arrayB, cachedStrideB, 0);
-            final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedStrideB, 0);
-            return TStringOps.indexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"compactionA == cachedCompactionA", "compactionB == cachedCompactionB"}, limit = LIMIT_STRIDE)
+        static int doCached(Node node, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+                        @Bind("fromStride(a.stride())") CompactionLevel compactionA,
+                        @Cached("compactionA") CompactionLevel cachedCompactionA,
+                        @Bind("fromStride(b.stride())") CompactionLevel compactionB,
+                        @Cached("compactionB") CompactionLevel cachedCompactionB,
+                        @Cached InlinedConditionProfile oneLength) {
+            if (oneLength.profile(node, b.length() == 1)) {
+                final int b0 = TStringOps.readValue(b, arrayB, cachedCompactionB.getStride(), 0);
+                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedCompactionB.getStride(), 0);
+                return TStringOps.indexOfCodePointWithOrMaskWithStride(node, a, arrayA, cachedCompactionA.getStride(), fromIndex, toIndex, b0, mask0);
+            } else {
+                return TStringOps.indexOfStringWithOrMaskWithStride(node, a, arrayA, cachedCompactionA.getStride(), b, arrayB, cachedCompactionB.getStride(), fromIndex, toIndex, mask);
+            }
         }
 
-        @Specialization(guards = {"length(b) > 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.indexOfStringWithOrMaskWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
-        }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class RawLastIndexOfStringNode extends Node {
+    abstract static class RawLastIndexOfStringNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
 
-        @Specialization(guards = {"length(b) == 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            final int b0 = TStringOps.readValue(b, arrayB, cachedStrideB, 0);
-            final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedStrideB, 0);
-            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"compactionA == cachedCompactionA", "compactionB == cachedCompactionB"}, limit = LIMIT_STRIDE)
+        static int cachedLen1(Node node, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+                        @Bind("fromStride(a.stride())") CompactionLevel compactionA,
+                        @Cached("compactionA") CompactionLevel cachedCompactionA,
+                        @Bind("fromStride(b.stride())") CompactionLevel compactionB,
+                        @Cached("compactionB") CompactionLevel cachedCompactionB,
+                        @Cached InlinedConditionProfile oneLength) {
+            if (oneLength.profile(node, b.length() == 1)) {
+                final int b0 = TStringOps.readValue(b, arrayB, cachedCompactionB.getStride(), 0);
+                final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedCompactionB.getStride(), 0);
+                return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(node, a, arrayA, cachedCompactionA.getStride(), fromIndex, toIndex, b0, mask0);
+            } else {
+                return TStringOps.lastIndexOfStringWithOrMaskWithStride(node, a, arrayA, cachedCompactionA.getStride(), b, arrayB, cachedCompactionB.getStride(), fromIndex, toIndex, mask);
+            }
         }
 
-        @Specialization(guards = {"length(b) > 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
-                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.lastIndexOfStringWithOrMaskWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
-        }
     }
 
     static int memcmp(Node location, AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB) {
@@ -269,17 +208,61 @@ final class TStringOpsNodes {
         return cmp == 0 ? lengthA - lengthB : cmp;
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class CalculateHashCodeNode extends Node {
+    @SuppressWarnings("unused")
+    abstract static class CalculateHashCodeNode extends AbstractInternalNode {
 
-        abstract int execute(AbstractTruffleString a, Object arrayA);
+        abstract int execute(Node node, AbstractTruffleString a, Object arrayA);
 
-        @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        int cached(AbstractTruffleString a, Object arrayA,
-                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.hashCodeWithStride(this, a, arrayA, cachedStrideA);
+        @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
+        static int cached(Node node, AbstractTruffleString a, Object arrayA,
+                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) {
+            return TStringOps.hashCodeWithStride(node, a, arrayA, cachedCompaction.getStride());
         }
+    }
+
+    private static char[] removeValuesGreaterThan(Node location, char[] values, int max) {
+        int n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                n++;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (n == values.length) {
+            return values;
+        }
+        final char[] clampedValues = new char[n];
+        n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                clampedValues[n++] = values[i];
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return clampedValues;
+    }
+
+    private static int[] removeValuesGreaterThan(Node location, int[] values, int max) {
+        int n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                n++;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (n == values.length) {
+            return values;
+        }
+        final int[] clampedValues = new int[n];
+        n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                clampedValues[n++] = values[i];
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return clampedValues;
     }
 
 }

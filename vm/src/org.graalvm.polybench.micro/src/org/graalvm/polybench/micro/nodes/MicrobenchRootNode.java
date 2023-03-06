@@ -37,7 +37,7 @@ import org.graalvm.polybench.micro.expr.Expression;
 public class MicrobenchRootNode extends RootNode {
 
     @Child Expression benchmark;
-    final LoopConditionProfile loopCondition = LoopConditionProfile.createCountingProfile();
+    final LoopConditionProfile loopCondition = LoopConditionProfile.create();
 
     private final int repeat;
 

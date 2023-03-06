@@ -64,7 +64,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
@@ -161,14 +160,18 @@ public final class ReflectionPlugins {
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
-    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
+    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = Set.of(
                     Class.class, String.class, ClassLoader.class,
                     Method.class, Constructor.class, Field.class,
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
                     VarHandle.class,
-                    ByteOrder.class));
+                    ByteOrder.class);
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
+        for (Class<?> clazz : List.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class)) {
+            registerFoldInvocationPlugins(plugins, clazz, "toString", "toBinaryString", "toOctalString", "toHexString");
+        }
+        registerFoldInvocationPlugins(plugins, String.class, "valueOf");
 
         registerFoldInvocationPlugins(plugins, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
@@ -214,7 +217,7 @@ public final class ReflectionPlugins {
             if (classArg instanceof Class<?>) {
                 if (shouldInitializeAtRuntime((Class<?>) classArg)) {
                     /* Skip the folding and register the field for run time reflection. */
-                    if (reason == ParsingReason.PointsToAnalysis) {
+                    if (reason.duringAnalysis()) {
                         Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
                         if (field != null) {
                             RuntimeReflection.register(field);
@@ -237,7 +240,7 @@ public final class ReflectionPlugins {
                 Field field = (Field) fieldArg;
                 if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
                     /* Skip the folding and register the field for run time reflection. */
-                    if (reason == ParsingReason.PointsToAnalysis) {
+                    if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);
                     }
                     return false;
@@ -299,7 +302,7 @@ public final class ReflectionPlugins {
              */
             return false;
         }
-        Class<?> callerClass = OriginalClassProvider.getJavaClass(snippetReflection, b.getMethod().getDeclaringClass());
+        Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
         MethodHandles.Lookup lookup;
         try {
             /* The constructor of Lookup is not public, so we need to invoke it via reflection. */
@@ -362,7 +365,7 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
-        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader(), true) != null;
+        return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
     /**
@@ -442,7 +445,7 @@ public final class ReflectionPlugins {
         }
 
         /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
+        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
         Object returnValue;
@@ -481,7 +484,7 @@ public final class ReflectionPlugins {
              * If the argument is not a constant, we try to extract a varargs-parameter list for
              * Class[] arrays. This is used in many reflective lookup methods.
              */
-            return SubstrateGraphBuilderPlugins.extractClassArray(annotationSubstitutions, snippetReflection, arg, true);
+            return SubstrateGraphBuilderPlugins.extractClassArray(b, annotationSubstitutions, snippetReflection, arg, true);
         }
 
         JavaConstant argConstant = arg.asJavaConstant();
@@ -521,7 +524,7 @@ public final class ReflectionPlugins {
              * reflective call will yield the original member, which will be intrinsified, and
              * subsequent phases are responsible for getting the right substitution.
              */
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), javaType);
+            return OriginalClassProvider.getJavaClass(javaType);
         }
 
         /* Any other object that is not a Class. */
@@ -554,7 +557,7 @@ public final class ReflectionPlugins {
         if (context.bciCanBeDuplicated()) {
             return null;
         }
-        if (parseOnce || reason == ParsingReason.PointsToAnalysis) {
+        if (parseOnce || reason.duringAnalysis()) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
                  * Should not intrinsify. Will fail during the reflective lookup at
@@ -597,10 +600,7 @@ public final class ReflectionPlugins {
          * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
          * a substitution method that has the @Delete annotation.
          */
-        if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-            return true;
-        }
-        return false;
+        return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,

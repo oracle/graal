@@ -24,12 +24,19 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -37,10 +44,12 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -59,6 +68,10 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
@@ -66,14 +79,17 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -322,6 +338,66 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
+        @Override
+        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
+            if (linkAtBuildTime) {
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
+            } else {
+                replaceWithThrowingAtRuntime(this, bme);
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that throws an instance like the one given as throwable in
+         * the given GraphBuilderContext. If the given throwable has a non-null cause, a
+         * cause-instance of the same type with a proper cause-message is created first that is then
+         * passed to the method that creates and throws the outer throwable-instance.
+         */
+        public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
+            Throwable cause = throwable.getCause();
+            if (cause != null) {
+                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                /* Invoke method that creates a cause-instance with cause-message */
+                var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+                ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
+                /*
+                 * Invoke method that creates and throws throwable-instance with message and cause
+                 */
+                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+                ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                b.add(new LoweredDeadEndNode());
+            } else {
+                replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that creates an instance of type throwableClass with
+         * throwableMessage as argument and then throws that instance in the given
+         * GraphBuilderContext.
+         */
+        public static void replaceWithThrowingAtRuntime(SharedBytecodeParser b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+            /*
+             * This method is currently not able to replace
+             * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because
+             * there are places where GraphBuilderContext.getMetaAccess() does not contain a
+             * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If
+             * we can access the ParsingReason in here we will be able to get rid of throwException.
+             */
+            var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
+            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+            ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
+            b.add(new LoweredDeadEndNode());
+        }
+
         private void handleUnresolvedType(JavaType type) {
             /*
              * If linkAtBuildTime was set for type, report the error during image building,
@@ -365,15 +441,84 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 } else {
-                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwException(this, findResolutionError((ResolvedJavaType) declaringClass, javaMethod), javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
 
+        /**
+         * Finding the correct exception that needs to be thrown at run time is a bit tricky, since
+         * JVMCI does not report that information back when method resolution fails. We need to look
+         * down the class hierarchy to see if there would be an appropriate method with a matching
+         * signature which is just not accessible.
+         *
+         * We do all the method lookups (to search for a method with the same signature as
+         * searchMethod) using reflection and not JVMCI because the lookup can throw all sorts of
+         * errors, and we want to ignore the errors without any possible side effect on AnalysisType
+         * and AnalysisMethod.
+         */
+        private static Class<? extends IncompatibleClassChangeError> findResolutionError(ResolvedJavaType declaringType, JavaMethod searchMethod) {
+            Class<?>[] searchSignature = signatureToClasses(searchMethod);
+            Class<?> searchReturnType = null;
+            if (searchMethod.getSignature().getReturnType(null) instanceof ResolvedJavaType) {
+                searchReturnType = OriginalClassProvider.getJavaClass((ResolvedJavaType) searchMethod.getSignature().getReturnType(null));
+            }
+
+            Class<?> declaringClass = OriginalClassProvider.getJavaClass(declaringType);
+            for (Class<?> cur = declaringClass; cur != null; cur = cur.getSuperclass()) {
+                Executable[] methods = null;
+                try {
+                    if (searchMethod.getName().equals("<init>")) {
+                        methods = cur.getDeclaredConstructors();
+                    } else {
+                        methods = cur.getDeclaredMethods();
+                    }
+                } catch (Throwable ignored) {
+                    /*
+                     * A linkage error was thrown, or something else random is wrong with the class
+                     * files. Ignore this class.
+                     */
+                }
+                if (methods != null) {
+                    for (Executable method : methods) {
+                        if (Arrays.equals(searchSignature, method.getParameterTypes()) &&
+                                        (method instanceof Constructor || (searchMethod.getName().equals(method.getName()) && searchReturnType == ((Method) method).getReturnType()))) {
+                            if (Modifier.isAbstract(method.getModifiers())) {
+                                return AbstractMethodError.class;
+                            } else {
+                                return IllegalAccessError.class;
+                            }
+                        }
+                    }
+                }
+                if (searchMethod.getName().equals("<init>")) {
+                    /* For constructors, do not search in superclasses. */
+                    break;
+                }
+            }
+            return NoSuchMethodError.class;
+        }
+
+        private static Class<?>[] signatureToClasses(JavaMethod method) {
+            int paramCount = method.getSignature().getParameterCount(false);
+            Class<?>[] result = new Class<?>[paramCount];
+            for (int i = 0; i < paramCount; i++) {
+                JavaType parameterType = method.getSignature().getParameterType(0, null);
+                if (parameterType instanceof ResolvedJavaType) {
+                    result[i] = OriginalClassProvider.getJavaClass((ResolvedJavaType) parameterType);
+                }
+            }
+            return result;
+        }
+
         private void reportUnresolvedElement(String elementKind, String elementAsString) {
+            reportUnresolvedElement(elementKind, elementAsString, null);
+        }
+
+        private void reportUnresolvedElement(String elementKind, String elementAsString, Throwable cause) {
             String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString + ". " +
                             LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
-            throw new UnresolvedElementException(message);
+            throw new UnresolvedElementException(message, cause);
         }
 
         @Override
@@ -447,6 +592,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected boolean needsIncompatibleClassChangeErrorCheck() {
+            /*
+             * Note that the explicit check for incompatible class changes is necessary even when
+             * explicit exception edges for other exception are not required. We have no mechanism
+             * to do the check implicitly as part of interface calls. Interface calls are vtable
+             * calls both in AOT compiled code and JIT compiled code.
+             */
+            return !parsingIntrinsic();
+        }
+
+        @Override
+        protected boolean needsExplicitIncompatibleClassChangeError() {
+            /*
+             * For AOT compilation, incompatible class change checks must be BytecodeExceptionNode.
+             * For JIT compilation at image run time, they must be guards.
+             */
+            return needsExplicitException();
+        }
+
+        @Override
         public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
             return true;
         }
@@ -455,12 +620,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
         }
 
-        protected boolean isMethodDeoptTarget() {
-            return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        protected final boolean isMethodDeoptTarget() {
+            return MultiMethod.isDeoptTarget(method);
         }
 
         @Override
         protected boolean asyncExceptionLiveness() {
+            if (SubstrateOptions.parseOnce()) {
+                /*
+                 * Only methods which can deoptimize need to consider live locals from asynchronous
+                 * exception handlers.
+                 */
+                if (method instanceof MultiMethod) {
+                    return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+                }
+
+            } else {
+                if (method instanceof HostedMethod) {
+                    /*
+                     * Only methods which can deoptimize need to consider live locals from
+                     * asynchronous exception handlers.
+                     */
+                    return ((HostedMethod) method).canDeoptimize();
+                }
+            }
+
             /*
              * If deoptimization is enabled, then must assume that any method can deoptimize at any
              * point while throwing an exception.
@@ -472,7 +656,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected void clearNonLiveLocalsAtTargetCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
             /*
              * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
-             * possible to clear non-live locals at the start of a exception dispatch block if
+             * possible to clear non-live locals at the start of an exception dispatch block if
              * deoptimizations can be present, as exception dispatch blocks have the same deopt bci
              * as the exception.
              */
@@ -629,5 +813,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return super.allowDeoptInPlugins();
         }
 
+        @Override
+        @SuppressWarnings("try")
+        protected ValueNode emitIncompatibleClassChangeCheck(ValueNode object, ResolvedJavaType checkedType) {
+            try (DebugCloseable context = maybeDisableNodeSourcePositions()) {
+                return super.emitIncompatibleClassChangeCheck(object, checkedType);
+            }
+        }
+
+        private DebugCloseable maybeDisableNodeSourcePositions() {
+            if (!SubstrateOptions.parseOnce() && graph.trackNodeSourcePosition()) {
+                /*
+                 * Without "parse once", we use the bci of the invocation to look up static analysis
+                 * results. Having a InstanceOfNode with the same bci disables static analysis
+                 * results because we treat non-unique bci as "do not store any information. The
+                 * workaround is to give the InstanceOfNode for the incompatible class change check
+                 * the invalid bci -1.
+                 */
+                return graph.withNodeSourcePosition(new NodeSourcePosition(createBytecodePosition(), method, -1));
+            }
+            return null;
+        }
     }
 }

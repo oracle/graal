@@ -128,11 +128,13 @@ public final class UnalignedHeapChunk {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnalignedHeader getEnclosingChunk(Object obj) {
         Pointer objPointer = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(objPointer);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer objPointer) {
         Pointer chunkPointer = objPointer.subtract(getObjectStartOffset());
         return (UnalignedHeader) chunkPointer;

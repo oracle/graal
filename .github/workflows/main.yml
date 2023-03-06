@@ -65,33 +65,34 @@ jobs:
               PRIMARY: "compiler"
           # /espresso
           - env:
-              JDK_VERSION: "17" # espresso does not support JDK20 yet
+              JDK_VERSION: "20"
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,test,helloworld"
               PRIMARY: "substratevm"
+              PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /truffle
@@ -101,18 +102,21 @@ jobs:
               PRIMARY: "truffle"
           # /vm
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,sulong"
+              GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
+              NATIVE_IMAGES: "graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,lib:llvmvm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK_VERSION: "17"
+              JDK_VERSION: "20"
               GATE_TAGS: "build"
+              GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
-              NATIVE_IMAGES: "polyglot"
+              NATIVE_IMAGES: "lib:jvmcicompiler,native-image,lib:native-image-agent,lib:native-image-diagnostics-agent,polyglot"
               WITHOUT_VCS: true
     env:
       MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
@@ -157,15 +161,18 @@ jobs:
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
-        jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
-          xargs sudo pip install
-        ${MX_PYTHON} -m pip install jsonschema==4.6.1
+        sudo pip install ninja_syntax$(jq -r '.pip.ninja_syntax' common.json)
+        sudo pip install lazy-object-proxy$(jq -r '.pip["lazy-object-proxy"]' common.json)
+        sudo pip install pylint$(jq -r '.pip.pylint' common.json)
+    - name: Install additional pip packages
+      if: ${{ matrix.env.PIP_PACKAGES != '' }}
+      run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}
     - name: Download Eclipse
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
-        ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
-        ECLIPSE_ORG_TIMESTAMP=$(jq -r '.downloads.eclipse.eclipse_org.timestamp' common.json)
+        ECLIPSE_ORG_VERSION=$(jq -r '.eclipse.short_version' common.json)
+        ECLIPSE_ORG_TIMESTAMP=$(jq -r '.eclipse.timestamp' common.json)
         wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
         tar -xzf ${ECLIPSE_TAR}
         echo "ECLIPSE_EXE=${PWD}/eclipse/eclipse" >> $GITHUB_ENV
@@ -174,9 +181,9 @@ jobs:
       run: rm -rf .git
     - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
       if: ${{ matrix.env.GATE_TAGS != '' }}
     - name: Build GraalVM and run gate without tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }}
       if: ${{ matrix.env.GATE_TAGS == '' }}

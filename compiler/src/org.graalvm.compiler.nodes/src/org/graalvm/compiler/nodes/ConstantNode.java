@@ -45,7 +45,7 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -162,8 +162,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      */
     private boolean onlyUsedInCurrentBlock() {
         assert graph().getLastSchedule() != null;
-        NodeMap<Block> nodeBlockMap = graph().getLastSchedule().getNodeToBlockMap();
-        Block currentBlock = nodeBlockMap.get(this);
+        NodeMap<HIRBlock> nodeBlockMap = graph().getLastSchedule().getNodeToBlockMap();
+        HIRBlock currentBlock = nodeBlockMap.get(this);
         for (Node usage : usages()) {
             if (currentBlock != nodeBlockMap.get(usage)) {
                 return false;
@@ -494,31 +494,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         }
     }
 
-    public static ConstantNode forFloatingKind(JavaKind kind, double value) {
-        switch (kind) {
-            case Float:
-                return ConstantNode.forFloat((float) value);
-            case Double:
-                return ConstantNode.forDouble(value);
-            default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
-        }
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
-        return forFloatingKind(stamp.getStackKind(), value, graph);
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value) {
-        return forFloatingKind(stamp.getStackKind(), value);
-    }
-
     public static ConstantNode defaultForKind(JavaKind kind, StructuredGraph graph) {
         return unique(graph, defaultForKind(kind));
     }
@@ -572,7 +547,4 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         }
         return ConstantNode.forInt(length);
     }
-
-    @NodeIntrinsic
-    public static native Class<?> forClass(@ConstantNodeParameter ResolvedJavaType type);
 }

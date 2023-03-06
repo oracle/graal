@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
@@ -75,7 +75,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();
         BlockMap<List<Node>> blockToNodesMap = schedule.getBlockToNodesMap();
-        NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
+        NodeMap<HIRBlock> nodeToBlock = schedule.getNodeToBlockMap();
         assertDeepEquals(2, schedule.getCFG().getBlocks().length);
         for (BinaryArithmeticNode<?> node : graph.getNodes().filter(BinaryArithmeticNode.class)) {
             if (node instanceof AddNode) {
@@ -84,7 +84,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         }
 
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
-            Block block = nodeToBlock.get(fs);
+            HIRBlock block = nodeToBlock.get(fs);
             assertTrue(fs.toString(), block == schedule.getCFG().getStartBlock());
             for (Node usage : fs.usages()) {
                 if (usage instanceof StateSplit && ((StateSplit) usage).stateAfter() == fs) {
@@ -111,7 +111,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         blockToNodesMap = schedule.getBlockToNodesMap();
         nodeToBlock = schedule.getNodeToBlockMap();
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
-            Block block = nodeToBlock.get(fs);
+            HIRBlock block = nodeToBlock.get(fs);
             assertTrue(fs.toString(), block == schedule.getCFG().getStartBlock());
             for (Node usage : fs.usages()) {
                 if ((usage instanceof StateSplit && ((StateSplit) usage).stateAfter() == fs) || (usage instanceof DeoptDuring && ((DeoptDuring) usage).stateDuring() == fs)) {

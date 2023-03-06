@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -97,5 +97,10 @@ final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<
     @Override
     public OS getOS() {
         return OS.Windows;
+    }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 80;
     }
 }

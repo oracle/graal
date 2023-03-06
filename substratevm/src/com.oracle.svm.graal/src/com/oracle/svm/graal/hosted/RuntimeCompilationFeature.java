@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,69 +27,45 @@ package com.oracle.svm.graal.hosted;
 import static com.oracle.svm.core.util.VMError.guarantee;
 
 import java.lang.reflect.Executable;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Deque;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -102,8 +78,6 @@ import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -121,25 +95,18 @@ import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -155,14 +122,17 @@ import jdk.vm.ci.services.Services;
  * image. Data that is prepared during image generation and used at run time is stored in
  * {@link GraalSupport}.
  */
-public abstract class RuntimeCompilationFeature implements Feature {
+public abstract class RuntimeCompilationFeature {
 
     public static class Options {
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
 
+        @Option(help = "Print call tree of methods reachable for runtime compilation")//
+        public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
+
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -207,132 +177,163 @@ public abstract class RuntimeCompilationFeature implements Feature {
         boolean allowRuntimeCompilation(ResolvedJavaMethod method);
     }
 
-    public interface AbstractCallTreeNode {
-        AnalysisMethod getImplementationMethod();
+    public abstract static class AbstractCallTreeNode implements Comparable<AbstractCallTreeNode> {
+        private final AnalysisMethod implementationMethod;
+        private final AnalysisMethod targetMethod;
+        private final AbstractCallTreeNode parent;
+        private final int level;
+        private Set<AbstractCallTreeNode> children;
 
-        AnalysisMethod getTargetMethod();
-
-        StructuredGraph getGraph();
-
-        String getSourceReference();
-
-        AbstractCallTreeNode getParent();
-
-        int getLevel();
-    }
-
-    public AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
-        assert method instanceof AnalysisMethod;
-        return getRuntimeCompiledMethods().get(method);
-    }
-
-    public static final class CallTreeNode implements AbstractCallTreeNode {
-        protected final AnalysisMethod implementationMethod;
-        protected final AnalysisMethod targetMethod;
-
-        protected final CallTreeNode parent;
-        protected final List<CallTreeNode> children;
-        protected final int level;
-        protected final String sourceReference;
-
-        protected StructuredGraph graph;
-        protected final Set<Invoke> unreachableInvokes;
-
-        private CallTreeNode(ResolvedJavaMethod implementationMethod, ResolvedJavaMethod targetMethod, CallTreeNode parent, int level, String sourceReference) {
-            this.implementationMethod = (AnalysisMethod) implementationMethod;
-            this.targetMethod = (AnalysisMethod) targetMethod;
+        protected AbstractCallTreeNode(AbstractCallTreeNode parent, AnalysisMethod targetMethod, AnalysisMethod implementationMethod) {
+            this.implementationMethod = implementationMethod;
+            this.targetMethod = targetMethod;
             this.parent = parent;
-            this.level = level;
-            this.sourceReference = sourceReference;
-            this.children = new ArrayList<>();
-            this.unreachableInvokes = new HashSet<>();
+            this.children = null;
+            if (parent != null) {
+                level = parent.level + 1;
+            } else {
+                level = 0;
+            }
         }
 
-        @Override
         public AnalysisMethod getImplementationMethod() {
             return implementationMethod;
         }
 
-        @Override
         public AnalysisMethod getTargetMethod() {
             return targetMethod;
         }
 
-        @Override
-        public CallTreeNode getParent() {
+        protected AbstractCallTreeNode getParent() {
             return parent;
         }
 
-        @Override
-        public int getLevel() {
+        /**
+         * Helper method to create parent->child link when this node becomes part of the call tree.
+         */
+        protected void linkAsChild() {
+            if (parent != null) {
+                if (parent.children == null) {
+                    parent.children = new LinkedHashSet<>();
+                }
+                boolean added = parent.children.add(this);
+                assert added : "child linked to parent multiple times.";
+            }
+        }
+
+        private Collection<AbstractCallTreeNode> getChildren() {
+            return children == null ? List.of() : children;
+        }
+
+        protected int getLevel() {
             return level;
         }
 
-        @Override
-        public String getSourceReference() {
-            return sourceReference;
-        }
+        public abstract String getPosition();
+
+        public abstract int getNodeCount();
 
         @Override
-        public StructuredGraph getGraph() {
-            return graph;
-        }
-
-        public void setGraph(StructuredGraph graph) {
-            this.graph = graph;
-        }
-    }
-
-    public static class RuntimeGraphBuilderPhase extends SubstrateGraphBuilderPhase {
-
-        RuntimeGraphBuilderPhase(Providers providers,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
-            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
-        }
-
-        @Override
-        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-            return new RuntimeBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
-        }
-    }
-
-    public static class RuntimeBytecodeParser extends SubstrateGraphBuilderPhase.SubstrateBytecodeParser {
-
-        RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, false);
-        }
-
-        @Override
-        protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
-            boolean result = super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
-            if (result) {
-                SubstrateCompilationDirectives.singleton().registerAsDeoptInlininingExclude(targetMethod);
+        public int compareTo(AbstractCallTreeNode o) {
+            int result = implementationMethod.getQualifiedName().compareTo(o.implementationMethod.getQualifiedName());
+            if (result != 0) {
+                return result;
             }
-            return result;
+            result = targetMethod.getQualifiedName().compareTo(o.targetMethod.getQualifiedName());
+            if (result != 0) {
+                return result;
+            }
+
+            result = Integer.compare(level, o.level);
+            if (result != 0) {
+                return result;
+            }
+
+            if (parent != null && o.parent != null) {
+                return parent.compareTo(o.parent);
+            }
+
+            // this must be true otherwise the level check should return different value
+            assert parent == null && o.parent == null;
+            return 0;
+        }
+
+        /**
+         * For equality purposes we only care whether it is an equivalent call site (i.e., the
+         * target and implementation match).
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            AbstractCallTreeNode that = (AbstractCallTreeNode) o;
+
+            return implementationMethod.equals(that.implementationMethod) && targetMethod.equals(that.targetMethod);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(implementationMethod, targetMethod);
         }
     }
 
-    private GraalGraphObjectReplacer objectReplacer;
-    private HostedProviders hostedProviders;
-    private GraphEncoder graphEncoder;
-    private SharedRuntimeConfigurationBuilder runtimeConfigBuilder;
+    protected abstract AbstractCallTreeNode getCallTreeNode(RuntimeCompilationCandidate candidate);
+
+    protected abstract AbstractCallTreeNode getCallTreeNode(RuntimeCompiledMethod method);
+
+    protected abstract AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method);
+
+    public interface RuntimeCompiledMethod {
+        AnalysisMethod getMethod();
+
+        Collection<ResolvedJavaMethod> getInlinedMethods();
+
+        Collection<ResolvedJavaMethod> getInvokeTargets();
+    }
+
+    public abstract Collection<RuntimeCompiledMethod> getRuntimeCompiledMethods();
+
+    public interface RuntimeCompilationCandidate {
+        AnalysisMethod getImplementationMethod();
+
+        AnalysisMethod getTargetMethod();
+    }
+
+    public abstract Collection<RuntimeCompilationCandidate> getAllRuntimeCompilationCandidates();
+
+    public final Comparator<RuntimeCompilationCandidate> getRuntimeCompilationComparator() {
+        return (o1, o2) -> getCallTreeNode(o1).compareTo(getCallTreeNode(o2));
+    }
+
+    public final List<String> getCallTrace(ResolvedJavaMethod method) {
+        return getCallTraceHelper(getCallTreeNode(method));
+    }
+
+    public final List<String> getCallTrace(RuntimeCompilationCandidate candidate) {
+        return getCallTraceHelper(getCallTreeNode(candidate));
+    }
+
+    private static List<String> getCallTraceHelper(AbstractCallTreeNode node) {
+        List<String> trace = new ArrayList<>();
+        for (AbstractCallTreeNode cur = node; cur != null; cur = cur.getParent()) {
+            trace.add(cur.getPosition());
+        }
+        return trace;
+    }
+
+    protected GraalGraphObjectReplacer objectReplacer;
+    protected HostedProviders hostedProviders;
+    protected GraphEncoder graphEncoder;
 
     private boolean initialized;
-    private GraphBuilderConfiguration graphBuilderConfig;
-    private OptimisticOptimizations optimisticOpts;
-    private RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
-    private Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
-    private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodMap;
-    private Set<CallTreeNode> runtimeCompilationCandidates;
-
-    public StructuredGraph lookupMethodGraph(AnalysisMethod method) {
-        CallTreeNode callTree = runtimeCompiledMethodMap.get(method);
-        assert callTree != null : "Unable to find method.";
-        StructuredGraph graph = callTree.getGraph();
-        assert graph != null : "Method's graph is null.";
-        return graph;
-    }
+    protected GraphBuilderConfiguration graphBuilderConfig;
+    protected OptimisticOptimizations optimisticOpts;
+    protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
+    protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
     public HostedProviders getHostedProviders() {
         return hostedProviders;
@@ -342,16 +343,17 @@ public abstract class RuntimeCompilationFeature implements Feature {
         return objectReplacer;
     }
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
+    protected static List<Class<? extends Feature>> getRequiredFeaturesHelper() {
         if (Services.IS_BUILDING_NATIVE_IMAGE) {
             return List.of(FieldsOffsetsFeature.class);
         }
         return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
-    @Override
-    public void duringSetup(DuringSetupAccess c) {
+    protected final void duringSetupHelper(DuringSetupAccess c) {
+        if (SubstrateOptions.useLLVMBackend()) {
+            throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
+        }
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
         if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
@@ -366,16 +368,40 @@ public abstract class RuntimeCompilationFeature implements Feature {
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
-    public Map<AnalysisMethod, CallTreeNode> getRuntimeCompiledMethods() {
-        return runtimeCompiledMethodMap;
+    private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
+        Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
+        ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
+        Providers originalProviders = GraalAccess.getOriginalProviders();
+        SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
+        RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(), originalProviders.getConstantReflection(),
+                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
+                        .build();
+
+        Providers runtimeProviders = runtimeConfig.getProviders();
+        WordTypes wordTypes = runtimeConfig.getWordTypes();
+        hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
+                        runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
+                        runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider(),
+                        runtimeProviders.getLoopsDataProvider());
+
+        FeatureHandler featureHandler = config.getFeatureHandler();
+        final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
+        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
+                        config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
+                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
+
+        NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
+        featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
+        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
+        LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
+        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
+        LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
+
+        GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
     }
 
-    public Set<CallTreeNode> getAllRuntimeCompilationCandidates() {
-        return runtimeCompilationCandidates;
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess c) {
+    protected final void beforeAnalysisHelper(BeforeAnalysisAccess c) {
         DebugContext debug = DebugContext.forCurrentThread();
 
         // box lowering accesses the caches for those classes and thus needs reflective access
@@ -399,59 +425,32 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         populateMatchRuleRegistry();
 
-        Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
-        ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
-        Providers originalProviders = GraalAccess.getOriginalProviders();
-        SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
-        runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
-                        config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider(),
-                        platformConfig).build();
-        RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
-
-        Providers runtimeProviders = runtimeConfig.getProviders();
-        WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
-        hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
-                        runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
-                        runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider(),
-                        runtimeProviders.getLoopsDataProvider());
+        installRuntimeConfig(config);
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);
         ImageSingletons.add(GraalRuntime.class, graalRuntime);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(new GraalSupport.GraalShutdownHook());
 
-        FeatureHandler featureHandler = config.getFeatureHandler();
-        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
-                        config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
-                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget());
-
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
-        featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
-        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
-        LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
-        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
-        LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
-        GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
-
-        NodeClass<?>[] snippetNodeClasses = ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetNodeClasses();
-        for (NodeClass<?> nodeClass : snippetNodeClasses) {
-            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
-        }
-
         /* Initialize configuration with reasonable default values. */
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        runtimeCompiledMethodMap = new LinkedHashMap<>();
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
-        runtimeCompilationCandidates = new HashSet<>();
+
+        /*
+         * Ensure all snippet types are registered as used.
+         */
+        SubstrateReplacements replacements = (SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements();
+        for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
+            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+        }
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object
          * replacer, to avoid corner cases later when writing the native image.
          */
-        for (ResolvedJavaMethod method : ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetMethods()) {
+        for (ResolvedJavaMethod method : replacements.getSnippetMethods()) {
             objectReplacer.apply(method);
         }
     }
@@ -490,218 +489,34 @@ public abstract class RuntimeCompilationFeature implements Feature {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod);
+        requireFrameInformationForMethodHelper(aMethod);
 
         return sMethod;
     }
+
+    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod);
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
     }
 
-    public SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config) {
-        AnalysisMethod aMethod = (AnalysisMethod) method;
-        SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
+    public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
-        if (!runtimeCompiledMethodMap.containsKey(aMethod)) {
-            runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
-            config.registerAsRoot(aMethod, true);
-        }
-
-        return sMethod;
+    protected final void afterAnalysisHelper() {
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(getRuntimeCompiledMethods().size());
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess c) {
-        DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) c;
-
-        Deque<CallTreeNode> worklist = new ArrayDeque<>();
-        worklist.addAll(runtimeCompiledMethodMap.values());
-
-        while (!worklist.isEmpty()) {
-            processMethod(worklist.removeFirst(), worklist, config.getBigBang());
-        }
-
-        SubstrateMethod[] methodsToCompileArr = new SubstrateMethod[runtimeCompiledMethodMap.size()];
-        int idx = 0;
-        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
-            methodsToCompileArr[idx++] = objectReplacer.createMethod(node.implementationMethod);
-        }
-        if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
-            config.requireAnalysisIteration();
-        }
-
-        graphEncoder.finishPrepare();
-        AnalysisMetaAccess metaAccess = config.getMetaAccess();
-        NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
-        for (NodeClass<?> nodeClass : nodeClasses) {
-            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
-        }
-        if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
-            config.requireAnalysisIteration();
-        }
-
-        if (objectReplacer.updateDataDuringAnalysis()) {
-            config.requireAnalysisIteration();
-        }
-    }
-
-    @SuppressWarnings("try")
-    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, BigBang bb) {
-        AnalysisMethod method = node.implementationMethod;
-        assert method.isImplementationInvoked();
-
-        if (node.graph == null) {
-            if (method.getAnnotation(Fold.class) != null || method.getAnnotation(NodeIntrinsic.class) != null) {
-                throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
-            }
-            if (!method.allowRuntimeCompilation()) {
-                throw VMError.shouldNotReachHere("Parsing method that is not available for runtime compilation: " + method.format("%H.%n(%p)"));
-            }
-
-            boolean parse = false;
-
-            DebugContext debug = bb.getDebug();
-            StructuredGraph graph = method.buildGraph(debug, method, hostedProviders, Purpose.PREPARE_RUNTIME_COMPILATION);
-            if (graph == null) {
-                if (!method.hasBytecodes()) {
-                    return;
-                }
-                parse = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
-                                .method(method)
-                                /*
-                                 * Needed for computation of the list of all runtime compilable
-                                 * methods in TruffleFeature.
-                                 */
-                                .recordInlinedMethods(true)
-                                .build();
-            }
-
-            try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
-                if (parse) {
-                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes());
-                    builderPhase.apply(graph);
-                }
-
-                if (graph.getNodes(StackValueNode.TYPE).isNotEmpty()) {
-                    /*
-                     * Stack allocated memory is not seen by the deoptimization code, i.e., it is
-                     * not copied in case of deoptimization. Also, pointers to it can be used for
-                     * arbitrary address arithmetic, so we would not know how to update derived
-                     * pointers into stack memory during deoptimization. Therefore, we cannot allow
-                     * methods that allocate stack memory for runtime compilation. To remove this
-                     * limitation, we would need to change how we handle stack allocated memory in
-                     * Graal.
-                     */
-                    return;
-                }
-
-                CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-                canonicalizer.apply(graph, hostedProviders);
-                if (deoptimizeOnExceptionPredicate != null) {
-                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
-                }
-                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
-
-                graphEncoder.prepare(graph);
-                node.graph = graph;
-
-            } catch (Throwable ex) {
-                debug.handle(ex);
-            }
-        }
-
-        assert node.graph != null;
-        List<MethodCallTargetNode> callTargets = node.graph.getNodes(MethodCallTargetNode.TYPE).snapshot();
-        callTargets.sort((t1, t2) -> Integer.compare(t1.invoke().bci(), t2.invoke().bci()));
-
-        for (MethodCallTargetNode targetNode : callTargets) {
-            AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
-            ResolvedJavaMethod callerMethod = targetNode.invoke().stateAfter().getMethod();
-            Collection<AnalysisMethod> allImplementationMethods;
-            if (callerMethod instanceof PointsToAnalysisMethod) {
-                PointsToAnalysisMethod pointToCalledMethod = (PointsToAnalysisMethod) callerMethod;
-                InvokeTypeFlow invokeFlow = pointToCalledMethod.getTypeFlow().getInvokes().get(targetNode.invoke().bci());
-
-                if (invokeFlow == null) {
-                    continue;
-                }
-                allImplementationMethods = invokeFlow.getCallees();
-            } else {
-                allImplementationMethods = Arrays.asList(method.getImplementations());
-            }
-
-            /*
-             * Eventually we want to remove all invokes that are unreachable, i.e., have no
-             * implementation. But the analysis is iterative, and we don't know here if we have
-             * already reached the fixed point. So we only collect unreachable invokes here, and
-             * remove them after the analysis has finished.
-             */
-            if (allImplementationMethods.size() == 0) {
-                node.unreachableInvokes.add(targetNode.invoke());
-            } else {
-                node.unreachableInvokes.remove(targetNode.invoke());
-            }
-
-            List<AnalysisMethod> implementationMethods = new ArrayList<>();
-            for (AnalysisMethod implementationMethod : allImplementationMethods) {
-                /* Filter out all the implementation methods that have already been processed. */
-                if (!runtimeCompiledMethodMap.containsKey(implementationMethod)) {
-                    implementationMethods.add(implementationMethod);
-                }
-            }
-
-            if (implementationMethods.size() > 0) {
-                /* Sort to make printing order and method discovery order deterministic. */
-                implementationMethods.sort((m1, m2) -> m1.getQualifiedName().compareTo(m2.getQualifiedName()));
-
-                String sourceReference = buildSourceReference(targetNode.invoke().stateAfter());
-                for (AnalysisMethod implementationMethod : implementationMethods) {
-                    CallTreeNode calleeNode = new CallTreeNode(implementationMethod, targetMethod, node, node.level + 1, sourceReference);
-                    runtimeCompilationCandidates.add(calleeNode);
-                    if (runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementationMethod)) {
-                        assert !runtimeCompiledMethodMap.containsKey(implementationMethod);
-                        runtimeCompiledMethodMap.put(implementationMethod, calleeNode);
-                        worklist.add(calleeNode);
-                        node.children.add(calleeNode);
-                        objectReplacer.createMethod(implementationMethod);
-                    }
-
-                    /*
-                     * We must compile all methods which may be called. It may be the case that a
-                     * call target does not reach the compile queue by default, e.g. if it is
-                     * inlined at image generation but not at runtime compilation.
-                     */
-                    SubstrateCompilationDirectives.singleton().registerForcedCompilation(implementationMethod);
-                }
-            }
-        }
-    }
-
-    public static String buildSourceReference(FrameState startState) {
-        StringBuilder sourceReferenceBuilder = new StringBuilder();
-        for (FrameState state = startState; state != null; state = state.outerFrameState()) {
-            if (sourceReferenceBuilder.length() > 0) {
-                sourceReferenceBuilder.append(" -> ");
-            }
-            sourceReferenceBuilder.append(state.getCode().asStackTraceElement(state.bci).toString());
-        }
-        return sourceReferenceBuilder.toString();
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        ProgressReporter.singleton().setNumRuntimeCompiledMethods(runtimeCompiledMethodMap.size());
-    }
-
-    @Override
-    @SuppressWarnings("try")
-    public void beforeCompilation(BeforeCompilationAccess c) {
-        CompilationAccessImpl config = (CompilationAccessImpl) c;
-
+    protected final void beforeCompilationHelper() {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
+            System.out.println("****Start Print Runtime Compile Methods***");
+            getRuntimeCompiledMethods().stream().map(m -> m.getMethod().format("%H.%n(%p)")).sorted().collect(Collectors.toList()).forEach(System.out::println);
+            System.out.println("****End Print Runtime Compile Methods***");
+        }
+
+        if (Options.PrintRuntimeCompilationCallTree.getValue()) {
+            System.out.println("****Start Print Runtime Compile Call Tree***");
             printCallTree();
+            System.out.println("****End Print Runtime Compile Call Tree***");
         }
 
         int maxMethods = 0;
@@ -710,202 +525,77 @@ public abstract class RuntimeCompilationFeature implements Feature {
             try {
                 /* Strip optional comment string from MaxRuntimeCompileMethods value */
                 numberStr = value.split("#")[0];
-                maxMethods += Long.parseLong(numberStr);
+                maxMethods += Integer.parseInt(numberStr);
             } catch (NumberFormatException ex) {
                 throw UserError.abort("Invalid value for option 'MaxRuntimeCompileMethods': '%s' is not a valid number", numberStr);
             }
         }
-        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && runtimeCompiledMethodMap.size() > maxMethods) {
+        if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && getRuntimeCompiledMethods().size() > maxMethods) {
             printDeepestLevelPath();
-            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + runtimeCompiledMethodMap.size() + " > " + maxMethods);
-        }
-
-        /*
-         * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that
-         * the static analysis results are available.
-         */
-        graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
-
-        StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
-
-        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
-            StructuredGraph graph = node.graph;
-            if (graph != null) {
-                DebugContext debug = graph.getDebug();
-                try (DebugContext.Scope scope = debug.scope("RuntimeOptimize", graph)) {
-                    removeUnreachableInvokes(node);
-                    strengthenStamps.apply(graph);
-                    canonicalizer.apply(graph, hostedProviders);
-
-                    conditionalElimination.apply(graph, hostedProviders);
-
-                    /*
-                     * ConvertDeoptimizeToGuardPhase was already executed after parsing, but
-                     * optimizations applied in between can provide new potential.
-                     */
-                    convertDeoptimizeToGuard.apply(graph, hostedProviders);
-
-                    graphEncoder.prepare(graph);
-                } catch (Throwable ex) {
-                    debug.handle(ex);
-                }
-            }
-        }
-
-        graphEncoder.finishPrepare();
-
-        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
-            if (node.graph != null) {
-                registerDeoptEntries(node);
-
-                long startOffset = graphEncoder.encode(node.graph);
-                objectReplacer.createMethod(node.implementationMethod).setEncodedGraphStartOffset(startOffset);
-                /* We do not need the graph anymore, let the GC do it's work. */
-                node.graph = null;
-            }
-        }
-
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
-        GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
-
-        objectReplacer.updateDataDuringAnalysis();
-
-        /* All the temporary data structures used during encoding are no longer necessary. */
-        graphEncoder = null;
-    }
-
-    private static void removeUnreachableInvokes(CallTreeNode node) {
-        for (Invoke invoke : node.unreachableInvokes) {
-            if (!invoke.asNode().isAlive()) {
-                continue;
-            }
-
-            if (invoke.callTarget().invokeKind().hasReceiver()) {
-                InliningUtil.nonNullReceiver(invoke);
-            }
-            FixedGuardNode guard = new FixedGuardNode(LogicConstantNode.forBoolean(true, node.graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true);
-            node.graph.addBeforeFixed(invoke.asFixedNode(), node.graph.add(guard));
-        }
-    }
-
-    private static void registerDeoptEntries(CallTreeNode node) {
-        for (FrameState frameState : node.graph.getNodes(FrameState.TYPE)) {
-            if (frameState.hasExactlyOneUsage()) {
-                Node usage = frameState.usages().first();
-                if (node.level > 0 && usage == node.graph.start()) {
-                    /*
-                     * During method inlining, the FrameState associated with the StartNode
-                     * disappears. Therefore, this frame state cannot be a deoptimization target.
-                     */
-                    continue;
-                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
-                    /*
-                     * If the FrameState is followed immediately by a dead end, then this state can
-                     * never be reached and does not need to be registered.
-                     */
-                    FixedNode next = ((Invoke) usage).next();
-                    while (next instanceof AbstractBeginNode) {
-                        next = ((AbstractBeginNode) next).next();
-                    }
-                    if (next instanceof LoweredDeadEndNode) {
-                        continue;
-                    }
-                }
-            }
-
-            /*
-             * We need to make sure that all inlined caller frames are available for deoptimization
-             * too.
-             */
-            for (FrameState inlineState = frameState; inlineState != null; inlineState = inlineState.outerFrameState()) {
-                if (inlineState.bci >= 0) {
-                    SubstrateCompilationDirectives.singleton().registerDeoptEntry(inlineState);
-                }
-            }
-        }
-
-        for (Node n : node.graph.getNodes()) {
-            /*
-             * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
-             * we would miss invocations that are already intrinsified to an indirect call.
-             */
-            if (n instanceof Invoke) {
-                Invoke invoke = (Invoke) n;
-
-                /*
-                 * The FrameState for the invoke (which is visited by the above loop) is the state
-                 * after the call (where deoptimization that happens after the call has returned
-                 * will continue execution). We also need to register the state during the call
-                 * (where deoptimization while the call is on the stack will continue execution).
-                 *
-                 * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
-                 * different: the Invoke has the bci of the invocation bytecode, the FrameState has
-                 * the bci of the next bytecode after the invoke.
-                 */
-                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
-                assert stateDuring.duringCall() && !stateDuring.rethrowException();
-                SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring);
-            }
+            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + getRuntimeCompiledMethods().size() + " > " + maxMethods);
         }
     }
 
     private void printDeepestLevelPath() {
-        CallTreeNode maxLevelCallTreeNode = null;
-        for (CallTreeNode callTreeNode : runtimeCompiledMethodMap.values()) {
-            if (maxLevelCallTreeNode == null || maxLevelCallTreeNode.level < callTreeNode.level) {
+        AbstractCallTreeNode maxLevelCallTreeNode = null;
+        for (var method : getRuntimeCompiledMethods()) {
+            var callTreeNode = getCallTreeNode(method);
+            if (maxLevelCallTreeNode == null || maxLevelCallTreeNode.getLevel() < callTreeNode.getLevel()) {
                 maxLevelCallTreeNode = callTreeNode;
             }
         }
 
-        System.out.println(String.format("Deepest level call tree path (%d calls):", maxLevelCallTreeNode.level));
-        CallTreeNode node = maxLevelCallTreeNode;
+        System.out.println(String.format("Deepest level call tree path (%d calls):", maxLevelCallTreeNode.getLevel()));
+        AbstractCallTreeNode node = maxLevelCallTreeNode;
         while (node != null) {
-            System.out.format("%5d ; %s ; %s", node.graph == null ? -1 : node.graph.getNodeCount(), node.sourceReference, node.implementationMethod == null ? ""
-                            : node.implementationMethod.format("%H.%n(%p)"));
-            if (node.targetMethod != null && !node.targetMethod.equals(node.implementationMethod)) {
-                System.out.print(" ; " + node.targetMethod.format("%H.%n(%p)"));
+            AnalysisMethod implementationMethod = node.getImplementationMethod();
+            AnalysisMethod targetMethod = node.getTargetMethod();
+
+            System.out.format("%5d ; %s ; %s", node.getNodeCount(), node.getPosition(), implementationMethod == null ? ""
+                            : implementationMethod.format("%H.%n(%p)"));
+            if (targetMethod != null && !targetMethod.equals(implementationMethod)) {
+                System.out.print(" ; " + targetMethod.format("%H.%n(%p)"));
             }
             System.out.println();
-            node = node.parent;
+            node = node.getParent();
         }
     }
 
     private void printCallTree() {
         System.out.println("depth;method;Graal nodes;invoked from source;full method name;full name of invoked virtual method");
-        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
-            if (node.level == 0) {
+        for (var method : getRuntimeCompiledMethods()) {
+            var node = getCallTreeNode(method);
+            if (node.getLevel() == 0) {
                 printCallTreeNode(node);
             }
         }
-        System.out.println();
     }
 
-    private void printCallTreeNode(CallTreeNode node) {
+    private void printCallTreeNode(AbstractCallTreeNode node) {
+        AnalysisMethod implementationMethod = node.getImplementationMethod();
+        AnalysisMethod targetMethod = node.getTargetMethod();
+
         StringBuilder indent = new StringBuilder();
-        for (int i = 0; i < node.level; i++) {
+        for (int i = 0; i < node.getLevel(); i++) {
             indent.append("  ");
         }
-        if (node.implementationMethod != null) {
-            indent.append(node.implementationMethod.format("%h.%n"));
+        if (implementationMethod != null) {
+            indent.append(implementationMethod.format("%h.%n"));
         }
 
-        System.out.format("%4d ; %-80s  ;%5d ; %s ; %s", node.level, indent, node.graph == null ? -1 : node.graph.getNodeCount(), node.sourceReference,
-                        node.implementationMethod == null ? "" : node.implementationMethod.format("%H.%n(%p)"));
-        if (node.targetMethod != null && !node.targetMethod.equals(node.implementationMethod)) {
-            System.out.print(" ; " + node.targetMethod.format("%H.%n(%p)"));
+        System.out.format("%4d ; %-80s  ;%5d ; %s ; %s", node.getLevel(), indent, node.getNodeCount(), node.getPosition(),
+                        implementationMethod == null ? "" : implementationMethod.format("%H.%n(%p)"));
+        if (targetMethod != null && !targetMethod.equals(implementationMethod)) {
+            System.out.print(" ; " + targetMethod.format("%H.%n(%p)"));
         }
         System.out.println();
 
-        for (CallTreeNode child : node.children) {
+        for (AbstractCallTreeNode child : node.getChildren()) {
             printCallTreeNode(child);
         }
     }
 
-    @Override
-    public void afterCompilation(AfterCompilationAccess a) {
+    protected final void afterCompilationHelper(AfterCompilationAccess a) {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
@@ -914,16 +604,16 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) runtimeConfigBuilder.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
     }
 
-    @Override
-    public void afterHeapLayout(AfterHeapLayoutAccess a) {
+    protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
         AfterHeapLayoutAccessImpl config = (AfterHeapLayoutAccessImpl) a;
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
+
 }
 
 /**
@@ -948,15 +638,6 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
         }
         assert type instanceof AnalysisType;
         return hUniverse.lookup(type);
-    }
-
-    @Override
-    protected HostedMethod toHosted(ResolvedJavaMethod method) {
-        if (method == null) {
-            return null;
-        }
-        assert method instanceof AnalysisMethod;
-        return hUniverse.lookup(method);
     }
 
     @Override

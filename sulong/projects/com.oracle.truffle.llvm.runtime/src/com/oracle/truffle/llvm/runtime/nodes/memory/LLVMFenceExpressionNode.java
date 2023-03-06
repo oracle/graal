@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMFenceExpressionNode extends LLVMExpressionNode {
 
     @Specialization
-    protected long execute() {
+    protected long doDefault() {
         VarHandle.fullFence();
         return 0;
     }

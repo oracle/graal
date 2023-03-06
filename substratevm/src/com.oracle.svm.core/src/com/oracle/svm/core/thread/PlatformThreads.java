@@ -90,7 +90,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -129,6 +128,10 @@ public abstract class PlatformThreads {
      * The {@linkplain JavaThreads#getThreadId thread id} of the {@link Thread#currentThread()},
      * which can be a {@linkplain Target_java_lang_Thread#vthread virtual thread} or the
      * {@linkplain #currentThread platform thread itself}.
+     *
+     * As the value of the thread local can change over the thread lifetime (see carrier threads),
+     * it should only be accessed by the owning thread (via {@link FastThreadLocalLong#get()} and
+     * {@link FastThreadLocalLong#set(long)}).
      */
     static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("PlatformThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
@@ -307,16 +310,6 @@ public abstract class PlatformThreads {
         return getIsolateThreadUnsafe(t);
     }
 
-    /** Before detaching a thread, run any Java cleanup code. */
-    static void threadExit(IsolateThread thread) {
-        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
-
-        Thread javaThread = currentThread.get(thread);
-        if (javaThread != null) {
-            toTarget(javaThread).exit();
-        }
-    }
-
     @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     static void afterThreadExit(IsolateThread thread) {
         VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
@@ -493,7 +486,7 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
     private static void assignCurrent0(Thread thread) {
         VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
         currentVThreadId.set(JavaThreads.getThreadId(thread));
@@ -530,7 +523,14 @@ public abstract class PlatformThreads {
             return true;
         }
         /* Tell all the threads that the VM is being torn down. */
-        return tearDownPlatformThreads();
+        boolean result = tearDownPlatformThreads();
+
+        // Detach last thread data
+        Thread thread = currentThread.get(CurrentIsolate.getCurrentThread());
+        if (thread != null) {
+            toTarget(thread).threadData.detach();
+        }
+        return result;
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
@@ -568,7 +568,7 @@ public abstract class PlatformThreads {
     static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;
 
     static {
-        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), PlatformThreads.class.getSimpleName() + " must be initialized at build time.");
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "PlatformThreads must be initialized at build time.");
         FORK_JOIN_POOL_TRY_TERMINATE_METHOD = ReflectionUtil.lookupMethod(ForkJoinPool.class, "tryTerminate", boolean.class, boolean.class);
     }
 
@@ -698,9 +698,9 @@ public abstract class PlatformThreads {
         return !VMOperationControl.isDedicatedVMOperationThread(isolateThread);
     }
 
-    /** This method should only be used to exit the main thread. */
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
     public static void exit(Thread thread) {
+        ThreadListenerSupport.get().afterThreadRun();
         /*
          * First call Thread.exit(). This allows waiters on the thread object to observe that a
          * daemon ThreadGroup is destroyed as well if this thread happens to be the last thread of a
@@ -794,10 +794,6 @@ public abstract class PlatformThreads {
         singleton().unattachedStartedThreads.decrementAndGet();
         singleton().beforeThreadRun(thread);
 
-        if (ImageSingletons.contains(ProfilingSampler.class)) {
-            ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
-        }
-
         try {
             if (VMThreads.isTearingDown()) {
                 /*
@@ -807,11 +803,10 @@ public abstract class PlatformThreads {
                 currentThread.get().interrupt();
             }
 
+            ThreadListenerSupport.get().beforeThreadRun();
             thread.run();
         } catch (Throwable ex) {
             JavaThreads.dispatchUncaughtException(thread, ex);
-        } finally {
-            exit(thread);
         }
     }
 
@@ -999,6 +994,7 @@ public abstract class PlatformThreads {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public static int getThreadStatus(Thread thread) {
         assert !isVirtual(thread);
         return (JavaVersionUtil.JAVA_SPEC >= 19) ? toTarget(thread).holder.threadStatus : toTarget(thread).threadStatus;

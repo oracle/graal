@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,23 +43,12 @@ public interface Call extends SymbolImpl {
 
     SymbolImpl[] NO_ARGS = new SymbolImpl[0];
 
-    static void parseArguments(IRScope scope, SymbolImpl callTarget, Instruction inst, SymbolImpl[] target, int[] src) {
+    static void parseArguments(IRScope scope, Instruction inst, SymbolImpl[] target, int[] src, FunctionType type) {
         if (src.length == 0) {
             return;
         }
 
-        final int numParams;
-        final FunctionType type;
-        if (callTarget instanceof FunctionDefinition) {
-            type = ((FunctionDefinition) (callTarget)).getType();
-            numParams = type.getNumberOfArguments();
-        } else if (callTarget instanceof FunctionDeclaration) {
-            type = ((FunctionDeclaration) (callTarget)).getType();
-            numParams = type.getNumberOfArguments();
-        } else {
-            type = null;
-            numParams = 0;
-        }
+        final int numParams = type.getNumberOfArguments();
 
         final SymbolTable symbols = scope.getSymbols();
         for (int i = Math.min(numParams, src.length) - 1; i >= 0; i--) {
@@ -115,4 +104,6 @@ public interface Call extends SymbolImpl {
     AttributesGroup getParameterAttributesGroup(int idx);
 
     OperandBundle getOperandBundle();
+
+    FunctionType getFunctionType();
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+
+<!DOCTYPE type PUBLIC "-//NetBeans//DTD annotation type 1.0//EN" "http://www.netbeans.org/dtds/annotation-type-1_0.dtd">
+<type
+    name='NodePosition'
+    description_key='Hint_NodePosition'
+    localizing_bundle='org.graalvm.visualizer.source.resources.Bundle'
+    visible='true'
+    glyph='nbresloc:/org/graalvm/visualizer/source/resources/PC.gif'
+    highlight='0xBDE6AA'
+    type='line'
+    priority='1000'
+    custom_sidebar_color='0xBDE6AA'
+/>

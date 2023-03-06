@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -70,14 +72,16 @@ final class DefaultLongExports {
 
     @ExportMessage
     static boolean fitsInFloat(Long receiver) {
-        float f = receiver;
-        return (long) f == receiver;
+        long l = receiver;
+        float f = l;
+        return l != Long.MAX_VALUE && (long) f == l;
     }
 
     @ExportMessage
     static boolean fitsInDouble(Long receiver) {
-        double d = receiver;
-        return (long) d == receiver;
+        long l = receiver;
+        double d = l;
+        return l != Long.MAX_VALUE && (long) d == l;
     }
 
     @ExportMessage
@@ -114,7 +118,7 @@ final class DefaultLongExports {
     static float asFloat(Long receiver) throws UnsupportedMessageException {
         long l = receiver;
         float f = l;
-        if ((long) f == l) {
+        if (l != Long.MAX_VALUE && (long) f == l) {
             return f;
         }
         throw UnsupportedMessageException.create();
@@ -124,7 +128,7 @@ final class DefaultLongExports {
     static double asDouble(Long receiver) throws UnsupportedMessageException {
         long l = receiver;
         double d = l;
-        if ((long) d == l) {
+        if (l != Long.MAX_VALUE && (long) d == l) {
             return l;
         }
         throw UnsupportedMessageException.create();
@@ -141,8 +145,19 @@ final class DefaultLongExports {
     }
 
     @ExportMessage
+    static boolean fitsInBigInteger(Long receiver) {
+        return true;
+    }
+
+    @ExportMessage
     static long asLong(Long receiver) {
         return receiver;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static BigInteger asBigInteger(Long receiver) {
+        return BigInteger.valueOf(receiver);
     }
 
     /*
