@@ -130,15 +130,24 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
                 return false;
             }
             if (forX != forY) {
-                boolean xIsAllocation = forX instanceof AbstractNewObjectNode || forX instanceof AllocatedObjectNode;
-                boolean yIsAllocation = forY instanceof AbstractNewObjectNode || forY instanceof AllocatedObjectNode;
+                boolean xIsNonVirtualAllocation = forX instanceof AbstractNewObjectNode;
+                boolean yIsNonVirtualAllocation = forY instanceof AbstractNewObjectNode;
+                if (xIsNonVirtualAllocation && yIsNonVirtualAllocation) {
+                    // Two distinct non-virtualized allocations can never equal.
+                    return true;
+                }
+
+                boolean xIsVirtualAllocation = forX instanceof AllocatedObjectNode;
+                boolean yIsVirtualAllocation = forY instanceof AllocatedObjectNode;
+                boolean xIsAllocation = xIsNonVirtualAllocation || xIsVirtualAllocation;
+                boolean yIsAllocation = yIsNonVirtualAllocation || yIsVirtualAllocation;
                 assert !xIsAllocation || !(forX instanceof AbstractBoxingNode) : "unexpected class hierarchy change";
                 assert !yIsAllocation || !(forY instanceof AbstractBoxingNode) : "unexpected class hierarchy change";
-                if ((xIsAllocation && (forY instanceof ParameterNode || forY.isConstant())) || (yIsAllocation && (forX instanceof ParameterNode || forX.isConstant()))) {
+
+                boolean xIsParameter = forX instanceof ParameterNode;
+                boolean yIsParameter = forY instanceof ParameterNode;
+                if ((xIsAllocation && (yIsParameter || forY.isConstant())) || (yIsAllocation && (xIsParameter || forX.isConstant()))) {
                     // A new object can never equal a parameter or constant.
-                    return true;
-                } else if (forX instanceof AbstractNewObjectNode && forY instanceof AbstractNewObjectNode) {
-                    // Two distinct non-virtualized allocations can never equal.
                     return true;
                 }
             }
