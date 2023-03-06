@@ -24,45 +24,29 @@
  */
 package org.graalvm.compiler.hotspot.jdk20.test;
 
-import java.io.IOException;
+import static org.junit.Assume.assumeTrue;
 
-import org.graalvm.compiler.api.test.ModuleSupport;
-import org.graalvm.compiler.core.test.SubprocessTest;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.test.AddExports;
-import org.graalvm.compiler.test.SubprocessUtil;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
 
 @AddExports("java.base/jdk.internal.misc")
-public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
+public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
 
-    @Before
-    public void checkJavaAgent() {
-        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
+    public static void testScopedValue() {
+        try {
+            Object[] cache = new Object[1];
+            Method set = Thread.class.getDeclaredMethod("setScopedValueCache", Object[].class);
+            set.setAccessible(true);
+            set.invoke(null, cache);
+
+            Method get = Thread.class.getDeclaredMethod("scopedValueCache");
+            get.setAccessible(true);
+            assumeTrue(cache == get.invoke(null));
+        } catch (ReflectiveOperationException e) {
+            fail(e.getMessage());
+        }
     }
 
-    public void testGetCarrierThread() {
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
-        compileAndInstallSubstitution(Thread.class, "currentCarrierThread");
-
-        CarrierThreadTest.test();
-    }
-
-    public void testScopedValue() {
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
-
-        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-
-        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
-        ScopedValueCacheTest.testScopedValue();
-    }
-
-    @Test
-    public void testInSubprocess() throws IOException, InterruptedException {
-        SubprocessTest.launchSubprocess(getClass(), this::testGetCarrierThread, "--enable-preview");
-        SubprocessTest.launchSubprocess(getClass(), this::testGetCarrierThread, "--enable-preview");
-    }
 }

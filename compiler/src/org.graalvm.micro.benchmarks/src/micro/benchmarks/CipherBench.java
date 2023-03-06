@@ -129,16 +129,19 @@ public abstract class CipherBench extends CryptoBase {
 
         @Param({"1024"}) private int dataSize;
 
+        @Override
         protected int ivLength() {
             return 32;
         }
 
+        @Override
         protected AlgorithmParameterSpec makeParameterSpec() {
             return new GCMParameterSpec(96, iv, 0, 16);
         }
 
         private byte[] aad;
 
+        @Override
         protected void init(Cipher c, int mode, SecretKeySpec ks)
                         throws GeneralSecurityException {
 
@@ -150,6 +153,7 @@ public abstract class CipherBench extends CryptoBase {
             c.updateAAD(aad);
         }
 
+        @Override
         protected void init(Cipher c, int mode, SecretKeySpec ks,
                         Cipher fromCipher) throws GeneralSecurityException {
 
@@ -170,10 +174,12 @@ public abstract class CipherBench extends CryptoBase {
 
         @Param({"1024"}) private int dataSize;
 
+        @Override
         protected int ivLength() {
             return 16;
         }
 
+        @Override
         protected AlgorithmParameterSpec makeParameterSpec() {
             return new IvParameterSpec(iv);
         }
@@ -191,10 +197,12 @@ public abstract class CipherBench extends CryptoBase {
 
         @Param({"1024"}) private int dataSize;
 
+        @Override
         protected int ivLength() {
             return 12;
         }
 
+        @Override
         protected AlgorithmParameterSpec makeParameterSpec() {
             return new IvParameterSpec(iv);
         }
@@ -212,14 +220,17 @@ public abstract class CipherBench extends CryptoBase {
 
         @Param({"1024"}) private int dataSize;
 
+        @Override
         protected int ivLength() {
             return 12;
         }
 
+        @Override
         protected AlgorithmParameterSpec makeParameterSpec() {
             return new ChaCha20ParameterSpec(iv, 0);
         }
 
+        @Override
         protected void init(Cipher c, int mode, SecretKeySpec ks,
                         Cipher fromCipher) throws GeneralSecurityException {
 
