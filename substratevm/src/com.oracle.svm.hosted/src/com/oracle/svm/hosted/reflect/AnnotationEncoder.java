@@ -96,12 +96,12 @@ public class AnnotationEncoder {
                     buf.putU1((boolean) value ? 1 : 0);
                     return;
                 default:
-                    throw GraalError.shouldNotReachHere("Invalid annotation encoding");
+                    throw GraalError.shouldNotReachHere("Invalid annotation encoding"); // ExcludeFromJacocoGeneratedReport
             }
         } else if (memberValue instanceof AnnotationExceptionProxyValue) {
             buf.putS4(encoders.objectConstants.getIndex(((AnnotationExceptionProxyValue) memberValue).getObjectConstant()));
         } else {
-            throw GraalError.shouldNotReachHere("Invalid annotation member type: " + memberValue.getClass());
+            throw GraalError.shouldNotReachHere("Invalid annotation member type: " + memberValue.getClass()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1212,17 +1212,17 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Deprecated
     @Override
     public final boolean equals(Object obj) {
-        throw GraalError.shouldNotReachHere("equals must not be called on words");
+        throw GraalError.shouldNotReachHere("equals must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public final int hashCode() {
-        throw GraalError.shouldNotReachHere("hashCode must not be called on words");
+        throw GraalError.shouldNotReachHere("hashCode must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public String toString() {
-        throw GraalError.shouldNotReachHere("toString must not be called on words");
+        throw GraalError.shouldNotReachHere("toString must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 }
 

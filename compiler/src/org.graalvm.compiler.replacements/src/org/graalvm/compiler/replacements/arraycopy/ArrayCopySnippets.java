@@ -554,7 +554,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 case genericArraycopySnippet:
                     return genericArraycopySnippet;
             }
-            throw GraalError.shouldNotReachHere(workSnippetID.toString());
+            throw GraalError.shouldNotReachHere(workSnippetID.toString()); // ExcludeFromJacocoGeneratedReport
         }
 
         protected SnippetInfo snippet(Providers providers, ArrayCopySnippets receiver, String methodName) {

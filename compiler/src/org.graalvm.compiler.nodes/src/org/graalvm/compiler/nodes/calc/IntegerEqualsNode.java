@@ -138,7 +138,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             } else if (newX.stamp(view) instanceof AbstractPointerStamp && newY.stamp(view) instanceof AbstractPointerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

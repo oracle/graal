@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,6 @@ public class PlaceholderPhase<C> extends BasePhase<C> {
 
     @Override
     public void run(StructuredGraph graph, C context) {
-        throw GraalError.shouldNotReachHere(this.getName() + " for " + phaseClass + " should have been replaced in the phase plan before execution.");
+        throw GraalError.shouldNotReachHere(this.getName() + " for " + phaseClass + " should have been replaced in the phase plan before execution."); // ExcludeFromJacocoGeneratedReport
     }
 }

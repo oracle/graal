@@ -233,7 +233,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
         int jvmciReservedReference0Offset = hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset;
         if (jvmciReservedReference0Offset == -1) {
-            throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available.");
+            throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available."); // ExcludeFromJacocoGeneratedReport
         }
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
             InvocationPlugins p = new InvocationPlugins();

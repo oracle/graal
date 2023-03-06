@@ -1621,7 +1621,7 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             return dynamicNodeSizeEstimate();
         } catch (Exception e) {
-            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

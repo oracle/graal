@@ -99,7 +99,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         } else if (this instanceof UnsignedMinNode) {
             nodeValueMap.setResult(this, gen.emitMathUnsignedMin(op1, op2));
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -139,7 +139,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             long upper = NumUtil.maxUnsigned(xStamp.unsignedUpperBound(), yStamp.unsignedUpperBound());
             return Long.compareUnsigned(upper, NumUtil.maxValueUnsigned(resultBits)) <= 0;
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -361,7 +361,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case NE:
                 return ConditionFlag.NE;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -391,7 +391,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case BT:
                 return ConditionFlag.LO;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

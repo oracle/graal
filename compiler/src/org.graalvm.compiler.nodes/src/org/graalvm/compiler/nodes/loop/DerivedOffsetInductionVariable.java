@@ -142,7 +142,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
                 return o - b;
             }
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     public ValueNode op(ValueNode b, ValueNode o) {
@@ -161,7 +161,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
                 return sub(graph(), o, b, gvn);
             }
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

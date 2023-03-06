@@ -77,7 +77,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         } else if (values[0].isAllowedUsageType(InputType.Guard)) {
             return new GuardPhiNode(merge, values);
         } else {
-            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type.");
+            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type."); // ExcludeFromJacocoGeneratedReport
         }
     }
 

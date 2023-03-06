@@ -324,7 +324,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
                 // at the LIR level
-                throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
+                throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -340,7 +340,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         } else if (divRem instanceof SignedFloatingIntegerRemNode) {
             divRemFixed = graph.add(new SignedRemNode(dividend, divisor, divRem.getGuard()));
         } else {
-            throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem);
+            throw GraalError.shouldNotReachHere("divRem is null or has unexpected type: " + divRem); // ExcludeFromJacocoGeneratedReport
         }
         divRemFixed.setCanDeopt(false);
         divRem.replaceAtUsagesAndDelete(divRemFixed);
@@ -369,7 +369,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 GraalError.guarantee(inputPosition < phi.valueCount(), "Failed to find expected input");
                 fixed = phi.merge().phiPredecessorAt(inputPosition);
             } else {
-                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
+                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n); // ExcludeFromJacocoGeneratedReport
             }
             StructuredGraph graph = n.graph();
             GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));

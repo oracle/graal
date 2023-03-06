@@ -66,7 +66,7 @@ public class EncodedGraph {
 
         public Node getNode() {
             if (orderId != DECODED) {
-                throw GraalError.shouldNotReachHere("Cannot access node while graph is encoded");
+                throw GraalError.shouldNotReachHere("Cannot access node while graph is encoded"); // ExcludeFromJacocoGeneratedReport
             }
             return node;
         }

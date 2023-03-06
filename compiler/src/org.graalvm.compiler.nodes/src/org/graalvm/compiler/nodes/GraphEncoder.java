@@ -261,7 +261,7 @@ public class GraphEncoder {
         if (nodeReferences != null) {
             for (var nodeReference : nodeReferences) {
                 if (nodeReference.orderId != EncodedNodeReference.DECODED) {
-                    throw GraalError.shouldNotReachHere("EncodedNodeReference is not in 'decoded' state");
+                    throw GraalError.shouldNotReachHere("EncodedNodeReference is not in 'decoded' state"); // ExcludeFromJacocoGeneratedReport
                 }
                 nodeReference.orderId = nodeOrder.orderIds.get(nodeReference.node);
                 nodeReference.node = null;

@@ -82,7 +82,7 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
                 gen.append(new AMD64HotSpotMathIntrinsicOp(operation, result, gen.asAllocatable(input), stack));
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         generator.setResult(this, result);
     }

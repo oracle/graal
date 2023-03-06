@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -605,7 +605,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                          * the substitution normally.
                          */
                         if (!tryPerformLICM(invariantInLoop, (FixedNode) edgeDataEqual, licmNodes)) {
-                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual);
+                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual); // ExcludeFromJacocoGeneratedReport
                         }
                     } else {
                         GraalError.guarantee(defBlock.dominates(loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);

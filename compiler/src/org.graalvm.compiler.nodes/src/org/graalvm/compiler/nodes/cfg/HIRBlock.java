@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -857,12 +857,12 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                             return cfg1.blockFor(successor);
                         }
                     }
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                 }
             } else if (endNode instanceof LoopEndNode) {
                 return cfg1.blockFor(((LoopEndNode) endNode).loopBegin());
             } else if (endNode instanceof ControlSinkNode) {
-                throw GraalError.shouldNotReachHere("Sink has no successor");
+                throw GraalError.shouldNotReachHere("Sink has no successor"); // ExcludeFromJacocoGeneratedReport
             } else {
                 return cfg1.blockFor(endNode.successors().first());
             }
@@ -879,31 +879,31 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
         @Override
         public void delete() {
-            throw GraalError.shouldNotReachHere("Cannot delete a fixed block");
+            throw GraalError.shouldNotReachHere("Cannot delete a fixed block"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int getLinearScanNumber() {
-            throw unsupported("have no linear scan properties");
+            throw unsupported("have no linear scan properties"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void setLinearScanNumber(int linearScanNumber) {
-            throw unsupported("have no alignment properties");
+            throw unsupported("have no alignment properties"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public boolean isAligned() {
-            throw unsupported("have no alignment properties");
+            throw unsupported("have no alignment properties"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void setAlign(boolean align) {
-            throw unsupported("have no alignment properties");
+            throw unsupported("have no alignment properties"); // ExcludeFromJacocoGeneratedReport
         }
 
         GraalError unsupported(String reason) {
-            throw GraalError.shouldNotReachHere(getClass().getSimpleName() + "s " + reason);
+            throw GraalError.shouldNotReachHere(getClass().getSimpleName() + "s " + reason); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

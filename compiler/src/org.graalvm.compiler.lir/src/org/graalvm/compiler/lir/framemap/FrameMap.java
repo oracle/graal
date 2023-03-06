@@ -259,7 +259,7 @@ public abstract class FrameMap {
         GraalError.guarantee(sizeInBytes > 0, "Invalid size");
         GraalError.guarantee(alignmentInBytes > 0 && CodeUtil.isPowerOf2(alignmentInBytes), "Invalid alignment");
         if (alignmentInBytes > getTarget().stackAlignment) {
-            throw GraalError.shouldNotReachHere("Stack memory alignment cannot be larger than OS alignment of stack frames: " + alignmentInBytes + " > " + getTarget().stackAlignment);
+            throw GraalError.shouldNotReachHere("Stack memory alignment cannot be larger than OS alignment of stack frames: " + alignmentInBytes + " > " + getTarget().stackAlignment); // ExcludeFromJacocoGeneratedReport
         }
 
         spillSize = NumUtil.roundUp(spillSize + sizeInBytes, alignmentInBytes);

@@ -83,7 +83,7 @@ public class ConstantStackCastTest extends LIRTest {
                 JavaConstant byteConst = JavaConstant.forByte((byte) c.asInt());
                 return new ConstantValue(srcKind, byteConst);
             } else {
-                throw GraalError.shouldNotReachHere("Kind not supported: " + srcKind);
+                throw GraalError.shouldNotReachHere("Kind not supported: " + srcKind); // ExcludeFromJacocoGeneratedReport
             }
         }
 

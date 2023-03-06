@@ -217,10 +217,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return universe.lookup((ResolvedJavaMethod) bsmGetMethod.invoke(wrapped));
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -229,10 +229,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return (boolean) bsmIsInvokeDynamic.invoke(wrapped);
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -241,10 +241,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return (String) bsmGetName.invoke(wrapped);
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -253,10 +253,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return universe.lookup((JavaConstant) bsmGetType.invoke(wrapped));
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -266,10 +266,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     List<?> original = (List<?>) bsmGetStaticArguments.invoke(wrapped);
                     return original.stream().map(e -> universe.lookup((JavaConstant) e)).collect(Collectors.toList());
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

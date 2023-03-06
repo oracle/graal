@@ -164,7 +164,7 @@ public class CardTableBarrierSet implements BarrierSet {
         } else if (n instanceof ArrayRangeWrite) {
             return barrier instanceof SerialArrayRangeWriteBarrier && matches((ArrayRangeWrite) n, (SerialArrayRangeWriteBarrier) barrier);
         } else {
-            throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass());
+            throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

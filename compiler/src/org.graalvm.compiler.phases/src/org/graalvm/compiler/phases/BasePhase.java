@@ -395,7 +395,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (name.contains(".svm.") || name.contains(".truffle.")) {
                 // Not yet implemented by SVM (GR-41437) or Truffle (GR-39494).
             } else {
-                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get());
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get()); // ExcludeFromJacocoGeneratedReport
             }
         }
 

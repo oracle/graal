@@ -1028,7 +1028,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 case ZMM:
                     return l512features != null && features.containsAll(l512features);
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1181,7 +1181,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else if (avxSize == AVXSize.YMM) {
                 return l256feature != null && features.contains(l256feature) && extendedFeatureCheck;
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -2326,7 +2326,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return NLT_UQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     switch (condition) {
@@ -2343,7 +2343,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return GE_OQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }

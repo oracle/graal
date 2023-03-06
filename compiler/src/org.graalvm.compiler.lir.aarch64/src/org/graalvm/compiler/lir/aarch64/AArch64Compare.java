@@ -233,7 +233,7 @@ public class AArch64Compare {
                     masm.neon.cmhiVVV(size, eSize, dst, right, left);
                     break;
                 default:
-                    throw GraalError.unimplemented();
+                    throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -280,7 +280,7 @@ public class AArch64Compare {
                     masm.neon.cmgeZeroVV(size, eSize, dst, src);
                     break;
                 default:
-                    throw GraalError.unimplemented();
+                    throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -414,7 +414,7 @@ public class AArch64Compare {
                     masm.neon.facgtVVV(size, eSize, dst, right, left);
                     break;
                 default:
-                    throw GraalError.unimplemented();
+                    throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
             }
             if (unorderedIsTrue) {
                 /* Negate result if the negated condition was performed. */
@@ -469,7 +469,7 @@ public class AArch64Compare {
                     masm.neon.fcmgeZeroVV(size, eSize, dst, src);
                     break;
                 default:
-                    throw GraalError.unimplemented();
+                    throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
             }
             if (unorderedIsTrue) {
                 /* Negate result if the negated condition was performed. */

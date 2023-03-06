@@ -894,7 +894,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public void initialize() {
         if (!wrapped.isInitialized()) {
-            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName());
+            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1040,7 +1040,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * available to implement it for JIT compilation at image run time. So we want to make sure
          * that Graal is not using this method, and only resolveConcreteMethod instead.
          */
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

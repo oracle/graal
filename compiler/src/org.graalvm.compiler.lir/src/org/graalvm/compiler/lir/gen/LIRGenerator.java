@@ -585,12 +585,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

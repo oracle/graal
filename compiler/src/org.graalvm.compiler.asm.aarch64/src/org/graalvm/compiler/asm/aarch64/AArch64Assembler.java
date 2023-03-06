@@ -1239,7 +1239,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 case AL:
                 case NV:
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1552,7 +1552,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
             case 128:
                 return 4;
         }
-        throw GraalError.shouldNotReachHere("Unexpected transfer size.");
+        throw GraalError.shouldNotReachHere("Unexpected transfer size."); // ExcludeFromJacocoGeneratedReport
     }
 
     /* Load-Store Single Register (5.3.1) */
@@ -1722,7 +1722,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 break;
             default:
                 /* Invalid addressing mode provided. */
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         /* The prefetch mode is encoded within rt. */
@@ -1791,7 +1791,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 emitInt(memOp | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
-                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
+                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1849,7 +1849,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return (memOp | LoadStorePairPreIndexOp);
             default:
-                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
+                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -103,7 +103,7 @@ public class AArch64Convert {
                     masm.fcvt(toSize, fromSize, result, input);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -290,7 +290,7 @@ public class AArch64Convert {
                 case F2L:
                 case L2F:
                 default:
-                    throw GraalError.shouldNotReachHere("Unsupported conversion requested.");
+                    throw GraalError.shouldNotReachHere("Unsupported conversion requested."); // ExcludeFromJacocoGeneratedReport
             }
 
         }

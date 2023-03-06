@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,7 +144,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     @Override
     public FloatingAccessNode asFloatingNode() {
         if (ordersMemoryAccesses() || !canFloat()) {
-            throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node.");
+            throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node."); // ExcludeFromJacocoGeneratedReport
         }
         try (DebugCloseable position = withNodeSourcePosition()) {
             return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(NodeView.DEFAULT), getGuard(), getBarrierType()));
@@ -263,7 +263,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        throw GraalError.shouldNotReachHere("unexpected ReadNode before PEA");
+        throw GraalError.shouldNotReachHere("unexpected ReadNode before PEA"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

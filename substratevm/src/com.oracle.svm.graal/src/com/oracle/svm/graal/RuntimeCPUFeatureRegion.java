@@ -163,7 +163,7 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
                 LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
                 generator.append(new AArch64CPUFeatureRegionOp.AArch64CPUFeatureRegionEnterOp(checkedCast(features, AArch64.CPUFeature.class)));
             } else {
-                throw GraalError.shouldNotReachHere("unsupported architecture " + arch);
+                throw GraalError.shouldNotReachHere("unsupported architecture " + arch); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -192,7 +192,7 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
                 LIRGenerator generator = (LIRGenerator) tool.getLIRGeneratorTool();
                 generator.append(new AArch64CPUFeatureRegionOp.AArch64CPUFeatureRegionLeaveOp());
             } else {
-                throw GraalError.shouldNotReachHere("unsupported architecture " + arch);
+                throw GraalError.shouldNotReachHere("unsupported architecture " + arch); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

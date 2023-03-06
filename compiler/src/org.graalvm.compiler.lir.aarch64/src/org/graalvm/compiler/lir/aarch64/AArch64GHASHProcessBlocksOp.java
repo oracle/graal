@@ -541,7 +541,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.insXX(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -651,7 +651,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.eorVVV(ASIMDSize.FullReg, result, lo, t0);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             // Sprinkle load instructions into the generated instructions

@@ -157,7 +157,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             if (maxIterations == -1) {
                 maxIterations = l.getDepth();
             } else if (iterations > maxIterations) {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             l = l.getOutmostLoop();
