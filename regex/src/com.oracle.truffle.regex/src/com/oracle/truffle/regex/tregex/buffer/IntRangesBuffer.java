@@ -92,6 +92,20 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
         add(hi);
     }
 
+    /**
+     * Adds a new value. The value can be adjacent to the last range, in which case the last range
+     * is extended.
+     */
+    public void addSingleValue(int newValue) {
+        assert isEmpty() || leftOf(size() - 1, newValue, newValue);
+        if (!isEmpty() && adjacent(size() - 1, newValue, newValue)) {
+            buf[(size() - 1) * 2 + 1] = newValue;
+        } else {
+            add(newValue);
+            add(newValue);
+        }
+    }
+
     public void appendRangeAllowAdjacent(int lo, int hi) {
         assert isEmpty() || leftOf(size() - 1, lo, hi);
         add(lo);

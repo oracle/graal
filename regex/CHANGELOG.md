@@ -10,6 +10,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 * Dropped support for `TruffleObject`s with characters/code points as array elements.
 * Added support for conditional back-references (e.g. `(foo)(?(1)bar|no_foo)`) in Python and Ruby regular expressions.
 * Added support for case-insensitive back-references in Python and Ruby regular expressions.
+* Added support for locale-sensitive Python regular expressions.
 
 ## Version 22.2.0
 
