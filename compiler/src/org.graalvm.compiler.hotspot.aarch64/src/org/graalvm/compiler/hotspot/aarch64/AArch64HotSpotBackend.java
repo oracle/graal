@@ -274,7 +274,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 // The following code sequence must be emitted in exactly this fashion as HotSpot
                 // will check that the barrier is the expected code sequence.
                 crb.recordMark(HotSpotMarkId.ENTRY_BARRIER_PATCH);
-                DataSection.Data data = crb.dataBuilder.createPrivateData(4, 4);
+                DataSection.Data data = crb.dataBuilder.createMutableData(4, 4);
                 masm.ldr(32, scratch1, (AArch64Address) crb.recordDataSectionReference(data));
 
                 if (config.nmethodEntryBarrierConcurrentPatch) {

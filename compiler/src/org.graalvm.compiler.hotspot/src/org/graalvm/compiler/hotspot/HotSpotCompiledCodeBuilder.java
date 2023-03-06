@@ -107,6 +107,16 @@ public class HotSpotCompiledCodeBuilder {
         DataSection data = compResult.getDataSection();
         byte[] dataSection = new byte[data.getSectionSize()];
 
+        // Ensure the mutable data item for the nmethod entry barrier is the first thing in the data
+        // section.
+        boolean first = true;
+        for (DataSection.Data item : data) {
+            if (item.isMutable()) {
+                GraalError.guarantee(first, "mutable item must be first");
+            }
+            first = false;
+        }
+
         ByteBuffer buffer = ByteBuffer.wrap(dataSection).order(ByteOrder.nativeOrder());
         List<DataPatch> patches = new ArrayList<>();
         data.buildDataSection(buffer, (position, vmConstant) -> {

@@ -50,12 +50,17 @@ public abstract class DataBuilder {
      * Create a data object which isn't shared with other entries. This is suitable for creating
      * variable slots in the data section.
      */
-    public Data createPrivateData(int alignment, int size) {
+    public Data createMutableData(int alignment, int size) {
         assert canForceAlignmentOf(alignment);
         return new ZeroData(alignment, size) {
             @Override
             public boolean equals(Object obj) {
                 return obj == this;
+            }
+
+            @Override
+            public boolean isMutable() {
+                return true;
             }
         };
     }
