@@ -122,7 +122,7 @@ public final class ComponentInfo {
     /**
      * Implicitly accepted license.
      */
-    private Boolean implicitlyAccepted = null;
+    private boolean implicitlyAccepted = false;
 
     private StabilityLevel stability = StabilityLevel.Undefined;
 
@@ -275,11 +275,11 @@ public final class ComponentInfo {
         this.licenseType = licenseType;
     }
 
-    public Boolean isImplicitlyAccepted() {
+    public boolean isImplicitlyAccepted() {
         return implicitlyAccepted;
     }
 
-    public void setImplicitlyAccepted(Boolean implicitlyAccepted) {
+    public void setImplicitlyAccepted(boolean implicitlyAccepted) {
         this.implicitlyAccepted = implicitlyAccepted;
     }
 

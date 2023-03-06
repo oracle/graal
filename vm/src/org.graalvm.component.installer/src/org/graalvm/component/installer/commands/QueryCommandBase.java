@@ -227,7 +227,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
         } else {
             org = u.getHost();
         }
-        Boolean implicitlyAccepted = info.isImplicitlyAccepted();
+        boolean implicitlyAccepted = info.isImplicitlyAccepted();
         if (isJson) {
             jsonComponent.put(JSON_KEY_COMPONENT_ID, shortenComponentId(info));
             jsonComponent.put(JSON_KEY_COMPONENT_VERSION, info.getVersion().displayString());
@@ -240,13 +240,13 @@ public abstract class QueryCommandBase implements InstallerCommand {
             String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
             String line = String.format(feedback.l10n(fmt),
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback),
-                            implicitlyAccepted == null ? "" : implicitlyAccepted);
+                            implicitlyAccepted);
             feedback.verbatimOut(line, false);
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback), implicitlyAccepted == null ? "" : implicitlyAccepted);
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback), implicitlyAccepted);
         }
     }
 
