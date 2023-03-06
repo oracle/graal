@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -430,7 +430,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         throw shouldNotReachHere("field not found: " + fieldName);
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unused"})
     public AnalysisType addRootStaticField(Class<?> clazz, String fieldName) {
         addRootClass(clazz, false, false);
         Field reflectField;
@@ -441,6 +441,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
             fieldFlow.addUse(this, field.getStaticFieldFlow());
             return field.getType();
+
         } catch (NoSuchFieldException e) {
             throw shouldNotReachHere("field not found: " + fieldName);
         }

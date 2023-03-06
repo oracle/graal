@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import org.graalvm.home.Version;
+import org.graalvm.polyglot.SandboxPolicy;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -200,7 +201,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (optionValues == null) {
             synchronized (engine.lock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false);
                 }
             }
         }
@@ -306,5 +307,14 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
 
     String getWebsite() {
         return websiteSubstitutions(cache.getWebsite());
+    }
+
+    void validateSandbox(SandboxPolicy sandboxPolicy) {
+        SandboxPolicy languageSandboxPolicy = cache.getSandboxPolicy();
+        if (sandboxPolicy.isStricterThan(languageSandboxPolicy)) {
+            throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
+                            String.format("The language %s can only be used up to the %s sandbox policy.", getId(), languageSandboxPolicy),
+                            String.format("do not enable %s language by removing it from a list of permitted languages in the Context.newBuilder(String...)", getId())));
+        }
     }
 }

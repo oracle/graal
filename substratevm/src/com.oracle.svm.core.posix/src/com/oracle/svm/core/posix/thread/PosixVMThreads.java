@@ -60,7 +60,7 @@ public final class PosixVMThreads extends VMThreads {
         return Pthread.pthread_self();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected void joinNoTransition(OSThreadHandle osThreadHandle) {
         Pthread.pthread_t pthread = (Pthread.pthread_t) osThreadHandle;

@@ -148,7 +148,7 @@ public final class DeoptimizedFrame {
             this.offset = offset;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected abstract void write(Deoptimizer.TargetContent targetContent);
     }
 
@@ -252,7 +252,7 @@ public final class DeoptimizedFrame {
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent) {
             targetContent.writeLong(offset, returnAddress);
         }
@@ -270,7 +270,7 @@ public final class DeoptimizedFrame {
             this.valueRelativeToNewSp = valueRelativeToNewSp;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent, Pointer newSp) {
             targetContent.writeWord(offset, newSp.add(WordFactory.unsigned(valueRelativeToNewSp)));
         }
@@ -325,12 +325,12 @@ public final class DeoptimizedFrame {
      * The frame size of the deoptimized method. This is the size of the physical stack frame that
      * is still present on the stack until the actual stack frame rewriting happens.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getSourceEncodedFrameSize() {
         return sourceEncodedFrameSize;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getSourceTotalFrameSize() {
         return CodeInfoQueryResult.getTotalFrameSize(sourceEncodedFrameSize);
     }
@@ -357,7 +357,7 @@ public final class DeoptimizedFrame {
      * The new stack content for the target methods. In the second step of deoptimization this
      * content is built from the entries of {@link VirtualFrame}s.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected Deoptimizer.TargetContent getTargetContent() {
         return targetContent;
     }
@@ -366,7 +366,7 @@ public final class DeoptimizedFrame {
      * Returns the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not moved
      * by the GC. The {@link DeoptimizedFrame} is accessed during GC when walking the stack.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PinnedObject getPin() {
         return pin;
     }

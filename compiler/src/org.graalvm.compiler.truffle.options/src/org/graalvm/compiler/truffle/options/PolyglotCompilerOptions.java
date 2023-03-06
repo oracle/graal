@@ -36,6 +36,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
@@ -248,7 +249,7 @@ public final class PolyglotCompilerOptions {
     // Compilation
 
     @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.", //
-                    usageSyntax = "latency|throughput", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+                    usageSyntax = "latency|throughput", category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     @Option(help = "Enable or disable Truffle compilation.", usageSyntax = "true|false", category = OptionCategory.EXPERT) //

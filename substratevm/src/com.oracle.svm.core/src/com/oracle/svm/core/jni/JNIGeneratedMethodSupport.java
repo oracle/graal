@@ -65,27 +65,27 @@ public final class JNIGeneratedMethodSupport {
         return JNIThreadLocalEnvironment.getAddress();
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
         return JNIObjectHandles.createLocal(obj);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Object unboxHandle(JNIObjectHandle handle) {
         return JNIObjectHandles.getObject(handle);
     }
 
-    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
-    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Object getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
 
-    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Object getStaticObjectFieldsArray() {
         return StaticFieldsSupport.getStaticObjectFields();
     }

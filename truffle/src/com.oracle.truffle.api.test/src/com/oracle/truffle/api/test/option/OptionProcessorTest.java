@@ -50,6 +50,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -60,6 +61,7 @@ import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -304,6 +306,38 @@ public class OptionProcessorTest {
     }
 
     @Test
+    public void testSandboxPolicy() {
+        TruffleOptionDescriptors descriptors = new SandboxOptionDescriptors();
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.DefaultOption"));
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.TrustedOption"));
+        assertEquals(SandboxPolicy.CONSTRAINED, descriptors.getSandboxPolicy("sandbox.ConstrainedOption"));
+        assertEquals(SandboxPolicy.ISOLATED, descriptors.getSandboxPolicy("sandbox.IsolatedOption"));
+        assertEquals(SandboxPolicy.UNTRUSTED, descriptors.getSandboxPolicy("sandbox.UntrustedOption"));
+
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.DefaultOptionMap"));
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.TrustedOptionMap"));
+        assertEquals(SandboxPolicy.CONSTRAINED, descriptors.getSandboxPolicy("sandbox.ConstrainedOptionMap"));
+        assertEquals(SandboxPolicy.ISOLATED, descriptors.getSandboxPolicy("sandbox.IsolatedOptionMap"));
+        assertEquals(SandboxPolicy.UNTRUSTED, descriptors.getSandboxPolicy("sandbox.UntrustedOptionMap"));
+
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.DefaultOptionMap.Key"));
+        assertEquals(SandboxPolicy.TRUSTED, descriptors.getSandboxPolicy("sandbox.TrustedOptionMap.Key"));
+        assertEquals(SandboxPolicy.CONSTRAINED, descriptors.getSandboxPolicy("sandbox.ConstrainedOptionMap.Key"));
+        assertEquals(SandboxPolicy.ISOLATED, descriptors.getSandboxPolicy("sandbox.IsolatedOptionMap.Key"));
+        assertEquals(SandboxPolicy.UNTRUSTED, descriptors.getSandboxPolicy("sandbox.UntrustedOptionMap.Key"));
+
+        AbstractPolyglotTest.assertFails(() -> descriptors.getSandboxPolicy("sandbox.UnknownOption"), AssertionError.class,
+                        (ae) -> assertEquals("Unknown option sandbox.UnknownOption", ae.getMessage()));
+        AbstractPolyglotTest.assertFails(() -> descriptors.getSandboxPolicy("sandbox.DefaultOptionMapKey"), AssertionError.class,
+                        (ae) -> assertEquals("Unknown option sandbox.DefaultOptionMapKey", ae.getMessage()));
+
+        TruffleOptionDescriptors descriptors2 = new SandboxSingleOptionOptionDescriptors();
+        assertEquals(SandboxPolicy.CONSTRAINED, descriptors2.getSandboxPolicy("sandbox.SingleOption"));
+        AbstractPolyglotTest.assertFails(() -> descriptors2.getSandboxPolicy("sandbox.UnknownOption"), AssertionError.class,
+                        (ae) -> assertEquals("Unknown option sandbox.UnknownOption", ae.getMessage()));
+    }
+
+    @Test
     public void testOptionValueEqualsAndHashCode() {
         // options are never equals if different engines are used.
         Context c0 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
@@ -417,6 +451,45 @@ public class OptionProcessorTest {
         @Option(help = "A", category = OptionCategory.USER, deprecated = true, deprecationMessage = "Deprecated with no replacement.") //
         static final OptionKey<String> ValidDeprecationMessage = new OptionKey<>("defaultValue");
 
+    }
+
+    @Option.Group("sandbox")
+    public static final class Sandbox {
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with default policy")//
+        static final OptionKey<Boolean> DefaultOption = new OptionKey<>(false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with trusted policy", sandbox = SandboxPolicy.TRUSTED)//
+        static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<Boolean> ConstrainedOption = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with isolated policy", sandbox = SandboxPolicy.ISOLATED)//
+        static final OptionKey<Boolean> IsolatedOption = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with untrusted policy", sandbox = SandboxPolicy.UNTRUSTED)//
+        static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option map with default policy")//
+        static final OptionKey<OptionMap<String>> DefaultOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option map with trusted policy", sandbox = SandboxPolicy.TRUSTED)//
+        static final OptionKey<OptionMap<String>> TrustedOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option map with constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<OptionMap<String>> ConstrainedOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option map with isolated policy", sandbox = SandboxPolicy.ISOLATED)//
+        static final OptionKey<OptionMap<String>> IsolatedOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option map with untrusted policy", sandbox = SandboxPolicy.UNTRUSTED)//
+        static final OptionKey<OptionMap<String>> UntrustedOptionMap = OptionKey.mapOf(String.class);
+    }
+
+    @Option.Group("sandbox")
+    public static final class SandboxSingleOption {
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option with constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<Boolean> SingleOption = new OptionKey<>(false);
     }
 
     public enum EnumValue {

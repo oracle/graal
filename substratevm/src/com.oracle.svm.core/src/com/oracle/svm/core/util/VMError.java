@@ -80,14 +80,14 @@ public final class VMError {
         throw new HostedError(msg, cause);
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition) {
         if (!condition) {
             throw shouldNotReachHere("guarantee failed");
         }
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition, String msg) {
         if (!condition) {
             throw shouldNotReachHere(msg);

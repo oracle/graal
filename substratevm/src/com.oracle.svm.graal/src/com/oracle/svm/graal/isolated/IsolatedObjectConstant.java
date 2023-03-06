@@ -45,7 +45,7 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         assert handle.notEqual(IsolatedHandles.nullHandle());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ClientHandle<?> getHandle() {
         return handle;
     }

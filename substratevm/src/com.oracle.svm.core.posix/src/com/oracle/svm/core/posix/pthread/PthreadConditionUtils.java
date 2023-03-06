@@ -75,12 +75,12 @@ public final class PthreadConditionUtils {
         return Platform.includedIn(Platform.LINUX.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int initConditionWithAbsoluteTime(pthread_cond_t cond) {
         return Pthread.pthread_cond_init(cond, WordFactory.nullPointer());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int initConditionWithRelativeTime(pthread_cond_t cond) {
         pthread_condattr_t attr = StackValue.get(pthread_condattr_t.class);
         int status = Pthread.pthread_condattr_init(attr);

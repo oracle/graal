@@ -41,8 +41,6 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
     protected final BytecodePosition allocationLabel;
     /** The context of the heap object. */
     protected final AnalysisContext allocationContext;
-    /** The context of the method allocating this object. */
-    protected AnalysisContext allocatorContext;
 
     /**
      * Creates the allocation sensitive object corresponding to a clone for an allocation site. It
