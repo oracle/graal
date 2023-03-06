@@ -386,7 +386,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected Object beforeNodeIdChange(Node node) {
         if (inliningLog != null && node instanceof Invokable) {
-            return inliningLog.removeLeafCallsite((Invokable) node);
+            return inliningLog.unregisterLeafCallsite((Invokable) node);
         }
         return null;
     }
@@ -394,7 +394,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected void afterNodeIdChange(Node node, Object value) {
         if (inliningLog != null && node instanceof Invokable) {
-            inliningLog.addLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
+            inliningLog.registerLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
         }
     }
 
