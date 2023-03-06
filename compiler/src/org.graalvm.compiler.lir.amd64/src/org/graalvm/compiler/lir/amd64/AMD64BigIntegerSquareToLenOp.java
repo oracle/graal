@@ -158,8 +158,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         Label lFirstLoop = new Label();
         Label lFirstLoopExit = new Label();
 
-        masm.testl(xlen, 1);
-        masm.jccb(ConditionFlag.Zero, lFirstLoop); // jump if xlen is even
+        // jump if xlen is even
+        masm.testlAndJcc(xlen, 1, ConditionFlag.Zero, lFirstLoop, true);
 
         // Square and right shift by 1 the odd element using 32 bit multiply
         masm.movl(raxReg, new AMD64Address(x, tmp1, Stride.S4, 0));
@@ -172,8 +172,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         // Square and right shift by 1 the rest using 64 bit multiply
         masm.bind(lFirstLoop);
-        masm.cmpptr(tmp1, xlen);
-        masm.jccb(ConditionFlag.Equal, lFirstLoopExit);
+
+        masm.cmpqAndJcc(tmp1, xlen, ConditionFlag.Equal, lFirstLoopExit, true);
 
         // Square
         masm.movq(raxReg, new AMD64Address(x, tmp1, Stride.S4, 0));
@@ -208,8 +208,7 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFourthLoop);
         masm.jccb(ConditionFlag.CarryClear, lFourthLoopExit);
-        masm.subl(zlen, 2);
-        masm.jccb(ConditionFlag.Negative, lFourthLoopExit);
+        masm.sublAndJcc(zlen, 2, ConditionFlag.Negative, lFourthLoopExit, true);
         masm.addq(new AMD64Address(z, zlen, Stride.S4, 0), tmp1);
         masm.jmp(lFourthLoop);
         masm.bind(lFourthLoopExit);
@@ -244,15 +243,14 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 
         masm.bind(lFifthLoop);
         masm.decl(zidx);  // Use decl to preserve carry flag
-        masm.decl(zidx);
-        masm.jccb(ConditionFlag.Negative, lFifthLoopExit);
+        masm.declAndJcc(zidx, ConditionFlag.Negative, lFifthLoopExit, true);
 
         if (useBMI2Instructions(masm)) {
             masm.movq(value, new AMD64Address(z, zidx, Stride.S4, 0));
             masm.rclq(value, 1);
             masm.rorxq(value, value, 32);
-            masm.movq(new AMD64Address(z, zidx, Stride.S4, 0), value);  // Store back in big endian
-                                                                        // form
+            // Store back in big endian form
+            masm.movq(new AMD64Address(z, zidx, Stride.S4, 0), value);
         } else {
             // clear newCarry
             masm.xorl(newCarry, newCarry);
@@ -321,8 +319,7 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         masm.subl(len, 2);
         masm.push(zlen);
         masm.push(len);
-        masm.cmpl(len, 0);
-        masm.jccb(ConditionFlag.LessEqual, lSecondLoopExit);
+        masm.cmplAndJcc(len, 0, ConditionFlag.LessEqual, lSecondLoopExit, true);
 
         // Multiply an array by one 64 bit long.
         if (useBMI2Instructions(masm)) {
@@ -335,10 +332,8 @@ public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
         }
 
         masm.bind(lThirdLoop);
-        masm.decrementl(len);
-        masm.jccb(ConditionFlag.Negative, lThirdLoopExit);
-        masm.decrementl(len);
-        masm.jccb(ConditionFlag.Negative, lLastX);
+        masm.declAndJcc(len, ConditionFlag.Negative, lThirdLoopExit, true);
+        masm.declAndJcc(len, ConditionFlag.Negative, lLastX, true);
 
         masm.movq(op1, new AMD64Address(x, len, Stride.S4, 0));
         masm.rorq(op1, 32);
