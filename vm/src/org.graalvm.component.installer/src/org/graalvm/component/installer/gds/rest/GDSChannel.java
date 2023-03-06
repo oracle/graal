@@ -103,8 +103,7 @@ public class GDSChannel extends GraalChannelBase {
     }
 
     protected boolean needToken(ComponentInfo info) {
-        Boolean implicitlyAccepted = info.isImplicitlyAccepted();
-        return implicitlyAccepted == null ? true : !implicitlyAccepted;
+        return !info.isImplicitlyAccepted();
     }
 
     /**

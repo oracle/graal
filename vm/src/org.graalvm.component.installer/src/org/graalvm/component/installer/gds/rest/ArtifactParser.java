@@ -140,8 +140,8 @@ class ArtifactParser {
         return json.getString(JSON_LICENSE_LABEL);
     }
 
-    private Boolean getIsImplicitlyAccepted() {
-        Boolean out = null;
+    private boolean getIsImplicitlyAccepted() {
+        boolean out = false;
         if (json.has(JSON_LICENSE_IMPLICITLY_ACCEPTED)) {
             out = json.getBoolean(JSON_LICENSE_IMPLICITLY_ACCEPTED);
         }
