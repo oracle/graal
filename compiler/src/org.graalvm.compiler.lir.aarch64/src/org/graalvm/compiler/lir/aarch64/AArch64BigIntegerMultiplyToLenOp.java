@@ -361,7 +361,7 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         }
     }
 
-    private static void multiplyToLen(AArch64MacroAssembler masm,
+    static void multiplyToLen(AArch64MacroAssembler masm,
                     Register x,
                     Register xlen,
                     Register y,

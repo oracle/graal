@@ -37,6 +37,7 @@ import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
@@ -65,6 +66,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 GHASHProcessBlocksNode.class,
                 BigIntegerMultiplyToLenNode.class,
                 BigIntegerMulAddNode.class,
+                BigIntegerSquareToLenNode.class,
 })
 public final class IntrinsicStubs {
 }
