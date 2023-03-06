@@ -694,6 +694,9 @@ suite = {
         "java.instrument" : [
           "sun.instrument",
         ],
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
       },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
@@ -969,6 +972,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.jtt",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
@@ -1383,6 +1391,11 @@ suite = {
       "requires" : [
         "jdk.unsupported",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,AMD64,Test",
