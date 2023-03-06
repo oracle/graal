@@ -238,12 +238,13 @@ public class SubstrateJVM {
         threadRepo.teardown();
         stackTraceRepo.teardown();
         methodRepo.teardown();
+        typeRepo.teardown();
 
         initialized = false;
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(long eventTypeId, int skipCount) {
         if (isStackTraceEnabled(eventTypeId)) {
             return getStackTraceId(skipCount);
@@ -255,12 +256,12 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#getStackTraceId}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(int skipCount) {
         return stackTraceRepo.getStackTraceId(skipCount);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(JfrEvent eventType, int skipCount) {
         return getStackTraceId(eventType.getId(), skipCount);
     }
@@ -332,7 +333,7 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#getClassId}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
         return typeRepo.getClassId(clazz);
     }
@@ -406,8 +407,8 @@ public class SubstrateJVM {
         JfrExecutionSampler.singleton().setIntervalMillis(intervalMillis);
 
         if (intervalMillis > 0) {
-            SubstrateJVM.get().setStackTraceEnabled(type, true);
-            SubstrateJVM.get().setEnabled(type, true);
+            setStackTraceEnabled(type, true);
+            setEnabled(type, true);
         }
 
         updateSampler();

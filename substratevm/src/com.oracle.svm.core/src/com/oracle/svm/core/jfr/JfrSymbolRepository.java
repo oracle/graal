@@ -37,8 +37,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
+import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -66,12 +66,12 @@ public class JfrSymbolRepository implements JfrRepository {
         epochData1.teardown();
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch) {
         return getSymbolId(imageHeapString, previousEpoch, false);
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch, boolean replaceDotWithSlash) {
         if (imageHeapString == null) {
             return 0;
@@ -129,7 +129,7 @@ public class JfrSymbolRepository implements JfrRepository {
     }
 
     @Override
-    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flush) {
         mutex.lockNoTransition();
         try {
@@ -150,7 +150,7 @@ public class JfrSymbolRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private JfrSymbolEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
@@ -207,7 +207,9 @@ public class JfrSymbolRepository implements JfrRepository {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected UninterruptibleEntry copyToHeap(UninterruptibleEntry symbolOnStack) {
             JfrSymbol result = (JfrSymbol) copyToHeap(symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
-            result.setId(++nextId);
+            if (result.isNonNull()) {
+                result.setId(++nextId);
+            }
             return result;
         }
     }

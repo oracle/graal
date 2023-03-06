@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.collections.UninterruptibleEntry;
 
 public final class JfrVisitedTable extends AbstractUninterruptibleHashtable {
 

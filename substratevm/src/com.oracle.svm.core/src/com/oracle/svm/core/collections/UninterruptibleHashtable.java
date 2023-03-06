@@ -25,12 +25,10 @@
 package com.oracle.svm.core.collections;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 
 /**
  * Common interface for all uninterruptible hashtable implementations. Please note that we don't use
- * generics as this sometimes breaks the {@link Uninterruptible} annotation when ECJ is used for
- * compiling the Java sources.
+ * generics as this may break the {@link Uninterruptible} annotations.
  */
 public interface UninterruptibleHashtable {
     /**

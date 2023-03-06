@@ -107,8 +107,7 @@ public class JfrTraceId {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void tag(int index, long value) {
         JfrTraceIdMap map = JfrTraceIdMap.singleton();
-        long id = map.getId(index);
-        map.setId(index, id | value);
+        map.tag(index, value);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

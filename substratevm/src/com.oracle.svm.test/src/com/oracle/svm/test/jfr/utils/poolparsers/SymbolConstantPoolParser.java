@@ -33,6 +33,12 @@ import com.oracle.svm.test.jfr.utils.RecordingInput;
 public class SymbolConstantPoolParser extends ConstantPoolParser {
 
     @Override
+    public void reset() {
+        /* 0 is the null symbol. */
+        foundIds.add(0L);
+    }
+
+    @Override
     public void parse(RecordingInput input) throws IOException {
         int numberOfSymbols = input.readInt();
         for (int i = 0; i < numberOfSymbols; i++) {

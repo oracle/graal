@@ -45,6 +45,10 @@ import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Repository that collects all metadata about threads and thread groups.
+ *
+ * Note that the JFR trace ID for threads is the only trace ID that is not epoch-specific: the trace
+ * ID is stable over epochs and all alive threads are re-registered right away when the epoch
+ * changes.
  */
 public final class JfrThreadRepository implements JfrRepository {
     private static final int VIRTUAL_THREAD_GROUP_ID = 1;

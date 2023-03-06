@@ -34,7 +34,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 
 /**
  * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.

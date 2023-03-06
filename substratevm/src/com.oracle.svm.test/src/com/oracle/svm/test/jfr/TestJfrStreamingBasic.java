@@ -29,7 +29,6 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -47,7 +46,6 @@ import jdk.jfr.consumer.RecordedThread;
  * dump is readable and events can be read that match the events that were streamed.
  */
 public class TestJfrStreamingBasic extends JfrStreamingTest {
-    private static final int WAIT_TIMEOUT = 20;
     private static final int THREADS = 3;
     private static final int EXPECTED_EVENTS = THREADS * 2;
 
@@ -61,14 +59,13 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         int count = 0;
-        List<RecordedEvent> events = getEvents();
         for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
-                count++;
+                String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
                 seenThreads.remove(eventThread);
+                count++;
             }
         }
         assertEquals(EXPECTED_EVENTS, count);
@@ -77,14 +74,11 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
 
     @Test
     public void test() throws Exception {
-        createStream();
-        stream.enable("jdk.JavaMonitorWait").withThreshold(Duration.ofMillis(WAIT_TIMEOUT - 1)).withStackTrace();
-        stream.onEvent("jdk.JavaMonitorWait", event -> {
-            String thread = event.getThread("eventThread").getJavaName();
-            if (!event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
-                return;
+        stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+                String thread = event.getThread("eventThread").getJavaName();
+                seenThreads.add(thread);
             }
-            seenThreads.add(thread);
         });
 
         Runnable eventEmitter = () -> {
@@ -99,12 +93,9 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
             }
         });
 
-        startStream();
         Stressor.execute(THREADS, eventEmitter);
 
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS);
         waitUntilTrue(() -> seenThreads.size() == EXPECTED_EVENTS);
-
-        closeStream();
     }
 }

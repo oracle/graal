@@ -56,7 +56,7 @@ public class JfrMethodRepository implements JfrRepository {
         epochData1.teardown();
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getMethodId(Class<?> clazz, String methodName, int methodId) {
         assert clazz != null;
         assert methodName != null;
@@ -106,7 +106,7 @@ public class JfrMethodRepository implements JfrRepository {
     }
 
     @Override
-    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flush) {
         mutex.lockNoTransition();
         try {

@@ -31,10 +31,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 
 /**
@@ -57,16 +59,15 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", "jdk.JavaMonitorWait"};
+        return new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", JfrEvent.JavaMonitorWait.getName()};
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         int otherMonitorWaitEvents = 0;
-        List<RecordedEvent> events = getEvents();
         for (RecordedEvent event : events) {
-            if (event.getEventType().getName().equals("jdk.JavaMonitorWait")) {
-                if (!event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+            if (event.getEventType().getName().equals(JfrEvent.JavaMonitorWait.getName())) {
+                if (!event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                     otherMonitorWaitEvents++;
                 }
             }
@@ -79,8 +80,6 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
 
     @Test
     public void test() throws Exception {
-        createStream();
-
         stream.onEvent("com.jfr.Class", event -> {
             classEvents.incrementAndGet();
         });
@@ -90,14 +89,11 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
         stream.onEvent("com.jfr.String", event -> {
             stringEvents.incrementAndGet();
         });
-        stream.onEvent("jdk.JavaMonitorWait", event -> {
-            if (!event.getClass("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
-                return;
+        stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+                waitEvents.incrementAndGet();
             }
-            waitEvents.incrementAndGet();
         });
-
-        startStream();
 
         Runnable eventEmitter = () -> {
             StringEvent stringEvent = new StringEvent();
@@ -124,7 +120,5 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE &&
                         waitEvents.get() == EXPECTED_EVENTS_PER_TYPE);
-
-        closeStream();
     }
 }

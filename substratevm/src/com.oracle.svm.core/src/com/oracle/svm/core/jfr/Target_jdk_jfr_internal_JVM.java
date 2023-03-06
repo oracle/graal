@@ -139,7 +139,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
     @Substitute
+    @Uninterruptible(reason = "Needed for SubstrateJVM.getClassId().")
     public static long getClassId(Class<?> clazz) {
+        /*
+         * The result is only valid until the epoch changes but this is fine because EventWriter
+         * instances are invalidated when the epoch changes.
+         */
         return SubstrateJVM.get().getClassId(clazz);
     }
 
@@ -159,7 +164,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getStackTraceId}. */
     @Substitute
+    @Uninterruptible(reason = "Needed for SubstrateJVM.getStackTraceId().")
     public long getStackTraceId(int skipCount) {
+        /*
+         * The result is only valid until the epoch changes but this is fine because EventWriter
+         * instances are invalidated when the epoch changes.
+         */
         return SubstrateJVM.get().getStackTraceId(skipCount);
     }
 

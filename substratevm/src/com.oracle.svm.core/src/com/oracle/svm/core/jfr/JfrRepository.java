@@ -27,10 +27,15 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.Uninterruptible;
 
 /**
- * Epoch-based storage for metadata. Switching the epoch and iterating the collected data may only
- * be done at a safepoint. All methods that manipulate data in the constant pool must be
- * {@link Uninterruptible} to guarantee that a safepoint always sees a consistent state. Otherwise,
- * other JFR code could see partially added data when it tries to iterate the data at a safepoint.
+ * Epoch-based storage for metadata. Switching the epoch may only be done at a safepoint. All
+ * methods that manipulate data in the constant pool must be {@link Uninterruptible} to guarantee
+ * that a safepoint always sees a consistent state. Otherwise, other JFR code could see partially
+ * added data when it tries to iterate the data at a safepoint.
+ *
+ * Some repositories (e.g., {@link JfrTypeRepository}) return stable JFR trace IDs (i.e., the trace
+ * id does not change if the epoch changes). However, the corresponding data (e.g., the type) is
+ * only marked as used in a certain epoch, so callers must always be aware that the returned trace
+ * ID is only valid for a specific epoch, no matter if the trace ID is stable or not.
  */
 public interface JfrRepository {
 

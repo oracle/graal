@@ -39,6 +39,7 @@ public class ClassConstantPoolParser extends ConstantPoolParser {
     @Override
     public void parse(RecordingInput input) throws IOException {
         int numberOfClasses = input.readInt();
+
         for (int i = 0; i < numberOfClasses; i++) {
             addFoundId(input.readLong()); // ClassId.
             addExpectedId(JfrType.ClassLoader, input.readLong()); // ClassLoaderId.

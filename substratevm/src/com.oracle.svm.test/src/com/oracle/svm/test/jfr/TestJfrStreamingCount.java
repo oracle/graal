@@ -58,8 +58,7 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
-        List<RecordedEvent> events = getEvents();
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         if (events.size() != EXPECTED_TOTAL_EVENTS) {
             throw new Exception("Not all expected events were found in the JFR file");
         }
@@ -67,8 +66,6 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
 
     @Test
     public void test() throws Exception {
-        createStream();
-
         stream.onEvent("com.jfr.Class", event -> {
             classEvents.incrementAndGet();
         });
@@ -78,8 +75,6 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
         stream.onEvent("com.jfr.String", event -> {
             stringEvents.incrementAndGet();
         });
-
-        startStream();
 
         Runnable eventEmitter = () -> {
             for (int i = 0; i < COUNT; i++) {
@@ -102,7 +97,5 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
 
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE);
-
-        closeStream();
     }
 }

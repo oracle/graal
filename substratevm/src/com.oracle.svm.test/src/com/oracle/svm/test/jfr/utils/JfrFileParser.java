@@ -30,9 +30,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.List;
 
 import org.junit.Assert;
 
@@ -56,8 +55,6 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
-
-import jdk.jfr.Recording;
 
 public class JfrFileParser {
 
@@ -142,41 +139,39 @@ public class JfrFileParser {
         return deltaNext;
     }
 
-    private static void compareFoundAndExpectedIds() {
-        for (ConstantPoolParser parser : supportedConstantPools.values()) {
-            parser.compareFoundAndExpectedIds();
-        }
-    }
-
-    /**
-     * Must verify constant pools in the order that they were written because event streaming can
-     * write pools before the chunk is finished. This means that a given pool may reference
-     * constants from another pool written previously (within the same chunk).
-     */
     private static void verifyConstantPools(RecordingInput input, long constantPoolPosition) throws IOException {
-        List<Long> poolPositions = new ArrayList<>();
         long deltaNext;
         long currentConstantPoolPosition = constantPoolPosition;
         do {
-            poolPositions.add(currentConstantPoolPosition);
             deltaNext = parseConstantPoolHeader(input, currentConstantPoolPosition);
-            currentConstantPoolPosition += deltaNext;
-        } while (deltaNext != 0);
-
-        for (int j = poolPositions.size() - 1; j > 0; j--) {
-            parseConstantPoolHeader(input, poolPositions.get(j));
             long numberOfCPs = input.readInt();
             for (int i = 0; i < numberOfCPs; i++) {
                 ConstantPoolParser constantPoolParser = supportedConstantPools.get(input.readLong());
                 Assert.assertNotNull("Unknown constant pool!", constantPoolParser);
                 constantPoolParser.parse(input);
             }
-            compareFoundAndExpectedIds();
+            currentConstantPoolPosition += deltaNext;
+        } while (deltaNext != 0);
+
+        /* Now that we collected all data, verify and clear it. */
+        compareFoundAndExpectedIds();
+        resetConstantPoolParsers();
+    }
+
+    private static void compareFoundAndExpectedIds() {
+        for (ConstantPoolParser parser : supportedConstantPools.values()) {
+            parser.compareFoundAndExpectedIds();
         }
     }
 
-    public static void parse(Recording recording) throws IOException {
-        RecordingInput input = new RecordingInput(recording.getDestination().toFile());
+    public static void resetConstantPoolParsers() {
+        for (ConstantPoolParser parser : supportedConstantPools.values()) {
+            parser.reset();
+        }
+    }
+
+    public static void parse(Path path) throws IOException {
+        RecordingInput input = new RecordingInput(path.toFile());
         Positions positions = parserFileHeader(input);
         verifyConstantPools(input, positions.getConstantPoolPosition());
         parseMetadata(input, positions.getMetadataPosition());

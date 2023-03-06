@@ -28,6 +28,8 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -37,7 +39,7 @@ import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorInflateEvent extends JfrTest {
+public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
     private static final EnterHelper ENTER_HELPER = new EnterHelper();
     private static Thread firstThread;
     private static Thread secondThread;
@@ -48,9 +50,9 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         boolean foundCauseEnter = false;
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
             String cause = event.getValue("cause");

@@ -165,28 +165,25 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
-    public boolean write(JfrBuffer buffer) {
+    public void write(JfrBuffer buffer) {
         assert lock.isOwner();
         assert buffer.isNonNull();
         assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
-            return false;
+            return;
         }
 
         boolean success = getFileSupport().write(fd, JfrBufferAccess.getFlushedPos(buffer), unflushedSize);
-        JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
-
-        if (!success) {
-            /* We lost some data because the write failed. */
-            return false;
+        if (success) {
+            JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
         }
-        return getFileSupport().position(fd).greaterThan(WordFactory.signed(notificationThreshold));
     }
 
     public void flush() {
         assert lock.isOwner();
+
         flushStorage(true);
 
         writeThreadCheckpoint(true);
@@ -296,13 +293,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void writeFlushCheckpoint(boolean flush) {
-        // TEMP (chaeubl): this should also check if there is any data - otherwise it is useless to
-        // emit the event.
         writeCheckpointEvent(JfrCheckpointType.Flush, flushCheckpointRepos, newChunk, flush);
     }
 
     private void writeThreadCheckpoint(boolean flush) {
         assert threadCheckpointRepos.length == 1 && threadCheckpointRepos[0] == SubstrateJVM.getThreadRepo();
+        /* The code below is only atomic enough because the epoch can't change while flushing. */
         if (SubstrateJVM.getThreadRepo().hasUnflushedData()) {
             writeCheckpointEvent(JfrCheckpointType.Threads, threadCheckpointRepos, false, flush);
         }
@@ -574,6 +570,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             assert success || flush;
             node = next;
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isLockedByCurrentThread() {
+        return lock.isOwner();
     }
 
     public enum StringEncoding {

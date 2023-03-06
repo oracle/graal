@@ -54,7 +54,11 @@ public class JfrTypeRepository implements JfrRepository {
     public JfrTypeRepository() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void teardown() {
+        clearEpochData();
+    }
+
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
         return JfrTraceId.load(clazz);
     }
@@ -140,15 +144,24 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private void writeClass(TypeInfo typeInfo, JfrChunkWriter writer, Class<?> clazz, boolean flush) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
-        writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));  // key
+        writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));
         writer.writeCompressedLong(getClassLoaderId(typeInfo, clazz.getClassLoader()));
-        writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), !flush, true));
+        writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flush, true));
         writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             writer.writeBoolean(SubstrateUtil.isHiddenClass(clazz));
         }
+    }
+
+    @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
+    private static long getSymbolId(JfrChunkWriter writer, String symbol, boolean flush, boolean replaceDotWithSlash) {
+        /*
+         * The result is only valid for the current epoch, but the epoch can't change while the
+         * current thread holds the JfrChunkWriter lock.
+         */
+        assert writer.isLockedByCurrentThread();
+        return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flush, replaceDotWithSlash);
     }
 
     private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
@@ -165,9 +178,8 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flush) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(symbolRepo.getSymbolId(pkgName, !flush, true));
+        writer.writeCompressedLong(getSymbolId(writer, pkgName, flush, true));
         writer.writeCompressedLong(getModuleId(typeInfo, pkgInfo.module));
         writer.writeBoolean(false); // exported
     }
@@ -186,9 +198,8 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private void writeModule(TypeInfo typeInfo, JfrChunkWriter writer, Module module, long id, boolean flush) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
-        writer.writeCompressedLong(symbolRepo.getSymbolId(module.getName(), !flush));
+        writer.writeCompressedLong(getSymbolId(writer, module.getName(), flush, false));
         writer.writeCompressedLong(0); // Version, e.g. "11.0.10-internal"
         writer.writeCompressedLong(0); // Location, e.g. "jrt:/java.base"
         writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
@@ -208,14 +219,13 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
         writer.writeCompressedLong(id);
         if (cl == null) {
             writer.writeCompressedLong(0);
-            writer.writeCompressedLong(symbolRepo.getSymbolId("bootstrap", !flush));
+            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flush, false));
         } else {
             writer.writeCompressedLong(JfrTraceId.getTraceId(cl.getClass()));
-            writer.writeCompressedLong(symbolRepo.getSymbolId(cl.getName(), !flush));
+            writer.writeCompressedLong(getSymbolId(writer, cl.getName(), flush, false));
         }
     }
 

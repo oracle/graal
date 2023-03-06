@@ -43,9 +43,9 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
+import com.oracle.svm.core.collections.UninterruptibleEntry;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -95,7 +95,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @NeverInline("Starting a stack walk in the caller frame.")
-    @Uninterruptible(reason = "Accesses a sampler buffer.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(int skipCount) {
         if (DeoptimizationSupport.enabled()) {
             /* Stack traces are not supported if JIT compilation is used (GR-43686). */
@@ -130,7 +130,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a sampler buffer.")
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private long storeDeduplicatedStackTrace(SamplerSampleWriterData data) {
         if (SamplerSampleWriter.isValid(data)) {
             /* There is a valid stack trace in the buffer, so deduplicate and store it. */
@@ -160,7 +160,7 @@ public class JfrStackTraceRepository implements JfrRepository {
      * NOTE: the returned value is only valid until the JFR epoch changes. So, this method may only
      * be used from uninterruptible code.
      */
-    @Uninterruptible(reason = "Prevent epoch change. Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public JfrStackTraceTableEntry getOrPutStackTrace(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
         mutex.lockNoTransition();
         try {
@@ -170,7 +170,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.")
     private JfrStackTraceTableEntry getOrPutStackTrace0(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
         assert size.rawValue() == (int) size.rawValue();
 
@@ -214,7 +214,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public void commitSerializedStackTrace(JfrStackTraceTableEntry entry) {
         mutex.lockNoTransition();
         try {
@@ -226,14 +226,14 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Override
-    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flush) {
         if (flush) {
             /*
-             * Flushing is currently not support for the stack traces. When a stack trace is
+             * Flushing is not support for stack traces at the moment. When a stack trace is
              * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
-             * used, which are not atomic enough (i.e., a flush could destroy the JfrBuffer of the
-             * epoch, while it is being written).
+             * used. The lock is not held all the time, so a flush could destroy the JfrBuffer of
+             * the epoch, while it is being written.
              */
             return EMPTY;
         }
@@ -257,17 +257,14 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     private JfrStackTraceEpochData getEpochData(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         return epoch ? epochData0 : epochData1;
     }
 
-    /**
-     * NOTE: the returned value is only valid until the JFR epoch changes. So, this method may only
-     * be called from uninterruptible code. Returns null if the buffer allocation failed.
-     */
-    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
+    /** Returns null if the buffer allocation failed. */
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public JfrBuffer getCurrentBuffer() {
         JfrStackTraceEpochData epochData = getEpochData(false);
         if (epochData.buffer.isNull()) {

@@ -125,14 +125,15 @@ public class JfrRecorderThread extends Thread {
         JfrBufferList buffers = globalMemory.getBuffers();
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            boolean shouldNotify = tryPersistBuffer(chunkWriter, node);
-            if (shouldNotify) {
-                Object chunkRotationMonitor = getChunkRotationMonitor();
-                synchronized (chunkRotationMonitor) {
-                    chunkRotationMonitor.notifyAll();
-                }
-            }
+            tryPersistBuffer(chunkWriter, node);
             node = node.getNext();
+        }
+
+        if (chunkWriter.shouldRotateDisk()) {
+            Object chunkRotationMonitor = getChunkRotationMonitor();
+            synchronized (chunkRotationMonitor) {
+                chunkRotationMonitor.notifyAll();
+            }
         }
     }
 
@@ -145,20 +146,18 @@ public class JfrRecorderThread extends Thread {
     }
 
     @Uninterruptible(reason = "Locks a BufferNode.")
-    private static boolean tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
+    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
         if (JfrBufferNodeAccess.tryLock(node)) {
             try {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 if (isFullEnough(buffer)) {
-                    boolean shouldNotify = chunkWriter.write(buffer);
+                    chunkWriter.write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
-                    return shouldNotify;
                 }
             } finally {
                 JfrBufferNodeAccess.unlock(node);
             }
         }
-        return false;
     }
 
     /**

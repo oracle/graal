@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,52 +24,35 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+package com.oracle.svm.test.jfr;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 
-public class LocalJfr implements Jfr {
+/** Base class for JFR unit tests. */
+public abstract class JfrRecordingTest extends AbstractJfrTest {
+    private Recording recording;
 
     @Override
-    public Recording createRecording(String recordingName) throws Exception {
+    public void startRecording(Configuration config) throws Throwable {
         /* Enable a lot of events by default to increase the test coverage. */
-        Configuration defaultConfig = Configuration.getConfiguration("default");
-        return createRecording(new Recording(defaultConfig), recordingName);
-    }
-
-    @Override
-    public void startRecording(Recording recording) {
+        recording = new Recording(config);
+        recording.setDestination(jfrFile);
+        enableEvents();
         recording.start();
     }
 
-    private static Recording createRecording(Recording recording, String name) throws Exception {
-        long id = recording.getId();
-
-        Path destination = File.createTempFile(name + "-" + id, ".jfr").toPath();
-        recording.setDestination(destination);
-
-        return recording;
-    }
-
     @Override
-    public void endRecording(Recording recording) {
+    public void stopRecording() {
         recording.stop();
         recording.close();
     }
 
-    @Override
-    public void cleanupRecording(Recording recording) throws IOException {
-        String debugRecording = System.getenv("DEBUG_RECORDING");
-        if (debugRecording != null && !"false".equals(debugRecording)) {
-            System.out.println("Recording: " + recording.getDestination());
-        } else {
-            Files.deleteIfExists(recording.getDestination());
+    private void enableEvents() {
+        /* Additionally, enable all events that the test case wants to test explicitly. */
+        String[] events = getTestedEvents();
+        for (String event : events) {
+            recording.enable(event);
         }
     }
 }
