@@ -301,7 +301,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             Label[] qWordFound = {new Label()};
             // index = fromIndex (+ 1 if findTwoConsecutive) + QWORD vector size
             asm.subq(index, vectorLengthQWord);
-            // check if vector vector load is in bounds
+            // check if vector load is in bounds
             asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, elementWise, false);
             // do one vector comparison from fromIndex
             emitVectorCompare(asm, AVXSize.QWORD, 1, arrayPtr, index, vecCmp, vecArray, vecTmp, cmpResult, qWordFound, true);
@@ -320,7 +320,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // search range is smaller than vector size, do element-wise comparison
         asm.bind(elementWise);
         // index = fromIndex (+ 1 if findTwoConsecutive)
-        asm.subq(index, variant == ArrayIndexOfVariant.Table ? vectorLength / 2 : vectorLengthQWord);
+        asm.subq(index, (variant == ArrayIndexOfVariant.Table) ? (supportsAVX2AndYMM() ? (vectorLength / 2) : vectorLength) : vectorLengthQWord);
         // check if enough array slots remain
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.GreaterEqual, elementWiseNotFound, true);
 
