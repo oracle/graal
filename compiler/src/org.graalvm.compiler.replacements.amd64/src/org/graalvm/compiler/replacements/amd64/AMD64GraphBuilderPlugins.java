@@ -211,22 +211,24 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerFloatPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
 
-        boolean supportsF16C = supportsFeature(arch, "F16C");
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            boolean supportsF16C = supportsFeature(arch, "F16C");
 
-        r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
-                return true;
-            }
-        });
-        r.registerConditional(supportsF16C, new InvocationPlugin("floatToFloat16", float.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
-                return true;
-            }
-        });
+            r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                    return true;
+                }
+            });
+            r.registerConditional(supportsF16C, new InvocationPlugin("floatToFloat16", float.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerFloatDoublePlugins(InvocationPlugins plugins, JavaKind kind, AMD64 arch, Replacements replacements) {

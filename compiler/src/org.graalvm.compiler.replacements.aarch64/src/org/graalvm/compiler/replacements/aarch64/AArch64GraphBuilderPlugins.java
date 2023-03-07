@@ -91,6 +91,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
@@ -153,20 +154,23 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
-        r.register(new InvocationPlugin("float16ToFloat", short.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("floatToFloat16", float.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
-                return true;
-            }
-        });
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            r.register(new InvocationPlugin("float16ToFloat", short.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("floatToFloat16", float.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath) {
