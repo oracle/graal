@@ -706,7 +706,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                 if (optional) {
                     return null;
                 } else {
-                    throw VMError.shouldNotReachHere("Failed to find runtime module for hosted module " + hostedModuleName + ". No runtime modules have been registered for class loader: " + loader);
+                    throw VMError.shouldNotReachHere(
+                                    "Failed to find runtime module for hosted module " + hostedModuleName + ". No runtime modules have been registered for class loader: " + loader.getName());
                 }
             }
             Module runtimeModule = loaderRuntimeModules.get(hostedModuleName);
