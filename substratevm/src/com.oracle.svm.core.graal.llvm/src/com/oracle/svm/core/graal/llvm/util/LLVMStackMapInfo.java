@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -317,20 +317,6 @@ public class LLVMStackMapInfo {
         }
 
         assert seenOffsets.containsAll(seenBases);
-    }
-
-    public int getAllocaOffset(long startPatchPointId) {
-        Set<Record> startRecords = patchpointsByID.get(startPatchPointId);
-        assert startRecords.size() == 1;
-        Record startRecord = startRecords.stream().findAny().orElseThrow(VMError::shouldNotReachHere);
-
-        assert startRecord.locations.length == 1;
-        Location alloca = startRecord.locations[0];
-        assert alloca.type == Location.Type.Direct;
-
-        int[] offsets = getStackOffsets(startPatchPointId, alloca);
-        assert offsets.length == 1;
-        return offsets[0];
     }
 
     private int[] getStackOffsets(long patchpointID, Location location) {
