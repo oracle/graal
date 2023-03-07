@@ -282,8 +282,8 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
             bound.getDebug().log("optimizeCompare(%s, %s, %s, %b) in %s", compare, iv, bound, mirrored, graph.method());
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             GuardingNode overflowGuard = countedLoop.getOverFlowGuard();
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
-            LogicNode newCompare;
+            final boolean zeroExtendBound = compare.condition().isUnsigned();
+            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), zeroExtendBound, graph, NodeView.DEFAULT);            LogicNode newCompare;
             ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
             GuardedValueNode guardedExtremum = graph.unique(new GuardedValueNode(extremum, overflowGuard));
             // guardedExtremum |<| longBound && iv.initNode() |<| bound
