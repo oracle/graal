@@ -144,7 +144,7 @@ public class ParallelGC {
 
     private Thread startWorkerThread(int n) {
         Thread t = new Thread(() -> {
-                VMThreads.SafepointBehavior.markThreadAsCrashed();
+                VMThreads.SafepointBehavior.useAsParallelGCThread();
                 debugLog().string("WW start ").unsigned(n).newline();
 
                 while (true) {

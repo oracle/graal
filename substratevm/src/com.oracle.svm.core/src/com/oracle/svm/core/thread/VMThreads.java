@@ -865,6 +865,9 @@ public abstract class VMThreads {
          */
         static final int THREAD_CRASHED = 2;
 
+        /** Similar to THREAD_CRASHED, used by ParallelGC worker threads. */
+        static final int PARALLEL_GC_THREAD = 3;
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean ignoresSafepoints() {
             return safepointBehaviorTL.getVolatile() != ALLOW_SAFEPOINT;
@@ -915,6 +918,14 @@ public abstract class VMThreads {
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
         }
 
+        /**
+         * Marks the thread as ParallelGC worker thread. The thread won't freeze at safepoints,
+         * so it must not keep references to movable heap objects on its stack.
+         */
+        public static void useAsParallelGCThread() {
+            safepointBehaviorTL.setVolatile(PARALLEL_GC_THREAD);
+        }
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static String toString(int safepointBehavior) {
             switch (safepointBehavior) {
@@ -924,6 +935,8 @@ public abstract class VMThreads {
                     return "PREVENT_VM_FROM_REACHING_SAFEPOINT";
                 case THREAD_CRASHED:
                     return "THREAD_CRASHED";
+                case PARALLEL_GC_THREAD:
+                    return "PARALLEL_GC_THREAD";
                 default:
                     return "Invalid safepoint behavior";
             }
