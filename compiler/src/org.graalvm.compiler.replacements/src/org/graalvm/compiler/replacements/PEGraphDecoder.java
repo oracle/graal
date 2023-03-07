@@ -1413,7 +1413,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return (T) node;
             }
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(clazz); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unchecked")

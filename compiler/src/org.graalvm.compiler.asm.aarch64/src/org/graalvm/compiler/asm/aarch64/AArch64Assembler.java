@@ -1260,7 +1260,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 case AL:
                 case NV:
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1743,7 +1743,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 break;
             default:
                 /* Invalid addressing mode provided. */
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
 
         /* The prefetch mode is encoded within rt. */

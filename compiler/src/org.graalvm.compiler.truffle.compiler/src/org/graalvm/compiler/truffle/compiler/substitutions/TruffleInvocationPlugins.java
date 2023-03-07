@@ -211,7 +211,7 @@ public class TruffleInvocationPlugins {
 
     public static Stride constantStrideParam(ValueNode param) {
         if (!param.isJavaConstant()) {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("Java constant expected"); // ExcludeFromJacocoGeneratedReport
         }
         // TruffleString stores strides in log2
         return Stride.fromLog2(param.asJavaConstant().asInt());
@@ -224,7 +224,7 @@ public class TruffleInvocationPlugins {
 
     public static boolean constantBooleanParam(ValueNode param) {
         if (!param.isJavaConstant()) {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("Java constant expected"); // ExcludeFromJacocoGeneratedReport
         }
         return asBoolean(param);
     }

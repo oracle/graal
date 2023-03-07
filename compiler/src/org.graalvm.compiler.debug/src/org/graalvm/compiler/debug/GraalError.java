@@ -27,6 +27,8 @@ package org.graalvm.compiler.debug;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * Indicates a condition that should never occur during normal operation.
  */
@@ -47,8 +49,8 @@ public class GraalError extends Error {
         throw new GraalError("unimplemented method in parent class, should be overridden");
     }
 
-    public static RuntimeException shouldNotReachHere() {
-        throw new GraalError("should not reach here");
+    public static RuntimeException unsupportedArchitecture(Architecture arch) {
+        throw new GraalError("unsupported architecture: %s", arch);
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {

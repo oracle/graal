@@ -66,7 +66,7 @@ public abstract class AbstractBoxingNode extends FixedWithNextNode implements Vi
                 return f;
             }
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(resultType); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

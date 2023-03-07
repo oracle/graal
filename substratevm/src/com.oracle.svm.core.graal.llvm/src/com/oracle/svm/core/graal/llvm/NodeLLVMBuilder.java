@@ -495,7 +495,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             gen.getDebugInfoPrinter().printIndirectCall(targetMethod, callee);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(callTarget); // ExcludeFromJacocoGeneratedReport
         }
 
         LLVMValueRef call = emitCall(i, callTarget, callee, patchpointId, args);
@@ -520,7 +520,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             LLVMBasicBlockRef handler = gen.getBlock(foreignCallWithExceptionNode.exceptionEdge());
             result = gen.emitForeignCall(linkage, state, successor, handler, args);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(i); // ExcludeFromJacocoGeneratedReport
         }
 
         if (result != null) {

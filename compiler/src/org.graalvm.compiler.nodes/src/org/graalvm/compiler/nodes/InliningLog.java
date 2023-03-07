@@ -710,7 +710,7 @@ public class InliningLog {
 
         @Override
         public void setBci(int bci) {
-            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

@@ -97,7 +97,7 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
                 case Double:
                     return ConstantNode.forDouble(Math.signum(c.asDouble()));
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
         return this;

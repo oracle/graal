@@ -96,7 +96,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
             case Uncompress:
                 return compress(input, encoding);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
         }
     }
 

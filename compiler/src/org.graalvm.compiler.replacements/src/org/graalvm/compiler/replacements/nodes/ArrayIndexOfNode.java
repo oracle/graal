@@ -189,7 +189,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             case Table:
                 return amd64FeaturesSSE41();
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(variant); // ExcludeFromJacocoGeneratedReport
         }
     }
 

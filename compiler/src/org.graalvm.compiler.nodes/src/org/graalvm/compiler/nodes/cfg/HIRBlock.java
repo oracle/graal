@@ -857,7 +857,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                             return cfg1.blockFor(successor);
                         }
                     }
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(split); // ExcludeFromJacocoGeneratedReport
                 }
             } else if (endNode instanceof LoopEndNode) {
                 return cfg1.blockFor(((LoopEndNode) endNode).loopBegin());

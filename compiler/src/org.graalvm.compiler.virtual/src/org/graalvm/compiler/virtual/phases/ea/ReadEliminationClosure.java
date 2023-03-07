@@ -111,7 +111,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             value = getScalarAlias(write.value());
                             object = GraphUtil.unproxify(write.getAddress());
                         } else {
-                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                            throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
                         }
                         LoadCacheEntry identifier = new LoadCacheEntry(object, identity);
                         ValueNode cachedValue = state.getCacheEntry(identifier);

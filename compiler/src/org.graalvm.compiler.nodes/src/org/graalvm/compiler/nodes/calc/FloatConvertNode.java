@@ -119,7 +119,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
                 mantissaBits = 53;
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(resultStamp.getBits()); // ExcludeFromJacocoGeneratedReport
         }
         long max = 1L << mantissaBits;
         long min = -(1L << mantissaBits);

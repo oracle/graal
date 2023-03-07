@@ -156,7 +156,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             case UTF_32:
                 return 11;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -189,7 +189,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                     emitUTF32(asm, arr, len, ret, end);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
             }
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(end);

@@ -362,7 +362,7 @@ public class AArch64Move {
                         masm.ldrs(Integer.max(dstBitSize, 32), srcBitSize, dst, address);
                         break;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(extend); // ExcludeFromJacocoGeneratedReport
                 }
             } else {
                 // floating point or vector access
@@ -578,7 +578,7 @@ public class AArch64Move {
             } else if (isStackSlot(result)) {
                 reg2stack(moveKind, crb, masm, asStackSlot(result), src);
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(result); // ExcludeFromJacocoGeneratedReport
             }
         } else if (isStackSlot(input)) {
             StackSlot src = asStackSlot(input);
@@ -587,16 +587,16 @@ public class AArch64Move {
             } else if (isStackSlot(result)) {
                 stack2stack(moveKind, crb, masm, asStackSlot(result), src);
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(result); // ExcludeFromJacocoGeneratedReport
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
                 const2reg(moveKind, crb, masm, asRegister(result), asJavaConstant(input));
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(result); // ExcludeFromJacocoGeneratedReport
             }
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(input); // ExcludeFromJacocoGeneratedReport
         }
     }
 

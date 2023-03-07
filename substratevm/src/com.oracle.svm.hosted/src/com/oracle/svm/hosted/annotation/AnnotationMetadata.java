@@ -58,7 +58,7 @@ public class AnnotationMetadata {
         try {
             annotationTypeMismatchExceptionProxyConstructor = ReflectionUtil.lookupConstructor(Class.forName("sun.reflect.annotation.AnnotationTypeMismatchExceptionProxy"), String.class);
         } catch (ClassNotFoundException e) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
