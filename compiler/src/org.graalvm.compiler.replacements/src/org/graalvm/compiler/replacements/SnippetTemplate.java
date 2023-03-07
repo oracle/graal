@@ -1680,10 +1680,6 @@ public class SnippetTemplate {
         return replacements;
     }
 
-    public boolean hasSideEffects() {
-        return !sideEffectNodes.isEmpty();
-    }
-
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}

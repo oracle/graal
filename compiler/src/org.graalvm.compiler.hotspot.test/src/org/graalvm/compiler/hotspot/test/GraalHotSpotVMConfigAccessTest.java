@@ -38,7 +38,7 @@ import jdk.vm.ci.common.JVMCIError;
 
 public class GraalHotSpotVMConfigAccessTest {
     @Test
-    public void test() throws ClassNotFoundException {
+    public void test() {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         GraalHotSpotVMConfig config = rt.getVMConfig();
 

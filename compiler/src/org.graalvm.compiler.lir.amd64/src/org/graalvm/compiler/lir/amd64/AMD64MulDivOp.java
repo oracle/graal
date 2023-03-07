@@ -98,10 +98,6 @@ public class AMD64MulDivOp extends AMD64LIRInstruction {
         return highResult;
     }
 
-    public AllocatableValue getLowResult() {
-        return lowResult;
-    }
-
     public AllocatableValue getQuotient() {
         return lowResult;
     }
