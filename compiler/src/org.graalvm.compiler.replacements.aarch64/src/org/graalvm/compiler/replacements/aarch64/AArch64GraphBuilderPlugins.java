@@ -78,7 +78,9 @@ import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
+import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -103,6 +105,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
+                registerFloatPlugins(invocationPlugins, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath);
                 registerStrictMathPlugins(invocationPlugins);
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
@@ -143,6 +146,24 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
+                return true;
+            }
+        });
+    }
+
+    private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Float.class, replacements);
+        r.register(new InvocationPlugin("float16ToFloat", short.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("floatToFloat16", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
                 return true;
             }
         });

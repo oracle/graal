@@ -446,11 +446,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Float.isFinite(F)Z");
 
             if (arch instanceof AArch64) {
-                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8289552
-                add(toBeInvestigated,
-                                "java/lang/Float.float16ToFloat(S)F",
-                                "java/lang/Float.floatToFloat16(F)S");
-
                 // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8285868
                 add(toBeInvestigated,
                                 "java/lang/Double.isInfinite(D)Z",

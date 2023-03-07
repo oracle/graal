@@ -51,6 +51,8 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
+import org.graalvm.compiler.lir.aarch64.AArch64FloatToHalfFloatOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HalfFloatToFloatOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathCopySignOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
@@ -668,6 +670,20 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     public Variable emitReverseBits(Value input) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         getLIRGen().append(new AArch64BitSwapOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitHalfFloatToFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.SINGLE));
+        getLIRGen().append(new AArch64HalfFloatToFloatOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitFloatToHalfFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
+        getLIRGen().append(new AArch64FloatToHalfFloatOp(getLIRGen(), result, asAllocatable(input)));
         return result;
     }
 

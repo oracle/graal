@@ -71,8 +71,6 @@ public final class FloatToHalfFloatNode extends UnaryNode implements LIRLowerabl
         if (forValue instanceof ConstantNode) {
             float f = forValue.asJavaConstant().asFloat();
             return ConstantNode.forPrimitive(JavaConstant.forShort(floatToFloat16(f)));
-        } else if (forValue instanceof HalfFloatToFloatNode) {
-            return ((HalfFloatToFloatNode) forValue).getValue();
         }
         return this;
     }
