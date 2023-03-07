@@ -31,19 +31,29 @@ public enum JfrBufferType {
     /**
      * A thread-local native buffer, see {@link JfrThreadLocal}.
      */
-    THREAD_LOCAL_NATIVE,
+    THREAD_LOCAL_NATIVE(true),
     /**
      * A thread-local java buffer, see {@link JfrThreadLocal}.
      */
-    THREAD_LOCAL_JAVA,
+    THREAD_LOCAL_JAVA(true),
     /**
      * A global JFR buffer, see {@link JfrGlobalMemory}.
      */
-    GLOBAL_MEMORY,
+    GLOBAL_MEMORY(false),
     /**
      * Other buffers that live in the C heap and that can be resized (i.e., reallocated) if
      * necessary. This type is for example used for the epoch-based global buffers in
      * {@link JfrThreadRepository}.
      */
-    C_HEAP
+    C_HEAP(false);
+
+    private final boolean threadLocal;
+
+    JfrBufferType(boolean threadLocal) {
+        this.threadLocal = threadLocal;
+    }
+
+    public boolean isThreadLocal() {
+        return threadLocal;
+    }
 }

@@ -64,14 +64,14 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @Override
-    public int write(JfrChunkWriter writer, boolean flush) {
-        TypeInfo typeInfo = collectTypeInfo(flush);
-        int count = writeClasses(writer, typeInfo, flush);
-        count += writePackages(writer, typeInfo, flush);
-        count += writeModules(writer, typeInfo, flush);
-        count += writeClassLoaders(writer, typeInfo, flush);
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
+        TypeInfo typeInfo = collectTypeInfo(flushpoint);
+        int count = writeClasses(writer, typeInfo, flushpoint);
+        count += writePackages(writer, typeInfo, flushpoint);
+        count += writeModules(writer, typeInfo, flushpoint);
+        count += writeClassLoaders(writer, typeInfo, flushpoint);
 
-        if (flush) {
+        if (flushpoint) {
             flushedClasses.addAll(typeInfo.classes);
             flushedPackages.putAll(typeInfo.packages);
             flushedModules.putAll(typeInfo.modules);
@@ -87,10 +87,10 @@ public class JfrTypeRepository implements JfrRepository {
      * Visit all used classes, and collect their packages, modules, classloaders and possibly
      * referenced classes.
      */
-    private TypeInfo collectTypeInfo(boolean flush) {
+    private TypeInfo collectTypeInfo(boolean flushpoint) {
         TypeInfo typeInfo = new TypeInfo();
         for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
-            if (flush) {
+            if (flushpoint) {
                 if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
                     visitClass(typeInfo, clazz);
                 }
@@ -130,7 +130,7 @@ public class JfrTypeRepository implements JfrRepository {
         }
     }
 
-    private int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
+    private int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
         if (typeInfo.classes.isEmpty()) {
             return EMPTY;
         }
@@ -138,15 +138,15 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedInt(typeInfo.classes.size());
 
         for (Class<?> clazz : typeInfo.classes) {
-            writeClass(typeInfo, writer, clazz, flush);
+            writeClass(typeInfo, writer, clazz, flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private void writeClass(TypeInfo typeInfo, JfrChunkWriter writer, Class<?> clazz, boolean flush) {
+    private void writeClass(TypeInfo typeInfo, JfrChunkWriter writer, Class<?> clazz, boolean flushpoint) {
         writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));
         writer.writeCompressedLong(getClassLoaderId(typeInfo, clazz.getClassLoader()));
-        writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flush, true));
+        writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flushpoint, true));
         writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
@@ -155,16 +155,16 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
-    private static long getSymbolId(JfrChunkWriter writer, String symbol, boolean flush, boolean replaceDotWithSlash) {
+    private static long getSymbolId(JfrChunkWriter writer, String symbol, boolean flushpoint, boolean replaceDotWithSlash) {
         /*
          * The result is only valid for the current epoch, but the epoch can't change while the
          * current thread holds the JfrChunkWriter lock.
          */
         assert writer.isLockedByCurrentThread();
-        return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flush, replaceDotWithSlash);
+        return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flushpoint, replaceDotWithSlash);
     }
 
-    private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
+    private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
         if (typeInfo.packages.isEmpty()) {
             return EMPTY;
         }
@@ -172,19 +172,19 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedInt(typeInfo.packages.size());
 
         for (Map.Entry<String, PackageInfo> pkgInfo : typeInfo.packages.entrySet()) {
-            writePackage(typeInfo, writer, pkgInfo.getKey(), pkgInfo.getValue(), flush);
+            writePackage(typeInfo, writer, pkgInfo.getKey(), pkgInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flush) {
+    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flushpoint) {
         writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(getSymbolId(writer, pkgName, flush, true));
+        writer.writeCompressedLong(getSymbolId(writer, pkgName, flushpoint, true));
         writer.writeCompressedLong(getModuleId(typeInfo, pkgInfo.module));
         writer.writeBoolean(false); // exported
     }
 
-    private int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
+    private int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
         if (typeInfo.modules.isEmpty()) {
             return EMPTY;
         }
@@ -192,20 +192,20 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedInt(typeInfo.modules.size());
 
         for (Map.Entry<Module, Long> modInfo : typeInfo.modules.entrySet()) {
-            writeModule(typeInfo, writer, modInfo.getKey(), modInfo.getValue(), flush);
+            writeModule(typeInfo, writer, modInfo.getKey(), modInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private void writeModule(TypeInfo typeInfo, JfrChunkWriter writer, Module module, long id, boolean flush) {
+    private void writeModule(TypeInfo typeInfo, JfrChunkWriter writer, Module module, long id, boolean flushpoint) {
         writer.writeCompressedLong(id);
-        writer.writeCompressedLong(getSymbolId(writer, module.getName(), flush, false));
+        writer.writeCompressedLong(getSymbolId(writer, module.getName(), flushpoint, false));
         writer.writeCompressedLong(0); // Version, e.g. "11.0.10-internal"
         writer.writeCompressedLong(0); // Location, e.g. "jrt:/java.base"
         writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
     }
 
-    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flush) {
+    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
         if (typeInfo.classLoaders.isEmpty()) {
             return EMPTY;
         }
@@ -213,19 +213,19 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedInt(typeInfo.classLoaders.size());
 
         for (Map.Entry<ClassLoader, Long> clInfo : typeInfo.classLoaders.entrySet()) {
-            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flush);
+            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flush) {
+    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flushpoint) {
         writer.writeCompressedLong(id);
         if (cl == null) {
             writer.writeCompressedLong(0);
-            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flush, false));
+            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flushpoint, false));
         } else {
             writer.writeCompressedLong(JfrTraceId.getTraceId(cl.getClass()));
-            writer.writeCompressedLong(getSymbolId(writer, cl.getName(), flush, false));
+            writer.writeCompressedLong(getSymbolId(writer, cl.getName(), flushpoint, false));
         }
     }
 

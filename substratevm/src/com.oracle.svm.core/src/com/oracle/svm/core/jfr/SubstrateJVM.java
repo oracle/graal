@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -234,6 +233,7 @@ public class SubstrateJVM {
         try {
             recorderThread.shutdown();
 
+            threadLocal.teardown(true);
             globalMemory.teardown();
             symbolRepo.teardown();
             threadRepo.teardown();
@@ -484,23 +484,13 @@ public class SubstrateJVM {
         assert uncommittedSize >= 0;
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
-        if (oldBuffer.isNonNull()) {
-            JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
-            if (newBuffer.isNull()) {
-                /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
-                JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getCommittedPos().rawValue());
-                JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getCommittedPos().rawValue());
-                JfrEventWriterAccess.setValid(writer, false);
-            } else {
-                /* Update the EventWriter so that it uses the correct buffer and positions. */
-                Pointer newCurrentPos = newBuffer.getCommittedPos().add(uncommittedSize);
-                JfrEventWriterAccess.setStartPosition(writer, newBuffer.getCommittedPos().rawValue());
-                JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
-                if (newBuffer.notEqual(oldBuffer)) {
-                    JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfCommittedPos(newBuffer).rawValue());
-                    JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
-                }
-            }
+        assert oldBuffer.isNonNull() : "Java EventWriter should not be used otherwise";
+        JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+        if (newBuffer.isNull()) {
+            /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
+            JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
+        } else {
+            JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
         }
 
         /*
@@ -731,14 +721,14 @@ public class SubstrateJVM {
 
             /* No further JFR events are emitted, so free all JFR-related buffers. */
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                JfrThreadLocal.stopRecording(isolateThread);
+                JfrThreadLocal.stopRecording(isolateThread, false);
             }
 
             /*
              * If JFR recording is restarted later on, then it needs to start with a clean state.
              * Therefore, we clear all data that is still pending.
              */
-            SubstrateJVM.getThreadLocal().teardown();
+            SubstrateJVM.getThreadLocal().teardown(false);
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
         }

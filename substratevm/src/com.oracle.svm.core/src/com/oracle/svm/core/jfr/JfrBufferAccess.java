@@ -168,6 +168,6 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isThreadLocal(JfrBuffer buffer) {
-        return buffer.getBufferType() == JfrBufferType.THREAD_LOCAL_JAVA || buffer.getBufferType() == JfrBufferType.THREAD_LOCAL_NATIVE;
+        return buffer.getBufferType().isThreadLocal();
     }
 }

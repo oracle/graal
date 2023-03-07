@@ -227,20 +227,20 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public int write(JfrChunkWriter writer, boolean flush) {
-        if (flush) {
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
+        if (flushpoint) {
             /*
              * Flushing is not support for stack traces at the moment. When a stack trace is
              * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
-             * used. The lock is not held all the time, so a flush could destroy the JfrBuffer of
-             * the epoch, while it is being written.
+             * used. The lock is not held all the time, so a flushpoint could destroy the JfrBuffer
+             * of the epoch, while it is being written.
              */
             return EMPTY;
         }
 
         mutex.lockNoTransition();
         try {
-            JfrStackTraceEpochData epochData = getEpochData(!flush);
+            JfrStackTraceEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
                 return EMPTY;
@@ -250,7 +250,7 @@ public class JfrStackTraceRepository implements JfrRepository {
             writer.writeCompressedInt(count);
             writer.write(epochData.buffer);
 
-            epochData.clear(flush);
+            epochData.clear(flushpoint);
             return NON_EMPTY;
         } finally {
             mutex.unlock();
@@ -364,8 +364,8 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
-        void clear(boolean flush) {
-            if (!flush) {
+        void clear(boolean flushpoint) {
+            if (!flushpoint) {
                 table.clear();
             }
             unflushedEntries = 0;

@@ -54,7 +54,7 @@ public interface JfrRepository {
     /**
      * Persists the data of the previous/current epoch.
      * 
-     * @param flush Determines whether the current or previous epoch is used.
+     * @param flushpoint Determines whether the current or previous epoch is used.
      */
-    int write(JfrChunkWriter writer, boolean flush);
+    int write(JfrChunkWriter writer, boolean flushpoint);
 }

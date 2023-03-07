@@ -42,6 +42,8 @@ import com.oracle.svm.core.thread.VMOperation;
  * Used to access the raw memory of a {@link JfrBufferNode}.
  */
 public final class JfrBufferNodeAccess {
+    private static final byte RETIRED = 0b01;
+
     private JfrBufferNodeAccess() {
     }
 
@@ -109,5 +111,25 @@ public final class JfrBufferNodeAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static CIntPointer ptrToLock(JfrBufferNode node) {
         return (CIntPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLock());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setRetired(JfrBufferNode node) {
+        assert isLockedByCurrentThread(node);
+        assert !isRetired(node);
+        node.setFlags((byte) (node.getFlags() | RETIRED));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void clearRetired(JfrBufferNode node) {
+        assert isLockedByCurrentThread(node);
+        assert isRetired(node);
+        node.setFlags((byte) (node.getFlags() & ~RETIRED));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isRetired(JfrBufferNode node) {
+        assert isLockedByCurrentThread(node);
+        return (node.getFlags() & RETIRED) != 0;
     }
 }

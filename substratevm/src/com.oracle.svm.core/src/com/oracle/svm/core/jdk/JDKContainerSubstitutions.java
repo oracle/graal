@@ -25,17 +25,16 @@
 
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.Platform.LINUX;
-
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem", onlyWith = JDK17OrLater.class)
@@ -69,6 +68,10 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
 @TargetClass(className = "jdk.jfr.internal.RequestEngine", onlyWith = JDK17OrLater.class)
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_RequestEngine {
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReentrantLock.class) //
+    private static ReentrantLock lock;
+
     @Alias //
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = CopyOnWriteArrayList.class) //
     private static List<?> entries;

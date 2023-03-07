@@ -67,4 +67,10 @@ public interface JfrBufferNode extends PointerBase {
 
     @RawField
     void setLockOwner(IsolateThread value);
+
+    @RawField
+    byte getFlags();
+
+    @RawField
+    void setFlags(byte value);
 }

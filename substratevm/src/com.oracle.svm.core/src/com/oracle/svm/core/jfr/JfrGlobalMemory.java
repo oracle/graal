@@ -110,13 +110,15 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public boolean write(JfrBuffer threadLocalBuffer, boolean streamingFlush) {
-        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
-        return write(threadLocalBuffer, unflushedSize, streamingFlush);
+    public boolean write(JfrBuffer buffer, boolean flushpoint) {
+        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
+        return write(buffer, unflushedSize, flushpoint);
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize, boolean streamingFlush) {
+    public boolean write(JfrBuffer buffer, UnsignedWord unflushedSize, boolean flushpoint) {
+        assert !JfrBufferNodeAccess.isRetired(buffer.getNode());
+
         if (unflushedSize.equal(0)) {
             return true;
         }
@@ -131,20 +133,20 @@ public class JfrGlobalMemory {
             /* Copy all committed but not yet flushed memory to the promotion buffer. */
             JfrBuffer promotionBuffer = JfrBufferNodeAccess.getBuffer(promotionNode);
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(threadLocalBuffer), promotionBuffer.getCommittedPos(), unflushedSize);
+            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(buffer), promotionBuffer.getCommittedPos(), unflushedSize);
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
             shouldSignal = SubstrateJVM.getRecorderThread().shouldSignal(promotionBuffer);
         } finally {
             JfrBufferNodeAccess.unlock(promotionNode);
         }
 
-        JfrBufferAccess.increaseFlushedPos(threadLocalBuffer, unflushedSize);
+        JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
 
         /*
          * Notify the thread that writes the global memory to disk. If we're flushing, the global
          * buffers are about to get persisted anyway.
          */
-        if (shouldSignal && !streamingFlush) {
+        if (shouldSignal && !flushpoint) {
             SubstrateJVM.getRecorderThread().signal();
         }
         return true;

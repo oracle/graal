@@ -130,10 +130,10 @@ public class JfrSymbolRepository implements JfrRepository {
 
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public int write(JfrChunkWriter writer, boolean flush) {
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
         mutex.lockNoTransition();
         try {
-            JfrSymbolEpochData epochData = getEpochData(!flush);
+            JfrSymbolEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
                 return EMPTY;
@@ -143,7 +143,7 @@ public class JfrSymbolRepository implements JfrRepository {
             writer.writeCompressedLong(count);
             writer.write(epochData.buffer);
 
-            epochData.clear(flush);
+            epochData.clear(flushpoint);
             return NON_EMPTY;
         } finally {
             mutex.unlock();
@@ -226,8 +226,8 @@ public class JfrSymbolRepository implements JfrRepository {
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
-        void clear(boolean flush) {
-            if (!flush) {
+        void clear(boolean flushpoint) {
+            if (!flushpoint) {
                 table.clear();
             }
             unflushedEntries = 0;

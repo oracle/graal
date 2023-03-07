@@ -195,13 +195,13 @@ public final class JfrThreadRepository implements JfrRepository {
 
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public int write(JfrChunkWriter writer, boolean flush) {
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
         mutex.lockNoTransition();
         try {
-            JfrThreadEpochData epochData = getEpochData(!flush);
+            JfrThreadEpochData epochData = getEpochData(!flushpoint);
             int count = writeThreads(writer, epochData);
             count += writeThreadGroups(writer, epochData);
-            epochData.clear(flush);
+            epochData.clear(flushpoint);
             return count;
         } finally {
             mutex.unlock();
@@ -266,8 +266,8 @@ public final class JfrThreadRepository implements JfrRepository {
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
-        void clear(boolean flush) {
-            if (!flush) {
+        void clear(boolean flushpoint) {
+            if (!flushpoint) {
                 threadTable.clear();
                 threadGroupTable.clear();
             }
