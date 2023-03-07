@@ -40,15 +40,45 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-final class GeneratorClassLoader extends ClassLoader {
-    private final Class<?> referenceClass;
+final class GeneratorClassLoaders {
 
-    GeneratorClassLoader(Class<?> referenceClass) {
-        super(referenceClass.getClassLoader());
-        this.referenceClass = referenceClass;
+    private final class StorageClassLoader extends ClassLoader {
+        private final Class<?> referenceClass;
+
+        StorageClassLoader(Class<?> referenceClass) {
+            super(referenceClass.getClassLoader());
+            this.referenceClass = referenceClass;
+        }
+
+        Class<?> defineGeneratedClass(String name, byte[] b, int off, int len) throws ClassFormatError {
+            return defineClass(name, b, off, len, referenceClass.getProtectionDomain());
+        }
     }
 
-    Class<?> defineGeneratedClass(String name, byte[] b, int off, int len) throws ClassFormatError {
-        return defineClass(name, b, off, len, referenceClass.getProtectionDomain());
+    private final class FactoryClassLoader extends ClassLoader {
+        FactoryClassLoader(StorageClassLoader parent) {
+            super(parent);
+        }
+
+        @SuppressWarnings("unchecked")
+        Class<?> defineGeneratedClass(String name, byte[] b, int off, int len) throws ClassFormatError {
+            return defineClass(name, b, off, len, ((StorageClassLoader) getParent()).referenceClass.getProtectionDomain());
+        }
+    }
+
+    private final StorageClassLoader storageCL;
+    private final FactoryClassLoader factoryCL;
+
+    GeneratorClassLoaders(Class<?> referenceClass) {
+        storageCL = new StorageClassLoader(referenceClass);
+        factoryCL = new FactoryClassLoader(storageCL);
+    }
+
+    Class<?> defineGeneratedClass(String name, byte[] b, int off, int len, boolean isStorage) throws ClassFormatError {
+        if (isStorage) {
+            return storageCL.defineGeneratedClass(name, b, off, len);
+        } else {
+            return factoryCL.defineGeneratedClass(name, b, off, len);
+        }
     }
 }

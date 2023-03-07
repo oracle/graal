@@ -139,7 +139,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     // Invoked also from TruffleBaseFeature.StaticObjectSupport
     @SuppressWarnings("unchecked")
-    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface,
+    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoaders gcls, Class<?> storageSuperClass, Class<T> storageFactoryInterface,
                     String storageClassName) {
         ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache;
         if (TruffleOptions.AOT) {
@@ -153,8 +153,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             if (ImageInfo.inImageRuntimeCode()) {
                 throw new IllegalStateException("This code should not be executed at Native Image run time. Please report this issue");
             }
-            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, storageClassName);
-            Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
+            Class<?> generatedStorageClass = generateStorage(gcls, storageSuperClass, storageClassName);
+            Class<? extends T> generatedFactoryClass = generateFactory(gcls, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
             ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) cache.putIfAbsent(pair, sg);
             if (prevSg != null) {
@@ -614,7 +614,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, String storageClassName) {
+    private static Class<?> generateStorage(GeneratorClassLoaders gcls, Class<?> storageSuperClass, String storageClassName) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
 
         ClassWriter storageWriter = new ClassWriter(0);
@@ -628,10 +628,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             addCloneMethod(storageSuperClass, storageWriter, storageClassName);
         }
         storageWriter.visitEnd();
-        return load(gcl, storageClassName, storageWriter.toByteArray());
+        return load(gcls, storageClassName, storageWriter.toByteArray(), true);
     }
 
-    private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {
+    private static <T> Class<? extends T> generateFactory(GeneratorClassLoaders gcls, Class<?> storageClass, Class<T> storageFactoryInterface) {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
@@ -640,7 +640,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addFactoryConstructor(factoryWriter, factoryName);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface, factoryName);
         factoryWriter.visitEnd();
-        Class<? extends T> factoryClass = load(gcl, factoryName, factoryWriter.toByteArray());
+        Class<? extends T> factoryClass = load(gcls, factoryName, factoryWriter.toByteArray(), false);
 
         Map<Object, Object> replacements = ArrayBasedStaticShape.replacements;
         if (replacements != null) {
