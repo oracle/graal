@@ -391,7 +391,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardingNode overflowGuard, ValueNode maxTripCountNode) {
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
+            final boolean zeroExtendBound = compare.condition().isUnsigned();
+            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), zeroExtendBound, graph, NodeView.DEFAULT);
             ValueNode extremum = maxTripCountNode == null ? iv.extremumNode(true, StampFactory.forKind(JavaKind.Long)) : iv.extremumNode(true, StampFactory.forKind(JavaKind.Long), maxTripCountNode);
             ValueNode guardedExtremum = graph.addOrUniqueWithInputs(GuardedValueNode.create(extremum, overflowGuard));
             // guardedExtremum |<| longBound && iv.initNode() |<| bound

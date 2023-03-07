@@ -181,7 +181,7 @@ public abstract class InductionVariable {
         return ((DerivedInductionVariable) this).getBase().getRootIV();
     }
 
-    public static enum IVToStringVerbosity {
+    public enum IVToStringVerbosity {
         /**
          * Print a full representation of the induction variable including all nodes and its type.
          */
