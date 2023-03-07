@@ -667,7 +667,7 @@ public final class ModuleLayerFeature implements InternalFeature {
              */
             List<Path> appModulePath = imageClassLoader.applicationModulePath()
                             .stream()
-                            .filter(p -> !p.endsWith("/lib/svm/library-support.jar"))
+                            .filter(p -> (p.getParent() == null || !p.getParent().endsWith("/lib/svm/")))
                             .collect(Collectors.toList());
             if (appModulePath.isEmpty()) {
                 return null;
