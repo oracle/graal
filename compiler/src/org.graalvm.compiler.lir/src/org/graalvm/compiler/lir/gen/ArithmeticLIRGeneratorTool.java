@@ -185,6 +185,7 @@ public interface ArithmeticLIRGeneratorTool {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    @SuppressWarnings("unused")
     default Value emitFloatIsInfinite(Value input) {
         throw GraalError.unimplemented("No specialized implementation available");
     }

@@ -230,8 +230,8 @@ public class StandardGraphBuilderPlugins {
         registerCharacterPlugins(plugins);
         registerCharacterDataLatin1Plugins(plugins);
         registerShortPlugins(plugins);
-        registerIntegerLongPlugins(plugins, JavaKind.Int, lowerer.getTarget().arch);
-        registerIntegerLongPlugins(plugins, JavaKind.Long, lowerer.getTarget().arch);
+        registerIntegerLongPlugins(plugins, JavaKind.Int);
+        registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         registerArrayPlugins(plugins, replacements);
@@ -768,7 +768,7 @@ public class StandardGraphBuilderPlugins {
         return false;
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Architecture arch) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);

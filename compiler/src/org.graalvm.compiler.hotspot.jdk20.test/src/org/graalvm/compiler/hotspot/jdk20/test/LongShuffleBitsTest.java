@@ -76,6 +76,14 @@ public class LongShuffleBitsTest extends JTTTest {
         return Long.expand(i, mask);
     }
 
+    public static long lCompressExpand(long i, long mask) {
+        return Long.compress(Long.expand(i, mask), mask);
+    }
+
+    public static long lExpandCompress(long i, long mask) {
+        return Long.expand(Long.compress(i, mask), mask);
+    }
+
     @Test
     public void testLCompress() {
         runTest("lCompress", input0, input1);
@@ -84,5 +92,15 @@ public class LongShuffleBitsTest extends JTTTest {
     @Test
     public void testLExpand() {
         runTest("lExpand", input0, input1);
+    }
+
+    @Test
+    public void testLCompressExpand() {
+        runTest("lCompressExpand", input0, input1);
+    }
+
+    @Test
+    public void testLExpandCompress() {
+        runTest("lExpandCompress", input0, input1);
     }
 }

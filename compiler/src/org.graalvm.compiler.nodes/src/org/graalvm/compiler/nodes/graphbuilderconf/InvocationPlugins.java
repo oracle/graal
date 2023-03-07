@@ -389,7 +389,7 @@ public class InvocationPlugins {
             assert !method.isBridge();
             InvocationPlugin plugin = invocationPlugins.get(method.getName());
             while (plugin != null) {
-                if (plugin.match(method)) {
+                if (plugin.isSameType(method)) {
                     return plugin;
                 }
                 plugin = plugin.next;
@@ -412,7 +412,7 @@ public class InvocationPlugins {
         InvocationPlugin lookup(InvocationPlugin plugin) {
             InvocationPlugin registeredPlugin = invocationPlugins.get(plugin.name);
             while (registeredPlugin != null) {
-                if (registeredPlugin.match(plugin)) {
+                if (registeredPlugin.isSameType(plugin)) {
                     return registeredPlugin;
                 }
                 registeredPlugin = registeredPlugin.next;
@@ -509,7 +509,7 @@ public class InvocationPlugins {
                             List<InvocationPlugin> testInvocationPlugins = testExtensions.get(internalName);
                             if (testInvocationPlugins != null) {
                                 for (InvocationPlugin testInvocationPlugin : testInvocationPlugins) {
-                                    if (testInvocationPlugin.match(method)) {
+                                    if (testInvocationPlugin.isSameType(method)) {
                                         return testInvocationPlugin;
                                     }
                                 }
@@ -605,7 +605,7 @@ public class InvocationPlugins {
     private static int findInvocationPlugin(List<InvocationPlugin> list, InvocationPlugin key) {
         for (int i = 0; i < list.size(); i++) {
             InvocationPlugin invocationPlugin = list.get(i);
-            if (invocationPlugin.match(key)) {
+            if (invocationPlugin.isSameType(key)) {
                 return i;
             }
         }
@@ -1143,7 +1143,7 @@ public class InvocationPlugins {
         Method[] methods = declaringClass.getDeclaredMethods();
         Method match = null;
         for (Method m : methods) {
-            if (plugin.match(m)) {
+            if (plugin.isSameType(m)) {
                 if (match == null) {
                     match = m;
                 } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
@@ -1180,7 +1180,7 @@ public class InvocationPlugins {
         ResolvedJavaMethod match = null;
         for (int i = 0; i < methods.length; ++i) {
             ResolvedJavaMethod m = methods[i];
-            if (plugin.match(m)) {
+            if (plugin.isSameType(m)) {
                 if (match == null) {
                     match = m;
                 } else {
@@ -1214,7 +1214,7 @@ public class InvocationPlugins {
         }
         Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
         for (Constructor<?> c : constructors) {
-            if (plugin.match(c)) {
+            if (plugin.isSameType(c)) {
                 return c;
             }
         }

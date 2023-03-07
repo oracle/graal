@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Intrinsification for {@link Integer#compress}, {@link Long#compress}.
+ * Intrinsification for {@code Integer.compress}, {@code Long.compress}.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public final class CompressBitsNode extends BinaryArithmeticNode<Compress> {
@@ -119,7 +119,7 @@ public final class CompressBitsNode extends BinaryArithmeticNode<Compress> {
         }
         // compress(expand(x, m), m) == x & compress(m, m)
         if (value instanceof ExpandBitsNode && ((ExpandBitsNode) value).getY() == mask) {
-            return AndNode.create(new CompressBitsNode(mask, mask), value, NodeView.DEFAULT);
+            return AndNode.create(new CompressBitsNode(mask, mask), ((ExpandBitsNode) value).getX(), NodeView.DEFAULT);
         }
 
         return this;

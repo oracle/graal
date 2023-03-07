@@ -75,6 +75,14 @@ public class IntegerShuffleBitsTest extends JTTTest {
         return Integer.expand(i, mask);
     }
 
+    public static int iCompressExpand(int i, int mask) {
+        return Integer.compress(Integer.expand(i, mask), mask);
+    }
+
+    public static int iExpandCompress(int i, int mask) {
+        return Integer.expand(Integer.compress(i, mask), mask);
+    }
+
     @Test
     public void testICompress() {
         runTest("iCompress", input0, input1);
@@ -83,5 +91,15 @@ public class IntegerShuffleBitsTest extends JTTTest {
     @Test
     public void testIExpand() {
         runTest("iExpand", input0, input1);
+    }
+
+    @Test
+    public void testICompressExpand() {
+        runTest("iCompressExpand", input0, input1);
+    }
+
+    @Test
+    public void testIExpandCompress() {
+        runTest("iExpandCompress", input0, input1);
     }
 }

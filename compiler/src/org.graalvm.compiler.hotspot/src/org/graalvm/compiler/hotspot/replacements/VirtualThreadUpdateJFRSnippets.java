@@ -46,7 +46,6 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
-import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -137,7 +136,6 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo virtualThreadUpdateJFR;
-        private final HotSpotWordTypes wordTypes;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
@@ -153,7 +151,6 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
                             JFR_THREAD_LOCAL_VTHREAD_EPOCH,
                             JFR_THREAD_LOCAL_VTHREAD_EXCLUDED,
                             JFR_THREAD_LOCAL_VTHREAD);
-            this.wordTypes = providers.getWordTypes();
         }
 
         public void lower(VirtualThreadUpdateJFRNode virtualThreadUpdateJFRNode, HotSpotRegistersProvider registers, LoweringTool tool) {
