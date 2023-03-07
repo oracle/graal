@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,23 @@
  */
 package com.oracle.truffle.tools.dap.instrument;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
 import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -62,12 +70,76 @@ public final class DAPInstrument extends TruffleInstrument {
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
 
+    static final OptionType<List<URI>> SOURCE_PATH = new OptionType<>("folder" + File.pathSeparator + "file.zip" + File.pathSeparator + "...", (str) -> {
+        if (str.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<URI> uris = new ArrayList<>();
+        int i1 = 0;
+        while (i1 < str.length()) {
+            int i2 = str.indexOf(File.pathSeparatorChar, i1);
+            if (i2 < 0) {
+                i2 = str.length();
+            }
+            String path = str.substring(i1, i2);
+            try {
+                uris.add(createURIFromPath(path));
+            } catch (URISyntaxException ex) {
+                throw new IllegalArgumentException("Wrong path: " + path, ex);
+            }
+            i1 = i2 + 1;
+        }
+        return uris;
+    });
+
+    private static URI createURIFromPath(String path) throws URISyntaxException {
+        String lpath = path.toLowerCase();
+        int index = 0;
+        File jarFile = null;
+        while (index < lpath.length()) {
+            int zi = lpath.indexOf(".zip", index);
+            int ji = lpath.indexOf(".jar", index);
+            if (zi >= 0 && zi < ji || ji < 0) {
+                ji = zi;
+            }
+            if (ji >= 0) {
+                index = ji + 4;
+                File jar = new File(path.substring(0, index));
+                if (jar.isFile()) {
+                    jarFile = jar;
+                    break;
+                }
+            } else {
+                index = path.length();
+            }
+        }
+        if (jarFile != null) {
+            StringBuilder ssp = new StringBuilder("file://").append(jarFile.toPath().toUri().getPath());
+            if (index < path.length()) {
+                if (path.charAt(index) != '!') {
+                    ssp.append('!');
+                }
+                ssp.append(path.substring(index));
+            } else {
+                ssp.append("!/");
+            }
+            return new URI("jar", ssp.toString(), null);
+        } else {
+            return new File(path).toPath().toUri();
+        }
+    }
+
     @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port] (default: <loopback address>:" + DEFAULT_PORT +
                     ")", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<HostAndPort> Dap = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
     @Option(help = "Suspend the execution at first executed source line (default: true).", usageSyntax = "true|false", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
+
+    private static final String SOURCE_PATH_USAGE = "<path>,<path>,...";
+
+    @com.oracle.truffle.api.Option(help = "Specifies list of directories or ZIP/JAR files representing source path (default: empty list).", usageSyntax = SOURCE_PATH_USAGE, category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<List<URI>> SourcePath = new OptionKey<>(Collections.emptyList(), SOURCE_PATH);
 
     @Option(help = "Do not execute any source code until debugger client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
@@ -100,7 +172,37 @@ public final class DAPInstrument extends TruffleInstrument {
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new DAPInstrumentOptionDescriptors();
+        // Provide dynamic help example
+        OptionDescriptors descriptors = new DAPInstrumentOptionDescriptors();
+        return new OptionDescriptors() {
+            @Override
+            public OptionDescriptor get(String optionName) {
+                return descriptors.get(optionName);
+            }
+
+            @Override
+            public Iterator<OptionDescriptor> iterator() {
+                Iterator<OptionDescriptor> iterator = descriptors.iterator();
+                return new Iterator<>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public OptionDescriptor next() {
+                        OptionDescriptor descriptor = iterator.next();
+                        if (descriptor.getKey() == SourcePath) {
+                            String example = " Example: " + File.separator + "projects" + File.separator + "foo" + File.separator + "src" + File.pathSeparator + "sources.jar" + File.pathSeparator +
+                                            "package.zip!/src";
+                            descriptor = OptionDescriptor.newBuilder(SourcePath, descriptor.getName()).deprecated(descriptor.isDeprecated()).category(descriptor.getCategory()).help(
+                                            descriptor.getHelp() + example).usageSyntax(SOURCE_PATH_USAGE).build();
+                        }
+                        return descriptor;
+                    }
+                };
+            }
+        };
     }
 
     private void launchServer(TruffleInstrument.Env env, PrintWriter info, PrintWriter err) {
@@ -113,7 +215,7 @@ public final class DAPInstrument extends TruffleInstrument {
             final int port = socketAddress.getPort();
             final ExecutionContext context = new ExecutionContext(env, info, err, options.get(Internal), options.get(Initialization));
             final ServerSocket serverSocket = new ServerSocket(port, options.get(SocketBacklogSize), socketAddress.getAddress());
-            dapServer = DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization));
+            dapServer = DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization), options.get(SourcePath));
             dapServer.start(serverSocket).exceptionally(throwable -> {
                 throwable.printStackTrace(err);
                 return null;
