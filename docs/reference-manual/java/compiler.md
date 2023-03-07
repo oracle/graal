@@ -24,12 +24,11 @@ GraalVM includes a version of the HotSpot JVM that supports JVMCI.
 
 The Graal compiler provides optimized performance for programs running on the JVM through unique approaches to code analysis and optimization.
 It includes multiple optimization algorithms (called “Phases”), like aggressive inlining, polymorphic inlining, and others. 
-See the list of the most important platform-independent optimizations in the Graal compiler [here](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.core/src/org/graalvm/compiler/core/phases/CEOptimization.java).
+Find some of the platform-independent compiler optimizations in GraalVM Community Edition [here](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.core/src/org/graalvm/compiler/core/phases/CEOptimization.java).
 
-The Graal compiler assures performance advantages for highly-abstracted programs due to its ability to remove costly object allocations -- the [partial escape analysis phase](https://www.javadoc.io/static/org.graalvm.compiler/compiler/22.3.1/org/graalvm/compiler/core/phases/CEOptimization.html#PartialEscapeAnanylsis). 
-This analysis determines whether an object is accessible outside the allocating method or thread, and can greatly improve performance of an application by reducing the number of allocations.
-Code using more abstractions and modern Java features like Streams or Lambdas will see greater speedups. 
-Code that is bound by things like I/O or memory allocations that cannot be removed by the compiler will see less improvement.
+The Graal compiler can bring performance advantages for highly-abstracted programs. For example, it includes a [partial-escape-analysis optimization](https://www.javadoc.io/static/org.graalvm.compiler/compiler/22.3.1/org/graalvm/compiler/core/phases/CEOptimization.html#PartialEscapeAnalysis) that can remove costly allocations of certain objects. 
+This optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (e.g. the object is passed as a parameter, stored in a field, or returned from a method). This can greatly improve performance of an application by reducing the number of heap allocations. 
+Code using more modern Java features like Streams or Lambdas will see greater speedups as this type of code involves a significant number of such non- or partially-escaping objects. Code that is bound by things like I/O or memory allocations that cannot be removed by the compiler will see less improvement. 
 For more information on performance tuning, refer to [Compiler Configuration on JVM](Options.md).
 
 ## Graph Compilation
