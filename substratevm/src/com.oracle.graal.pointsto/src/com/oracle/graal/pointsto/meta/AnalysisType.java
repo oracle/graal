@@ -640,6 +640,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (dimension > 0 && !elementalType.isPrimitive() && !elementalType.isJavaLangObject()) {
             forAllSuperTypes(universe.objectType(), dimension, true, superTypeConsumer);
         }
+        if (this.isInterface()) {
+            superTypeConsumer.accept(universe.objectType());
+        }
     }
 
     private static void forAllSuperTypes(AnalysisType elementType, int arrayDimension, boolean processType, Consumer<AnalysisType> superTypeConsumer) {
