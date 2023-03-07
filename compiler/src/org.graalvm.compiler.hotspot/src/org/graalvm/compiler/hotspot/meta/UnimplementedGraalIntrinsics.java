@@ -305,9 +305,6 @@ public final class UnimplementedGraalIntrinsics {
         if (config.sha3ImplCompress == 0L) {
             add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
-        if (config.contDoYield == 0L && JAVA_SPEC == 19) {
-            add(ignore, "jdk/internal/vm/Continuation.doYield()I");
-        }
         if (config.poly1305ProcessBlocks == 0L) {
             add(ignore, "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V");
         }
@@ -349,16 +346,14 @@ public final class UnimplementedGraalIntrinsics {
             }
         }
 
-        if (JAVA_SPEC == 20) {
+        if (JAVA_SPEC >= 20) {
             // without JIT implementation
             add(ignore,
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "jdk/internal/vm/Continuation.doYield()I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
-        }
 
-        if (JAVA_SPEC >= 20) {
             // same ignore reason as "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;"
             // see also https://bugs.openjdk.org/browse/JDK-8286480
             add(ignore,

@@ -240,7 +240,6 @@ public class HotSpotGraphBuilderPlugins {
                 for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
                     p.registerInvocationPlugins(target.arch, plugins.getInvocationPlugins(), replacements);
                 }
-                registerContinuationPlugins(invocationPlugins, config, replacements);
                 registerPoly1305Plugins(invocationPlugins, config, replacements);
                 registerChaCha20Plugins(invocationPlugins, config, replacements);
             }
@@ -1168,10 +1167,5 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-    }
-
-    private static void registerContinuationPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        Registration r = new Registration(plugins, "jdk.internal.vm.Continuation", replacements);
-        r.registerConditional(config.contDoYield != 0L, new ForeignCallPlugin(HotSpotBackend.CONTINUATION_DO_YIELD, "doYield"));
     }
 }

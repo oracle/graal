@@ -277,8 +277,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 
-    public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
-
     /**
      * @see VMErrorNode
      */
