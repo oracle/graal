@@ -79,6 +79,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
 import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMulAddOp;
 import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
+import org.graalvm.compiler.lir.amd64.AMD64BigIntegerSquareToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
@@ -385,7 +386,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PD, asAllocatable(left), right, state));
                 append(new FloatBranchOp(cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
             } else {
-                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind);
+                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             OperandSize size = OperandSize.get(cmpKind);
@@ -852,6 +853,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(len.getValueKind());
         emitMove(result, AMD64.rax.asValue(len.getValueKind()));
         return result;
+    }
+
+    @Override
+    public void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
+        RegisterValue rX = AMD64.rdi.asValue(x.getValueKind());
+        RegisterValue rLen = AMD64.rsi.asValue(len.getValueKind());
+        RegisterValue rZ = AMD64.r11.asValue(z.getValueKind());
+        RegisterValue rZlen = AMD64.rcx.asValue(zlen.getValueKind());
+
+        emitMove(rX, x);
+        emitMove(rLen, len);
+        emitMove(rZ, z);
+        emitMove(rZlen, zlen);
+
+        append(new AMD64BigIntegerSquareToLenOp(rX, rLen, rZ, rZlen, getHeapBaseRegister()));
     }
 
     @SuppressWarnings("unchecked")

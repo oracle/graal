@@ -61,6 +61,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMulAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerSquareToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
@@ -360,7 +361,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case NE:
                 return ConditionFlag.NE;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -390,7 +391,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case BT:
                 return ConditionFlag.LO;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -707,6 +708,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(len.getValueKind());
         append(new AArch64BigIntegerMulAddOp(this, asAllocatable(out), asAllocatable(in), asAllocatable(offset), asAllocatable(len), asAllocatable(k), asAllocatable(result)));
         return result;
+    }
+
+    @Override
+    public void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
+        append(new AArch64BigIntegerSquareToLenOp(asAllocatable(x), asAllocatable(len), asAllocatable(z), asAllocatable(zlen)));
     }
 
     @Override

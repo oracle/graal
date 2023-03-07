@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ public enum Stride {
             case 8:
                 return S8;
             default:
-                throw GraalError.shouldNotReachHere("Unsupported stride: " + scale);
+                throw GraalError.shouldNotReachHere("Unsupported stride: " + scale); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -88,7 +88,7 @@ public enum Stride {
             case 3:
                 return S8;
             default:
-                throw GraalError.shouldNotReachHere("Unsupported stride: " + (1 << shift));
+                throw GraalError.shouldNotReachHere("Unsupported stride: " + (1 << shift)); // ExcludeFromJacocoGeneratedReport
         }
     }
 

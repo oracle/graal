@@ -268,7 +268,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         if (BenchmarkCounters.enabled) {
             return new AArch64HotSpotCounterOp(name, group, transformBenchmarkCounterIncrement(increment), getProviders().getRegisters(), config);
         }
-        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -277,7 +277,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             Value[] incrementValues = Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray(Value[]::new);
             return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
         }
-        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

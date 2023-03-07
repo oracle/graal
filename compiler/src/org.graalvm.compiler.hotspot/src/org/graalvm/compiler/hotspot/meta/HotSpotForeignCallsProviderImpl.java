@@ -240,7 +240,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         GraalError.guarantee(foreignCalls != null, "%s", signature);
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(signature);
         if (callTarget == null) {
-            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature);
+            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature); // ExcludeFromJacocoGeneratedReport
         }
         callTarget.finalizeAddress(runtime.getHostBackend());
         return callTarget;

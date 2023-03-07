@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,32 +26,14 @@ package com.oracle.svm.core.heapdump;
 
 import java.io.FileOutputStream;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-
-@AutomaticallyRegisteredFeature
-public final class HeapDumpFeature implements InternalFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl());
-        ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            ImageSingletons.add(HeapDumpWriter.class, new UnimplementedHeapDumpWriter("Currently not supported for " + ImageSingletons.lookup(Platform.class)));
-        } else {
-            ImageSingletons.add(HeapDumpWriter.class, new HeapDumpWriterImpl());
-        }
-    }
-}
-
-final class HeapDumpSupportImpl implements HeapDumpSupport {
+/* Legacy implementation, only used by other legacy code (see GR-44538). */
+public class HeapDumpSupportImpl implements HeapDumpSupport {
     @Override
     public void dumpHeap(String outputFile, boolean live) throws java.io.IOException {
         try (FileOutputStream fileOutputStream = new FileOutputStream(outputFile)) {
-            HeapDumpWriter.singleton().writeHeapTo(fileOutputStream, live);
+            com.oracle.svm.core.heapdump.HeapDumpWriter.singleton().writeHeapTo(fileOutputStream, live);
         }
     }
 }

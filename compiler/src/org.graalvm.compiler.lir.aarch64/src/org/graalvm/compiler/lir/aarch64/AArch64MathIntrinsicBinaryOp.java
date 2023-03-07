@@ -64,7 +64,7 @@ public abstract class AArch64MathIntrinsicBinaryOp extends AArch64LIRInstruction
             } else if (AArch64.SIMD.equals(register.getRegisterCategory())) {
                 temps[i] = register.asValue(LIRKind.value(AArch64Kind.V64_WORD));
             } else {
-                throw GraalError.shouldNotReachHere("Unsupported register type in math stubs.");
+                throw GraalError.shouldNotReachHere("Unsupported register type in math stubs."); // ExcludeFromJacocoGeneratedReport
             }
         }
         return temps;

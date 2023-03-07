@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -523,7 +523,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 String types = Arrays.stream(getElementTypes(type)).map(LLVMIRBuilder::intrinsicType).collect(Collectors.joining(""));
                 return "sl_" + types + "s";
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -857,7 +857,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             case LLVM.LLVMDoubleTypeKind:
                 return buildFCmp(cond, a, b, unordered);
             default:
-                throw shouldNotReachHere(dumpTypes("comparison", aType, bType));
+                throw shouldNotReachHere(dumpTypes("comparison", aType, bType)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -895,7 +895,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 conditionCode = LLVM.LLVMIntULT;
                 break;
             default:
-                throw shouldNotReachHere("invalid condition");
+                throw shouldNotReachHere("invalid condition"); // ExcludeFromJacocoGeneratedReport
         }
         return LLVM.LLVMBuildICmp(builder, conditionCode, a, b, DEFAULT_INSTR_NAME);
     }
@@ -922,7 +922,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 conditionCode = (unordered) ? LLVM.LLVMRealUGE : LLVM.LLVMRealOGE;
                 break;
             default:
-                throw shouldNotReachHere("invalid condition");
+                throw shouldNotReachHere("invalid condition"); // ExcludeFromJacocoGeneratedReport
         }
         return LLVM.LLVMBuildFCmp(builder, conditionCode, a, b, DEFAULT_INSTR_NAME);
     }
@@ -954,7 +954,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 unaryBuilder = LLVM::LLVMBuildFNeg;
                 break;
             default:
-                throw shouldNotReachHere(dumpTypes("invalid negation type", type));
+                throw shouldNotReachHere(dumpTypes("invalid negation type", type)); // ExcludeFromJacocoGeneratedReport
         }
 
         return unaryBuilder.build(builder, a, DEFAULT_INSTR_NAME);
@@ -1003,7 +1003,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 binaryBuilder = realBuilder;
                 break;
             default:
-                throw shouldNotReachHere(dumpValues("invalid binary operation arguments", a, b));
+                throw shouldNotReachHere(dumpValues("invalid binary operation arguments", a, b)); // ExcludeFromJacocoGeneratedReport
         }
 
         return binaryBuilder.build(builder, a, b, DEFAULT_INSTR_NAME);

@@ -318,22 +318,22 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
 
         @Override
         public StackTraceElement methodStackTraceElement(ResolvedJavaMethod method, int bci, Object pos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int nodeSourcePositionBCI(Object pos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public Object nodeSourcePositionCaller(Object pos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public ResolvedJavaMethod nodeSourcePositionMethod(Object pos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -353,22 +353,22 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
 
         @Override
         public Object fieldDeclaringClass(Object field) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public String fieldName(Object field) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public String fieldTypeName(Object field) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int fieldModifiers(Object field) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public class AArch64MoveFactory extends MoveFactory {
         } else {
             assert src instanceof AllocatableValue;
             if (srcIsSlot && dstIsSlot) {
-                throw GraalError.shouldNotReachHere(src.getClass() + " " + dst.getClass());
+                throw GraalError.shouldNotReachHere(src.getClass() + " " + dst.getClass()); // ExcludeFromJacocoGeneratedReport
             } else {
                 return new AArch64Move.Move((AArch64Kind) dst.getPlatformKind(), dst, (AllocatableValue) src);
             }
@@ -78,7 +78,7 @@ public class AArch64MoveFactory extends MoveFactory {
         } else if (src instanceof DataPointerConstant) {
             return new AArch64Move.LoadDataOp(dst, (DataPointerConstant) src);
         } else {
-            throw GraalError.unimplemented();
+            throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

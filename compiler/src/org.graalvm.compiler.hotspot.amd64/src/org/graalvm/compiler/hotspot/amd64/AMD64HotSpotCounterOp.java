@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
             // In this case rax and rbx are used as increment. Either we implement a third register
             // or we implement a spillover the value from rax to rbx or vice versa during
             // emitIncrement().
-            throw GraalError.unimplemented("RAX and RBX are increment registers at the same time, spilling over the scratch register is not supported right now");
+            throw GraalError.unimplemented("RAX and RBX are increment registers at the same time, spilling over the scratch register is not supported right now"); // ExcludeFromJacocoGeneratedReport
         }
 
         // address for counters array

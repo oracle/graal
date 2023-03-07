@@ -466,7 +466,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Long:
                 return ConstantNode.forLong(value, graph);
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -479,7 +479,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Long:
                 return createPrimitive(JavaConstant.forLong(value));
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -490,7 +490,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Double:
                 return ConstantNode.forDouble(value, graph);
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 

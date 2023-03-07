@@ -149,7 +149,7 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         mulAdd(masm, out, in, offset, len, k, tmp1, tmp2, tmp3, tmp4, tmp5, rdx, rax);
     }
 
-    private static boolean useBMI2Instructions(AMD64MacroAssembler masm) {
+    static boolean useBMI2Instructions(AMD64MacroAssembler masm) {
         return masm.supports(BMI2) && masm.supports(AVX);
     }
 

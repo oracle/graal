@@ -68,7 +68,7 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
     @Override
     public MemoryUsage getNonHeapMemoryUsage() {
         codeInfoVisitor.reset();
-        RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsUninterruptibly(codeInfoVisitor);
+        RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(codeInfoVisitor);
         long used = codeInfoVisitor.getRuntimeCodeInfoSize().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
@@ -104,9 +104,9 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
             runtimeCodeInfoSize = WordFactory.zero();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
-        public <T extends CodeInfo> boolean visitCode(T codeInfo) {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean visitCode(CodeInfo codeInfo) {
             runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo)).add(CodeInfoAccess.getNativeMetadataSize(codeInfo));
             return true;
         }

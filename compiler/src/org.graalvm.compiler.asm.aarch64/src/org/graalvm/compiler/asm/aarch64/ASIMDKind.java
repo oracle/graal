@@ -61,7 +61,7 @@ public class ASIMDKind {
             }
         }
         if (returnKind == null) {
-            throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base));
+            throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base)); // ExcludeFromJacocoGeneratedReport
         }
         return returnKind;
     }

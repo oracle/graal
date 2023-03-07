@@ -108,7 +108,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
-    private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
@@ -139,10 +138,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public boolean useMontgomerySquareIntrinsic() {
         return useMontgomerySquareIntrinsic && montgomerySquare != 0;
-    }
-
-    public boolean useSquareToLenIntrinsic() {
-        return useSquareToLenIntrinsic && squareToLen != 0;
     }
 
     public boolean inlineNotify() {
@@ -531,7 +526,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
-    public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address");
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
 

@@ -136,7 +136,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), (StructuredGraph) snippetGraph.copy(getDebug()), tool);
                 }
-                GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind());
+                GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind()); // ExcludeFromJacocoGeneratedReport
             } else {
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp(NodeView.DEFAULT));

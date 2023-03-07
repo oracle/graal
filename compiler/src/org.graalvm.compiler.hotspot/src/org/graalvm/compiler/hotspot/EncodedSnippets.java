@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -153,7 +153,7 @@ public class EncodedSnippets {
                 }
                 start = start.next;
             }
-            throw GraalError.shouldNotReachHere("missing receiver type " + aClass);
+            throw GraalError.shouldNotReachHere("missing receiver type " + aClass); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -208,7 +208,7 @@ public class EncodedSnippets {
         }
         if (data == null) {
             if (IS_IN_NATIVE_IMAGE) {
-                throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)"));
+                throw GraalError.shouldNotReachHere("snippet not found: " + method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             } else {
                 return null;
             }
@@ -373,7 +373,7 @@ public class EncodedSnippets {
             if (lookupMethod.equals(method)) {
                 return encodedGraph;
             } else {
-                throw GraalError.shouldNotReachHere(method.format("%H.%n(%p)"));
+                throw GraalError.shouldNotReachHere(method.format("%H.%n(%p)")); // ExcludeFromJacocoGeneratedReport
             }
         }
 

@@ -52,6 +52,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADCX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADOX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
@@ -1026,7 +1028,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 case ZMM:
                     return l512features != null && features.containsAll(l512features);
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1179,7 +1181,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else if (avxSize == AVXSize.YMM) {
                 return l256feature != null && features.contains(l256feature) && extendedFeatureCheck;
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -2324,7 +2326,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return NLT_UQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     switch (condition) {
@@ -2341,7 +2343,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return GE_OQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }
@@ -3347,6 +3349,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         OR.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void orl(AMD64Address dst, Register src) {
+        OR.mrOp.emit(this, DWORD, dst, src);
+    }
+
     public final void orl(Register dst, int imm32) {
         OR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
@@ -4111,12 +4117,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void rorq(Register dst, int imm8) {
-        assert isByte(imm8);
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
         ROR.miOp.emit(this, QWORD, dst, (byte) imm8);
     }
 
     public final void rorxq(Register dst, Register src, int imm8) {
         RORXQ.emit(this, AVXSize.QWORD, dst, src, (byte) imm8);
+    }
+
+    public final void rclq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        RCL.miOp.emit(this, QWORD, dst, (byte) imm8);
+    }
+
+    public final void rcrq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        RCR.miOp.emit(this, QWORD, dst, (byte) imm8);
     }
 
     public final void bsrq(Register dst, Register src) {

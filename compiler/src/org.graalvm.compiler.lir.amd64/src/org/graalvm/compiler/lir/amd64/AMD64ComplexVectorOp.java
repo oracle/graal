@@ -103,7 +103,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case Double:
                         return AMD64Kind.V128_DOUBLE;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case YMM:
                 switch (valueKind) {
@@ -120,7 +120,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case Double:
                         return AMD64Kind.V256_DOUBLE;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case ZMM:
                 switch (valueKind) {
@@ -157,7 +157,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V128_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case YMM:
                 switch (stride) {
@@ -170,7 +170,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V256_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case ZMM:
                 switch (stride) {
@@ -183,10 +183,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V512_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw GraalError.shouldNotReachHere("Unsupported vector size.");
+                throw GraalError.shouldNotReachHere("Unsupported vector size."); // ExcludeFromJacocoGeneratedReport
         }
     }
 

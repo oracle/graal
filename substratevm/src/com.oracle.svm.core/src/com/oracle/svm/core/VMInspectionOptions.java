@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -61,6 +62,7 @@ public final class VMInspectionOptions {
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
         if (enabledFeatures.contains(MONITORING_DEFAULT_NAME)) {
@@ -77,6 +79,7 @@ public final class VMInspectionOptions {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static String getDefaultMonitoringCommandArgument() {
         return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_DEFAULT_NAME);
     }
@@ -86,7 +89,7 @@ public final class VMInspectionOptions {
         return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME);
     }
 
-    public static Set<String> getEnabledMonitoringFeatures() {
+    private static Set<String> getEnabledMonitoringFeatures() {
         return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
 

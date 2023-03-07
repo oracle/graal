@@ -84,7 +84,7 @@ public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask 
                     }
                     Files.write(Paths.get(dumpPath + "_failure.log"), baos.toByteArray());
                 } catch (IOException e) {
-                    GraalError.shouldNotReachHere(e, "Error saving log of failed phase plan to " + dumpPath + "_failure.log");
+                    GraalError.shouldNotReachHere(e, "Error saving log of failed phase plan to " + dumpPath + "_failure.log"); // ExcludeFromJacocoGeneratedReport
                 }
             }
             return super.handleFailure(initialDebug, cause);

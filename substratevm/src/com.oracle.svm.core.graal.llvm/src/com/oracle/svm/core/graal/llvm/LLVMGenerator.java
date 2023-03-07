@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -404,7 +404,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 return builder.voidType();
             case Illegal:
             default:
-                throw shouldNotReachHere("Illegal type");
+                throw shouldNotReachHere("Illegal type"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -430,7 +430,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else if (LLVMIRBuilder.isVoidType(type)) {
             return JavaKind.Void;
         } else {
-            throw shouldNotReachHere("Unknown LLVM type");
+            throw shouldNotReachHere("Unknown LLVM type"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -521,7 +521,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     return builder.buildLoad(getLLVMPlaceholderForConstant(constant), builder.objectType(LLVMIRBuilder.isCompressedPointerType(type)));
                 }
             default:
-                throw shouldNotReachHere(dumpTypes("unsupported constant type", type));
+                throw shouldNotReachHere(dumpTypes("unsupported constant type", type)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -574,12 +574,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public <K extends ValueKind<K>> K toRegisterKind(K kind) {
         /* Registers are handled by LLVM. */
-        throw unimplemented("only needed when emitting LIR constants");
+        throw unimplemented("only needed when emitting LIR constants"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitMoveConstant(AllocatableValue dst, Constant src) {
-        throw unimplemented("the LLVM backend doesn't need to move constants");
+        throw unimplemented("the LLVM backend doesn't need to move constants"); // ExcludeFromJacocoGeneratedReport
     }
 
     /* Values */
@@ -601,7 +601,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else if (input instanceof LLVMValueWrapper) {
             return new LLVMVariable(getVal(input));
         }
-        throw shouldNotReachHere("Unknown move input");
+        throw shouldNotReachHere("Unknown move input"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -762,7 +762,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else if (register.equals(ReservedRegisters.singleton().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(ReservedRegisters.singleton().getFrameRegister().name));
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         return new LLVMVariable(value);
     }
@@ -782,7 +782,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 buildInlineSetRegister(ReservedRegisters.singleton().getHeapBaseRegister().name, getVal(src));
             }
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -823,7 +823,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (stackslot instanceof LLVMStackSlot) {
             return new LLVMVariable(builder.buildPtrToInt(getVal(stackslot)));
         }
-        throw shouldNotReachHere("Unknown address type");
+        throw shouldNotReachHere("Unknown address type"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -1086,37 +1086,37 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public LIRGenerationResult getResult() {
-        throw unimplemented("the LLVM backend doesn't produce an LIRGenerationResult");
+        throw unimplemented("the LLVM backend doesn't produce an LIRGenerationResult"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public MoveFactory getMoveFactory() {
-        throw unimplemented("the LLVM backend doesn't use LIR moves");
+        throw unimplemented("the LLVM backend doesn't use LIR moves"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public MoveFactory getSpillMoveFactory() {
-        throw unimplemented("the LLVM backend doesn't use LIR moves");
+        throw unimplemented("the LLVM backend doesn't use LIR moves"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        throw unimplemented("the LLVM backend doesn't support deoptimization");
+        throw unimplemented("the LLVM backend doesn't support deoptimization"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
-        throw unimplemented("the LLVM backend doesn't support deoptimization");
+        throw unimplemented("the LLVM backend doesn't support deoptimization"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters) {
-        throw unimplemented("the LLVM backend delegates exception handling to libunwind");
+        throw unimplemented("the LLVM backend delegates exception handling to libunwind"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitUnwind(Value operand) {
-        throw shouldNotReachHere("handled by lowering");
+        throw shouldNotReachHere("handled by lowering"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -1128,52 +1128,52 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public void emitInstructionSynchronizationBarrier() {
-        throw unimplemented("the LLVM backend doesn't support instruction synchronization");
+        throw unimplemented("the LLVM backend doesn't support instruction synchronization"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public <I extends LIRInstruction> I append(I op) {
-        throw unimplemented("the LLVM backend doesn't support LIR instructions");
+        throw unimplemented("the LLVM backend doesn't support LIR instructions"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitSpeculationFence() {
-        throw unimplemented("the LLVM backend doesn't support speculative execution attack mitigation");
+        throw unimplemented("the LLVM backend doesn't support speculative execution attack mitigation"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createZapRegisters(Register[] zappedRegisters) {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createZapRegisters() {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction zapArgumentSpace() {
-        throw unimplemented("the LLVM backend doesn't support diagnostic operations");
+        throw unimplemented("the LLVM backend doesn't support diagnostic operations"); // ExcludeFromJacocoGeneratedReport
     }
 
     /* Arithmetic */
@@ -1303,7 +1303,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 return emitReinterpret(resultKind, result);
             }
 
-            throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers");
+            throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers"); // ExcludeFromJacocoGeneratedReport
         }
 
         private LLVMValueRef actualShiftingDistance(LLVMValueRef a, LLVMValueRef b) {
@@ -1374,7 +1374,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     destType = builder.doubleType();
                     break;
                 default:
-                    throw shouldNotReachHere("invalid FloatConvert type");
+                    throw shouldNotReachHere("invalid FloatConvert type"); // ExcludeFromJacocoGeneratedReport
             }
 
             LLVMValueRef convert;
@@ -1394,7 +1394,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     convert = builder.buildFPCast(getVal(inputVal), destType);
                     break;
                 default:
-                    throw shouldNotReachHere("invalid FloatConvert type");
+                    throw shouldNotReachHere("invalid FloatConvert type"); // ExcludeFromJacocoGeneratedReport
             }
             return new LLVMVariable(convert);
         }
@@ -1436,7 +1436,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 case LLVM.LLVMDoubleTypeKind:
                     return new LLVMVariable(builder.buildFabs(value));
                 default:
-                    throw shouldNotReachHere("Unsupported abs type " + type);
+                    throw shouldNotReachHere("Unsupported abs type " + type); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1778,7 +1778,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     case Void:
                     case Illegal:
                     default:
-                        throw shouldNotReachHere();
+                        throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                 }
 
                 printfArgs.add(values[i]);
@@ -1806,7 +1806,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public void emitCacheWriteback(Value address) {
         int cacheLineSize = getDataCacheLineFlushSize();
         if (cacheLineSize == 0) {
-            throw shouldNotReachHere("cache writeback with cache line size of 0");
+            throw shouldNotReachHere("cache writeback with cache line size of 0"); // ExcludeFromJacocoGeneratedReport
         }
         LLVMValueRef start = builder.buildBitcast(getVal(address), builder.rawPointerType());
         LLVMValueRef end = builder.buildGEP(start, builder.constantInt(cacheLineSize));
@@ -1815,7 +1815,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        throw unimplemented("cache sync barrier (GR-30894)");
+        throw unimplemented("cache sync barrier (GR-30894)"); // ExcludeFromJacocoGeneratedReport
     }
 
     private static final int dataCacheLineFlushSize = initDataCacheLineFlushSize();

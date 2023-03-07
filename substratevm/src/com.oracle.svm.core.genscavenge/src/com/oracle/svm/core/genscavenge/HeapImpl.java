@@ -457,6 +457,7 @@ public final class HeapImpl extends Heap {
     @Override
     public boolean walkCollectedHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 

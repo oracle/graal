@@ -217,7 +217,7 @@ public class InliningLogCodec extends CompanionObjectEncoder<InliningLog, Inlini
             if (orderIdToCallsite.containsKey(orderId)) {
                 InliningLog.Callsite callsite = orderIdToCallsite.get(orderId);
                 callsite.setInvoke(invokable);
-                inliningLog.addLeafCallsite(invokable, callsite);
+                inliningLog.registerLeafCallsite(invokable, callsite);
             } else {
                 inliningLog.trackNewCallsite(invokable);
             }

@@ -164,6 +164,6 @@ public class LargeConstantSectionTest extends JTTTest {
         } catch (ClassNotFoundException e) {
             throw new AssertionFailedError("Cannot find class " + NAME);
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 }

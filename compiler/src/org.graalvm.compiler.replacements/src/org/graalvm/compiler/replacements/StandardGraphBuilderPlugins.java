@@ -166,6 +166,8 @@ import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -928,7 +930,7 @@ public class StandardGraphBuilderPlugins {
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
         return b.add(new FixedGuardNode(overflowCheck, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateRecompile, true));
     }
@@ -944,7 +946,7 @@ public class StandardGraphBuilderPlugins {
             case INTEGER_MULTIPLY_EXACT:
                 return new IntegerMulExactNode(x, y, createIntegerExactArithmeticGuardNode(b, x, y, op));
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -959,7 +961,7 @@ public class StandardGraphBuilderPlugins {
             case INTEGER_MULTIPLY_EXACT:
                 return new IntegerMulExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge);
             default:
-                throw GraalError.shouldNotReachHere("Unknown integer exact operation.");
+                throw GraalError.shouldNotReachHere("Unknown integer exact operation."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1746,7 +1748,7 @@ public class StandardGraphBuilderPlugins {
                 throw GraalError.shouldNotReachHere("Illegal usage of stable array intrinsic assumeStableDimension(array, dimension): " +
                                 "This compiler intrinsic can only be used iff array is a constant node (i.e., constant field) and iff " +
                                 "dimension is a constant int. It will replace the constant array with a new constant that additionally sets the stable" +
-                                "dimensions to the int parameter supplied.");
+                                "dimensions to the int parameter supplied."); // ExcludeFromJacocoGeneratedReport
             }
         });
         r.register(new RequiredInlineOnlyInvocationPlugin("injectBranchProbability", double.class, boolean.class) {
@@ -2282,11 +2284,25 @@ public class StandardGraphBuilderPlugins {
                 return templates.implMultiplyToLen;
             }
         });
-        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
-                        "implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
+        r.register(new InvocationPlugin("implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
-                return templates.implMulAdd;
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode outLength = helper.length(out);
+                    ValueNode newOffset = b.add(SubNode.create(outLength, offset, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Int, new BigIntegerMulAddNode(helper.arrayStart(out, JavaKind.Int), helper.arrayStart(in, JavaKind.Int), newOffset, len, k));
+                    return true;
+                }
+            }
+        });
+        r.register(new InvocationPlugin("implSquareToLen", int[].class, int.class, int[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    b.add(new BigIntegerSquareToLenNode(helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
+                    b.push(JavaKind.Object, z);
+                    return true;
+                }
             }
         });
     }

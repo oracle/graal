@@ -34,5 +34,11 @@ Non-standard options help:
                           creates a new bundle app_dbg.nib based on the given app.nib bundle.
                           Both bundles are the same except the new one also uses the -g option.
 
+    -E<env-var-key>[=<env-var-value>]
+                          allow native-image to access the given environment variable during
+                          image build. If the optional <env-var-value> is not given, the value
+                          of the environment variable will be taken from the environment
+                          native-image was invoked from.
+
     -V<key>=<value>       provide values for placeholders in native-image.properties files
 

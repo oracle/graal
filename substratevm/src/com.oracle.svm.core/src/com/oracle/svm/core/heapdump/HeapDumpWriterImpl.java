@@ -60,6 +60,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 /*
+ * Legacy implementation, only used by other legacy code (see GR-44538).
+ *
  * This class writes Java heap in hprof binary format. The class is heavily
  * influenced by 'HeapHprofBinWriter' implementation.
  */

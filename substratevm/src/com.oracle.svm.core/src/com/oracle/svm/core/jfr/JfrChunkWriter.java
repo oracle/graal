@@ -150,7 +150,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public void openFile(String outputFile) {
         assert lock.isOwner();
         filename = outputFile;
-        fd = getFileSupport().open(filename, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+        fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.READ_WRITE);
 
         chunkStartTicks = JfrTicks.elapsedTicks();
         chunkStartNanos = JfrTicks.currentTimeNanos();

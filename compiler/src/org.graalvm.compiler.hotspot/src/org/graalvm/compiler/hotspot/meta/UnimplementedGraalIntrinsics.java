@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public final class UnimplementedGraalIntrinsics {
             for (int i = 0; i < elements.length; i++) {
                 fmt.format("%-" + width + "s | %s%n", elements[i], sorted[i]);
             }
-            throw GraalError.shouldNotReachHere(String.format("Elements not sorted alphabetically:%n%s", fmt));
+            throw GraalError.shouldNotReachHere(String.format("Elements not sorted alphabetically:%n%s", fmt)); // ExcludeFromJacocoGeneratedReport
         }
         c.addAll(Arrays.asList(elements));
     }
@@ -262,9 +262,6 @@ public final class UnimplementedGraalIntrinsics {
         }
         if (!config.useMontgomerySquareIntrinsic()) {
             add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
-        }
-        if (!config.useSquareToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
         }
         // DigestBase intrinsics
         if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&

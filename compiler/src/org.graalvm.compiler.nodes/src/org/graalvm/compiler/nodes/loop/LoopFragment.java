@@ -32,7 +32,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -56,8 +55,8 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
@@ -95,16 +94,8 @@ public abstract class LoopFragment {
 
     public abstract void insertBefore(LoopEx l);
 
-    public void disconnect() {
-        GraalError.unimplemented();
-    }
-
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
-    }
-
-    public UnmodifiableEconomicMap<Node, Node> duplicationMap() {
-        return this.duplicationMap;
     }
 
     @SuppressWarnings("unchecked")
@@ -212,7 +203,7 @@ public abstract class LoopFragment {
             } catch (Throwable t) {
                 checkNoNulls(duplicationMap);
                 graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
-                throw GraalError.shouldNotReachHere(t);
+                throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
             }
             nodesReady = true;
         } else {

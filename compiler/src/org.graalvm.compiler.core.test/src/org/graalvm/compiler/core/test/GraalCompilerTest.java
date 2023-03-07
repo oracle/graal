@@ -1123,7 +1123,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             return installedCode;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
