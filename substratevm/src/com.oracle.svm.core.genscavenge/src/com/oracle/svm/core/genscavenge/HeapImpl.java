@@ -49,7 +49,6 @@ import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -59,7 +58,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -204,7 +203,7 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Tear-down in progress.")
     public boolean tearDown() {
         if (ParallelGC.isEnabled()) {
-            ParallelGCImpl.singleton().tearDown();
+            ParallelGC.singleton().tearDown();
         }
         youngGeneration.tearDown();
         oldGeneration.tearDown();
@@ -241,6 +240,11 @@ public final class HeapImpl extends Heap {
 
     GCImpl getGCImpl() {
         return gcImpl;
+    }
+
+    @Override
+    public void initGC() {
+        gcImpl.initialize();
     }
 
     @Override

@@ -64,7 +64,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
-import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -72,7 +72,6 @@ import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
-import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -144,6 +143,12 @@ public final class GCImpl implements GC {
     @Override
     public void collect(GCCause cause) {
         collect(cause, false);
+    }
+
+    public void initialize() {
+        if (ParallelGC.isEnabled()) {
+            ParallelGC.singleton().startWorkerThreads();
+        }
     }
 
     public void maybeCollectOnAllocation() {
@@ -1055,7 +1060,7 @@ public final class GCImpl implements GC {
             if (isIncremental) {
                 scanGreyObjectsLoop();
             } else if (ParallelGC.isEnabled()) {
-                ParallelGCImpl.singleton().waitForIdle();
+                ParallelGC.singleton().waitForIdle();
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
             }

@@ -54,7 +54,7 @@ public class ChunkBuffer {
     }
 
     void push(Pointer ptr) {
-        assert !ParallelGCImpl.isInParallelPhase() || ParallelGCImpl.mutex.isOwner();
+        assert !ParallelGC.isInParallelPhase() || ParallelGC.mutex.isOwner();
         if (top >= size) {
             int oldSize = size;
             size *= 2;
@@ -66,7 +66,7 @@ public class ChunkBuffer {
     }
 
     Pointer pop() {
-        ParallelGCImpl.mutex.lock();
+        ParallelGC.mutex.lock();
         try {
             if (top > 0) {
                 top -= wordSize();
@@ -75,7 +75,7 @@ public class ChunkBuffer {
                 return WordFactory.nullPointer();
             }
         } finally {
-            ParallelGCImpl.mutex.unlock();
+            ParallelGC.mutex.unlock();
         }
     }
 

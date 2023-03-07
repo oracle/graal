@@ -80,6 +80,8 @@ public abstract class Heap {
 
     public abstract GC getGC();
 
+    public abstract void initGC();
+
     public abstract RuntimeCodeInfoGCSupport getRuntimeCodeInfoGCSupport();
 
     /**

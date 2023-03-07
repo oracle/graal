@@ -27,6 +27,7 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -35,7 +36,6 @@ import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
-import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -53,10 +53,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import java.util.List;
 import java.util.stream.IntStream;
 
-public class ParallelGCImpl extends ParallelGC {
+public class ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
 
@@ -81,8 +80,13 @@ public class ParallelGCImpl extends ParallelGC {
     private volatile boolean inParallelPhase;
 
     @Fold
-    public static ParallelGCImpl singleton() {
-        return (ParallelGCImpl) ImageSingletons.lookup(ParallelGC.class);
+    public static ParallelGC singleton() {
+        return ImageSingletons.lookup(ParallelGC.class);
+    }
+
+    @Fold
+    public static boolean isEnabled() {
+        return SubstrateOptions.UseParallelGC.getValue();
     }
 
     public static boolean isInParallelPhase() {
@@ -108,7 +112,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public void pushAllocChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        assert ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
+        assert ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
         if (chunk.notEqual(scannedChunkTL.get())) {
             UnsignedWord scanOffset = allocChunkScanOffsetTL.get();
             assert scanOffset.aboveThan(0);
@@ -118,8 +122,7 @@ public class ParallelGCImpl extends ParallelGC {
         }
     }
 
-    @Override
-    public void startWorkerThreadsImpl() {
+    public void startWorkerThreads() {
         buffer = new ChunkBuffer();
         int workerCount = getWorkerCount();
         busyWorkers = workerCount;
@@ -280,6 +283,6 @@ class ParallelGCFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ParallelGC.class, new ParallelGCImpl());
+        ImageSingletons.add(ParallelGC.class, new ParallelGC());
     }
 }

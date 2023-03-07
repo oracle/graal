@@ -86,7 +86,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
-import com.oracle.svm.core.heap.ParallelGC;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -325,8 +325,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        /* Number of workers can be affected by a runtime option, so start threads after options are parsed */
-        ParallelGC.startWorkerThreads();
+        /* Number of parallel GC workers can be affected by a runtime option, so call this after options are parsed */
+        Heap.getHeap().initGC();
 
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
