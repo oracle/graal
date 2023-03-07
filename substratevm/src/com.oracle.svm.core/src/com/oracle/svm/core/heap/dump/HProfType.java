@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.heap.dump;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.compiler.core.common.NumUtil;
 
-// Checkstyle: stop
+import com.oracle.svm.core.config.ConfigurationValues;
 
-/**
- * Definitions manually translated from the C header file fcntl.h.
- */
-@CContext(PosixDirectives.class)
-public class Fcntl {
+/* Enum of all relevant HPROF types (see enum hprofTag in HotSpot). */
+public enum HProfType {
+    NORMAL_OBJECT(0x2, 0),
+    BOOLEAN(0x4, 1),
+    CHAR(0x5, 2),
+    FLOAT(0x6, 4),
+    DOUBLE(0x7, 8),
+    BYTE(0x8, 1),
+    SHORT(0x9, 2),
+    INT(0xA, 4),
+    LONG(0xB, 8);
 
-    @CConstant
-    public static native int O_RDONLY();
+    private static final HProfType[] TYPES = HProfType.values();
 
-    @CConstant
-    public static native int O_RDWR();
+    private final byte value;
+    private final int size;
 
-    @CConstant
-    public static native int O_WRONLY();
+    HProfType(int value, int size) {
+        this.value = NumUtil.safeToUByte(value);
+        this.size = size;
+    }
 
-    @CConstant
-    public static native int O_CREAT();
+    public static HProfType get(byte value) {
+        return TYPES[value];
+    }
 
-    @CConstant
-    public static native int O_TRUNC();
+    public byte getValue() {
+        return value;
+    }
 
-    @CConstant
-    public static native int O_EXCL();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
+    public int getSize() {
+        if (size == 0) {
+            return ConfigurationValues.getTarget().wordSize;
+        }
+        return size;
     }
 }

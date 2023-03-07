@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.collections;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-
-// Checkstyle: stop
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.PointerBase;
 
 /**
- * Definitions manually translated from the C header file fcntl.h.
+ * Growable array with word-sized elements. The {@link #getData() array elements} are allocated on
+ * the C heap. The functions in {@link GrowableWordArrayAccess} should be used to access and modify
+ * this data structure.
  */
-@CContext(PosixDirectives.class)
-public class Fcntl {
+@RawStructure
+public interface GrowableWordArray extends PointerBase {
+    @RawField
+    int getSize();
 
-    @CConstant
-    public static native int O_RDONLY();
+    @RawField
+    void setSize(int value);
 
-    @CConstant
-    public static native int O_RDWR();
+    @RawField
+    int getCapacity();
 
-    @CConstant
-    public static native int O_WRONLY();
+    @RawField
+    void setCapacity(int value);
 
-    @CConstant
-    public static native int O_CREAT();
+    @RawField
+    WordPointer getData();
 
-    @CConstant
-    public static native int O_TRUNC();
-
-    @CConstant
-    public static native int O_EXCL();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
-    }
+    @RawField
+    void setData(WordPointer value);
 }

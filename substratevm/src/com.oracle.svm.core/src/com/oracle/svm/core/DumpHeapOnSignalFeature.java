@@ -33,10 +33,10 @@ import java.util.TimeZone;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.VMRuntime;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;

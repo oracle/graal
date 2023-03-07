@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.heap.dump;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.compiler.core.common.NumUtil;
 
-// Checkstyle: stop
+/* Enum of all relevant HPROF sub-records (see enum hprofTag in HotSpot). */
+public enum HProfSubRecord {
+    GC_ROOT_UNKNOWN(0xFF),
+    GC_ROOT_JNI_GLOBAL(0x01),
+    GC_ROOT_JNI_LOCAL(0x02),
+    GC_ROOT_JAVA_FRAME(0x03),
+    GC_ROOT_NATIVE_STACK(0x04),
+    GC_ROOT_STICKY_CLASS(0x05),
+    GC_ROOT_THREAD_BLOCK(0x06),
+    GC_ROOT_MONITOR_USED(0x07),
+    GC_ROOT_THREAD_OBJ(0x08),
+    GC_CLASS_DUMP(0x20),
+    GC_INSTANCE_DUMP(0x21),
+    GC_OBJ_ARRAY_DUMP(0x22),
+    GC_PRIM_ARRAY_DUMP(0x23);
 
-/**
- * Definitions manually translated from the C header file fcntl.h.
- */
-@CContext(PosixDirectives.class)
-public class Fcntl {
+    private final byte value;
 
-    @CConstant
-    public static native int O_RDONLY();
+    HProfSubRecord(int value) {
+        this.value = NumUtil.safeToUByte(value);
+    }
 
-    @CConstant
-    public static native int O_RDWR();
-
-    @CConstant
-    public static native int O_WRONLY();
-
-    @CConstant
-    public static native int O_CREAT();
-
-    @CConstant
-    public static native int O_TRUNC();
-
-    @CConstant
-    public static native int O_EXCL();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
+    public byte getValue() {
+        return value;
     }
 }

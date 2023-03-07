@@ -31,19 +31,15 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heapdump.HeapDumpUtils;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/** Legacy implementation, only used by other legacy code (see GR-44538). */
 class HeapDumpHostedUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -141,22 +137,5 @@ class HeapDumpHostedUtils {
         } catch (UnsupportedEncodingException ex) {
             VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class HeapDumpFieldsMapFeature implements InternalFeature {
-
-    /**
-     * Write out fields info and their offsets.
-     */
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void afterCompilation(Feature.AfterCompilationAccess access) {
-        AfterCompilationAccessImpl accessImpl = (AfterCompilationAccessImpl) access;
-        byte[] fieldMap = HeapDumpHostedUtils.dumpFieldsMap(accessImpl.getTypes());
-
-        HeapDumpUtils.getHeapDumpUtils().setFieldsMap(fieldMap);
-        access.registerAsImmutable(fieldMap);
     }
 }

@@ -50,8 +50,13 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     }
 
     @Override
-    public RawFileDescriptor open(String filename, FileAccessMode mode) {
-        return open(new File(filename), mode);
+    public RawFileDescriptor create(String filename, FileCreationMode creationMode, FileAccessMode accessMode) {
+        return create(new File(filename), creationMode, accessMode);
+    }
+
+    @Override
+    public RawFileDescriptor open(String filename, FileAccessMode accessMode) {
+        return open(new File(filename), accessMode);
     }
 
     @Override
@@ -114,34 +119,48 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
         return write(fd, dataPtr, WordFactory.unsigned(sizeInBytes));
     }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean writeFloat(RawFileDescriptor fd, float data) {
+        return writeInt(fd, Float.floatToIntBits(data));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean writeDouble(RawFileDescriptor fd, double data) {
+        return writeLong(fd, Double.doubleToLongBits(data));
+    }
+
     public static class RawFileOperationSupportHolder {
         private final RawFileOperationSupport littleEndian;
         private final RawFileOperationSupport bigEndian;
-        private final RawFileOperationSupport nativeByteOrder;
+        private final RawFileOperationSupport nativeOrder;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public RawFileOperationSupportHolder(RawFileOperationSupport littleEndian, RawFileOperationSupport bigEndian, RawFileOperationSupport nativeByteOrder) {
+        public RawFileOperationSupportHolder(RawFileOperationSupport littleEndian, RawFileOperationSupport bigEndian, RawFileOperationSupport nativeOrder) {
             this.littleEndian = littleEndian;
             this.bigEndian = bigEndian;
-            this.nativeByteOrder = nativeByteOrder;
+            this.nativeOrder = nativeOrder;
+        }
+
+        @Fold
+        static RawFileOperationSupportHolder singleton() {
+            return ImageSingletons.lookup(RawFileOperationSupportHolder.class);
         }
 
         @Fold
         public static RawFileOperationSupport getLittleEndian() {
-            RawFileOperationSupportHolder holder = ImageSingletons.lookup(RawFileOperationSupportHolder.class);
-            return holder.littleEndian;
+            return singleton().littleEndian;
         }
 
         @Fold
         public static RawFileOperationSupport getBigEndian() {
-            RawFileOperationSupportHolder holder = ImageSingletons.lookup(RawFileOperationSupportHolder.class);
-            return holder.bigEndian;
+            return singleton().bigEndian;
         }
 
         @Fold
         public static RawFileOperationSupport getNativeByteOrder() {
-            RawFileOperationSupportHolder holder = ImageSingletons.lookup(RawFileOperationSupportHolder.class);
-            return holder.nativeByteOrder;
+            return singleton().nativeOrder;
         }
     }
 }
