@@ -200,8 +200,12 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
-    public String toString() {
-        return String.format("DerivedOffsetInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), offset);
+    public String toString(IVToStringVerbosity verbosity) {
+        if (verbosity == IVToStringVerbosity.FULL) {
+            return String.format("DerivedOffsetInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), offset);
+        } else {
+            return String.format("(%s) %s %s", base, value.getNodeClass().shortName(), offset);
+        }
     }
 
     @Override

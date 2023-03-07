@@ -180,4 +180,23 @@ public abstract class InductionVariable {
         assert this instanceof DerivedInductionVariable;
         return ((DerivedInductionVariable) this).getBase().getRootIV();
     }
+
+    public static enum IVToStringVerbosity {
+        /**
+         * Print a full representation of the induction variable including all nodes and its type.
+         */
+        FULL,
+        /*
+         * Only print the operations in a numeric form.
+         */
+        NUMERIC
+    }
+
+    public abstract String toString(IVToStringVerbosity verbosity);
+
+    @Override
+    public String toString() {
+        return toString(IVToStringVerbosity.NUMERIC);
+    }
+
 }

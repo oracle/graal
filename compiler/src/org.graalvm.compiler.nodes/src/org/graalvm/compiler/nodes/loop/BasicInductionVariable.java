@@ -210,8 +210,12 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
-    public String toString() {
-        return String.format("BasicInductionVariable %s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
+    public String toString(IVToStringVerbosity verbosity) {
+        if (verbosity == IVToStringVerbosity.FULL) {
+            return String.format("BasicInductionVariable %s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
+        } else {
+            return String.format("%s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
+        }
     }
 
     @Override

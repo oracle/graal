@@ -168,8 +168,12 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
-    public String toString() {
-        return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
+    public String toString(IVToStringVerbosity verbosity) {
+        if (verbosity == IVToStringVerbosity.FULL) {
+            return String.format("DerivedScaleInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), scale);
+        } else {
+            return String.format("(%s) %s %s", base, value.getNodeClass().shortName(), scale);
+        }
     }
 
     @Override
