@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,11 +45,11 @@ public final class JfrEventWriterAccess {
      * The fields "startPosition" and "startPositionAddress" in the JDK class EventWriter refer to
      * the committed position and not to the start of the buffer.
      */
-    private static final long COMMITTED_POSITION_OFFSET = U.objectFieldOffset(getEventWriterClass(), "startPosition");
-    private static final long COMMITTED_POSITION_ADDRESS_OFFSET = U.objectFieldOffset(getEventWriterClass(), "startPositionAddress");
-    private static final long CURRENT_POSITION_OFFSET = U.objectFieldOffset(getEventWriterClass(), "currentPosition");
-    private static final long MAX_POSITION_OFFSET = U.objectFieldOffset(getEventWriterClass(), "maxPosition");
-    private static final long VALID_OFFSET = U.objectFieldOffset(getEventWriterClass(), "valid");
+    private static final Field COMMITTED_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPosition");
+    private static final Field COMMITTED_POSITION_ADDRESS_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPositionAddress");
+    private static final Field CURRENT_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "currentPosition");
+    private static final Field MAX_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "maxPosition");
+    private static final Field VALID_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "valid");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrEventWriterAccess() {
@@ -89,10 +91,10 @@ public final class JfrEventWriterAccess {
         Pointer currentPos = committedPos.add(uncommittedSize);
         Pointer maxPos = JfrBufferAccess.getDataEnd(buffer);
 
-        U.putLong(writer, COMMITTED_POSITION_OFFSET, committedPos.rawValue());
-        U.putLong(writer, COMMITTED_POSITION_ADDRESS_OFFSET, addressOfCommittedPos.rawValue());
-        U.putLong(writer, CURRENT_POSITION_OFFSET, currentPos.rawValue());
-        U.putLong(writer, MAX_POSITION_OFFSET, maxPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_FIELD), committedPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_ADDRESS_FIELD), addressOfCommittedPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(CURRENT_POSITION_FIELD), currentPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(MAX_POSITION_FIELD), maxPos.rawValue());
         if (!valid) {
             markAsInvalid(writer);
         }
@@ -101,6 +103,6 @@ public final class JfrEventWriterAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void markAsInvalid(Target_jdk_jfr_internal_EventWriter writer) {
         /* The VM should never write true (only the JDK code may do that). */
-        U.putBooleanVolatile(writer, VALID_OFFSET, false);
+        U.putBooleanVolatile(writer, U.objectFieldOffset(VALID_FIELD), false);
     }
 }

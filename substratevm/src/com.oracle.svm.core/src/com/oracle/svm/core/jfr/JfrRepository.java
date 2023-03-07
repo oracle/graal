@@ -33,7 +33,7 @@ import com.oracle.svm.core.Uninterruptible;
  * added data when it tries to iterate the data at a safepoint.
  *
  * Some repositories (e.g., {@link JfrTypeRepository}) return stable JFR trace IDs (i.e., the trace
- * id does not change if the epoch changes). However, the corresponding data (e.g., the type) is
+ * ID does not change if the epoch changes). However, the corresponding data (e.g., the type) is
  * only marked as used in a certain epoch, so callers must always be aware that the returned trace
  * ID is only valid for a specific epoch, no matter if the trace ID is stable or not.
  */

@@ -230,20 +230,15 @@ public class SubstrateJVM {
             return false;
         }
 
-        try {
-            recorderThread.shutdown();
+        recorderThread.shutdown();
 
-            threadLocal.teardown(true);
-            globalMemory.teardown();
-            symbolRepo.teardown();
-            threadRepo.teardown();
-            stackTraceRepo.teardown();
-            methodRepo.teardown();
-            typeRepo.teardown();
-        } catch (Throwable e) {
-            /* Log errors because the shutdown hook swallows exceptions. */
-            jfrLogging.warnInternal(e.getClass().getName() + " in destroyJFR.");
-        }
+        threadLocal.teardown(true);
+        globalMemory.teardown();
+        symbolRepo.teardown();
+        threadRepo.teardown();
+        stackTraceRepo.teardown();
+        methodRepo.teardown();
+        typeRepo.teardown();
 
         initialized = false;
         return true;

@@ -51,7 +51,7 @@ import com.oracle.svm.core.thread.VMThreads;
  * changes.
  */
 public final class JfrThreadRepository implements JfrRepository {
-    private static final int VIRTUAL_THREAD_GROUP_ID = 1;
+    public static final int VIRTUAL_THREAD_GROUP_ID = 1;
 
     private final VMMutex mutex;
     private final JfrThreadEpochData epochData0;

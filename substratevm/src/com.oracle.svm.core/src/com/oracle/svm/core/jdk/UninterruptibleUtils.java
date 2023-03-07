@@ -611,6 +611,7 @@ public class UninterruptibleUtils {
 
     @FunctionalInterface
     public interface CharReplacer {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         char replace(char val);
     }
 }

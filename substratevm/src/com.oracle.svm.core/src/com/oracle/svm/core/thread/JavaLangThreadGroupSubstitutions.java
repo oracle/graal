@@ -45,6 +45,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(ThreadGroup.class)
@@ -112,8 +113,7 @@ final class Target_java_lang_ThreadGroup {
  * This class assigns a unique id to each thread group, and this unique id is used by JFR.
  */
 class ThreadGroupIdAccessor {
-    private static final int VIRTUAL_THREAD_GROUP = 1;
-    private static final UninterruptibleUtils.AtomicLong nextID = new UninterruptibleUtils.AtomicLong(VIRTUAL_THREAD_GROUP + 1);
+    private static final UninterruptibleUtils.AtomicLong nextID = new UninterruptibleUtils.AtomicLong(JfrThreadRepository.VIRTUAL_THREAD_GROUP_ID + 1);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static long getId(Target_java_lang_ThreadGroup that) {

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
+
 /**
  * List of all possible {@link JfrBuffer} types.
  */
@@ -53,6 +55,7 @@ public enum JfrBufferType {
         this.threadLocal = threadLocal;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isThreadLocal() {
         return threadLocal;
     }

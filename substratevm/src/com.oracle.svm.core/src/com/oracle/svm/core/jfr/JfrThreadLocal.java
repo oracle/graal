@@ -144,7 +144,7 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Accesses various JFR buffers.")
-    public static void stopRecording(IsolateThread isolateThread, boolean threadExits) {
+    public static void stopRecording(IsolateThread isolateThread, boolean freeJavaBuffer) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
         JfrBufferNode nativeNode = nativeBufferNode.get(isolateThread);
         nativeBufferNode.set(isolateThread, WordFactory.nullPointer());
@@ -152,7 +152,7 @@ public class JfrThreadLocal implements ThreadListener {
 
         JfrBufferNode javaNode = javaBufferNode.get(isolateThread);
         javaBufferNode.set(isolateThread, WordFactory.nullPointer());
-        if (threadExits) {
+        if (freeJavaBuffer) {
             flushToGlobalMemoryAndFreeBuffer(javaNode);
         } else {
             flushToGlobalMemoryAndRetireBuffer(javaNode);
@@ -258,9 +258,10 @@ public class JfrThreadLocal implements ThreadListener {
 
     /**
      * If recording is started and stopped multiple times, then we may get a retired buffer instead
-     * of allocating a new one. Retired buffers need to be reset to a clean state. Once such a
-     * buffer is reinstated, the flushing can iterate over them at any time.
+     * of a new one. Retired buffers can have an invalid state, so we need to reset them before
+     * clearing the retired flag.
      */
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static JfrBuffer reinstateBuffer(JfrBuffer buffer) {
         if (buffer.isNull()) {
             return WordFactory.nullPointer();

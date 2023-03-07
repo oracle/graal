@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -45,6 +44,8 @@ import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
+import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -89,8 +90,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private boolean newChunk;
     private boolean isFinal;
     private long lastMetadataId;
-    private SignedWord metadataPosition;
-    private SignedWord lastCheckpointOffset;
+    private long metadataPosition;
+    private long lastCheckpointOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrStackTraceRepository stackTraceRepo, JfrMethodRepository methodRepo, JfrTypeRepository typeRepo, JfrSymbolRepository symbolRepo,
@@ -158,8 +159,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         newChunk = true;
         isFinal = false;
         lastMetadataId = -1;
-        metadataPosition = WordFactory.signed(-1);
-        lastCheckpointOffset = WordFactory.signed(-1);
+        metadataPosition = -1;
+        lastCheckpointOffset = -1;
 
         writeFileHeader();
     }
@@ -169,7 +170,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isOwner();
         assert buffer.isNonNull();
         assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
-        assert buffer.getNode() == null || !JfrBufferNodeAccess.isRetired(buffer.getNode());
+        assert buffer.getNode().isNull() || !JfrBufferNodeAccess.isRetired(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -233,7 +234,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().write(fd, FILE_MAGIC);
         getFileSupport().writeShort(fd, JFR_VERSION_MAJOR);
         getFileSupport().writeShort(fd, JFR_VERSION_MINOR);
-        assert getFileSupport().position(fd).equal(CHUNK_SIZE_OFFSET);
+        assert getFileSupport().position(fd) == CHUNK_SIZE_OFFSET;
         getFileSupport().writeLong(fd, 0L); // chunk size
         getFileSupport().writeLong(fd, 0L); // last checkpoint offset
         getFileSupport().writeLong(fd, 0L); // metadata position
@@ -241,7 +242,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeLong(fd, 0L); // durationNanos
         getFileSupport().writeLong(fd, chunkStartTicks);
         getFileSupport().writeLong(fd, JfrTicks.getTicksFrequency());
-        assert getFileSupport().position(fd).equal(FILE_STATE_OFFSET);
+        assert getFileSupport().position(fd) == FILE_STATE_OFFSET;
         getFileSupport().writeByte(fd, getAndIncrementGeneration());
         getFileSupport().writeByte(fd, (byte) 0); // padding
         getFileSupport().writeShort(fd, computeHeaderFlags());
@@ -249,22 +250,21 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     private void patchFileHeader(boolean flushpoint) {
         assert lock.isOwner();
-        assert metadataPosition.greaterThan(0);
-        assert lastCheckpointOffset.greaterThan(0);
+        assert metadataPosition > 0;
+        assert lastCheckpointOffset > 0;
 
         byte generation = flushpoint ? getAndIncrementGeneration() : COMPLETE;
-        SignedWord currentPos = getFileSupport().position(fd);
-        long chunkSize = currentPos.rawValue();
+        long currentPos = getFileSupport().position(fd);
         long durationNanos = JfrTicks.currentTimeNanos() - chunkStartNanos;
 
-        getFileSupport().seek(fd, WordFactory.signed(CHUNK_SIZE_OFFSET));
-        getFileSupport().writeLong(fd, chunkSize);
-        getFileSupport().writeLong(fd, lastCheckpointOffset.rawValue());
-        getFileSupport().writeLong(fd, metadataPosition.rawValue());
+        getFileSupport().seek(fd, CHUNK_SIZE_OFFSET);
+        getFileSupport().writeLong(fd, currentPos);
+        getFileSupport().writeLong(fd, lastCheckpointOffset);
+        getFileSupport().writeLong(fd, metadataPosition);
         getFileSupport().writeLong(fd, chunkStartNanos);
         getFileSupport().writeLong(fd, durationNanos);
 
-        getFileSupport().seek(fd, WordFactory.signed(FILE_STATE_OFFSET));
+        getFileSupport().seek(fd, FILE_STATE_OFFSET);
         getFileSupport().writeByte(fd, generation);
         getFileSupport().writeByte(fd, (byte) 0);
         getFileSupport().writeShort(fd, computeHeaderFlags());
@@ -308,20 +308,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private void writeCheckpointEvent(JfrCheckpointType type, JfrRepository[] repositories, boolean writeSerializers, boolean flushpoint) {
         assert lock.isOwner();
 
-        SignedWord start = beginEvent();
+        long start = beginEvent();
         writeCompressedLong(JfrReservedEvent.CHECKPOINT.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(getDeltaToLastCheckpoint(start));
         writeByte(type.getId());
 
-        SignedWord poolCountPos = getFileSupport().position(fd);
+        long poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // pool count (patched below)
 
         int poolCount = writeSerializers ? writeSerializers() : 0;
         poolCount += writeConstantPools(repositories, flushpoint);
 
-        SignedWord currentPos = getFileSupport().position(fd);
+        long currentPos = getFileSupport().position(fd);
         getFileSupport().seek(fd, poolCountPos);
         writePaddedInt(poolCount);
 
@@ -331,11 +331,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         lastCheckpointOffset = start;
     }
 
-    private long getDeltaToLastCheckpoint(SignedWord startOfNewCheckpoint) {
-        if (lastCheckpointOffset.lessThan(0)) {
+    private long getDeltaToLastCheckpoint(long startOfNewCheckpoint) {
+        if (lastCheckpointOffset < 0) {
             return 0L;
         }
-        return lastCheckpointOffset.subtract(startOfNewCheckpoint).rawValue();
+        return lastCheckpointOffset - startOfNewCheckpoint;
     }
 
     private int writeSerializers() {
@@ -367,7 +367,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             return;
         }
 
-        SignedWord start = beginEvent();
+        long start = beginEvent();
         writeCompressedLong(JfrReservedEvent.METADATA.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
@@ -381,25 +381,25 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public boolean shouldRotateDisk() {
         assert lock.isOwner();
-        return getFileSupport().isValid(fd) && getFileSupport().size(fd).greaterThan(WordFactory.signed(notificationThreshold));
+        return getFileSupport().isValid(fd) && getFileSupport().size(fd) > notificationThreshold;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public SignedWord beginEvent() {
-        SignedWord start = getFileSupport().position(fd);
+    public long beginEvent() {
+        long start = getFileSupport().position(fd);
         // Write a placeholder for the size. Will be patched by endEvent,
         getFileSupport().writeInt(fd, 0);
         return start;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void endEvent(SignedWord start) {
-        SignedWord end = getFileSupport().position(fd);
-        SignedWord writtenBytes = end.subtract(start);
-        assert (int) writtenBytes.rawValue() == writtenBytes.rawValue();
+    public void endEvent(long start) {
+        long end = getFileSupport().position(fd);
+        long writtenBytes = end - start;
+        assert (int) writtenBytes == writtenBytes;
 
         getFileSupport().seek(fd, start);
-        writePaddedInt(writtenBytes.rawValue());
+        writePaddedInt(writtenBytes);
         getFileSupport().seek(fd, end);
     }
 
@@ -520,8 +520,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
-            boolean success = JfrBufferNodeAccess.tryLock(node);
-            if (success) {
+            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            if (lockAcquired) {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 if (buffer.isNull()) {
                     list.removeNode(node, prev);
@@ -530,9 +530,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     continue;
                 }
 
-                /* Skip retired nodes as they may contain invalid data. */
-                if (!JfrBufferNodeAccess.isRetired(node)) {
-                    try {
+                try {
+                    /* Skip retired nodes as they may contain invalid data. */
+                    if (!JfrBufferNodeAccess.isRetired(node)) {
                         if (flushpoint) {
                             /*
                              * I/O operations may be slow, so this flushes to the global buffers
@@ -548,13 +548,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                          * reinitialize the thread-local buffers as the individual threads will
                          * handle space reclamation on their own time.
                          */
-                    } finally {
-                        JfrBufferNodeAccess.unlock(node);
                     }
+                } finally {
+                    JfrBufferNodeAccess.unlock(node);
                 }
             }
 
-            assert success || flushpoint;
+            assert lockAcquired || flushpoint;
             prev = node;
             node = next;
         }
@@ -565,8 +565,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         JfrBufferList buffers = globalMemory.getBuffers();
         JfrBufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            boolean success = JfrBufferNodeAccess.tryLock(node);
-            if (success) {
+            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            if (lockAcquired) {
                 try {
                     JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     write(buffer);
@@ -575,7 +575,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     JfrBufferNodeAccess.unlock(node);
                 }
             }
-            assert success || flushpoint;
+            assert lockAcquired || flushpoint;
             node = node.getNext();
         }
     }
@@ -647,7 +647,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * accessing the currently active buffers of other threads.
          */
         @Uninterruptible(reason = "Prevent JFR recording.")
-        private void processSamplerBuffers() {
+        private static void processSamplerBuffers() {
             assert VMOperation.isInProgressAtSafepoint();
             assert ThreadingSupportImpl.isRecurringCallbackPaused();
 
@@ -660,7 +660,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
 
         @Uninterruptible(reason = "Prevent JFR recording.")
-        private void processSamplerBuffers0() {
+        private static void processSamplerBuffers0() {
             SamplerBuffersAccess.processActiveBuffers();
             SamplerBuffersAccess.processFullBuffers(false);
         }

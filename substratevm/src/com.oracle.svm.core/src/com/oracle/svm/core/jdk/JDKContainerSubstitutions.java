@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem", onlyWith = JDK17OrLater.class)
 @Platforms(LINUX.class)
@@ -69,6 +70,7 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_RequestEngine {
     @Alias //
+    @TargetElement(onlyWith = JDK20OrLater.class) //
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReentrantLock.class) //
     private static ReentrantLock lock;
 
