@@ -99,5 +99,10 @@ public class Mman {
         @Platforms(Platform.LINUX.class)
         @CLibrary("rt")
         public static native int shm_open(@CConst CCharPointer name, int oflag, int mode);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        @Platforms(Platform.LINUX.class)
+        @CLibrary("rt")
+        public static native int shm_unlink(@CConst CCharPointer name);
     }
 }

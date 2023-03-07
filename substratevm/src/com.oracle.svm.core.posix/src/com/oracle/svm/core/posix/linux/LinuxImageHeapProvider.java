@@ -143,9 +143,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return fallbackCopyingProvider.initialize(reservedAddressSpace, reservedSize, basePointer, endPointer);
         }
 
-        boolean isDynamicMethodAddressResolutionEnabled = DynamicMethodAddressResolutionHeapSupport.isEnabled();
+        boolean haveDynamicMethodResolution = DynamicMethodAddressResolutionHeapSupport.isEnabled();
 
-        if (isDynamicMethodAddressResolutionEnabled) {
+        if (haveDynamicMethodResolution) {
             int res = DynamicMethodAddressResolutionHeapSupport.get().initialize();
             if (res != CEntryPointErrors.NO_ERROR) {
                 return res;
@@ -158,7 +158,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-        if (firstIsolate && reservedAddressSpace.isNull() && PointerUtils.isAMultiple(imageHeapBegin, alignment) && imageHeapOffsetInAddressSpace == 0 && !isDynamicMethodAddressResolutionEnabled) {
+        if (firstIsolate && reservedAddressSpace.isNull() && PointerUtils.isAMultiple(imageHeapBegin, alignment) && imageHeapOffsetInAddressSpace == 0 && !haveDynamicMethodResolution) {
             // Mark the whole image heap as read only.
             if (VirtualMemoryProvider.get().protect(imageHeapBegin, imageHeapSizeInFile, Access.READ) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
@@ -186,38 +186,38 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
-        UnsignedWord dynamicMethodResolutionRequiredBytes = WordFactory.zero();
-        if (isDynamicMethodAddressResolutionEnabled) {
-            dynamicMethodResolutionRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+        UnsignedWord preHeapRequiredBytes = WordFactory.zero();
+        if (haveDynamicMethodResolution) {
+            preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
         }
 
         // Reserve an address space for the image heap if necessary.
         UnsignedWord imageHeapAddressSpaceSize = getImageHeapAddressSpaceSize();
-        UnsignedWord totalRequiredAddressSpaceSize = imageHeapAddressSpaceSize.add(dynamicMethodResolutionRequiredBytes);
+        UnsignedWord totalAddressSpaceSize = imageHeapAddressSpaceSize.add(preHeapRequiredBytes);
 
         Pointer heapBase;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
-            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalRequiredAddressSpaceSize, alignment, false);
+            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
         } else {
-            if (reservedSize.belowThan(totalRequiredAddressSpaceSize)) {
+            if (reservedSize.belowThan(totalAddressSpaceSize)) {
                 return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
             }
             heapBase = reservedAddressSpace;
         }
 
-        if (isDynamicMethodAddressResolutionEnabled) {
-            WordPointer newHeapStart = StackValue.get(WordPointer.class);
-            int error = DynamicMethodAddressResolutionHeapSupport.get().install(heapBase, dynamicMethodResolutionRequiredBytes, newHeapStart);
+        if (haveDynamicMethodResolution) {
+            heapBase = heapBase.add(preHeapRequiredBytes);
+            Pointer installOffset = heapBase.subtract(DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes());
+            int error = DynamicMethodAddressResolutionHeapSupport.get().install(installOffset);
+
             if (error != CEntryPointErrors.NO_ERROR) {
                 freeImageHeap(allocatedMemory);
                 return error;
             }
-
-            heapBase = newHeapStart.read();
         }
 
         // Create memory mappings from the image file.
@@ -372,10 +372,13 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 }
             } else {
                 UnsignedWord totalAddressSpaceSize = getImageHeapAddressSpaceSize();
+                Pointer addressSpaceStart = (Pointer) heapBase;
                 if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
                     totalAddressSpaceSize = totalAddressSpaceSize.add(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
+                    addressSpaceStart = addressSpaceStart.subtract(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
                 }
-                if (VirtualMemoryProvider.get().free(heapBase, totalAddressSpaceSize) != 0) {
+
+                if (VirtualMemoryProvider.get().free(addressSpaceStart, totalAddressSpaceSize) != 0) {
                     return CEntryPointErrors.MAP_HEAP_FAILED;
                 }
             }

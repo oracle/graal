@@ -24,21 +24,19 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.Heap;
+import static com.oracle.svm.core.util.PointerUtils.roundUp;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
 import org.graalvm.word.WordFactory;
 
-import static com.oracle.svm.core.util.PointerUtils.roundUp;
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 
 public abstract class DynamicMethodAddressResolutionHeapSupport {
 
@@ -56,13 +54,9 @@ public abstract class DynamicMethodAddressResolutionHeapSupport {
 
     public abstract UnsignedWord getRequiredPreHeapMemoryInBytes();
 
-    protected abstract int install(Pointer address);
+    public abstract int install(Pointer address);
 
-    public abstract void makeGOTWritable();
-
-    public abstract void makeGOTReadOnly();
-
-    @Uninterruptible(reason = "May be called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getDynamicMethodAddressResolverPreHeapMemoryBytes() {
         UnsignedWord requiredPreHeapMemoryInBytes = getRequiredPreHeapMemoryInBytes();
         /* Ensure there is enough space to properly align the heap */
@@ -70,22 +64,10 @@ public abstract class DynamicMethodAddressResolutionHeapSupport {
         return roundUp((PointerBase) requiredPreHeapMemoryInBytes, heapAlignment);
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code", mayBeInlined = true)
-    public Pointer getGOTMappingStartAddress() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getPreHeapMappingStartAddress() {
         UnsignedWord heapBase = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
         return (Pointer) heapBase.subtract(getRequiredPreHeapMemoryInBytes());
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code", mayBeInlined = true)
-    public int install(Pointer heapStart, UnsignedWord heapStartOffset, WordPointer newHeapStart) {
-        UnsignedWord newHeapStartAddress = heapStart.add(heapStartOffset);
-        UnsignedWord installOffset = newHeapStartAddress.subtract(getRequiredPreHeapMemoryInBytes());
-        int error = install((Pointer) installOffset);
-        if (error != CEntryPointErrors.NO_ERROR) {
-            return error;
-        }
-
-        newHeapStart.write(newHeapStartAddress);
-        return CEntryPointErrors.NO_ERROR;
-    }
 }
