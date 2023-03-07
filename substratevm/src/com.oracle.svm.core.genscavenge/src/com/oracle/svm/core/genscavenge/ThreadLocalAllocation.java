@@ -119,7 +119,7 @@ public final class ThreadLocalAllocation {
 
         @RawFieldOffset
         static int offsetOfAllocationTop() {
-            throw VMError.unimplemented(); // replaced
+            throw VMError.shouldNotReachHereAtRuntime(); // replaced // ExcludeFromJacocoGeneratedReport
         }
 
         @RawField
@@ -130,7 +130,7 @@ public final class ThreadLocalAllocation {
 
         @RawFieldOffset
         static int offsetOfAllocationEnd() {
-            throw VMError.unimplemented(); // replaced
+            throw VMError.shouldNotReachHereAtRuntime(); // replaced // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
             Stamp originalStamp = StampFactory.forKind(returnType.getJavaKind());
             returnValue = CInterfaceInvocationPlugin.adaptPrimitiveType(graph, adapted, returnType.getJavaKind(), originalStamp.getStackKind(), false);
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
         }
 
         kit.getFrameState().push(pushKind, returnValue);

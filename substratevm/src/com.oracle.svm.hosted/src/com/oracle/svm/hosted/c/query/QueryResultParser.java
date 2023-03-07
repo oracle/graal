@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.query;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.c.query.QueryParserUtil.parseHexToLong;
 import static com.oracle.svm.hosted.c.query.QueryParserUtil.parseSigned;
 import static com.oracle.svm.hosted.c.query.QueryParserUtil.unsignedExtendToSize;
@@ -46,11 +46,11 @@ import com.oracle.svm.hosted.c.info.PropertyInfo;
 import com.oracle.svm.hosted.c.info.RawPointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
-import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -123,7 +123,7 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
                 parseByteArrayValue(constantInfo.getValueInfo());
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(constantInfo.getKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -743,7 +743,7 @@ public class TruffleFeature implements InternalFeature {
                 method = clazz.getDeclaredMethod(name, parameterTypes);
             }
             if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(method))) {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
             }
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);

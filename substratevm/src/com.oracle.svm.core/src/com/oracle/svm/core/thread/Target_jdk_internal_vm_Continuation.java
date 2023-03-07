@@ -46,17 +46,17 @@ import com.oracle.svm.core.util.VMError;
 final class Target_jdk_internal_vm_Continuation__WithoutLoom {
     @Substitute
     static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
     @Substitute
     static void pin() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
     @Substitute
     static void unpin() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 }
 

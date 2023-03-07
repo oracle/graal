@@ -256,7 +256,7 @@ public class UniverseBuilder {
             hType = new HostedArrayClass(hUniverse, aType, kind, storageKind, superType, sInterfaces, componentType);
 
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(aType); // ExcludeFromJacocoGeneratedReport
         }
 
         HostedType existing = hUniverse.types.put(aType, hType);
@@ -1043,7 +1043,7 @@ public class UniverseBuilder {
             } else if (type.isPrimitive()) {
                 layoutHelper = LayoutEncoding.forPrimitive();
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
 
             /*

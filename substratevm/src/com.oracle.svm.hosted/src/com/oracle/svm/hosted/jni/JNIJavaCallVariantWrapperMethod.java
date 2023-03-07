@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         } else if (callVariant == CallVariant.VA_LIST) {
             args.add(wordKind); // va_list (a pointer of some kind)
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(callVariant); // ExcludeFromJacocoGeneratedReport
         }
         JavaKind returnType = callWrapperSignature.getReturnKind();
         if (returnType.isObject()) {

@@ -1062,7 +1062,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 case 64:
                     return JavaConstant.LONG_0;
                 default:
-                    throw VMError.shouldNotReachHere();
+                    throw VMError.shouldNotReachHereUnexpectedInput(size); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1219,7 +1219,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

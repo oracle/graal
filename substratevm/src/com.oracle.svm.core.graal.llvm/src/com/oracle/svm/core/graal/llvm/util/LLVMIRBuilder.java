@@ -29,6 +29,7 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.FALSE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
@@ -506,7 +507,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static String intrinsicType(LLVMTypeRef type) {
-        switch (LLVM.LLVMGetTypeKind(type)) {
+        int kindType = LLVM.LLVMGetTypeKind(type);
+        switch (kindType) {
             case LLVM.LLVMIntegerTypeKind:
                 return "i" + integerTypeWidth(type);
             case LLVM.LLVMFloatTypeKind:
@@ -524,7 +526,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 String types = Arrays.stream(getElementTypes(type)).map(LLVMIRBuilder::intrinsicType).collect(Collectors.joining(""));
                 return "sl_" + types + "s";
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedInput(kindType); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1335,7 +1337,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             case VOLATILE:
                 return LLVM.LLVMAtomicOrderingSequentiallyConsistent;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(memoryOrder); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

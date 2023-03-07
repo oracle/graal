@@ -256,7 +256,7 @@ public class LLVMStackMapInfo {
 
     void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
         Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
-                        .findFirst().orElseThrow(VMError::shouldNotReachHere).locations;
+                        .findFirst().orElseThrow(VMError::shouldNotReachHereAtRuntime).locations;
         assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
 
         Location deoptCountLocation = locations[STATEPOINT_DEOPT_COUNT_LOCATION_INDEX];

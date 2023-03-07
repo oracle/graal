@@ -64,10 +64,6 @@ public final class VMError {
 
     }
 
-    public static RuntimeException shouldNotReachHere() {
-        throw new HostedError("should not reach here");
-    }
-
     public static RuntimeException shouldNotReachHere(String msg) {
         throw new HostedError(msg);
     }
@@ -78,6 +74,29 @@ public final class VMError {
 
     public static RuntimeException shouldNotReachHere(String msg, Throwable cause) {
         throw new HostedError(msg, cause);
+    }
+
+    public static RuntimeException shouldNotReachHereSubstitution() {
+        throw new HostedError("should not reach here: substitution reached at runtime");
+    }
+
+    /**
+     * A hardcoded list of options (if, switch) did not handle the case actually provided.
+     */
+    public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
+        throw new HostedError("should not reach here: unexpected input could not be handled: " + input);
+    }
+
+    public static RuntimeException shouldNotReachHereOverrideInChild() {
+        throw new HostedError("should not reach here: method should have been overridden in child");
+    }
+
+    public static RuntimeException shouldNotReachHereAtRuntime() {
+        throw new HostedError("should not reach here: this code is expected to be unreachable at runtime");
+    }
+
+    public static RuntimeException unsupportedPlatform() {
+        throw shouldNotReachHere("unsupported platform");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -128,14 +147,25 @@ public final class VMError {
         }
     }
 
-    public static RuntimeException unimplemented() {
-        throw new UnsupportedOperationException("unimplemented");
-    }
-
+    /**
+     * A lower-level feature that is not yet supported (but might be implemented later, if
+     * relevant).
+     */
     public static RuntimeException unimplemented(String msg) {
         throw new UnsupportedOperationException(msg);
     }
 
+    /**
+     * A lower-level feature that is not implemented. A conscious decision was made not to implement
+     * it.
+     */
+    public static RuntimeException intentionallyUnimplemented() {
+        throw new UnsupportedOperationException("unimplemented: this method has intentionally not been implemented");
+    }
+
+    /**
+     * A high-level feature that is not supported, e.g. class loading at runtime.
+     */
     public static RuntimeException unsupportedFeature(String msg) {
         throw new HostedError("UNSUPPORTED FEATURE: " + msg);
     }

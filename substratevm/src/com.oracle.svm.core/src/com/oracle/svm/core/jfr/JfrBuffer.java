@@ -105,7 +105,7 @@ public interface JfrBuffer extends PointerBase {
 
     @RawFieldOffset
     static int offsetOfCommittedPos() {
-        throw VMError.unimplemented(); // replaced
+        throw VMError.intentionallyUnimplemented(); // replaced
     }
 
     /**

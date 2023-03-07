@@ -51,7 +51,7 @@ public interface SharedType extends ResolvedJavaType {
          * Not needed on Substrate VM for now, and we do not have the necessary information
          * available to implement it. method.getImplementations() does not contain abstract methods.
          */
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

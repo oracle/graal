@@ -537,7 +537,7 @@ public final class VMOperationControl {
             } else if (operation instanceof NativeVMOperation) {
                 enqueue((NativeVMOperation) operation, data);
             } else {
-                VMError.shouldNotReachHere();
+                VMError.shouldNotReachHereUnexpectedInput(operation); // ExcludeFromJacocoGeneratedReport
             }
         }
 
