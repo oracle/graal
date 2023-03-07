@@ -137,13 +137,13 @@ public class LoopEx {
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
         return null;
     }
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
         return null;
     }
 

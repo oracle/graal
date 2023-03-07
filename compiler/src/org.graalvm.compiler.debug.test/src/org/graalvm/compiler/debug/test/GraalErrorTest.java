@@ -40,7 +40,6 @@ public class GraalErrorTest {
      * Test that the errors actually fail and provide the correct message.
      */
     public void testErrors() {
-        error("unimplemented", () -> GraalError.unimplemented());
         error("unimplemented: test", () -> GraalError.unimplemented("test"));
         error("should not reach here", () -> GraalError.shouldNotReachHere());
         error("should not reach here: test", () -> GraalError.shouldNotReachHere("test"));

@@ -180,7 +180,7 @@ public class BoxingSnippets implements Snippets {
                         accessedLocation = new FieldLocationIdentity(AbstractBoxingNode.getValueField(providers.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass())));
                         break;
                     default:
-                        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
                 }
                 assert accessedLocation != null;
                 // Boxing may write to cache or init location
