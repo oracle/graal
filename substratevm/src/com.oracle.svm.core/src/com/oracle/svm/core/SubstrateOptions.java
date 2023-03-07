@@ -909,4 +909,6 @@ public class SubstrateOptions {
     @Option(help = "Throw Native Image-specific exceptions when encountering an unregistered reflection call.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> ThrowMissingRegistrationErrors = new HostedOptionKey<>(false);
 
+    @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 }
