@@ -94,7 +94,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     public static LogicNode tryConstantFold(CanonicalCondition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
-        if (forX.isConstant() && forY.isConstant() && ((condition == CanonicalCondition.EQ && constantReflection != null) || forX.asConstant() instanceof PrimitiveConstant)) {
+        if (forX.isConstant() && forY.isConstant() && (constantReflection != null || forX.asConstant() instanceof PrimitiveConstant)) {
             return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
         }
         return null;
