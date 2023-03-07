@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.core.common.calc;
 
+import org.graalvm.compiler.core.common.type.Stamp;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.TriState;
 
 public enum CanonicalCondition {
     EQ(Condition.EQ),
@@ -44,8 +47,8 @@ public enum CanonicalCondition {
         return condition;
     }
 
-    public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
-        return asCondition().foldCondition(lt, rt, constantReflection, unorderedIsTrue);
+    public TriState foldCondition(Stamp compareStamp, Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+        return asCondition().foldCondition(compareStamp, lt, rt, constantReflection, unorderedIsTrue);
     }
 
     public boolean foldCondition(PrimitiveConstant lp, PrimitiveConstant rp, boolean unorderedIsTrue) {

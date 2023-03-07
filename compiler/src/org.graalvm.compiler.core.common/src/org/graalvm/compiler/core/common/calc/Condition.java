@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.core.common.calc;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * Condition codes used in conditionals.
@@ -369,32 +371,19 @@ public enum Condition {
     /**
      * Attempts to fold a comparison between two constants and return the result.
      *
+     * @param compareStamp a stamp describing the values of the constants
      * @param lt the constant on the left side of the comparison
      * @param rt the constant on the right side of the comparison
      * @param constantReflection needed to compare constants
      * @param unorderedIsTrue true if an undecided float comparison should result in "true"
-     * @return true if the comparison is known to be true, false if the comparison is known to be
-     *         false
+     * @return {@link TriState#TRUE} if the comparison is known to be true, {@link TriState#FALSE}
+     *         if the comparison is known to be false, {@link TriState#UNKNOWN} otherwise.
+     *         Comparisons on primitive constants always produce a known result.
+     *
+     * @see Stamp#tryConstantFold
      */
-    public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
-        if (lt instanceof PrimitiveConstant) {
-            PrimitiveConstant lp = (PrimitiveConstant) lt;
-            PrimitiveConstant rp = (PrimitiveConstant) rt;
-            return foldCondition(lp, rp, unorderedIsTrue);
-        } else {
-            Boolean equal = constantReflection.constantEquals(lt, rt);
-            if (equal == null) {
-                throw new GraalError("could not fold %s %s %s", lt, this, rt);
-            }
-            switch (this) {
-                case EQ:
-                    return equal.booleanValue();
-                case NE:
-                    return !equal.booleanValue();
-                default:
-                    throw new GraalError("expected condition: %s", this);
-            }
-        }
+    public TriState foldCondition(Stamp compareStamp, Constant lt, Constant rt, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
+        return compareStamp.tryConstantFold(this, lt, rt, unorderedIsTrue, constantReflection);
     }
 
     /**
