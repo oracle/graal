@@ -59,6 +59,10 @@ public final class LogNode extends FixedWithNextNode implements Lowerable {
         this.l2 = l2;
     }
 
+    public LogNode(@ConstantNodeParameter String message, ValueNode l1) {
+        this(message, l1, null);
+    }
+
     public ValueNode getL1() {
         return l1;
     }
