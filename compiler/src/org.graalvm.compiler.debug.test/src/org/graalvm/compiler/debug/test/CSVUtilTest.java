@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,14 +32,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.graalvm.compiler.debug.CSVUtil;
+import org.graalvm.compiler.debug.LogStream;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-
-import org.graalvm.compiler.debug.CSVUtil;
 
 @RunWith(Enclosed.class)
 public class CSVUtilTest {
@@ -119,6 +120,14 @@ public class CSVUtilTest {
             String printedStream = new String(outputStream.toByteArray(), StandardCharsets.UTF_8);
             // add newline to the expected string
             assertEquals(expected + System.lineSeparator(), printedStream);
+
+            // same, but with LogStream
+            ByteArrayOutputStream outputStream2 = new ByteArrayOutputStream();
+            LogStream logStream = new LogStream(outputStream2);
+            CSVUtil.Escape.println(logStream, format, toObjectArray(args));
+            logStream.flush();
+            String printedStream2 = new String(outputStream2.toByteArray(), StandardCharsets.UTF_8);
+            assertEquals(expected + System.lineSeparator(), printedStream2);
         }
 
         private static Object[] toObjectArray(String args) {
@@ -129,7 +138,26 @@ public class CSVUtilTest {
             }
             return obj;
         }
+    }
 
+    public static class Other {
+        @Test
+        public void testBuildFormatString() {
+            Assert.assertEquals("%s-%s-%s", CSVUtil.buildFormatString("%s", '-', 3));
+        }
+
+        @Test
+        public void testDefaultEscape() {
+            Assert.assertEquals("ab", CSVUtil.Escape.escape("ab"));
+            Assert.assertEquals("\"ab;_\\\\_\\\"_cd\"", CSVUtil.Escape.escape("ab;_\\_\"_cd"));
+        }
+
+        @Test
+        public void testDefaultEscapeArgs() {
+            Object[] result = CSVUtil.Escape.escapeArgs("ab", "ab;_\\_\"_cd");
+            Assert.assertEquals("ab", result[0]);
+            Assert.assertEquals("\"ab;_\\\\_\\\"_cd\"", result[1]);
+        }
     }
 
 }
