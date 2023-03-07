@@ -41,7 +41,8 @@ public class ChunkBuffer {
     private static final int INITIAL_SIZE = 1024 * wordSize();
 
     private Pointer buffer;
-    private int size, top;
+    private int size;
+    private int top;
 
     @Fold
     static int wordSize() {
@@ -84,12 +85,12 @@ public class ChunkBuffer {
     }
 
     @AlwaysInline("GC performance")
-    private Pointer malloc(int size) {
-        return CommittedMemoryProvider.get().allocateUnalignedChunk(WordFactory.unsigned(size));
+    private static Pointer malloc(int bytes) {
+        return CommittedMemoryProvider.get().allocateUnalignedChunk(WordFactory.unsigned(bytes));
     }
 
     @AlwaysInline("GC performance")
-    private Pointer realloc(Pointer orig, int origSize, int newSize) {
+    private static Pointer realloc(Pointer orig, int origSize, int newSize) {
         Pointer ptr = malloc(newSize);
         UnmanagedMemoryUtil.copyLongsForward(orig, ptr, WordFactory.unsigned(origSize));
         free(orig, origSize);
@@ -97,7 +98,7 @@ public class ChunkBuffer {
     }
 
     @AlwaysInline("GC performance")
-    private void free(Pointer ptr, int size) {
-        CommittedMemoryProvider.get().freeUnalignedChunk(ptr, WordFactory.unsigned(size));
+    private static void free(Pointer ptr, int bytes) {
+        CommittedMemoryProvider.get().freeUnalignedChunk(ptr, WordFactory.unsigned(bytes));
     }
 }

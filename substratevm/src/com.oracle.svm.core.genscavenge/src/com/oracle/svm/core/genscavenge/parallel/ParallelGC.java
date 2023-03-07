@@ -129,14 +129,14 @@ public class ParallelGC {
         workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toArray(Thread[]::new);
     }
 
-    private int getWorkerCount() {
+    private static int getWorkerCount() {
         int setting = ParallelGCOptions.ParallelGCThreads.getValue();
-        int workers = setting > 0 ? setting : getDefaultWorkerCount();
-        verboseGCLog().string("[Number of ParallelGC workers: ").unsigned(workers).string("]").newline();
-        return workers;
+        int count = setting > 0 ? setting : getDefaultWorkerCount();
+        verboseGCLog().string("[Number of ParallelGC workers: ").unsigned(count).string("]").newline();
+        return count;
     }
 
-    private int getDefaultWorkerCount() {
+    private static int getDefaultWorkerCount() {
         // Adapted from Hotspot, see WorkerPolicy::nof_parallel_worker_threads()
         int cpus = Jvm.JVM_ActiveProcessorCount();
         return cpus <= 8 ? cpus : 8 + (cpus - 8) * 5 / 8;
@@ -213,21 +213,24 @@ public class ParallelGC {
         }
     }
 
+    @SuppressWarnings("static-method")
     private void scanChunk(Pointer ptr) {
         if (ptr.isNonNull()) {
             debugLog().string("WW scan chunk=").zhex(ptr).newline();
             if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
                 UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
             } else {
+                Pointer start = ptr;
                 AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptr);
                 if (chunk.equal(ptr)) {
-                    ptr = ptr.add(AlignedHeapChunk.getObjectsStartOffset());
+                    start = ptr.add(AlignedHeapChunk.getObjectsStartOffset());
                 }
-                HeapChunk.walkObjectsFromInline(chunk, ptr, getVisitor());
+                HeapChunk.walkObjectsFromInline(chunk, start, getVisitor());
             }
         }
     }
 
+    @SuppressWarnings("static-method")
     private void scanAllocChunk() {
         if (allocChunkNeedsScanning()) {
             AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
@@ -245,12 +248,13 @@ public class ParallelGC {
         }
     }
 
+    @SuppressWarnings("static-method")
     private boolean allocChunkNeedsScanning() {
         AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
         return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(allocChunkScanOffsetTL.get());
     }
 
-    private GreyToBlackObjectVisitor getVisitor() {
+    private static GreyToBlackObjectVisitor getVisitor() {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 

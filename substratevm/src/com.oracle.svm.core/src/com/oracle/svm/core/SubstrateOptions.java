@@ -36,7 +36,6 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -317,7 +316,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "parallel", group = GCGroup.class, customHelp = "Parallel garbage collector")//
     @Option(help = "Use a parallel GC")//
-    public static final HostedOptionKey<Boolean> UseParallelGC = new HostedOptionKey<>(false, SubstrateOptions::validateParallelGC) {
+    public static final HostedOptionKey<Boolean> UseParallelGC = new HostedOptionKey<>(false, SubstrateOptions::requireMultiThreading) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
@@ -327,9 +326,10 @@ public class SubstrateOptions {
         }
     };
 
-    private static void validateParallelGC(OptionKey<?> unused) {
+    private static void requireMultiThreading(OptionKey<?> optionKey) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
-            throw new InterruptImageBuilding("ParallelGC requires the option MultiThreaded to be set.");
+            throw new InterruptImageBuilding(
+                    "The option '" + optionKey.getName() + "' requires the option MultiThreaded to be set.");
         }
     }
 

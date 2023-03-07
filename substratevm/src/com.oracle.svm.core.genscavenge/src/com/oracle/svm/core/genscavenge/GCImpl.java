@@ -145,6 +145,7 @@ public final class GCImpl implements GC {
         collect(cause, false);
     }
 
+    @SuppressWarnings("static-method")
     public void initialize() {
         if (ParallelGC.isEnabled()) {
             ParallelGC.singleton().startWorkerThreads();

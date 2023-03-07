@@ -205,6 +205,7 @@ public final class Space {
      * Retract the latest allocation. Used by parallel collector.
      */
     @AlwaysInline("GC performance")
+    @SuppressWarnings("static-method")
     private Pointer retractAllocation(UnsignedWord objectSize) {
         assert ParallelGC.isEnabled() && ParallelGC.isInParallelPhase();
         AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.getAllocationChunk();
