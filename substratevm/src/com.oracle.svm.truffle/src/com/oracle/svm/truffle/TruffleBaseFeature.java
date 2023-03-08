@@ -1123,7 +1123,8 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
                 // Copied so that the object replacer can continue replacing references, even after
                 // compilation.
                 TruffleBaseFeature.StaticObjectSupport.StaticObjectArrayBasedSupport.replacements = new ConcurrentHashMap<>(originalMap);
-                // Cleared so that factory instances that hold a reference to it do not leak objects.
+                // Cleared so that factory instances that hold a reference to it do not leak
+                // objects.
                 originalMap.clear();
                 // Return null so that new factory instances do not register replacements. See
                 // `ArrayBasedStaticShape.create()`.
