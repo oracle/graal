@@ -328,7 +328,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     /**
-     * Compute the upper bounds by starting from an initial value derived the mustBeSet and then
+     * Compute the upper bounds by starting from an initial value derived from mustBeSet and then
      * setting optional bits until a value which is less than or equal to the current upper bound is
      * found. Returns {@code CodeUtil.minValue(bits)} if no such value can be found.
      */
@@ -342,8 +342,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             newUpperBound = minValueForMasks(bits, mustBeSet, mayBeSet);
         }
         // Compute the bits which are set in the mayBeSet but not the mustBeSet, ignoring the sign
-        // bit
-        // which was handled above.
+        // bit which was handled above.
         newUpperBound = setOptionalBits(bits, upperBound, mustBeSet, mayBeSet, newUpperBound);
 
         if (newUpperBound == 0 && !canBeZero) {
