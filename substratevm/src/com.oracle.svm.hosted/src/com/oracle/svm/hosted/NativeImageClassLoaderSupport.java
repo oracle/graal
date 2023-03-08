@@ -63,6 +63,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
@@ -107,6 +108,8 @@ public class NativeImageClassLoaderSupport {
     private final EconomicSet<String> emptySet;
     private final EconomicSet<URI> builderURILocations;
 
+    final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
+
     private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
 
@@ -122,7 +125,7 @@ public class NativeImageClassLoaderSupport {
         packages = EconomicMap.create();
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
-
+        serviceProviders = new ConcurrentHashMap<>();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
@@ -157,6 +160,9 @@ public class NativeImageClassLoaderSupport {
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
+        allLayers(moduleLayerForImageBuild).stream()
+                        .flatMap(layer -> layer.modules().stream())
+                        .forEach(this::registerModulePathServiceProviders);
 
         classLoader = getSingleClassloader(moduleLayer);
 
@@ -339,6 +345,17 @@ public class NativeImageClassLoaderSupport {
             }
         }
         return singleClassloader;
+    }
+
+    private void registerModulePathServiceProviders(Module module) {
+        ModuleDescriptor descriptor = module.getDescriptor();
+        for (ModuleDescriptor.Provides provides : descriptor.provides()) {
+            serviceProviders(provides.service()).addAll(provides.providers());
+        }
+    }
+
+    LinkedHashSet<String> serviceProviders(String serviceName) {
+        return serviceProviders.computeIfAbsent(serviceName, unused -> new LinkedHashSet<>());
     }
 
     private static void implAddReadsAllUnnamed(Module module) {
@@ -706,6 +723,7 @@ public class NativeImageClassLoaderSupport {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
+                    registerClassPathServiceProviders(file);
                     String fileName = root.relativize(file).toString();
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
@@ -727,6 +745,32 @@ public class NativeImageClassLoaderSupport {
                 Files.walkFileTree(root, visitor);
             } catch (IOException ex) {
                 throw shouldNotReachHere(ex);
+            }
+        }
+
+        private void registerClassPathServiceProviders(Path serviceRegistrationFile) {
+            if (serviceRegistrationFile.getParent().toString().equals("/META-INF/services")) {
+                String serviceName = serviceRegistrationFile.getFileName().toString();
+                if (!serviceName.isEmpty()) {
+                    List<String> providerNames = new ArrayList<>();
+                    try (Stream<String> serviceConfig = Files.lines(serviceRegistrationFile)) {
+                        serviceConfig.forEach(ln -> {
+                            int ci = ln.indexOf('#');
+                            String providerName = (ci >= 0 ? ln.substring(0, ci) : ln).trim();
+                            if (!providerName.isEmpty()) {
+                                providerNames.add(providerName);
+                            }
+                        });
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (!providerNames.isEmpty()) {
+                        LinkedHashSet<String> providersForService = serviceProviders(serviceName);
+                        synchronized (providersForService) {
+                            providersForService.addAll(providerNames);
+                        }
+                    }
+                }
             }
         }
 
