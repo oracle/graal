@@ -332,12 +332,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      */
     private final String simpleBinaryName;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setModule(Module module) {
-        assert module != null;
-        this.module = module;
-    }
-
     private final DynamicHubCompanion companion;
 
     private String signature;
@@ -376,6 +370,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
                     boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
+        this.module = hostedJavaClass.getModule();
         this.name = name;
         this.hubType = hubType;
         this.referenceType = referenceType.getValue();
