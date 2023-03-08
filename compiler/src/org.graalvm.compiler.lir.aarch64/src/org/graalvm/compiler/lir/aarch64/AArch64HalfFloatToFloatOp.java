@@ -30,12 +30,20 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/aarch64/aarch64.ad",
+          lineStart = 15052,
+          lineEnd   = 15063,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "ac777b6f4ace2ef316c16d23f502ba9ec16ae479")
+// @formatter:on
 public class AArch64HalfFloatToFloatOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64HalfFloatToFloatOp> TYPE = LIRInstructionClass.create(AArch64HalfFloatToFloatOp.class);
 

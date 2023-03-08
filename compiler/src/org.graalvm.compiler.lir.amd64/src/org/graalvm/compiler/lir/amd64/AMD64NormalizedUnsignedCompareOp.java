@@ -32,6 +32,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -40,6 +41,18 @@ import jdk.vm.ci.meta.AllocatableValue;
 /**
  * Returns -1, 0, or 1 if either x &lt; y, x == y, or x &gt; y.
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
+          lineStart = 12800,
+          lineEnd   = 12824,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "997a3fd0c34599035d44866b15f1efc7eb28945e")
+@StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
+          lineStart = 12852,
+          lineEnd   = 12876,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "9c6287fe33d5c9be006582942ba131188a924ee3")
+// @formatter:on
 public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AMD64NormalizedUnsignedCompareOp.class);
 

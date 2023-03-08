@@ -29,12 +29,20 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/x86.ad",
+          lineStart = 3662,
+          lineEnd   = 3673,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "e15b2cabe47a43441467d22950c42326445a8fcd")
+// @formatter:on
 public final class AMD64FloatToHalfFloatOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64FloatToHalfFloatOp> TYPE = LIRInstructionClass.create(AMD64FloatToHalfFloatOp.class);
 

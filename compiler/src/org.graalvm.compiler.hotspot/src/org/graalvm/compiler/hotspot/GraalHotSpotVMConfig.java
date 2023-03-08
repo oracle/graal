@@ -309,7 +309,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
     public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle", -1, JDK >= 20 && (!JVMCI || jvmciGE(JVMCI_23_0_b06)));
 
-    // TODO update place holder JVMCI_23_0_b06
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
 

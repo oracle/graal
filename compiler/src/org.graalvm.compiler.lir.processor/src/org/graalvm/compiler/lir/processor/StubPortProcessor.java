@@ -64,7 +64,7 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String SYNC_CHECK_ENV_VAR = "HOTSPOT_PORT_SYNC_CHECK";
     static final String HTTPS_PROXY_ENV_VAR = "HTTPS_PROXY";
 
-    static final int SEARCH_RANGE = 100;
+    static final int SEARCH_RANGE = 200;
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {

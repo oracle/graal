@@ -47,10 +47,10 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 5480,
-          lineEnd   = 5528,
-          commit    = "4a0093ccc4ec2880a789af3a50f30e44b686150e",
-          sha1      = "7bb09de1deee91732af6a55f527c53eb33dec489")
+          lineStart = 5776,
+          lineEnd   = 5824,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "96c1bd34d0744543fd08f180c5e3cbb11d6fa584")
 // @formatter:on
 @Opcode("AARCH64_ROUND_FLOAT_TO_INTEGER")
 public class AArch64RoundFloatToIntegerOp extends AArch64LIRInstruction {

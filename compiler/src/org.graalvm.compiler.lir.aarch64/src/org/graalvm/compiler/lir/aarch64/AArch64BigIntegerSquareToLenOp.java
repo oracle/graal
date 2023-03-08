@@ -55,9 +55,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4495,
-          lineEnd   = 4529,
-          commit    = "c6de66c03f691469ff26c14923bf21bdefd5ae72",
+          lineStart = 4612,
+          lineEnd   = 4646,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
           sha1      = "117ef552852815e7089be7641fb344b688ac1be7")
 // @formatter:on
 public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction {

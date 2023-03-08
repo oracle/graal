@@ -31,6 +31,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -39,6 +40,13 @@ import jdk.vm.ci.meta.AllocatableValue;
 /**
  * Returns -1, 0, or 1 if either x &lt; y, x == y, or x &gt; y.
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/aarch64/aarch64.ad",
+          lineStart = 9713,
+          lineEnd   = 9795,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "2c84fcc18cc8084cf12c4832a52c7b0c0e80248e")
+// @formatter:on
 public class AArch64NormalizedUnsignedCompareOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AArch64NormalizedUnsignedCompareOp.class);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,10 +65,10 @@ import jdk.vm.ci.code.Register;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-          lineStart = 3208,
-          lineEnd   = 3334,
-          commit    = "644fe0a9943e22654673265341ad922e51a78fe0",
-          sha1      = "fd2dcad178f60306e830e0f7aeaeee376d47ea81")
+          lineStart = 3217,
+          lineEnd   = 3343,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          sha1      = "1f05b6fd970e976a6bde5487180e488ee72d4ceb")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
