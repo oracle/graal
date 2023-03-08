@@ -50,6 +50,7 @@ import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -192,7 +193,11 @@ public final class PythonRegexLexer extends RegexLexer {
 
     public PythonLocaleData getLocaleData() {
         if (localeData == null) {
-            localeData = PythonLocaleData.getLocaleData(source.getOptions().getPythonLocale());
+            try {
+                localeData = PythonLocaleData.getLocaleData(source.getOptions().getPythonLocale());
+            } catch (IllegalArgumentException e) {
+                throw new UnsupportedRegexException(e.getMessage(), source);
+            }
         }
         return localeData;
     }
