@@ -124,6 +124,41 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         processIf(x, xNegated, y, yNegated, ifNode, shortCircuitProbability, false);
     }
 
+    /**
+     * Expand the given logic {@code or} node represented by {@code x} and {@code y} to actual
+     * control flow at the given {@code ifNode} original usage.
+     *
+     * For example the code shape
+     *
+     * <pre>
+     * if (x || y) {
+     *     a();
+     * } else {
+     *     b();
+     * }
+     * </pre>
+     *
+     * will be expanded to
+     *
+     * <pre>
+     * if(x){
+     *  goto trueMerge;
+     * } else {
+     *  if(y) {
+     *      goto trueMerge;
+     *  }else {
+     *      goto falseMerge;
+     *  }
+     * }
+     * trueMerge:
+     *     a();
+     * falseMerge:
+     *     b();
+     * </pre>
+     *
+     * If {@code createGuardPhi == true} this method will return a {@code GuardPhiNode} on the
+     * {@code trueMerge} with the two true successor branches as guard inputs.
+     */
     public static GuardPhiNode processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability, boolean createGuardPhi) {
         /*
          * this method splits an IfNode, which has a ShortCircuitOrNode as its condition, into two
