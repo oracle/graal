@@ -112,12 +112,10 @@ public final class Resources {
     }
 
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        if (moduleIsNullOrUnnamed(module)) {
-            module = null;
-        }
+        Module moduleKey = moduleIsNullOrUnnamed(module) ? null : module;
         var resources = singleton().resources;
         synchronized (resources) {
-            Pair<Module, String> key = Pair.create(module, resourceName);
+            Pair<Module, String> key = Pair.create(moduleKey, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
                 if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
@@ -207,11 +205,8 @@ public final class Resources {
 
     public static ResourceStorageEntry get(Module module, String resourceName) {
         String canonicalResourceName = toCanonicalForm(resourceName);
-        if (moduleIsNullOrUnnamed(module)) {
-            module = null;
-        }
-
-        ResourceStorageEntry entry = singleton().resources.get(Pair.create(module, canonicalResourceName));
+        Module moduleKey = moduleIsNullOrUnnamed(module) ? null : module;
+        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleKey, canonicalResourceName));
         if (entry == null) {
             return null;
         }
@@ -235,7 +230,7 @@ public final class Resources {
     @SuppressWarnings("deprecation")
     private static URL createURL(Module module, String resourceName, int index) {
         try {
-            String moduleName = module != null ? module.getName() : null;
+            String moduleName = moduleIsNullOrUnnamed(module) ? null : module.getName();
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
             return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {

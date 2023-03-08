@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
-import java.util.Optional;
 
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.jdk.Resources;
