@@ -393,8 +393,9 @@ public final class PolyglotNativeAPI {
                     "Sets output handlers for a <code>poly_context_builder</code>.",
                     "",
                     "@param context_builder that is modified.",
-                    "@param stdout_handler function used for context_builder output stream. Not used if NULL.",
-                    "@param stderr_handler function used for context_builder error stream. Not used if NULL.",
+                    "@param stdout_handler callback used for context_builder output stream. Not used if NULL.",
+                    "@param stderr_handler callback used for context_builder error stream. Not used if NULL.",
+                    "@param data user-defined data to be passed to stdout_handler and stderr_handler callbacks.",
                     "@return poly_ok if all works, poly_generic_error if there is a failure.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#out-java.io.OutputStream-",
@@ -402,20 +403,20 @@ public final class PolyglotNativeAPI {
                     "@since 23.0",
     })
     public static PolyglotStatus poly_context_builder_output(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, PolyglotOutputHandler stdout_handler,
-                    PolyglotOutputHandler stderr_handler) {
+                    PolyglotOutputHandler stderr_handler, VoidPointer data) {
         resetErrorState();
         nullCheck(context_builder, "context_builder");
         Context.Builder contextBuilder = fetchHandle(context_builder);
         if (stdout_handler.isNonNull()) {
-            contextBuilder.out(newOutputStreamFor(stdout_handler));
+            contextBuilder.out(newOutputStreamFor(stdout_handler, data));
         }
         if (stderr_handler.isNonNull()) {
-            contextBuilder.err(newOutputStreamFor(stderr_handler));
+            contextBuilder.err(newOutputStreamFor(stderr_handler, data));
         }
         return poly_ok;
     }
 
-    private static OutputStream newOutputStreamFor(PolyglotOutputHandler outputHandler) {
+    private static OutputStream newOutputStreamFor(PolyglotOutputHandler outputHandler, VoidPointer data) {
         return new OutputStream() {
             @Override
             public void write(int b) throws IOException {
@@ -429,7 +430,7 @@ public final class PolyglotNativeAPI {
                     return;
                 }
                 try (var bytes = CTypeConversion.toCBytes(b)) {
-                    outputHandler.invoke(bytes.get().addressOf(off), WordFactory.unsigned(len));
+                    outputHandler.invoke(bytes.get().addressOf(off), WordFactory.unsigned(len), data);
                 }
             }
         };
