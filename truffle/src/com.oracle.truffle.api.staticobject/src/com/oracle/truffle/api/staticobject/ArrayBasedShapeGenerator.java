@@ -346,7 +346,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
          *
          * <pre>
          * public final class GeneratedStaticObject$$1$$Factory implements ArrayBasedFactory, StaticObjectFactory {
-         *     static final Map<Object, Object> replacements; // initialized via reflection
+         *     static final ConcurrentHashMap<Object, Object> replacements; // initialized via reflection
          *     final ArrayBasedStaticShape shape;
          *     final int primitiveArraySize;
          *     final int objectArraySize;
