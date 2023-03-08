@@ -132,9 +132,17 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
     boolean canEndsGuestSafepoint;
 
+    /**
+     * A guard that proves that this loop's counter never overflows and wraps around (either in the
+     * positive or negative direction).
+     */
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
-    @OptionalInput(InputType.Association) ValueNode precedingLoop;
+    /**
+     * A guard that proves that memory accesses in this loop don't alias in certain ways that must
+     * not be reordered.
+     */
+    @OptionalInput(InputType.Guard) GuardingNode interIterationAliasingGuard;
 
     public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
     public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
@@ -468,13 +476,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.overflowGuard = overflowGuard;
     }
 
-    public ValueNode getPrecedingLoop() {
-        return precedingLoop;
+    public GuardingNode getInterIterationAliasingGuard() {
+        return interIterationAliasingGuard;
     }
 
-    public void setPrecedingLoop(ValueNode precedingLoop) {
-        updateUsages(this.precedingLoop, precedingLoop);
-        this.precedingLoop = precedingLoop;
+    public void setInterIterationAliasingGuard(GuardingNode guard) {
+        updateUsagesInterface(this.interIterationAliasingGuard, guard);
+        this.interIterationAliasingGuard = guard;
     }
 
     private static final int NO_INCREMENT = Integer.MIN_VALUE;

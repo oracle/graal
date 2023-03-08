@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,18 +30,22 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -114,6 +118,42 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
             return false;
         }
 
+        /**
+         * Determines if this is an equality comparison between pointers that can never be equal.
+         * For example, newly allocated (non-boxing) objects are always unequal to each other. New
+         * objects are also unequal to any method parameter or constant.
+         *
+         * @return {@code true} if this is an equality test that will always fail
+         */
+        private static boolean isAlwaysFailingEqualityTest(CanonicalCondition condition, ValueNode forX, ValueNode forY) {
+            if (condition != CanonicalCondition.EQ) {
+                return false;
+            }
+            if (forX != forY) {
+                boolean xIsNonVirtualAllocation = forX instanceof AbstractNewObjectNode;
+                boolean yIsNonVirtualAllocation = forY instanceof AbstractNewObjectNode;
+                if (xIsNonVirtualAllocation && yIsNonVirtualAllocation) {
+                    // Two distinct non-virtualized allocations can never equal.
+                    return true;
+                }
+
+                boolean xIsVirtualAllocation = forX instanceof AllocatedObjectNode;
+                boolean yIsVirtualAllocation = forY instanceof AllocatedObjectNode;
+                boolean xIsAllocation = xIsNonVirtualAllocation || xIsVirtualAllocation;
+                boolean yIsAllocation = yIsNonVirtualAllocation || yIsVirtualAllocation;
+                assert !xIsAllocation || !(forX instanceof AbstractBoxingNode) : "unexpected class hierarchy change";
+                assert !yIsAllocation || !(forY instanceof AbstractBoxingNode) : "unexpected class hierarchy change";
+
+                boolean xIsParameter = forX instanceof ParameterNode;
+                boolean yIsParameter = forY instanceof ParameterNode;
+                if ((xIsAllocation && (yIsParameter || forY.isConstant())) || (yIsAllocation && (xIsParameter || forX.isConstant()))) {
+                    // A new object can never equal a parameter or constant.
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
         public LogicNode canonical(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
                         CanonicalCondition condition,
@@ -123,6 +163,9 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
                 return result;
             }
             if (isAlwaysFailingVirtualDispatchTest(condition, forX, forY)) {
+                return LogicConstantNode.contradiction();
+            }
+            if (isAlwaysFailingEqualityTest(condition, forX, forY)) {
                 return LogicConstantNode.contradiction();
             }
             return super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY, view);
