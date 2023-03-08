@@ -36,6 +36,7 @@ import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -193,7 +194,7 @@ public class ArrayUtilsSubstitutions {
 
     @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF_NONVIRTUAL", justification = "foldable method parameters are injected")
     private static Word pointer(Word p, int fromIndex, JavaKind kind) {
-        return p.add(ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, kind)).add(fromIndex * ReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, kind));
+        return p.add(ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, kind)).add(WordFactory.unsigned(fromIndex * ReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, kind)));
     }
 
     private static Object getValue(String s) {
