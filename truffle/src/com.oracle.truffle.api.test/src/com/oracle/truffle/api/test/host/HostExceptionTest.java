@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.test.host;
 
-import static org.hamcrest.CoreMatchers.both;
+import static java.util.function.Predicate.not;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -121,6 +120,8 @@ public class HostExceptionTest {
     private static final String RUNNER = "runner";
     private static final String RETHROWER = "rethrower";
     private static final String THROW_EXCEPTION = "throwException";
+
+    private static final String VALUE_EXECUTE = Value.class.getName() + "." + "execute";
 
     private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
 
@@ -725,18 +726,17 @@ public class HostExceptionTest {
                             CATCHER),
                             formatInteropExceptionStackTrace(hostEx, true, false));
 
-            Iterator<String> it = formatInteropExceptionStackTrace(hostEx, false, false).stream().filter(s -> !s.startsWith(Value.class.getName())).iterator();
-            List.of(equalTo(expectedException.getSimpleName() + ": " + expectedMessage),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("newExceptionWithCause")),
-                            containsString("lambda"),
-                            equalTo(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            equalTo(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            equalTo(RUNNER),
-                            equalTo(CATCHER)).forEach(matcher -> {
-                                assertThat(it.next(), matcher);
-                            });
+            assertEquals(List.of(expectedException.getSimpleName() + ": " + expectedMessage,
+                            hostQualify("newExceptionWithCause"),
+                            hostQualify("lambda"),
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            RUNNER,
+                            CATCHER), formatInteropExceptionStackTrace(hostEx, false, false));
         };
 
         Value result = catcher.execute(runner, hostRunner, runner, proxyRunner, runner, hostThrower);
@@ -751,6 +751,20 @@ public class HostExceptionTest {
                         CATCHER);
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
         assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
+
+        assertEquals(List.of(expectedMessage,
+                        hostQualify("newExceptionWithCause"),
+                        hostQualify("lambda"),
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        CATCHER,
+                        VALUE_EXECUTE),
+                        formatPolyglotExceptionStackTrace(polyglotException));
     }
 
     @Test
@@ -774,17 +788,17 @@ public class HostExceptionTest {
                             CATCHER),
                             formatInteropExceptionStackTrace(hostEx, true, false));
 
-            Iterator<String> it = formatInteropExceptionStackTrace(hostEx, false, false).stream().filter(s -> !s.startsWith(Value.class.getName())).iterator();
-            List.of(equalTo(expectedMessage),
-                            equalTo(THROW_EXCEPTION),
-                            equalTo(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            equalTo(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            equalTo(RUNNER),
-                            equalTo(CATCHER)).forEach(matcher -> {
-                                assertThat(it.next(), matcher);
-                            });
+            assertEquals(List.of(expectedMessage,
+                            THROW_EXCEPTION,
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            RUNNER,
+                            CATCHER),
+                            formatInteropExceptionStackTrace(hostEx, false, false));
         };
 
         Value result = catcher.execute(runner, hostRunner, runner, proxyRunner, runner, throwException, expectedMessage);
@@ -801,21 +815,18 @@ public class HostExceptionTest {
                         CATCHER);
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
 
-        Iterator<PolyglotException.StackFrame> it = stream(polyglotException.getPolyglotStackTrace()).filter(s -> !s.getRootName().startsWith(Value.class.getName())).iterator();
-        List.of(
-                        equalTo(THROW_EXCEPTION),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        equalTo(RUNNER),
-                        equalTo(CATCHER)).forEach(matcher -> {
-                            PolyglotException.StackFrame element = it.next();
-                            assertThat(element.getRootName(), matcher);
-                            if (element.isGuestFrame()) {
-                                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
-                            }
-                        });
+        assertEquals(List.of(expectedMessage,
+                        THROW_EXCEPTION,
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        CATCHER,
+                        VALUE_EXECUTE),
+                        formatPolyglotExceptionStackTrace(polyglotException));
     }
 
     @Test
@@ -853,20 +864,22 @@ public class HostExceptionTest {
                             CATCHER),
                             formatInteropExceptionStackTrace(guestEx, true, true));
 
-            Iterator<String> it = formatInteropExceptionStackTrace(guestEx, false, true).stream().filter(s -> !s.startsWith(Value.class.getName())).iterator();
-            List.of(equalTo(expectedMessage),
-                            containsString(THROW_EXCEPTION),
-                            containsString(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            containsString(RUNNER),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostCatch")),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("lambda")),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostRethrow")),
-                            both(containsString(HostExceptionTest.class.getName())).and(containsString("lambda")),
-                            containsString(CATCHER)).forEach(matcher -> {
-                                assertThat(it.next(), matcher);
-                            });
+            assertEquals(List.of(expectedMessage,
+                            THROW_EXCEPTION,
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            RUNNER,
+                            VALUE_EXECUTE,
+                            hostQualify("hostCatch"),
+                            hostQualify("lambda"),
+                            VALUE_EXECUTE,
+                            hostQualify("hostApply"),
+                            VALUE_EXECUTE,
+                            hostQualify("hostRethrow"),
+                            hostQualify("lambda"),
+                            CATCHER),
+                            formatInteropExceptionStackTrace(guestEx, false, true));
         };
 
         Value result = catcher.execute(hostRethrower, proxyRunner, hostCatcher, runner, proxyRunner, runner, throwException, expectedMessage);
@@ -884,24 +897,23 @@ public class HostExceptionTest {
                         CATCHER);
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
 
-        Iterator<PolyglotException.StackFrame> it = stream(polyglotException.getPolyglotStackTrace()).filter(s -> !s.getRootName().startsWith(Value.class.getName())).iterator();
-        List.of(
-                        equalTo(THROW_EXCEPTION),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostCatch")),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("lambda")),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostRethrow")),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("lambda")),
-                        equalTo(CATCHER)).forEach(matcher -> {
-                            PolyglotException.StackFrame element = it.next();
-                            assertThat(element.getRootName(), matcher);
-                            if (element.isGuestFrame()) {
-                                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
-                            }
-                        });
+        assertEquals(List.of(expectedMessage,
+                        THROW_EXCEPTION,
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostCatch"),
+                        hostQualify("lambda"),
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        VALUE_EXECUTE,
+                        hostQualify("hostRethrow"),
+                        hostQualify("lambda"),
+                        CATCHER,
+                        VALUE_EXECUTE),
+                        formatPolyglotExceptionStackTrace(polyglotException));
     }
 
     @Test
@@ -924,23 +936,15 @@ public class HostExceptionTest {
             assertFalse(guestEx.toString(), env.isHostException(guestEx));
             assertTrue(guestEx.toString(), INTEROP.isException(guestEx));
 
-            assertEquals(List.of(expectedMessage,
+            List<String> expectedStack = List.of(expectedMessage,
                             THROW_EXCEPTION,
                             RUNNER,
                             RUNNER,
                             RUNNER,
-                            CATCHER),
-                            formatInteropExceptionStackTrace(guestEx, true, true));
+                            CATCHER);
 
-            Iterator<String> it = formatInteropExceptionStackTrace(guestEx, false, true).stream().iterator();
-            List.of(equalTo(expectedMessage),
-                            containsString(THROW_EXCEPTION),
-                            containsString(RUNNER),
-                            containsString(RUNNER),
-                            containsString(RUNNER),
-                            containsString(CATCHER)).forEach(matcher -> {
-                                assertThat(it.next(), matcher);
-                            });
+            assertEquals(expectedStack, formatInteropExceptionStackTrace(guestEx, true, true));
+            assertEquals(expectedStack, formatInteropExceptionStackTrace(guestEx, false, true));
         };
 
         Value result = catcher.execute(runner, proxyRunner, runner, hostRunner, runner, throwException, expectedMessage);
@@ -957,34 +961,24 @@ public class HostExceptionTest {
                         CATCHER);
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
 
-        Iterator<PolyglotException.StackFrame> it = stream(polyglotException.getPolyglotStackTrace()).filter(s -> !s.getRootName().startsWith(Value.class.getName())).iterator();
-        List.of(
-                        equalTo(THROW_EXCEPTION),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        equalTo(RUNNER),
-                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
-                        equalTo(RUNNER),
-                        equalTo(CATCHER)).forEach(matcher -> {
-                            PolyglotException.StackFrame element = it.next();
-                            assertThat(element.getRootName(), matcher);
-                            if (element.isGuestFrame()) {
-                                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
-                            }
-                        });
+        assertEquals(List.of(expectedMessage,
+                        THROW_EXCEPTION,
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        VALUE_EXECUTE,
+                        hostQualify("hostApply"),
+                        RUNNER,
+                        CATCHER,
+                        VALUE_EXECUTE),
+                        formatPolyglotExceptionStackTrace(polyglotException));
     }
 
     private static void assertHostException(Value result, Class<? extends Throwable> expectedException) {
         assertTrue(result.toString(), result.isException());
         assertTrue(result.toString(), result.isHostObject());
         assertThat(result.asHostObject(), instanceOf(expectedException));
-    }
-
-    private static List<String> getProxyLanguageStackTrace(PolyglotException polyglotException) {
-        return getProxyLanguageFrames(polyglotException).stream().map(stackFrame -> {
-            assertNotNull("Missing source location for stack trace element: " + stackFrame.getRootName(), stackFrame.getSourceLocation());
-            return stackFrame.getRootName();
-        }).toList();
     }
 
     private static List<StackFrame> getProxyLanguageFrames(PolyglotException polyglotException) {
@@ -1023,22 +1017,36 @@ public class HostExceptionTest {
                 for (long i = 0; i < length; i++) {
                     Object stackTraceElement = INTEROP.readArrayElement(stackTrace, i);
 
-                    String name;
+                    String methodName;
                     if (INTEROP.hasExecutableName(stackTraceElement)) {
-                        name = INTEROP.asString(INTEROP.getExecutableName(stackTraceElement));
+                        methodName = INTEROP.asString(INTEROP.getExecutableName(stackTraceElement));
                     } else {
-                        name = "Unnamed";
+                        methodName = "Unnamed";
                     }
 
-                    boolean isHostFrame = name.contains(".");
-                    if (skipHostFrames && isHostFrame) {
-                        continue;
+                    String className;
+                    if (INTEROP.hasDeclaringMetaObject(stackTraceElement)) {
+                        className = INTEROP.asString(INTEROP.getMetaQualifiedName(INTEROP.getDeclaringMetaObject(stackTraceElement)));
+                    } else {
+                        className = "";
                     }
 
-                    lines.add(name);
+                    boolean isHostFrame = isHostStackTraceElement(stackTraceElement);
+                    if (isHostFrame) {
+                        if (skipHostFrames) {
+                            continue;
+                        } else {
+                            // ensure stable method name.
+                            methodName = censorLambdaName(methodName);
+                        }
+                    }
+
+                    String line = className.isEmpty() ? methodName : className + "." + methodName;
+
+                    lines.add(line);
 
                     if (!isHostFrame && !ignoreSourceLocation) {
-                        assertTrue("Missing source location for stack trace element: " + name, INTEROP.hasSourceLocation(stackTraceElement));
+                        assertTrue("Missing source location for stack trace element: " + line, INTEROP.hasSourceLocation(stackTraceElement));
                     }
                 }
             }
@@ -1046,6 +1054,53 @@ public class HostExceptionTest {
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
+    }
+
+    /**
+     * Crude detection of host stack trace elements.
+     */
+    private static boolean isHostStackTraceElement(Object stackTraceElement) throws UnsupportedMessageException {
+        if (INTEROP.hasDeclaringMetaObject(stackTraceElement)) {
+            return INTEROP.asString(INTEROP.getMetaQualifiedName(INTEROP.getDeclaringMetaObject(stackTraceElement))).contains(".");
+        } else if (INTEROP.hasExecutableName(stackTraceElement)) {
+            return INTEROP.asString(INTEROP.getExecutableName(stackTraceElement)).contains(".");
+        } else {
+            return false;
+        }
+    }
+
+    private static List<String> formatPolyglotExceptionStackTrace(PolyglotException polyglotException) {
+        Stream<String> stackTrace = stream(polyglotException.getPolyglotStackTrace()).takeWhile(not(HostExceptionTest::isTrailingFrame)).map(element -> {
+            if (element.isGuestFrame()) {
+                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
+            }
+            String methodName = element.getRootName();
+            return censorLambdaName(methodName);
+        });
+        return Stream.concat(Stream.of(polyglotException.getMessage()), stackTrace).toList();
+    }
+
+    private static String censorLambdaName(String methodName) {
+        if (methodName.contains("lambda")) {
+            return methodName.substring(0, methodName.indexOf("lambda") + "lambda".length());
+        } else {
+            return methodName;
+        }
+    }
+
+    private static List<String> getProxyLanguageStackTrace(PolyglotException polyglotException) {
+        return getProxyLanguageFrames(polyglotException).stream().map(stackFrame -> {
+            assertNotNull("Missing source location for stack trace element: " + stackFrame.getRootName(), stackFrame.getSourceLocation());
+            return stackFrame.getRootName();
+        }).toList();
+    }
+
+    private static boolean isTrailingFrame(PolyglotException.StackFrame s) {
+        return s.getRootName().startsWith(HostExceptionTest.class.getName() + "." + "test");
+    }
+
+    private static String hostQualify(String methodName) {
+        return HostExceptionTest.class.getName() + "." + methodName;
     }
 
     @TruffleBoundary
