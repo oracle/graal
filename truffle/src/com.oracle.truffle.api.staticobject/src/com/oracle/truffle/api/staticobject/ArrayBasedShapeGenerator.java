@@ -613,20 +613,20 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    /**
-     * Example:
-     *
-     * <pre>
-     * &#64;TruffleBoundary
-     * private static void register(Object obj) {
-     *     if (!ImageInfo.inImageBuildtimeCode()) {
-     *         throw new RuntimeException("Should not reach here!")
-     *     }
-     *     replacements.put(obj, obj);
-     * }
-     * </pre>
-     */
     private static void addFactoryHelperMethods(ClassVisitor cv, String factoryName) {
+        /**
+         * Example:
+         *
+         * <pre>
+         * &#64;TruffleBoundary
+         * private static void register(Object obj) {
+         *     if (!ImageInfo.inImageBuildtimeCode()) {
+         *         throw new RuntimeException("Should not reach here!")
+         *     }
+         *     replacements.put(obj, obj);
+         * }
+         * </pre>
+         */
         MethodVisitor mv = cv.visitMethod(ACC_PRIVATE | ACC_STATIC, "register", "(Ljava/lang/Object;)V", null, null);
 
         AnnotationVisitor av = mv.visitAnnotation(Type.getDescriptor(TruffleBoundary.class), true);
