@@ -102,7 +102,7 @@ final class DefaultFloatExports {
 
     @ExportMessage
     static boolean fitsInBigInteger(Float receiver) {
-        return receiver % 1 == 0;
+        return receiver % 1 == 0 && !NumberUtils.isNegativeZero(receiver);
     }
 
     @ExportMessage
