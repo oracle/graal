@@ -70,6 +70,7 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -229,6 +230,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
+        return createIsolate0(parsedArgs, isolate, vmThreadSize);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
+    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
 
@@ -238,7 +245,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }

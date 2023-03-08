@@ -88,6 +88,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -745,6 +746,27 @@ public class CompileQueue {
         }
     }
 
+    // Wrapper to clearly identify phase
+    class TrivialInlinePhase extends Phase {
+        final InliningGraphDecoder decoder;
+        final HostedMethod method;
+
+        TrivialInlinePhase(InliningGraphDecoder decoder, HostedMethod method) {
+            this.decoder = decoder;
+            this.method = method;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            decoder.decode(method);
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "TrivialInline";
+        }
+    }
+
     @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
@@ -769,7 +791,7 @@ public class CompileQueue {
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
-            decoder.decode(method);
+            new TrivialInlinePhase(decoder, method).apply(graph);
 
             if (inliningPlugin.inlinedDuringDecoding) {
                 CanonicalizerPhase.create().apply(graph, providers);
