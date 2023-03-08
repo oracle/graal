@@ -19,8 +19,8 @@ common_vm_darwin: ${common_vm} ${darwin} {
   }
   environment: {
     LANG: en_US.UTF-8
-    # for compatibility with macOS Sierra
-    MACOSX_DEPLOYMENT_TARGET: "10.12"
+    # for compatibility with macOS Big Sur
+    MACOSX_DEPLOYMENT_TARGET: "11.0"
   }
   setup: ${common_vm.setup}
 }
@@ -177,7 +177,7 @@ vm_linux_aarch64: ${common_vm_linux} {
 }
 
 vm_darwin: ${common_vm_darwin} {
-  capabilities: [darwin_mojave, amd64, ram16gb]
+  capabilities: [darwin_bigsur, amd64, ram16gb]
 }
 
 vm_windows: ${common_vm_windows} {
