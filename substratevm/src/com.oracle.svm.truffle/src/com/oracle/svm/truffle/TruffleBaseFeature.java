@@ -810,8 +810,12 @@ public final class TruffleBaseFeature implements InternalFeature {
 
                 if (ALIGNMENT_CORRECTION != 0) {
                     // Can be an equality-based map because factory classes do not override
-                    // `hashCode()` and `equals()`
-                    replacements = ReflectionUtil.readStaticField(ARRAY_BASED_STATIC_SHAPE, "replacements");
+                    // `hashCode()` and `equals()`.
+                    replacements = new ConcurrentHashMap<>();
+                    // `ArrayBasedStaticShape.replacements` must be initialized only when there is
+                    // an alignment correction, else some factories will not be replaced and will
+                    // continue to register replacement candidates.
+                    ReflectionUtil.writeStaticField(ARRAY_BASED_STATIC_SHAPE, "replacements", replacements);
                     FACTORY_CLASS_LOADER = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoaders$FactoryClassLoader");
                 } else {
                     replacements = null;
@@ -1114,14 +1118,16 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
         @Override
         @SuppressWarnings("unchecked")
         public Object transform(Object receiver, Object originalValue) {
-            ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
-            // Copied so that the object replacer can continue replacing references, even after
-            // compilation.
-            TruffleBaseFeature.StaticObjectSupport.StaticObjectArrayBasedSupport.replacements = new ConcurrentHashMap<>(originalMap);
-            // Cleared so that factory instances that old a reference to it do not leak objects.
-            originalMap.clear();
-            // Set to null so that new factory instances do not register replacements. See
-            // `ArrayBasedStaticShape.create()`.
+            if (originalValue != null) {
+                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                // Copied so that the object replacer can continue replacing references, even after
+                // compilation.
+                TruffleBaseFeature.StaticObjectSupport.StaticObjectArrayBasedSupport.replacements = new ConcurrentHashMap<>(originalMap);
+                // Cleared so that factory instances that old a reference to it do not leak objects.
+                originalMap.clear();
+                // Return null so that new factory instances do not register replacements. See
+                // `ArrayBasedStaticShape.create()`.
+            }
             return null;
         }
     }

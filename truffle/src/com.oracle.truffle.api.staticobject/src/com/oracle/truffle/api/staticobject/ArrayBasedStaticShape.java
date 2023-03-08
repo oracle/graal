@@ -49,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
@@ -66,15 +65,11 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     //
     // Cleared and set to null by TruffleBaseFeature to avoid leaking objects and calls to
     // `ImageInfo.inImageBuildtimeCode()` in code that might be PE'd.
-    static final ConcurrentHashMap<Object, Object> replacements;
+    static ConcurrentHashMap<Object, Object> replacements;
 
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
     private final ArrayBasedPropertyLayout propertyLayout;
-
-    static {
-        replacements = ImageInfo.inImageBuildtimeCode() ? new ConcurrentHashMap<>() : null;
-    }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private ArrayBasedStaticShape(ArrayBasedStaticShape<T> parentShape, Class<?> storageClass, ArrayBasedPropertyLayout propertyLayout, boolean safetyChecks) {
