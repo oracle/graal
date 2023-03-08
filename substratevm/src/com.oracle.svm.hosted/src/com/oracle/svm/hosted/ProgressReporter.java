@@ -109,7 +109,7 @@ public class ProgressReporter {
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
-    private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
+    public static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
@@ -452,12 +452,7 @@ public class ProgressReporter {
             return;
         }
         calculateCodeBreakdown(compilationTasks);
-        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
-    }
-
-    public void createHTMLHeapBreakdown(Map<String, Long> htmlHeapBreakdown, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
-        calculateHeapBreakdown(htmlHeapBreakdown, new HtmlStrategy(), metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
-        });
+        calculateHeapBreakdown(metaAccess, heapObjects);
     }
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
@@ -501,7 +496,15 @@ public class ProgressReporter {
         return qualifier;
     }
 
-    private static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
+    private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
+    }
+
+    public void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
+    }
+
+    public static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
                     boolean reportStringBytes, long graphEncodingByteLength, BiConsumer<JsonMetric, Object> jsonMetricAction) {
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
@@ -535,13 +538,17 @@ public class ProgressReporter {
                     resourcesByteLength += resource.length;
                 }
             }
-            jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
+            if (jsonMetricAction != null) {
+                jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
+            }
             if (resourcesByteLength > 0) {
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
                 remainingBytes -= resourcesByteLength;
             }
             if (graphEncodingByteLength >= 0) {
-                jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
+                if (jsonMetricAction != null) {
+                    jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
+                }
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }
@@ -888,10 +895,10 @@ public class ProgressReporter {
      * PRINTERS
      */
 
-    abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
+    public abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
         abstract T getThis();
 
-        abstract T a(String text);
+        public abstract T a(String text);
 
         final T a(String text, Object... args) {
             return a(String.format(text, args));
@@ -975,7 +982,7 @@ public class ProgressReporter {
         }
 
         @Override
-        DirectPrinter a(String text) {
+        public DirectPrinter a(String text) {
             print(text);
             return this;
         }
@@ -997,7 +1004,7 @@ public class ProgressReporter {
         protected final List<String> lineParts = new ArrayList<>();
 
         @Override
-        T a(String value) {
+        public T a(String value) {
             lineParts.add(value);
             return getThis();
         }
@@ -1152,7 +1159,7 @@ public class ProgressReporter {
          * re-printed.
          */
         @Override
-        CharacterwiseStagePrinter a(String value) {
+        public CharacterwiseStagePrinter a(String value) {
             print(value);
             return super.a(value);
         }
@@ -1217,7 +1224,7 @@ public class ProgressReporter {
         }
 
         @Override
-        TwoColumnPrinter a(String value) {
+        public TwoColumnPrinter a(String value) {
             super.a(value);
             return this;
         }
@@ -1332,7 +1339,7 @@ public class ProgressReporter {
         }
     }
 
-    private interface LinkStrategy {
+    public interface LinkStrategy {
         void link(AbstractPrinter<?> printer, String text, String url);
 
         String asDocLink(String text, String htmlAnchor);
@@ -1374,18 +1381,6 @@ public class ProgressReporter {
         }
     }
 
-    static final class HtmlStrategy implements LinkStrategy {
-        @Override
-        public void link(AbstractPrinter<?> printer, String text, String url) {
-            printer.a("<a href=\"" + url + "\" target=\"_blank\">").a(text).a("</a>");
-        }
-
-        @Override
-        public String asDocLink(String text, String htmlAnchor) {
-            return String.format(HTML.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
-        }
-    }
-
     public static class ANSI {
         static final String ESCAPE = "\033";
         static final String RESET = ESCAPE + "[0m";
@@ -1410,10 +1405,6 @@ public class ProgressReporter {
         public static String strip(String string) {
             return string.replaceAll(STRIP_COLORS, "").replaceAll(STRIP_LINKS, "$1");
         }
-    }
-
-    static class HTML {
-        static final String LINK_FORMAT = "<a href=\"%s\" target=\"_blank\">%s</a>";
     }
 }
 
