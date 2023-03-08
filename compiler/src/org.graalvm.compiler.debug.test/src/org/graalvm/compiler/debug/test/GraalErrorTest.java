@@ -41,8 +41,8 @@ public class GraalErrorTest {
      */
     public void testErrors() {
         error("unimplemented: test", () -> GraalError.unimplemented("test"));
-        error("unimplemented method in parent class, should be overridden", () -> GraalError.unimplementedOverride());
-        error("unimplemented parent", () -> GraalError.unimplementedParent());
+        error("unimplemented override", () -> GraalError.unimplementedOverride());
+        error("unimplemented method in parent class, should be overridden", () -> GraalError.unimplementedParent());
         error("should not reach here: test", () -> GraalError.shouldNotReachHere("test"));
         error("test", () -> GraalError.shouldNotReachHere(new Exception("test")));
         error("should not reach here: test", () -> GraalError.shouldNotReachHere(new Exception(), "test"));

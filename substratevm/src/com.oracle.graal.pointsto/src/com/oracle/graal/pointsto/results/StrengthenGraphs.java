@@ -924,7 +924,7 @@ final class StrengthenGraphsCounters {
                 inc(localValues, Counter.INVOKE_DIRECT);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHereUnexpectedValue(invokeKind);
         }
     }
 

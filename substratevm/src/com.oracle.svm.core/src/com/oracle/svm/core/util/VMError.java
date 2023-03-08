@@ -64,6 +64,16 @@ public final class VMError {
 
     }
 
+    public static final String msgShouldNotReachHere = "should not reach here";
+    public static final String msgShouldNotReachHereSubstitution = msgShouldNotReachHere + ": substitution reached at runtime";
+    public static final String msgShouldNotReachHereUnexpectedInput = msgShouldNotReachHere + ": unexpected input could not be handled";
+    public static final String msgShouldNotReachHereOverrideInChild = msgShouldNotReachHere + ": method should have been overridden in child";
+    public static final String msgShouldNotReachHereAtRuntime = msgShouldNotReachHere + ": this code is expected to be unreachable at runtime";
+    public static final String msgShouldNotReachHereUnsupportedPlatform = msgShouldNotReachHere + ": unsupported platform";
+
+    public static final String msgUnimplemented = "unimplemented";
+    public static final String msgUnimplementedIntentionally = msgUnimplemented + ": this method has intentionally not been implemented";
+
     public static RuntimeException shouldNotReachHere(String msg) {
         throw new HostedError(msg);
     }
@@ -77,26 +87,26 @@ public final class VMError {
     }
 
     public static RuntimeException shouldNotReachHereSubstitution() {
-        throw new HostedError("should not reach here: substitution reached at runtime");
+        throw new HostedError(msgShouldNotReachHereSubstitution);
     }
 
     /**
      * A hardcoded list of options (if, switch) did not handle the case actually provided.
      */
     public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
-        throw new HostedError("should not reach here: unexpected input could not be handled: " + input);
+        throw new HostedError(msgShouldNotReachHereUnexpectedInput + ": " + input);
     }
 
     public static RuntimeException shouldNotReachHereOverrideInChild() {
-        throw new HostedError("should not reach here: method should have been overridden in child");
+        throw new HostedError(msgShouldNotReachHereOverrideInChild);
     }
 
     public static RuntimeException shouldNotReachHereAtRuntime() {
-        throw new HostedError("should not reach here: this code is expected to be unreachable at runtime");
+        throw new HostedError(msgShouldNotReachHereAtRuntime);
     }
 
     public static RuntimeException unsupportedPlatform() {
-        throw shouldNotReachHere("unsupported platform");
+        throw shouldNotReachHere(msgShouldNotReachHereUnsupportedPlatform);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -160,7 +170,7 @@ public final class VMError {
      * it.
      */
     public static RuntimeException intentionallyUnimplemented() {
-        throw new UnsupportedOperationException("unimplemented: this method has intentionally not been implemented");
+        throw new UnsupportedOperationException(msgUnimplementedIntentionally);
     }
 
     /**
