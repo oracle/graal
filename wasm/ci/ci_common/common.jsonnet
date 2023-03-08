@@ -48,9 +48,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   darwin_aarch64:: common.darwin_aarch64,
-  darwin_amd64:: common.darwin_amd64 + {
-    capabilities+: ['darwin_catalina'],
-  },
+  darwin_amd64:: common.darwin_amd64,
 
   windows_common:: {
     packages+: $.devkits["windows-jdk" + self.jdk_version].packages,
