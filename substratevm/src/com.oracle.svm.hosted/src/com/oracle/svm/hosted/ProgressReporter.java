@@ -500,8 +500,8 @@ public class ProgressReporter {
         calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
     }
 
-    public void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
-        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
+    public void calculateHeapBreakdown(Map<String, Long> breakdown, LinkStrategy strategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(breakdown, strategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
         });
     }
 
