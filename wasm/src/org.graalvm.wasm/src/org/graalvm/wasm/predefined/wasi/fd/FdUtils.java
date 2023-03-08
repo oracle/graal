@@ -72,10 +72,8 @@ final class FdUtils {
                 final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memory, iovecAddress);
-                for (int j = 0; j < len; j++) {
-                    stream.write(memory.load_i32_8u(node, start + j));
-                    ++totalBytesWritten;
-                }
+                memory.copyToStream(node, stream, start, len);
+                totalBytesWritten += len;
             }
         } catch (IOException e) {
             return Errno.Io;
@@ -91,19 +89,20 @@ final class FdUtils {
         }
 
         int totalBytesRead = 0;
-        int byteRead = 0;
         try {
             for (int i = 0; i < iovecCount; i++) {
                 final int iovecAddress = iovecArrayAddress + i * Iovec.BYTES;
                 final int start = Iovec.readBuf(node, memory, iovecAddress);
                 final int len = Iovec.readBufLen(node, memory, iovecAddress);
-                for (int j = 0; j < len; j++) {
-                    byteRead = stream.read();
-                    if (byteRead == -1) {
+                int offset = 0;
+                int bytesRead;
+                while (offset < len) {
+                    bytesRead = memory.copyFromStream(node, stream, start + offset, len - offset);
+                    if (bytesRead == -1) {
                         break;
                     }
-                    memory.store_i32_8(node, start + j, (byte) byteRead);
-                    ++totalBytesRead;
+                    offset += bytesRead;
+                    totalBytesRead += bytesRead;
                 }
             }
         } catch (IOException e) {
