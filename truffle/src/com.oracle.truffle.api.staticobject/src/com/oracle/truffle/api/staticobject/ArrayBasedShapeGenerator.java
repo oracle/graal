@@ -395,7 +395,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         /**
          * <pre>
          * if (doRegister) {
-         *     replacements.put(this, this);
+         *     register(this);
          * }
          * </pre>
          */
