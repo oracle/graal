@@ -143,8 +143,12 @@ public abstract class RegexTestBase {
         }
     }
 
-    void testUnsupported(String pattern, String flags) {
-        Assert.assertTrue(compileRegex(pattern, flags).isNull());
+    void expectUnsupported(String pattern, String flags) {
+        expectUnsupported(pattern, flags, "");
+    }
+
+    void expectUnsupported(String pattern, String flags, String options) {
+        Assert.assertTrue(compileRegex(pattern, flags, options).isNull());
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {

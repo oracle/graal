@@ -53,6 +53,8 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -80,7 +82,11 @@ public final class PythonLocaleData {
             }
             String language = locale.substring(0, dot);
             String encoding = locale.substring(dot + 1);
-            return createCachedLocaleData(language.startsWith("tr_"), Charset.forName(encoding));
+            try {
+                return createCachedLocaleData(language.startsWith("tr_"), Charset.forName(encoding));
+            } catch (UnsupportedCharsetException | IllegalCharsetNameException e) {
+                throw new IllegalArgumentException("unsupported locale: " + locale);
+            }
         }
     }
 
