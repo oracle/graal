@@ -102,6 +102,10 @@ public class GDSChannel extends GraalChannelBase {
         return tokenStorage.getToken();
     }
 
+    protected boolean needToken(ComponentInfo info) {
+        return !info.isImplicitlyAccepted();
+    }
+
     /**
      * GDS will require the user to supply an e-mail that can be used collected by the GDS services.
      *
@@ -111,11 +115,13 @@ public class GDSChannel extends GraalChannelBase {
      */
     @Override
     public FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn) {
-        String token = getToken();
-        if (!SystemUtils.nonBlankString(token)) {
-            token = getToken(info.getLicensePath());
+        if (needToken(info)) {
+            String token = getToken();
+            if (!SystemUtils.nonBlankString(token)) {
+                token = getToken(info.getLicensePath());
+            }
+            dn.addRequestHeader(HEADER_DOWNLOAD_CONFIG, token);
         }
-        dn.addRequestHeader(HEADER_DOWNLOAD_CONFIG, token);
         getConnector().fillBasics(dn);
         dn.setDownloadExceptionInterceptor(this::interceptDownloadException);
         return dn;
