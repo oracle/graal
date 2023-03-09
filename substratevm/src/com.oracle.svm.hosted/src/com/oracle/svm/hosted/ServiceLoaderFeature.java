@@ -176,7 +176,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                         RuntimeReflection.register(nullaryConstructor);
                         registeredProviders.add(provider);
                     }
-                } catch (NoSuchMethodException | SecurityException e) {
+                } catch (NoSuchMethodException | SecurityException | LinkageError e) {
                     /* Skip providers that do not comply to requirements */
                 }
             }
