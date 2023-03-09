@@ -254,17 +254,12 @@ public final class TruffleStackTrace extends Exception {
         // capture host stack trace for guest language exceptions;
         // internal and host language exceptions already have a stack trace attached.
         if (isTruffleException) {
-            if (!LanguageAccessor.HOST.isHostException(throwable) && hasEmptyStackTrace(throwable)) {
+            if (!LanguageAccessor.HOST.isHostException(throwable)) {
                 fullStackTrace.materializeHostException();
             }
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;
-    }
-
-    private static boolean hasEmptyStackTrace(Throwable exception) {
-        StackTraceElement[] stackTrace = exception.getStackTrace();
-        return stackTrace == null || stackTrace.length == 0;
     }
 
     private static final class TracebackElement {
