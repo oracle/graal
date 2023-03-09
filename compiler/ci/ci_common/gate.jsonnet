@@ -181,6 +181,7 @@
   # fields of the denoted build.
   local gates = {
     "gate-compiler-test-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-17-linux-amd64": t("1:00:00"),
     "gate-compiler-test-labsjdk-20-linux-aarch64": t("1:50:00"),
     "gate-compiler-test-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-20-darwin-aarch64": t("1:00:00"),
@@ -236,7 +237,6 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-test-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test-labsjdk-17-linux-aarch64": {},
     "weekly-compiler-test-labsjdk-17-windows-amd64": {},
     "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
