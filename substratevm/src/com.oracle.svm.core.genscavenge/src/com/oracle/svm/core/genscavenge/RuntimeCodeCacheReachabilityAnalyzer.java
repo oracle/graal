@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -63,6 +64,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         return true;
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isReachable(Pointer ptrToObj) {
         assert ptrToObj.isNonNull();
         if (HeapImpl.getHeapImpl().isInImageHeap(ptrToObj)) {
@@ -71,12 +73,12 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
 
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         Word header = ObjectHeader.readHeaderFromPointer(ptrToObj);
-        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+        if (ObjectHeaderImpl.isForwardedHeader(header) || ObjectHeaderImpl.hasMarkedBit(header)) {
             return true;
         }
 
         Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
-        if (!space.isFromSpace()) {
+        if (!space.isFromSpace() || (space.isOldSpace() && !GCImpl.getGCImpl().isCompleteCollection())) {
             return true;
         }
 
@@ -84,6 +86,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         return isAssumedReachable(clazz);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean isAssumedReachable(Class<?> clazz) {
         Class<?>[] classesAssumedReachable = RuntimeCodeCacheCleaner.CLASSES_ASSUMED_REACHABLE;
         for (int i = 0; i < classesAssumedReachable.length; i++) {

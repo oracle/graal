@@ -65,7 +65,7 @@ import jdk.vm.ci.code.CodeUtil;
 public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord UNALIGNED_BIT = WordFactory.unsigned(0b00001);
     private static final UnsignedWord REMEMBERED_SET_BIT = WordFactory.unsigned(0b00010);
-    private static final UnsignedWord FORWARDED_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord MARKED_OR_FORWARDED_BIT = WordFactory.unsigned(0b00100);
 
     /**
      * Optional: per-object identity hash code state to avoid a fixed field, initially implicitly
@@ -220,7 +220,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean hasIdentityHashFromAddressInline(Word header) {
+    public static boolean hasIdentityHashFromAddressInline(Word header) {
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
@@ -355,6 +355,28 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setMarkedBit(Object o) {
+        UnsignedWord header = readHeaderFromObject(o);
+        writeHeaderToObject(o, header.or(MARKED_OR_FORWARDED_BIT).or(REMEMBERED_SET_BIT));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void clearMarkedBit(Object o) {
+        UnsignedWord header = readHeaderFromObject(o);
+        writeHeaderToObject(o, header.and(MARKED_OR_FORWARDED_BIT.not()));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean hasMarkedBit(Object o) {
+        return hasMarkedBit(readHeaderFromObject(o));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean hasMarkedBit(UnsignedWord header) {
+        return header.and(MARKED_OR_FORWARDED_BIT).notEqual(0) && header.and(REMEMBERED_SET_BIT).notEqual(0);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isPointerToForwardedObject(Pointer p) {
         Word header = readHeaderFromPointer(p);
         return isForwardedHeader(header);
@@ -362,16 +384,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
-        return header.and(FORWARDED_BIT).notEqual(0);
+        return header.and(MARKED_OR_FORWARDED_BIT.or(REMEMBERED_SET_BIT)).equal(MARKED_OR_FORWARDED_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr) {
+    public Object getForwardedObject(Pointer ptr) {
         return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    Object getForwardedObject(Pointer ptr, UnsignedWord header) {
+    public Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (hasShift()) {
@@ -417,7 +439,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
 
         assert getHeaderBitsFromHeader(result).equal(0);
-        return result.or(FORWARDED_BIT);
+        return result.or(MARKED_OR_FORWARDED_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

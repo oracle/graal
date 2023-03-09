@@ -103,8 +103,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 return true;
             }
 
-            // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
+            if (SerialGCOptions.useCompactingOldGen() && ObjectHeaderImpl.hasMarkedBit(header)) {
+                // We already visited that object.
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
+                return true;
+            }
+
+            // Promote the Object if necessary, making it at least grey, and ...
             assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {

@@ -403,7 +403,7 @@ public final class HeapImpl extends Heap {
     @Fold
     public static boolean usesImageHeapCardMarking() {
         Boolean enabled = SerialGCOptions.ImageHeapCardMarking.getValue();
-        if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
+        if (enabled == Boolean.FALSE || enabled == null && !SerialAndEpsilonGCOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
             return isImageHeapAligned();
@@ -684,7 +684,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public void dirtyAllReferencesOf(Object obj) {
-        if (SubstrateOptions.useRememberedSet() && obj != null) {
+        if (SerialAndEpsilonGCOptions.useRememberedSet() && obj != null) {
             ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
         }
     }
@@ -779,7 +779,7 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Prevent that chunks are freed.")
     private boolean isInOldGen(Pointer ptr) {
-        return findPointerInSpace(oldGeneration.getFromSpace(), ptr) || findPointerInSpace(oldGeneration.getToSpace(), ptr);
+        return findPointerInSpace(oldGeneration.getSpace(), ptr);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

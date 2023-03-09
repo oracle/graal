@@ -342,6 +342,7 @@ public final class HeapChunk {
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(header)) {
             return AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);

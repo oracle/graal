@@ -68,9 +68,9 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private static final int PAUSE_PADDING = 1;
     /**
      * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
-     * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
+     * spending 1% of time in GC. We set it to 15, i.e. 6.25%, to prefer a small footprint.
      */
-    private static final int GC_TIME_RATIO = 19;
+    private static final int GC_TIME_RATIO = 15;
     /**
      * Maximum size increment step percentages. We reduce them from HotSpot's default of 20 to avoid
      * growing the heap too eagerly, and to enable {@linkplain #ADAPTIVE_SIZE_USE_COST_ESTIMATORS
@@ -104,7 +104,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     /** The effective number of most recent data points used by estimator (exponential decay). */
     private static final double ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = 12;
     /** Threshold for triggering a complete collection after repeated minor collections. */
-    private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
+    private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 1;
     /**
      * When the GC cost of a generation is above this value, its estimator is ignored and sizes are
      * increased to avoid starving the mutator.
@@ -155,7 +155,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(true)) {
+        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
             /*
              * Default to always doing an incremental collection first because we expect most of the
              * objects in the young generation to be garbage, and we can reuse their leftover chunks

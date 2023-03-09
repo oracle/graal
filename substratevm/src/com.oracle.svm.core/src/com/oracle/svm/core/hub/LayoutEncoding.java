@@ -355,6 +355,12 @@ public class LayoutEncoding {
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeFromObjectWithoutOptionalIdHashFieldInGC(Object obj) {
+        return getSizeFromObjectInline(obj, false);
+    }
+
     @AlwaysInline("Actual inlining decided by callers.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {

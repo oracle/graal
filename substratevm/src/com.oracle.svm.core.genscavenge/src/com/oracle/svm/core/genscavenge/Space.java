@@ -375,7 +375,7 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
-        assert this != originalSpace && originalSpace.isFromSpace();
+        assert originalSpace.isFromSpace();
 
         Object copy = copyAlignedObject(original);
         if (copy != null) {
@@ -423,10 +423,15 @@ public final class Space {
             ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
         }
         if (isOldSpace()) {
-            // If the object was promoted to the old gen, we need to take care of the remembered
-            // set bit and the first object table (even when promoting from old to old).
-            AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
-            RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+            if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {
+                // Not needed as it was the remembered set bit is set during mark phase
+                // and the first object table built after compaction.
+            } else {
+                // If the object was promoted to the old gen, we need to take care of the remembered
+                // set bit and the first object table (even when promoting from old to old).
+                AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
+                RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+            }
         }
         return copy;
     }
@@ -502,6 +507,17 @@ public final class Space {
             appendUnalignedHeapChunk(uChunk);
             uChunk = next;
         }
+    }
+
+    boolean walkAlignedHeapChunks(AlignedHeapChunk.Visitor visitor) {
+        AlignedHeapChunk.AlignedHeader chunk = getFirstAlignedHeapChunk();
+        while (chunk.isNonNull()) {
+            if (!visitor.visitChunkInline(chunk)) {
+                return false;
+            }
+            chunk = HeapChunk.getNext(chunk);
+        }
+        return true;
     }
 
     /**

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -33,6 +34,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -78,15 +80,21 @@ public final class AlignedHeapChunk {
      */
     @RawStructure
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
+        @RawField
+        boolean getShouldSweepInsteadOfCompact();
+
+        @RawField
+        void setShouldSweepInsteadOfCompact(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
+        chunk.setShouldSweepInsteadOfCompact(false);
     }
 
     public static void reset(AlignedHeader chunk) {
-        HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getEndOffset(chunk));
+        initialize(chunk, HeapChunk.getEndOffset(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -96,6 +104,12 @@ public final class AlignedHeapChunk {
 
     public static Pointer getObjectsEnd(AlignedHeader that) {
         return HeapChunk.getEndPointer(that);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeUsableForObjects() {
+        // TODO: This assumes that all aligned heap chunks are of equal size
+        return HeapParameters.getAlignedHeapChunkSize().subtract(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
@@ -145,5 +159,35 @@ public final class AlignedHeapChunk {
     @Fold
     public static UnsignedWord getObjectsStartOffset() {
         return RememberedSet.get().getHeaderSizeOfAlignedChunk();
+    }
+
+    /**
+     * Supply a closure to be applied to {@link AlignedHeapChunk}s.
+     */
+    public interface Visitor {
+
+        /**
+         * Visit an {@link AlignedHeapChunk}.
+         *
+         * @param chunk The {@link AlignedHeapChunk} to be visited.
+         * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
+         */
+        @RestrictHeapAccess(
+                access = RestrictHeapAccess.Access.NO_ALLOCATION,
+                reason = "Must not allocate while visiting the heap."
+        )
+        boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk);
+
+        /**
+         * Visit an {@link AlignedHeapChunk} like {@link #visitChunk}, but inlined for performance.
+         *
+         * @param chunk The {@link AlignedHeapChunk} to be visited.
+         * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
+         */
+        @RestrictHeapAccess(
+                access = RestrictHeapAccess.Access.NO_ALLOCATION,
+                reason = "Must not allocate while visiting the heap."
+        )
+        boolean visitChunkInline(AlignedHeapChunk.AlignedHeader chunk);
     }
 }
