@@ -516,15 +516,24 @@ final class PolyglotExceptionImpl {
     static Iterator<StackFrame> createStackFrameIterator(PolyglotExceptionImpl impl) {
         APIAccess apiAccess = impl.polyglot.getAPIAccess();
 
-        Throwable cause = findCause(impl.engine, impl.exception);
-        StackTraceElement[] hostStack;
-        if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-            hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
-        } else if (hasEmptyStackTrace(cause)) {
-            hostStack = impl.exception.getStackTrace();
+        StackTraceElement[] hostStack = null;
+        if (isHostException(impl.engine, impl.exception)) {
+            Throwable original = impl.engine.host.unboxHostException(impl.exception);
+            hostStack = original.getStackTrace();
+        } else if (EngineAccessor.EXCEPTION.isException(impl.exception)) {
+            Throwable lazyStack = EngineAccessor.EXCEPTION.getLazyStackTrace(impl.exception);
+            if (lazyStack != null) {
+                hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(lazyStack);
+            }
+            // AbstractTruffleException.getStackTrace() always returns an empty stack trace.
         } else {
-            hostStack = cause.getStackTrace();
+            // Internal error.
+            hostStack = impl.exception.getStackTrace();
         }
+        if (hostStack == null) {
+            hostStack = new StackTraceElement[0];
+        }
+
         Iterator<TruffleStackTraceElement> guestFrames = impl.guestFrames == null ? Collections.emptyIterator() : impl.guestFrames.iterator();
         // we always start in some host stack frame
         boolean inHostLanguage = impl.isHostException() || impl.isInternalError();
@@ -555,29 +564,6 @@ final class PolyglotExceptionImpl {
                 }
             }
         });
-    }
-
-    private static Throwable findCause(PolyglotEngineImpl engine, Throwable throwable) {
-        Throwable cause = throwable;
-        if (isHostException(engine, cause)) {
-            return findCause(engine, engine.host.unboxHostException(cause));
-        } else if (EngineAccessor.EXCEPTION.isException(cause)) {
-            return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
-        } else {
-            while (cause.getCause() != null && hasEmptyStackTrace(cause)) {
-                if (isHostException(engine, cause)) {
-                    cause = engine.host.unboxHostException(cause);
-                } else {
-                    cause = cause.getCause();
-                }
-            }
-            return cause;
-        }
-    }
-
-    private static boolean hasEmptyStackTrace(Throwable cause) {
-        StackTraceElement[] stackTrace = cause.getStackTrace();
-        return stackTrace == null || stackTrace.length == 0;
     }
 
     private static boolean isHostException(PolyglotEngineImpl engine, Throwable cause) {
