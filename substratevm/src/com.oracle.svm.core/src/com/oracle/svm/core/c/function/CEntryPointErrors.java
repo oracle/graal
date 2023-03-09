@@ -143,7 +143,7 @@ public final class CEntryPointErrors {
     @Description("Mapping the GOT before an isolate's heap failed (wrong mapping).") //
     public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_WRONG_MMAP = 29;
 
-    @Description("Mapping the GOT before an isolate's heap failed (invalid file.).") //
+    @Description("Mapping the GOT before an isolate's heap failed (invalid file).") //
     public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_INVALID = 30;
 
     @Description("Could not create unique GOT file even after retrying.") //
