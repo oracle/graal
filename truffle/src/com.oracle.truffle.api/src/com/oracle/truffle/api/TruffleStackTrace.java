@@ -376,6 +376,11 @@ public final class TruffleStackTrace extends Exception {
             if (lazy == null) {
                 lazy = new LazyStackTrace();
                 throwable.addSuppressed(lazy);
+                if (throwable.getSuppressed().length == 0) {
+                    // Suppression has been disabled for this exception.
+                    // Avoid attempt to capture a lazy stack trace for immutable exceptions.
+                    lazy.stackTrace = EMPTY;
+                }
             }
         }
         return lazy;
