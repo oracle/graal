@@ -408,7 +408,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     private static ConstantNode forIntegerBits(int bits, JavaConstant constant, StructuredGraph graph) {
         long value = constant.asLong();
         long bounds = CodeUtil.signExtend(value, bits);
-        return unique(graph, new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds)));
+        return unique(graph, new ConstantNode(constant, IntegerStamp.createConstant(bits, bounds)));
     }
 
     /**
@@ -422,7 +422,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     private static ConstantNode forIntegerBits(int bits, JavaConstant constant) {
         long value = constant.asLong();
         long bounds = CodeUtil.signExtend(value, bits);
-        return new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds));
+        return new ConstantNode(constant, IntegerStamp.createConstant(bits, bounds));
     }
 
     /**

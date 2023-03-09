@@ -30,9 +30,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaKind;
-
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -58,7 +55,11 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.CollectionsUtil;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Information about arithmetic operations.
@@ -559,7 +560,14 @@ public final class ArithmeticOpTable {
         /**
          * Apply the operation to a {@link Stamp}.
          */
-        public abstract Stamp foldStamp(Stamp stamp);
+        public final Stamp foldStamp(Stamp stamp) {
+            Stamp result = foldStampImpl(stamp);
+            GraalError.guarantee(!result.isEmpty() || stamp.isEmpty(), "empty stamps are not permitted when folding");
+
+            return result;
+        }
+
+        protected abstract Stamp foldStampImpl(Stamp stamp);
 
         public UnaryOp<T> unwrap() {
             return this;
@@ -689,7 +697,17 @@ public final class ArithmeticOpTable {
         /**
          * Apply the operation to two {@linkplain Stamp Stamps}.
          */
-        public abstract Stamp foldStamp(Stamp a, Stamp b);
+        public final Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+            Stamp result = foldStampImpl(stamp1, stamp2);
+            GraalError.guarantee(!result.isEmpty() || (stamp1.isEmpty() || stamp2.isEmpty()), "empty stamps are not permitted when folding");
+            return result;
+        }
+
+        /**
+         * Internal extension point for subclasses. The inputs have already been checked for the
+         * empty stamp and the return value must not be empty.
+         */
+        protected abstract Stamp foldStampImpl(Stamp a, Stamp b);
 
         /**
          * Checks whether this operation is associative. An operation is associative when

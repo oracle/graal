@@ -578,7 +578,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 }
             }
             guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-            IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+            IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.mustBeSet(), divisorStamp.mayBeSet(), false);
             divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
         } else {
             guard = n.getZeroGuard();
@@ -588,7 +588,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
              * construct one if necessary.
              */
             if (divisorStamp.contains(0)) {
-                IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+                IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.mustBeSet(), divisorStamp.mayBeSet(),
+                                false);
                 divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
             }
         }

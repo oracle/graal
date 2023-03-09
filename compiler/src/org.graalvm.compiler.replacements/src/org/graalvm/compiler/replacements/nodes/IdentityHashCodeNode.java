@@ -25,11 +25,9 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -37,6 +35,8 @@ import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -50,7 +50,7 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
     private int bci;
 
     protected IdentityHashCodeNode(NodeClass<? extends IdentityHashCodeNode> c, ValueNode object, int bci) {
-        super(c, StampFactory.forInteger(32));
+        super(c, IntegerStamp.create(32));
         this.object = object;
         this.bci = bci;
     }

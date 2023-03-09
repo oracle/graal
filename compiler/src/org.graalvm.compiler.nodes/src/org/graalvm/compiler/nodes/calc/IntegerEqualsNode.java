@@ -319,7 +319,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
                 if (nonConstant instanceof XorNode && nonConstant.stamp(view) instanceof IntegerStamp) {
                     XorNode xorNode = (XorNode) nonConstant;
-                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(view)).upMask() == 1) {
+                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(view)).mayBeSet() == 1) {
                         // x ^ 1 == 0 is the same as x == 1 if x in [0, 1]
                         // x ^ 1 == 1 is the same as x == 0 if x in [0, 1]
                         return new IntegerEqualsNode(xorNode.getX(), ConstantNode.forIntegerStamp(xorNode.getX().stamp(view), primitiveConstant.asLong() ^ 1));

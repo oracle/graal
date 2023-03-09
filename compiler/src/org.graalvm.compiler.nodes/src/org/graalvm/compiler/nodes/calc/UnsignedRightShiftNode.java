@@ -159,7 +159,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
              * bits are all zero.
              */
             IntegerStamp inputStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
-            return (inputStamp.upMask() & ~(CodeUtil.mask(resultBits))) == 0;
+            return (inputStamp.mayBeSet() & ~(CodeUtil.mask(resultBits))) == 0;
         } else {
             return false;
         }

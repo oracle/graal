@@ -90,9 +90,9 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
         if (rawXStamp instanceof IntegerStamp && rawYStamp instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) rawXStamp;
             IntegerStamp yStamp = (IntegerStamp) rawYStamp;
-            if (((~xStamp.downMask()) & yStamp.upMask()) == 0) {
+            if (((~xStamp.mustBeSet()) & yStamp.mayBeSet()) == 0) {
                 return forX;
-            } else if (((~yStamp.downMask()) & xStamp.upMask()) == 0) {
+            } else if (((~yStamp.mustBeSet()) & xStamp.mayBeSet()) == 0) {
                 return forY;
             }
         }

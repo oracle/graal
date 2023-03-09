@@ -28,7 +28,6 @@ import java.util.HashSet;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
@@ -96,15 +95,9 @@ public class IntegerStampFoldTest extends GraalTest {
 
     private static void testFoldStamp(ArithmeticOpTable.BinaryOp<?> op, IntegerStamp stamp) {
         for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
-            IntegerStamp constant = StampFactory.forInteger(stamp.getBits(), a, a);
+            IntegerStamp constant = IntegerStamp.create(stamp.getBits(), a, a);
             IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, constant);
-            if ((op == IntegerStamp.OPS.getDiv()) && a == 0) {
-                assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
-            } else if (op == IntegerStamp.OPS.getRem() && a == 0) {
-                assertTrue(foldedStamp.isEmpty(), "%s %s %s must be empty", stamp, op, constant);
-            } else {
-                assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
-            }
+            assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
         }
     }
 
@@ -115,7 +108,7 @@ public class IntegerStampFoldTest extends GraalTest {
 
     private static void testFoldStamp(ArithmeticOpTable.ShiftOp<?> op, IntegerStamp stamp) {
         for (long a = -VALUE_LIMIT; a <= VALUE_LIMIT; a++) {
-            IntegerStamp constant = StampFactory.forInteger(32, a, a);
+            IntegerStamp constant = IntegerStamp.create(32, a, a);
             IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, constant);
             assertTrue(!foldedStamp.isEmpty(), "%s %s is empty", op, stamp);
         }
