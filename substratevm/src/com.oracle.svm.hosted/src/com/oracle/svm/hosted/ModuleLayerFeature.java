@@ -203,6 +203,14 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .sorted(Comparator.comparingInt(ModuleLayerFeatureUtils::distanceFromBootModuleLayer))
                         .collect(Collectors.toList());
 
+        /*
+         * Remove once GR-44584 is merged. See
+         * com.oracle.svm.driver.NativeImage.BuildConfiguration.getImageProvidedJars().
+         */
+        if (!accessImpl.imageClassLoader.applicationClassPath().isEmpty()) {
+            extraModules.add("ALL-MODULE-PATH");
+        }
+
         Set<String> rootModules = calculateRootModules(extraModules);
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
@@ -221,15 +229,15 @@ public final class ModuleLayerFeature implements InternalFeature {
      * as the original (via reflective invokes).
      */
     private Set<String> calculateRootModules(Collection<String> addModules) {
-        String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
-        ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
-        boolean haveUpgradeModulePath = upgradeModulePath != null;
-        boolean haveModulePath = appModulePath != null || haveUpgradeModulePath;
+        ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
+        String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
         Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
         ModuleFinder systemModuleFinder;
+
+        boolean haveModulePath = appModulePath != null || upgradeModulePath != null;
 
         if (!haveModulePath && addModules.isEmpty() && limitModules.isEmpty()) {
             systemModules = moduleLayerFeatureUtils.invokeSystemModuleFinderSystemModules(mainModule);
@@ -251,12 +259,12 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = ModuleFinder.compose(builderModuleFinder, systemModuleFinder);
         }
 
-        if (haveUpgradeModulePath) {
+        if (upgradeModulePath != null) {
             systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
         }
 
         ModuleFinder finder;
-        if (haveModulePath) {
+        if (appModulePath != null) {
             finder = ModuleFinder.compose(systemModuleFinder, appModulePath);
         } else {
             finder = systemModuleFinder;
@@ -662,13 +670,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         public ModuleFinder getAppModuleFinder() {
-            /*
-             * Remove the filtering of library-support.jar once GR-44584 is merged.
-             */
-            List<Path> appModulePath = imageClassLoader.applicationModulePath()
-                            .stream()
-                            .filter(p -> (p.getParent() == null || !p.getParent().endsWith("/lib/svm/")))
-                            .collect(Collectors.toList());
+            List<Path> appModulePath = imageClassLoader.applicationModulePath();
             if (appModulePath.isEmpty()) {
                 return null;
             } else {
@@ -707,7 +709,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                     return null;
                 } else {
                     throw VMError.shouldNotReachHere(
-                                    "Failed to find runtime module for hosted module " + hostedModuleName + ". No runtime modules have been registered for class loader: " + loader.getName());
+                                    "Failed to find runtime module for hosted module " + hostedModuleName + ". No runtime modules have been registered for class loader: " + loader);
                 }
             }
             Module runtimeModule = loaderRuntimeModules.get(hostedModuleName);
@@ -715,7 +717,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 if (optional) {
                     return null;
                 } else {
-                    throw VMError.shouldNotReachHere("Runtime module " + hostedModuleName + "is not registered for class loader: " + loader);
+                    throw VMError.shouldNotReachHere("Runtime module " + hostedModuleName + " is not registered for class loader: " + loader);
                 }
             } else {
                 return runtimeModule;
