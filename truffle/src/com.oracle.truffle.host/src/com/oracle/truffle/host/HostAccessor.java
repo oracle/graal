@@ -89,11 +89,6 @@ final class HostAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostException(Object obj) {
-            return obj instanceof HostException;
-        }
-
-        @Override
         public Object convertPrimitiveLossLess(Object value, Class<?> requestedType) {
             return HostUtil.convertLossLess(value, requestedType, InteropLibrary.getFactory().getUncached(value));
         }

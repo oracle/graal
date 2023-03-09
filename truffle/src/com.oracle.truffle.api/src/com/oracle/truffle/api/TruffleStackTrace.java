@@ -253,13 +253,16 @@ public final class TruffleStackTrace extends Exception {
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
         // internal and host language exceptions already have a stack trace attached.
-        if (isTruffleException) {
-            if (!LanguageAccessor.HOST.isHostException(throwable)) {
-                fullStackTrace.materializeHostException();
-            }
+        if (isTruffleException && !isHostException(throwable)) {
+            fullStackTrace.materializeHostException();
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;
+    }
+
+    private static boolean isHostException(Throwable throwable) {
+        Object polyglotEngine = LanguageAccessor.ENGINE.getCurrentPolyglotEngine();
+        return polyglotEngine != null && LanguageAccessor.ENGINE.getHostService(polyglotEngine).isHostException(throwable);
     }
 
     private static final class TracebackElement {
