@@ -749,8 +749,16 @@ public class NativeImageClassLoaderSupport {
         }
 
         private void registerClassPathServiceProviders(Path serviceRegistrationFile) {
-            if (serviceRegistrationFile.getParent().toString().equals("/META-INF/services")) {
-                String serviceName = serviceRegistrationFile.getFileName().toString();
+            Path servicesDir = serviceRegistrationFile.getParent();
+            if (servicesDir == null) {
+                return;
+            }
+            if (servicesDir.toString().equals("/META-INF/services")) {
+                Path serviceFileName = serviceRegistrationFile.getFileName();
+                if (serviceFileName == null) {
+                    return;
+                }
+                String serviceName = serviceFileName.toString();
                 if (!serviceName.isEmpty()) {
                     List<String> providerNames = new ArrayList<>();
                     try (Stream<String> serviceConfig = Files.lines(serviceRegistrationFile)) {
