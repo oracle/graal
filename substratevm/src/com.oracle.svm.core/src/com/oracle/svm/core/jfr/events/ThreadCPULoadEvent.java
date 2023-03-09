@@ -51,7 +51,7 @@ public class ThreadCPULoadEvent {
 
     private static final IsolateThreadConsumer threadCPULoadEventConsumer = new IsolateThreadConsumer() {
 
-        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.", mayBeInlined = true)
+        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
         public void accept(IsolateThread isolateThread) {
             emitForThread(isolateThread);
         }

@@ -1200,7 +1200,7 @@ public abstract class PlatformThreads {
 
     public interface IsolateThreadConsumer {
 
-        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.", mayBeInlined = true)
+        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
         void accept(IsolateThread isolateThread);
     }
 }
