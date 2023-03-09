@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,11 @@
 package com.oracle.svm.jfr;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -41,6 +46,7 @@ import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK16OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
@@ -53,13 +59,21 @@ import jdk.jfr.internal.handlers.EventHandler;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = JfrEnabled.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias static Object FILE_DELTA_CHANGE;
+    @Alias //
+    @TargetElement(onlyWith = HasChunkRotationMonitorField.class) //
+    static Object CHUNK_ROTATION_MONITOR;
+
+    @Alias //
+    @TargetElement(onlyWith = HasFileDeltaChangeField.class) //
+    static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private volatile boolean recording;
 
@@ -412,5 +426,29 @@ public final class Target_jdk_jfr_internal_JVM {
     @TargetElement(onlyWith = JDK14OrLater.class) //
     public void markChunkFinal() {
         // Temporarily do nothing. This is used for JFR streaming.
+    }
+}
+
+class HasChunkRotationMonitorField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "CHUNK_ROTATION_MONITOR") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
+    }
+
+    @Fold
+    public static boolean get() {
+        return HAS_FIELD;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class HasFileDeltaChangeField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "FILE_DELTA_CHANGE") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
     }
 }
