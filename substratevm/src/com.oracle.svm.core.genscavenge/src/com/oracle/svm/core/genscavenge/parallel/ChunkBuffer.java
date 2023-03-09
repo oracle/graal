@@ -67,6 +67,7 @@ public class ChunkBuffer {
     }
 
     Pointer pop() {
+        assert ParallelGC.isInParallelPhase();
         ParallelGC.mutex.lock();
         try {
             if (top > 0) {
@@ -78,6 +79,11 @@ public class ChunkBuffer {
         } finally {
             ParallelGC.mutex.unlock();
         }
+    }
+
+    boolean isEmpty() {
+        assert !ParallelGC.isInParallelPhase();
+        return top == 0;
     }
 
     void release() {

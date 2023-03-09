@@ -59,9 +59,6 @@ public class ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
 
-    private Thread[] workers;
-    private int busyWorkers;
-
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
      */
@@ -77,6 +74,8 @@ public class ParallelGC {
     private final VMCondition parPhase = new VMCondition(mutex);
 
     private ChunkBuffer buffer;
+    private Thread[] workers;
+    private int busyWorkers;
     private volatile boolean inParallelPhase;
 
     @Fold
@@ -105,14 +104,16 @@ public class ParallelGC {
 
     public void push(Pointer ptr) {
         assert ptr.isNonNull();
-        buffer.push(ptr);
-        if (inParallelPhase) {
-            parPhase.signal();
+        if (buffer != null) {
+            buffer.push(ptr);
+            if (inParallelPhase) {
+                parPhase.signal();
+            }
         }
     }
 
     public void pushAllocChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        assert ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
+        assert isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
         if (chunk.notEqual(scannedChunkTL.get())) {
             UnsignedWord scanOffset = allocChunkScanOffsetTL.get();
             assert scanOffset.aboveThan(0);
@@ -182,9 +183,15 @@ public class ParallelGC {
     }
 
     /**
-     * Start parallel phase and wait until all chunks have been processed. Used by complete collections.
+     * Start parallel phase and wait until all chunks have been processed.
+     * @return false if worker threads have not been started yet. This can happen if GC happens very early
+     *          during application startup.
      */
-    public void waitForIdle() {
+    public boolean waitForIdle() {
+        if (workers == null) {
+            return false;
+        }
+
         assert allocChunkTL.get().isNonNull();
         push(HeapChunk.asPointer(allocChunkTL.get()));
 
@@ -206,11 +213,13 @@ public class ParallelGC {
         } finally {
             mutex.unlock();
         }
+
+        assert buffer.isEmpty();
         // clean up thread local allocation chunks
-        allocChunkTL.set(WordFactory.nullPointer());
         for (Thread t: workers) {
             allocChunkTL.set(PlatformThreads.getIsolateThreadUnsafe(t), WordFactory.nullPointer());
         }
+        return true;
     }
 
     @SuppressWarnings("static-method")
@@ -258,10 +267,15 @@ public class ParallelGC {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
+    @SuppressWarnings("static-method")
+    public void cleanupAfterCollection() {
+        allocChunkTL.set(WordFactory.nullPointer());
+    }
+
     @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
     public void tearDown() {
         buffer.release();
-        for (Thread t: workers) {
+        for (Thread t : workers) {
             PlatformThreads.exit(t);
         }
     }

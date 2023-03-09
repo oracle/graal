@@ -1060,8 +1060,8 @@ public final class GCImpl implements GC {
         try {
             if (isIncremental) {
                 scanGreyObjectsLoop();
-            } else if (ParallelGC.isEnabled()) {
-                ParallelGC.singleton().waitForIdle();
+            } else if (ParallelGC.isEnabled() && ParallelGC.singleton().waitForIdle()) {
+                // GC can happen before parallel worker threads have been started. In this case, fall back to serial GC.
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
             }
@@ -1158,6 +1158,10 @@ public final class GCImpl implements GC {
         heap.getYoungGeneration().releaseSpaces(chunkReleaser);
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
+        }
+
+        if (ParallelGC.isEnabled()) {
+            ParallelGC.singleton().cleanupAfterCollection();
         }
     }
 
