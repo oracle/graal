@@ -39,9 +39,11 @@
     self.latest_jdk
   ],
 
-  // Benchmarking building blocks
-  // ****************************
-  compiler_bench_base:: bench_common.bench_base + {
+  compiler_benchmarks_notifications:: {
+    notify_groups:: ["compiler_bench"],
+  },
+
+  compiler_benchmark:: bench_common.bench_base + self.compiler_benchmarks_notifications + {
     # The extra steps and mx arguments to be applied to build libgraal with PGO
     local is_libgraal = std.objectHasAll(self, "platform") && std.findSubstr("libgraal", self.platform) != [],
     local with_profiling = !std.objectHasAll(self, "disable_profiling") || !self.disable_profiling,
@@ -86,14 +88,6 @@
       ["mx", "hsdis", "||", "true"],
       ["mx"] + use_libgraal_profile + ["build"]
     ] else [],
-    teardown+: []
-  },
-
-  compiler_benchmarks_notifications:: {
-    notify_groups:: ["compiler_bench"],
-  },
-
-  compiler_benchmark:: self.compiler_bench_base + self.compiler_benchmarks_notifications + {
     should_upload_results:: true,
     _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
     teardown+: if self.should_upload_results then [
