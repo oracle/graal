@@ -334,16 +334,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             asm.andlAndJcc(len, -vectorLength, ConditionFlag.Zero, supportsAVX2AndYMM() ? labelPack16Bytes : labelPack8Bytes, false);
 
             if (supportsAVX2AndYMM() && op == Op.compressIntToByte) {
-                loadMask(crb, asm, asRegister(vectorTemp[4]), new byte[]{
-                                0, 0, 0, 0,
-                                4, 0, 0, 0,
-                                1, 0, 0, 0,
-                                5, 0, 0, 0,
-                                2, 0, 0, 0,
-                                6, 0, 0, 0,
-                                3, 0, 0, 0,
-                                7, 0, 0, 0,
-                });
+                loadMask(crb, asm, asRegister(vectorTemp[4]), getAVX2IntToBytePackingUnscrambleMap());
             }
 
             asm.leaq(src, new AMD64Address(src, len, strideSrc));
@@ -407,11 +398,6 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         }
         asm.incqAndJcc(len, ConditionFlag.NotZero, labelScalarLoop, true);
         asm.bind(labelDone);
-    }
-
-    private void loadMask(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register vecMask, byte[] mask) {
-        int align = crb.dataBuilder.ensureValidDataAlignment(mask.length);
-        asm.movdqu(vectorSize, vecMask, (AMD64Address) crb.recordDataReferenceInCode(mask, align));
     }
 
     private void packVector(AMD64MacroAssembler asm, AVXSize vecSize, Op op, Stride strideSrc, Stride strideDst, Register src, Register dst, Register index, int displacement, boolean direct) {

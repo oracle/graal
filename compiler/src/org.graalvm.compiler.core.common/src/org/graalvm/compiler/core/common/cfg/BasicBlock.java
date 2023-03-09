@@ -221,7 +221,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
     public static char safeCast(int i) {
         if (i < 0) {
-            throw GraalError.shouldNotReachHere("Negative block id");
+            throw GraalError.shouldNotReachHere("Negative block id"); // ExcludeFromJacocoGeneratedReport
         }
         if (i > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
             throw new RetryableBailoutException("Graph too large to safely compile in reasonable time.");

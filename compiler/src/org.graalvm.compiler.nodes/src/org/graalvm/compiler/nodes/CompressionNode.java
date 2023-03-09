@@ -90,7 +90,7 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
             case Uncompress:
                 return uncompress(c);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -102,7 +102,7 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
             case Uncompress:
                 return compress(c);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -163,7 +163,7 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
                 result = tool.emitUncompress(gen.operand(value), encoding, nonNull);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         gen.setResult(this, result);

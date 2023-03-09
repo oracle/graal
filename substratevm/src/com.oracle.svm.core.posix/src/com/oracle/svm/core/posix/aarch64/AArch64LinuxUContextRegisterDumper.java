@@ -92,14 +92,14 @@ class AArch64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_aarch64().regs();
         return WordFactory.pointer(regs.read(27));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_aarch64().regs();
         return WordFactory.pointer(regs.read(28));

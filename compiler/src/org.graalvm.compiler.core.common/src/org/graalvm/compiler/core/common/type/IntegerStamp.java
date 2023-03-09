@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -239,7 +239,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return JavaConstant.forLong(buffer.getLong());
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -276,7 +276,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return metaAccess.lookupJavaType(Long.TYPE);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1434,7 +1434,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() << amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
@@ -1520,7 +1520,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >> amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
@@ -1572,7 +1572,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >>> amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 

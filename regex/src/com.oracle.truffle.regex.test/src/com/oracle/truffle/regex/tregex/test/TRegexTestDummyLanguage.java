@@ -43,7 +43,18 @@ package com.oracle.truffle.regex.tregex.test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 
@@ -53,11 +64,127 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
     public static final String NAME = "REGEXDUMMYLANG";
     public static final String ID = "regexDummyLang";
     public static final String MIME_TYPE = "application/tregexdummy";
+    public static final String BENCH_PREFIX = "__BENCH__";
+    public static final String BENCH_CG_PREFIX = "__BENCH_CG__";
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
+        String src = parsingRequest.getSource().getCharacters().toString();
+        if (src.startsWith(BENCH_PREFIX)) {
+            final Object regex = DummyLanguageContext.get(null).getEnv().parseInternal(
+                            Source.newBuilder(RegexLanguage.ID, "BooleanMatch=true," + src.substring(BENCH_PREFIX.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
+            return new RootNode(this) {
+
+                private final Object compiledRegex = regex;
+
+                @Child RegexBenchNode benchNode = TRegexTestDummyLanguageFactory.RegexBenchNodeGen.create();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] args = frame.getArguments();
+                    return benchNode.execute(this, compiledRegex, args[0], (int) args[1]);
+                }
+            }.getCallTarget();
+        }
+        if (src.startsWith(BENCH_CG_PREFIX)) {
+            final Object regex = DummyLanguageContext.get(null).getEnv().parseInternal(
+                            Source.newBuilder(RegexLanguage.ID, src.substring(BENCH_CG_PREFIX.length()), parsingRequest.getSource().getName()).internal(true).build()).call();
+            return new RootNode(this) {
+
+                private final Object compiledRegex = regex;
+
+                @Child RegexBenchCGNode benchNode = TRegexTestDummyLanguageFactory.RegexBenchCGNodeGen.create();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] args = frame.getArguments();
+                    return benchNode.execute(this, compiledRegex, args[0], (int) args[1]);
+                }
+            }.getCallTarget();
+        }
         return DummyLanguageContext.get(null).getEnv().parseInternal(
-                        Source.newBuilder(RegexLanguage.ID, parsingRequest.getSource().getCharacters(), parsingRequest.getSource().getName()).internal(true).build());
+                        Source.newBuilder(RegexLanguage.ID, src, parsingRequest.getSource().getName()).internal(true).build());
+    }
+
+    @GenerateInline
+    abstract static class RegexBenchNode extends Node {
+
+        protected static final String EXEC = "execBoolean";
+
+        abstract boolean execute(Node node, Object compiledRegex, Object input, int fromIndex);
+
+        @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
+        static boolean run(Object compiledRegex, String input, int fromIndex,
+                        @CachedLibrary("compiledRegex") InteropLibrary objs) {
+            try {
+                return (boolean) objs.invokeMember(compiledRegex, EXEC, input, fromIndex);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @GenerateInline
+    abstract static class RegexBenchCGNode extends Node {
+
+        protected static final String EXEC = "exec";
+
+        abstract int execute(Node node, Object compiledRegex, Object input, int fromIndex);
+
+        @Specialization(guards = "objs.isMemberInvocable(compiledRegex, EXEC)", limit = "3")
+        static int run(Node node, Object compiledRegex, String input, int fromIndex,
+                        @CachedLibrary("compiledRegex") InteropLibrary objs,
+                        @Cached RegexBenchCGGetStartNode getStart0,
+                        @Cached RegexBenchCGGetStartNode getStart1,
+                        @Cached RegexBenchCGGetEndNode getEnd0,
+                        @Cached RegexBenchCGGetEndNode getEnd1) {
+            try {
+                Object result = objs.invokeMember(compiledRegex, EXEC, input, fromIndex);
+                int start0 = getStart0.execute(node, result, 0);
+                int end0 = getEnd0.execute(node, result, 0);
+                int start1 = getStart1.execute(node, result, 1);
+                int end1 = getEnd1.execute(node, result, 1);
+                return start0 + start1 + end0 + end1;
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @GenerateInline
+    abstract static class RegexBenchCGGetStartNode extends Node {
+
+        protected static final String GET_START = "getStart";
+
+        abstract int execute(Node node, Object regexResult, int i);
+
+        @Specialization(guards = "objs.isMemberInvocable(regexResult, GET_START)", limit = "3")
+        static int exec(Object regexResult, int i,
+                        @CachedLibrary("regexResult") InteropLibrary objs) {
+            try {
+                return (int) objs.invokeMember(regexResult, GET_START, i);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @GenerateInline
+    abstract static class RegexBenchCGGetEndNode extends Node {
+
+        protected static final String GET_END = "getEnd";
+
+        abstract int execute(Node node, Object regexResult, int i);
+
+        @Specialization(guards = "objs.isMemberInvocable(regexResult, GET_END)", limit = "3")
+        static int exec(Object regexResult, int i,
+                        @CachedLibrary("regexResult") InteropLibrary objs) {
+            try {
+                return (int) objs.invokeMember(regexResult, GET_END, i);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
     }
 
     @Override

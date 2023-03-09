@@ -63,7 +63,7 @@ public class CompilationContext implements AutoCloseable {
         try {
             impl.close();
         } catch (Exception e) {
-            GraalError.shouldNotReachHere(e);
+            GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

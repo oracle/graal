@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -888,7 +888,7 @@ public class LinearScan {
                     Value l2 = i2.location();
                     if (i1.intersects(i2) && !isIllegal(l1) && (l1.equals(l2))) {
                         throw GraalError.shouldNotReachHere(String.format("Intervals %d and %d overlap and have the same register assigned\n%s\n%s", i1.operandNumber, i2.operandNumber,
-                                        i1.logString(this), i2.logString(this)));
+                                        i1.logString(this), i2.logString(this))); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }

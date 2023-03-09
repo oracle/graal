@@ -13,8 +13,12 @@ To build a native executable from a JAR file in the current working directory, u
 ```shell
 native-image [options] -jar jarfile [executable name]
 ```
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk) 
+    ```
 
-1. Prepare the application.
+2. Prepare the application.
 
     - Create a new Java project named "App", for example in your favorite IDE or from your terminal, with the following structure:
 
@@ -45,31 +49,32 @@ native-image [options] -jar jarfile [executable name]
             }
         }
         ```
+
         This is a small Java application that reverses a String using recursion.
 
-2. Compile the application:
-
+3. Compile the application:
     ```shell
     javac -d build src/com/example/App.java
     ```
+
     This produces the file _App.class_ in the _build/com/example_ directory.
 
-3. Create a runnable JAR file:
-
+4. Create a runnable JAR file:
     ```shell
     jar --create --file App.jar --main-class com.example.App -C build .
     ```
+
     It will generate a runnable JAR file, named _App.jar_, in the project root directory: 
     To view its contents, run the command `jar tf App.jar`.
 
-4. Create a native executable:
-
-    ```
+5. Create a native executable:
+    ```shell
     native-image -jar App.jar
     ```
-    It will produce a native executable in the project root directory.
-5. Run the native executable:
 
+    It will produce a native executable in the project root directory.
+
+6. Run the native executable:
     ```shell
     ./App
     ```

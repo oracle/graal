@@ -29,6 +29,6 @@ import com.oracle.svm.core.Uninterruptible;
 /** An object in the compiler isolate that has an equivalent in the client isolate. */
 interface IsolatedMirroredObject<T> {
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ClientHandle<T> getMirror();
 }

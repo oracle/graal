@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -58,12 +57,7 @@ public abstract class InputReadNode extends Node {
         return InputReadNodeGen.create();
     }
 
-    public abstract int execute(Object input, int index, Encoding encoding);
-
-    @Specialization
-    static int doString(String input, int index, @SuppressWarnings("unused") Encoding encoding) {
-        return input.charAt(index);
-    }
+    public abstract int execute(TruffleString input, int index, Encoding encoding);
 
     @Specialization(guards = {"encoding != UTF_16", "encoding != UTF_32", "encoding != UTF_16_RAW"})
     static int doTStringUTF8(TruffleString input, int index, Encoding encoding,
@@ -81,17 +75,5 @@ public abstract class InputReadNode extends Node {
     static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
                     @Cached TruffleString.CodePointAtIndexNode readRawNode) {
         return readRawNode.execute(input, index, TruffleString.Encoding.UTF_32);
-    }
-
-    public static int readWithMask(Object input, int indexInput, String mask, int indexMask, Encoding encoding, InputReadNode charAtNode) {
-        CompilerAsserts.partialEvaluationConstant(mask == null);
-        int c = charAtNode.execute(input, indexInput, encoding);
-        return (mask == null ? c : (c | mask.charAt(indexMask)));
-    }
-
-    public static int readWithMask(Object input, int indexInput, byte[] mask, int indexMask, Encoding encoding, InputReadNode charAtNode) {
-        CompilerAsserts.partialEvaluationConstant(mask == null);
-        int c = charAtNode.execute(input, indexInput, encoding);
-        return (mask == null ? c : (c | Byte.toUnsignedInt(mask[indexMask])));
     }
 }

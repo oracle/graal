@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,7 +91,7 @@ public class RawPointerStamp extends AbstractPointerStamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalError.shouldNotReachHere("pointer has no Java type");
+        throw GraalError.shouldNotReachHere("pointer has no Java type"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -115,7 +115,7 @@ public class RawPointerStamp extends AbstractPointerStamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw GraalError.shouldNotReachHere("can't read raw pointer");
+        throw GraalError.shouldNotReachHere("can't read raw pointer"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

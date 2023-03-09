@@ -122,7 +122,7 @@ public class AArch64AtomicMove {
                     masm.cmp(memAccessSize, result, expected);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -160,7 +160,7 @@ public class AArch64AtomicMove {
                     release = true;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             if (AArch64LIRFlags.useLSE(masm)) {

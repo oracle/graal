@@ -131,7 +131,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     private static RuntimeException shouldNotReachHere() {
         throw VMError.shouldNotReachHere();

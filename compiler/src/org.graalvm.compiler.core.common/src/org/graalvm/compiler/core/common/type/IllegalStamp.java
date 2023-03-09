@@ -82,7 +82,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
-        throw GraalError.shouldNotReachHere("illegal stamp has no Java type");
+        throw GraalError.shouldNotReachHere("illegal stamp has no Java type"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -129,7 +129,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
-        throw GraalError.shouldNotReachHere("can't read values of illegal stamp");
+        throw GraalError.shouldNotReachHere("can't read values of illegal stamp"); // ExcludeFromJacocoGeneratedReport
     }
 
     private static final IllegalStamp instance = new IllegalStamp();

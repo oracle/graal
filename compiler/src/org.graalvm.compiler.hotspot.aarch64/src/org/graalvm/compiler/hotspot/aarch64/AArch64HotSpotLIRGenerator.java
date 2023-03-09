@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -66,7 +66,6 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
-import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
@@ -147,25 +146,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         } else {
             append(new AArch64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info, label));
         }
-    }
-
-    @Override
-    public void emitTailcall(Value[] args, Value address) {
-        throw GraalError.unimplemented();
-    }
-
-    @Override
-    public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args) {
-        Value[] argLocations = new Value[args.length];
-        getResult().getFrameMapBuilder().callsMethod(nativeCallingConvention);
-        for (int i = 0; i < args.length; i++) {
-            Value arg = args[i];
-            AllocatableValue loc = nativeCallingConvention.getArgument(i);
-            emitMove(loc, arg);
-            argLocations[i] = loc;
-        }
-        Value ptr = emitLoadConstant(LIRKind.value(AArch64Kind.QWORD), JavaConstant.forLong(address));
-        append(new AArch64CCall(nativeCallingConvention.getReturn(), ptr, argLocations));
     }
 
     /**
@@ -288,7 +268,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         if (BenchmarkCounters.enabled) {
             return new AArch64HotSpotCounterOp(name, group, transformBenchmarkCounterIncrement(increment), getProviders().getRegisters(), config);
         }
-        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -297,7 +277,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             Value[] incrementValues = Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray(Value[]::new);
             return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
         }
-        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

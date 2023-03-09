@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public class InductionVariableHelper {
         } else if (start.getOp() instanceof SubNode) {
             previousOp = start.graph().unique(new AddNode(start.valueNode(), start.rawStride()));
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         InductionVariable previousIv = start.getLoop().getInductionVariables().get(previousOp);
         if (previousIv == null) {
@@ -96,7 +96,7 @@ public class InductionVariableHelper {
         } else if (start.getOp() instanceof SubNode) {
             nextOp = start.graph().unique(new SubNode(start.getOp(), start.rawStride()));
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         InductionVariable nextIv = start.getLoop().getInductionVariables().get(nextOp);
         if (nextIv == null) {

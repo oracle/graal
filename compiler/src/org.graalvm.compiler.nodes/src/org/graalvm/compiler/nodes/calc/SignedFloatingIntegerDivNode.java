@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,7 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
             if (yConst == 0) {
                 // Replacing a previous never 0 with constant zero can create this situation
                 if (floatingGuard == null) {
-                    throw GraalError.shouldNotReachHere("Must have never been a floating div");
+                    throw GraalError.shouldNotReachHere("Must have never been a floating div"); // ExcludeFromJacocoGeneratedReport
                 } else {
                     return this;
                 }
@@ -94,7 +94,7 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
         if (floatingGuard == null && canDivideByZero()) {
-            GraalError.shouldNotReachHere("Can overflow though we have no guard");
+            GraalError.shouldNotReachHere("Can overflow though we have no guard"); // ExcludeFromJacocoGeneratedReport
         }
         assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
         assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;

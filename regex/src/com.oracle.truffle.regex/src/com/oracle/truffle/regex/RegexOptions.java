@@ -43,6 +43,7 @@ package com.oracle.truffle.regex;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -82,6 +83,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>fullmatch</b></li>
  * </ul>
  * </li>
+ * <li><b>PythonLocale</b>: specifies which locale is to be used by this locale-sensitive Python
+ * regexp</li>
  * <li><b>Validate</b>: don't generate a regex matcher object, just check the regex for syntax
  * errors.</li>
  * <li><b>U180EWhitespace</b>: treat 0x180E MONGOLIAN VOWEL SEPARATOR as part of {@code \s}. This is
@@ -144,18 +147,22 @@ public final class RegexOptions {
     public static final String PYTHON_METHOD_FULLMATCH = "fullmatch";
     private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null);
+    public static final String PYTHON_LOCALE_NAME = "PythonLocale";
+
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null, null);
 
     private final int options;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
     private final PythonMethod pythonMethod;
+    private final String pythonLocale;
 
-    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod) {
+    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod, String pythonLocale) {
         this.options = options;
         this.flavor = flavor;
         this.encoding = encoding;
         this.pythonMethod = pythonMethod;
+        this.pythonLocale = pythonLocale;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -257,20 +264,24 @@ public final class RegexOptions {
         return pythonMethod;
     }
 
+    public String getPythonLocale() {
+        return pythonLocale;
+    }
+
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod);
+        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod, pythonLocale);
     }
 
     public RegexOptions withoutPythonMethod() {
-        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null);
+        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null, pythonLocale);
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod);
+        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale);
     }
 
     @Override
@@ -280,6 +291,7 @@ public final class RegexOptions {
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
         hash = prime * hash + Objects.hashCode(pythonMethod);
+        hash = prime * hash + Objects.hashCode(pythonLocale);
         return hash;
     }
 
@@ -292,7 +304,8 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod;
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod &&
+                        this.pythonLocale.equals(other.pythonLocale);
     }
 
     @Override
@@ -344,6 +357,9 @@ public final class RegexOptions {
         } else if (pythonMethod == PythonMethod.fullmatch) {
             sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
         }
+        if (pythonLocale != null) {
+            sb.append(PYTHON_LOCALE_NAME + "=" + pythonLocale + ",");
+        }
         return sb.toString();
     }
 
@@ -355,6 +371,7 @@ public final class RegexOptions {
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
         private PythonMethod pythonMethod;
+        private String pythonLocale;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
@@ -393,7 +410,11 @@ public final class RegexOptions {
                         i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
                         break;
                     case 'P':
-                        i = parsePythonMethod(i);
+                        if (src.regionMatches(i, PYTHON_METHOD_NAME, 0, PYTHON_METHOD_NAME.length())) {
+                            i = parsePythonMethod(i);
+                        } else {
+                            i = parsePythonLocale(i);
+                        }
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -533,6 +554,16 @@ public final class RegexOptions {
             }
         }
 
+        private int parsePythonLocale(int i) throws RegexSyntaxException {
+            int iStart = expectOptionName(i, PYTHON_LOCALE_NAME);
+            int iEnd = ArrayUtils.indexOf(src, iStart, src.length(), ',', '/');
+            if (iEnd == -1) {
+                iEnd = src.length();
+            }
+            pythonLocale = src.substring(iStart, iEnd);
+            return iEnd;
+        }
+
         @TruffleBoundary
         private RegexSyntaxException optionsSyntaxErrorUnexpectedKey(int i) {
             int eqlPos = src.indexOf('=', i);
@@ -641,8 +672,17 @@ public final class RegexOptions {
             return pythonMethod;
         }
 
+        public Builder pythonLocale(@SuppressWarnings("hiding") String pythonLocale) {
+            this.pythonLocale = pythonLocale;
+            return this;
+        }
+
+        public String getPythonLocale() {
+            return pythonLocale;
+        }
+
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor, this.encoding, this.pythonMethod);
+            return new RegexOptions(this.options, this.flavor, this.encoding, this.pythonMethod, this.pythonLocale);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

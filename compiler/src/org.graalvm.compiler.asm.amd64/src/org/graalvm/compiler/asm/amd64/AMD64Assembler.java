@@ -52,6 +52,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADCX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.ADOX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
@@ -771,6 +773,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D, PreferredNDS.DST);
         public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E, PreferredNDS.DST);
         public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F, PreferredNDS.DST);
+        public static final SSEOp PSUBUSB   = new SSEOp("PSUBUSB",         P_0F, 0xD8, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PSUBUSW   = new SSEOp("PSUBUSW",         P_0F, 0xD9, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PMINUB    = new SSEOp("PMINUB",          P_0F, 0xDA, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PMINUW    = new SSEOp("PMINUW",        P_0F38, 0x3A, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final SSEOp PMINUD    = new SSEOp("PMINUD",        P_0F38, 0x3B, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+
+        public static final SSEOp PACKUSWB  = new SSEOp("PACKUSWB",        P_0F, 0x67, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion);
+        public static final SSEOp PACKUSDW  = new SSEOp("PACKUSDW",      P_0F38, 0x2B, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion,  CPUFeature.SSE4_1);
+
+        public static final SSEOp PSHUFB    = new SSEOp("PSHUFB",        P_0F38, 0x00, PreferredNDS.DST,  OpAssertion.PackedDoubleAssertion, CPUFeature.SSSE3);
 
         // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
         public static final SSEOp MOVD      = new SSEOp("MOVD",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
@@ -785,12 +797,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this(opcode, 0, prefix, op, preferredNDS, OpAssertion.FloatAssertion);
         }
 
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, CPUFeature feature) {
+            this(opcode, 0, prefix, op, preferredNDS, OpAssertion.FloatAssertion, feature);
+        }
+
         protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
             this(opcode, 0, prefix, op, preferredNDS, assertion);
         }
 
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            this(opcode, 0, prefix, op, preferredNDS, assertion, feature);
+        }
+
         protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
-            super(opcode, mandatoryPrefix, prefix, op, assertion, CPUFeature.SSE2);
+            this(opcode, mandatoryPrefix, prefix, op, preferredNDS, assertion, CPUFeature.SSE2);
+        }
+
+        protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, mandatoryPrefix, prefix, op, assertion, feature);
             this.preferredNDS = preferredNDS;
         }
 
@@ -1004,7 +1028,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 case ZMM:
                     return l512features != null && features.containsAll(l512features);
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1157,7 +1181,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             } else if (avxSize == AVXSize.YMM) {
                 return l256feature != null && features.contains(l256feature) && extendedFeatureCheck;
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1651,6 +1675,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPMULLD         = new VexRVMOp("VPMULLD",     P_66, M_0F38, WIG, 0x40, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexRVMOp VPMULLQ         = new VexRVMOp("VPMULLQ",     P_66, M_0F38, W1,  0x40, VEXOpAssertion.AVX512DQ_VL,                  EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPSUBUSB        = new VexRVMOp("VPSUBUSB",    P_66, M_0F,   WIG, 0xD8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
+        public static final VexRVMOp VPSUBUSW        = new VexRVMOp("VPSUBUSW",    P_66, M_0F,   WIG, 0xD9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBB          = new VexRVMOp("VPSUBB",      P_66, M_0F,   WIG, 0xF8, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBW          = new VexRVMOp("VPSUBW",      P_66, M_0F,   WIG, 0xF9, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPSUBD          = new VexRVMOp("VPSUBD",      P_66, M_0F,   WIG, 0xFA, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
@@ -2301,7 +2326,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return NLT_UQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     switch (condition) {
@@ -2318,7 +2343,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                         case GE:
                             return GE_OQ;
                         default:
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }
@@ -2377,6 +2402,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ADD.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void adcl(Register dst, int imm32) {
+        ADC.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
+    }
+
     public final void addpd(Register dst, Register src) {
         SSEOp.ADD.emit(this, PD, dst, src);
     }
@@ -2433,6 +2462,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void andl(Register dst, Register src) {
         AND.rmOp.emit(this, DWORD, dst, src);
+    }
+
+    public final void mull(Register src) {
+        MUL.emit(this, DWORD, src);
     }
 
     public final void andpd(Register dst, Register src) {
@@ -3316,28 +3349,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         OR.rmOp.emit(this, DWORD, dst, src);
     }
 
+    public final void orl(AMD64Address dst, Register src) {
+        OR.mrOp.emit(this, DWORD, dst, src);
+    }
+
     public final void orl(Register dst, int imm32) {
         OR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
-    // Insn: VPACKUSWB xmm1, xmm2, xmm3/m128
-    // -----
-    // Insn: VPACKUSWB xmm1, xmm1, xmm2
-
     public final void packuswb(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        // Code: VEX.NDS.128.66.0F.WIG 67 /r
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0x67);
-        emitModRM(dst, src);
+        SSEOp.PACKUSWB.emit(this, PD, dst, src);
     }
 
     public final void packusdw(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        // Code: VEX.128.66.0F38 2B /r
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x2B);
-        emitModRM(dst, src);
+        SSEOp.PACKUSDW.emit(this, PD, dst, src);
     }
 
     public final void pop(Register dst) {
@@ -3350,7 +3375,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, Register src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3358,7 +3383,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void ptest(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PTEST requires SSE4.1");
         assert inRC(XMM, dst);
         simdPrefix(dst, Register.None, src, PD, P_0F38, false);
         emitByte(0x17);
@@ -3411,6 +3436,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0x76);
         emitOperandHelper(dst, src, 0);
+    }
+
+    public final void pminub(Register dst, Register src) {
+        SSEOp.PMINUB.emit(this, PD, dst, src);
+    }
+
+    public final void pminuw(Register dst, Register src) {
+        SSEOp.PMINUW.emit(this, PD, dst, src);
+    }
+
+    public final void pminud(Register dst, Register src) {
+        SSEOp.PMINUD.emit(this, PD, dst, src);
     }
 
     public final void pcmpgtb(Register dst, Register src) {
@@ -3746,19 +3783,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void pshufb(Register dst, Register src) {
-        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x00);
-        emitModRM(dst, src);
+        SSEOp.PSHUFB.emit(this, PD, dst, src);
     }
 
     public final void pshufb(Register dst, AMD64Address src) {
-        GraalError.guarantee(supports(CPUFeature.SSSE3), "pshufb requires SSSE3");
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, PD, P_0F38, false);
-        emitByte(0x00);
-        emitOperandHelper(dst, src, 0);
+        SSEOp.PSHUFB.emit(this, PD, dst, src);
     }
 
     public final void pshuflw(Register dst, Register src, int imm8) {
@@ -3781,17 +3810,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void psubusb(Register dst, Register src) {
-        assert inRC(XMM, dst) && inRC(XMM, src);
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0xD8);
-        emitModRM(dst, src);
+        SSEOp.PSUBUSB.emit(this, PD, dst, src);
     }
 
     public final void psubusb(Register dst, AMD64Address src) {
-        assert inRC(XMM, dst);
-        simdPrefix(dst, dst, src, PD, P_0F, false);
-        emitByte(0xD8);
-        emitOperandHelper(dst, src, 0);
+        SSEOp.PSUBUSB.emit(this, PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, Register src) {
+        SSEOp.PSUBUSW.emit(this, PD, dst, src);
+    }
+
+    public final void psubusw(Register dst, AMD64Address src) {
+        SSEOp.PSUBUSW.emit(this, PD, dst, src);
     }
 
     public final void psubd(Register dst, Register src) {
@@ -4086,12 +4117,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void rorq(Register dst, int imm8) {
-        assert isByte(imm8);
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
         ROR.miOp.emit(this, QWORD, dst, (byte) imm8);
     }
 
     public final void rorxq(Register dst, Register src, int imm8) {
         RORXQ.emit(this, AVXSize.QWORD, dst, src, (byte) imm8);
+    }
+
+    public final void rclq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        RCL.miOp.emit(this, QWORD, dst, (byte) imm8);
+    }
+
+    public final void rcrq(Register dst, int imm8) {
+        GraalError.guarantee(isByte(imm8), "only byte immediate is supported");
+        RCR.miOp.emit(this, QWORD, dst, (byte) imm8);
     }
 
     public final void bsrq(Register dst, Register src) {

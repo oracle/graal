@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexFlags;
@@ -107,7 +108,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     @Override
-    public final RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
+    public final RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex) {
         final int inputLength = inputLength(input);
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
@@ -193,7 +194,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return true;
     }
 
-    private RegexResult regressionTestRun(VirtualFrame frame, RunRegexSearchNode node, Object input, int fromIndex) {
+    private RegexResult regressionTestRun(VirtualFrame frame, RunRegexSearchNode node, TruffleString input, int fromIndex) {
         RunRegexSearchNode old = runnerNode;
         runnerNode = insert(node);
         RegexResult result = runnerNode.run(frame, input, fromIndex, inputLength(input));
@@ -201,7 +202,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return result;
     }
 
-    private boolean backtrackerProducesSameResult(VirtualFrame frame, Object input, int fromIndex, RegexResult result) {
+    private boolean backtrackerProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, RegexResult result) {
         RegexResult btResult = regressionTestRun(frame, regressTestBacktrackingNode, input, fromIndex);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
@@ -211,7 +212,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean nfaProducesSameResult(VirtualFrame frame, Object input, int fromIndex, RegexResult result) {
+    private boolean nfaProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
@@ -225,7 +226,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean noSimpleCGLazyDFAProducesSameResult(VirtualFrame frame, Object input, int fromIndex, RegexResult result) {
+    private boolean noSimpleCGLazyDFAProducesSameResult(VirtualFrame frame, TruffleString input, int fromIndex, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT || !lazyDFANode.isSimpleCG() || regressTestNoSimpleCGLazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
@@ -240,7 +241,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean eagerAndLazyDFAProduceSameResult(VirtualFrame frame, Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
+    private boolean eagerAndLazyDFAProduceSameResult(VirtualFrame frame, TruffleString input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
         if (lazyDFANode.captureGroupEntryNode == null || eagerDFANode == EAGER_DFA_BAILED_OUT) {
             return true;
         }
@@ -372,7 +373,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
     public abstract static class RunRegexSearchNode extends Node {
 
-        protected abstract RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength);
+        protected abstract RegexResult run(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength);
     }
 
     public static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
@@ -447,7 +448,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult run(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength) {
             if (backwardEntryNode != null && getBackwardExecutor().isAnchored() && !flags.isSticky()) {
                 return executeBackwardAnchored(frame, input, fromIndexArg, inputLength);
             } else {
@@ -455,7 +456,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        private RegexResult executeForward(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        private RegexResult executeForward(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength) {
             if (getForwardExecutor().isSimpleCG()) {
                 Object result = forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLength);
                 return RegexResult.createFromExecutorResult(result);
@@ -487,7 +488,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        private RegexResult executeBackwardAnchored(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        private RegexResult executeBackwardAnchored(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength) {
             if (getBackwardExecutor().isSimpleCG()) {
                 Object result = backwardEntryNode.execute(frame, input, fromIndexArg, inputLength, inputLength);
                 return RegexResult.createFromExecutorResult(result);
@@ -539,7 +540,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult run(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength) {
             Object result = entryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLength);
             return RegexResult.createFromExecutorResult(result);
         }
@@ -558,7 +559,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult run(VirtualFrame frame, TruffleString input, int fromIndexArg, int inputLength) {
             Object result = entryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLength);
             if (entryNode.getExecutor().isBooleanMatch()) {
                 return result == null ? RegexResult.getNoMatchInstance() : RegexResult.getBooleanMatchInstance();

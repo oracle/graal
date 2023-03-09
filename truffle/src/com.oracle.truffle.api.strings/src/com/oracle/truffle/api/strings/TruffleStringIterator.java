@@ -42,8 +42,8 @@ package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
@@ -168,14 +168,14 @@ public final class TruffleStringIterator {
             return readAndInc(node, it, readNode);
         }
 
-        @Specialization(guards = {"isAscii(it.encoding)", "isBrokenFixedWidth(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
+        @Specialization(guards = {"isAscii(it.encoding)", "isBroken(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
         static int brokenAscii(Node node, TruffleStringIterator it,
                         @Shared("readRaw") @Cached TStringOpsNodes.RawReadValueNode readNode) {
             int codepoint = readAndInc(node, it, readNode);
             return codepoint < 0x80 ? codepoint : -1;
         }
 
-        @Specialization(guards = {"isUTF32(it.encoding)", "isBrokenFixedWidth(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
+        @Specialization(guards = {"isUTF32(it.encoding)", "isBroken(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
         static int brokenUTF32(Node node, TruffleStringIterator it,
                         @Shared("readRaw") @Cached TStringOpsNodes.RawReadValueNode readNode) {
             int codepoint = readAndInc(node, it, readNode);
@@ -183,7 +183,7 @@ public final class TruffleStringIterator {
         }
 
         @SuppressWarnings("fallthrough")
-        @Specialization(guards = {"isUTF8(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isValid(it.codeRangeA)"})
         static int utf8Valid(TruffleStringIterator it) {
             int b = it.readAndIncS0();
             if (b < 0x80) {
@@ -210,7 +210,7 @@ public final class TruffleStringIterator {
         }
 
         @SuppressWarnings("fallthrough")
-        @Specialization(guards = {"isUTF8(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isBroken(it.codeRangeA)"})
         static int utf8Broken(TruffleStringIterator it) {
             int b = it.readAndIncS0();
             if (b < 0x80) {
@@ -250,7 +250,7 @@ public final class TruffleStringIterator {
             return codepoint;
         }
 
-        @Specialization(guards = {"isUTF16(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isValid(it.codeRangeA)"})
         static int utf16Valid(TruffleStringIterator it) {
             char c = (char) it.readAndIncS1();
             if (Encodings.isUTF16HighSurrogate(c)) {
@@ -261,7 +261,7 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUTF16(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isBroken(it.codeRangeA)"})
         static int utf16Broken(TruffleStringIterator it) {
             char c = (char) it.readAndIncS1();
             if (it.errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE) {
@@ -305,7 +305,7 @@ public final class TruffleStringIterator {
                 return Encodings.invalidCodepointReturnValue(it.errorHandling);
             }
             it.rawIndex += length;
-            return JCodings.getInstance().readCodePoint(jCoding, bytes, p, end);
+            return JCodings.getInstance().readCodePoint(jCoding, bytes, p, end, it.errorHandling);
         }
 
     }
@@ -432,21 +432,21 @@ public final class TruffleStringIterator {
             return readAndDec(node, it, readNode);
         }
 
-        @Specialization(guards = {"isAscii(it.encoding)", "isBrokenFixedWidth(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
+        @Specialization(guards = {"isAscii(it.encoding)", "isBroken(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
         static int brokenAscii(Node node, TruffleStringIterator it,
                         @Shared("readRaw") @Cached TStringOpsNodes.RawReadValueNode readNode) {
             int codepoint = readAndDec(node, it, readNode);
             return codepoint < 0x80 ? codepoint : -1;
         }
 
-        @Specialization(guards = {"isUTF32(it.encoding)", "isBrokenFixedWidth(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
+        @Specialization(guards = {"isUTF32(it.encoding)", "isBroken(it.codeRangeA)", "isReturnNegative(it.errorHandling)"})
         static int brokenUTF32(Node node, TruffleStringIterator it,
                         @Shared("readRaw") @Cached TStringOpsNodes.RawReadValueNode readNode) {
             int codepoint = readAndDec(node, it, readNode);
             return Encodings.isValidUnicodeCodepoint(codepoint) ? codepoint : -1;
         }
 
-        @Specialization(guards = {"isUTF8(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isValid(it.codeRangeA)"})
         static int utf8Valid(TruffleStringIterator it) {
             int b = it.readAndDecS0();
             if (b < 0x80) {
@@ -467,7 +467,7 @@ public final class TruffleStringIterator {
             return codepoint | (b & (0xff >>> nBytes)) << (6 * (nBytes - 1));
         }
 
-        @Specialization(guards = {"isUTF8(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF8(it.encoding)", "isBroken(it.codeRangeA)"})
         static int utf8Broken(TruffleStringIterator it) {
             int initialIndex = it.rawIndex;
             int b = it.readAndDecS0();
@@ -495,7 +495,7 @@ public final class TruffleStringIterator {
             return codepoint;
         }
 
-        @Specialization(guards = {"isUTF16(it.encoding)", "isValidMultiByte(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isValid(it.codeRangeA)"})
         static int utf16Valid(TruffleStringIterator it) {
             char c = (char) it.readAndDecS1();
             if (Encodings.isUTF16LowSurrogate(c)) {
@@ -505,7 +505,7 @@ public final class TruffleStringIterator {
             return c;
         }
 
-        @Specialization(guards = {"isUTF16(it.encoding)", "isBrokenMultiByteOrUnknown(it.codeRangeA)"})
+        @Specialization(guards = {"isUTF16(it.encoding)", "isBroken(it.codeRangeA)"})
         static int utf16Broken(TruffleStringIterator it) {
             char c = (char) it.readAndDecS1();
             if (it.errorHandling == TruffleString.ErrorHandling.RETURN_NEGATIVE) {
@@ -547,7 +547,7 @@ public final class TruffleStringIterator {
             assert prevIndex >= it.a.byteArrayOffset();
             assert prevIndex < index;
             it.rawIndex = prevIndex - it.a.byteArrayOffset();
-            return JCodings.getInstance().readCodePoint(jCoding, bytes, prevIndex, end);
+            return JCodings.getInstance().readCodePoint(jCoding, bytes, prevIndex, end, it.errorHandling);
         }
 
     }

@@ -157,7 +157,7 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 break;
 
             default:
-                throw GraalError.shouldNotReachHere("unknown operation: " + operation.opcode());
+                throw GraalError.shouldNotReachHere("unknown operation: " + operation.opcode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

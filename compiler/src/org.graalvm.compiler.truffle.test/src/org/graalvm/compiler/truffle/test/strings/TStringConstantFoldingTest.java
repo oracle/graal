@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
-import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -44,6 +44,8 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     static final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
     static final TruffleString b = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
+    static final TruffleString aJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16);
+    static final TruffleString bJS = TruffleString.fromJavaStringUncached("abcde\u2020", UTF_16);
 
     @Test
     public void testCodePointAtIndex() {
@@ -53,7 +55,16 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                return node.execute(a, 0, UTF_32);
+                return node.execute(a, 0, UTF_8);
+            }
+        });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.CodePointAtIndexNode node = TruffleString.CodePointAtIndexNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, 0, UTF_16);
             }
         });
     }
@@ -69,6 +80,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
                 return node.execute(a, 0, b, 0, a.byteLength(UTF_8), UTF_8);
             }
         });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.RegionEqualByteIndexNode node = TruffleString.RegionEqualByteIndexNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, 0, bJS, 0, aJS.byteLength(UTF_16), UTF_16);
+            }
+        });
     }
 
     @Test
@@ -80,6 +100,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 return node.execute(a, b, UTF_8);
+            }
+        });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.EqualNode node = TruffleString.EqualNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, bJS, UTF_16);
             }
         });
     }
@@ -95,6 +124,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
                 return node.execute(a, b, UTF_8);
             }
         });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.CompareBytesNode node = TruffleString.CompareBytesNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, bJS, UTF_16);
+            }
+        });
     }
 
     @Test
@@ -108,6 +146,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
                 return node.execute(a, 'b', 0, a.byteLength(UTF_8), UTF_8);
             }
         });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.ByteIndexOfCodePointNode node = TruffleString.ByteIndexOfCodePointNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, 'b', 0, aJS.byteLength(UTF_16), UTF_16);
+            }
+        });
     }
 
     @Test
@@ -119,6 +166,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 return node.execute(a, b, 0, a.byteLength(UTF_8), UTF_8) == 1;
+            }
+        });
+        assertConstant(new RootNode(null) {
+
+            @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(aJS, bJS, 0, aJS.byteLength(UTF_16), UTF_16) == 1;
             }
         });
     }

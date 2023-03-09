@@ -49,17 +49,17 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexExecutorNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange, boolean)}.
+ * {@link TRegexExecutorBaseNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange)}.
  * A trace contains the arguments received by
- * {@link TRegexExecutorNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange, boolean)},
+ * {@link TRegexExecutorBaseNode#execute(com.oracle.truffle.api.frame.VirtualFrame, TRegexExecutorLocals, TruffleString.CodeRange)},
  * and the ID of the DFA transition taken for all characters of the input string that have been
  * traversed. After execution, the recorded trace can be dumped to disk as JSON with
  * {@link #finishRecording()}.

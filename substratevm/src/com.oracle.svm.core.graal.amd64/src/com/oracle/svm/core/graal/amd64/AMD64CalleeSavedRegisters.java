@@ -159,7 +159,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      */
     public void emitSave(AMD64MacroAssembler asm, int frameSize, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {
@@ -182,7 +182,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
     public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {

@@ -123,7 +123,7 @@ public abstract class SubstrateSegfaultHandler {
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Thread state not set up yet.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.

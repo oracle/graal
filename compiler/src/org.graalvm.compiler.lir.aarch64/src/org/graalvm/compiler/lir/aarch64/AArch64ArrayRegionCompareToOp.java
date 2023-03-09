@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -288,7 +288,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
                 asm.neon.uxtlVV(fromStride(strideSrc).expand(), vectorLo, vectorLo);
                 break;
             default:
-                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -397,7 +397,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
                 asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

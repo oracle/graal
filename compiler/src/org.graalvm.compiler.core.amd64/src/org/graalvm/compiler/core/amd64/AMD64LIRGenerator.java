@@ -77,7 +77,9 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
+import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMulAddOp;
 import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
+import org.graalvm.compiler.lir.amd64.AMD64BigIntegerSquareToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
@@ -384,7 +386,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PD, asAllocatable(left), right, state));
                 append(new FloatBranchOp(cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
             } else {
-                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind);
+                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             OperandSize size = OperandSize.get(cmpKind);
@@ -820,7 +822,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue rY = AMD64.rsi.asValue(y.getValueKind());
         RegisterValue rYlen = AMD64.rcx.asValue(ylen.getValueKind());
         RegisterValue rZ = AMD64.r8.asValue(z.getValueKind());
-        RegisterValue rZlen = AMD64.r11.asValue(zlen.getValueKind());
+        RegisterValue rZlen = AMD64.r9.asValue(zlen.getValueKind());
 
         emitMove(rX, x);
         emitMove(rXlen, xlen);
@@ -830,6 +832,42 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rZlen, zlen);
 
         append(new AMD64BigIntegerMultiplyToLenOp(rX, rXlen, rY, rYlen, rZ, rZlen, getHeapBaseRegister()));
+    }
+
+    @Override
+    public Variable emitBigIntegerMulAdd(Value out, Value in, Value offset, Value len, Value k) {
+        RegisterValue rOut = AMD64.rdi.asValue(out.getValueKind());
+        RegisterValue rIn = AMD64.rsi.asValue(in.getValueKind());
+        RegisterValue rOffset = AMD64.r11.asValue(offset.getValueKind());
+        RegisterValue rLen = AMD64.rcx.asValue(len.getValueKind());
+        RegisterValue rK = AMD64.r8.asValue(k.getValueKind());
+
+        emitMove(rOut, out);
+        emitMove(rIn, in);
+        emitMove(rOffset, offset);
+        emitMove(rLen, len);
+        emitMove(rK, k);
+
+        append(new AMD64BigIntegerMulAddOp(rOut, rIn, rOffset, rLen, rK, getHeapBaseRegister()));
+        // result of AMD64BigIntegerMulAddOp is stored at rax
+        Variable result = newVariable(len.getValueKind());
+        emitMove(result, AMD64.rax.asValue(len.getValueKind()));
+        return result;
+    }
+
+    @Override
+    public void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
+        RegisterValue rX = AMD64.rdi.asValue(x.getValueKind());
+        RegisterValue rLen = AMD64.rsi.asValue(len.getValueKind());
+        RegisterValue rZ = AMD64.r11.asValue(z.getValueKind());
+        RegisterValue rZlen = AMD64.rcx.asValue(zlen.getValueKind());
+
+        emitMove(rX, x);
+        emitMove(rLen, len);
+        emitMove(rZ, z);
+        emitMove(rZlen, zlen);
+
+        append(new AMD64BigIntegerSquareToLenOp(rX, rLen, rZ, rZlen, getHeapBaseRegister()));
     }
 
     @SuppressWarnings("unchecked")
@@ -862,10 +900,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+    public Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayIndexOfOp.movParamsAndCreate(stride, findTwoConsecutive, withMask, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
+        append(AMD64ArrayIndexOfOp.movParamsAndCreate(stride, variant, this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures,
                         result, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues));
         return result;
     }

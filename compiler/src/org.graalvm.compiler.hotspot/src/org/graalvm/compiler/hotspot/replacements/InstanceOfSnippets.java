@@ -344,7 +344,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.addConst("counters", counters);
                 return args;
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

@@ -75,7 +75,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
         } else if (c instanceof HotSpotConstant) {
             return ((HotSpotConstant) c).compress();
         } else {
-            throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c);
+            throw GraalError.shouldNotReachHere("invalid constant input for compress op: " + c); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -84,7 +84,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
         if (c instanceof HotSpotConstant) {
             return ((HotSpotConstant) c).uncompress();
         } else {
-            throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
+            throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -96,7 +96,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
             case Uncompress:
                 return compress(input, encoding);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

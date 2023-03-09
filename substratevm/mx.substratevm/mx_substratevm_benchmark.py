@@ -31,6 +31,7 @@ from __future__ import print_function
 import os
 import re
 from glob import glob
+import tempfile
 
 import zipfile
 import mx
@@ -472,6 +473,12 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         return deps
 
 
+def _empty_file():
+    with tempfile.NamedTemporaryFile(delete=False) as empty_file:
+        empty_file.write(b"")
+    return empty_file.name
+
+
 # Note: If you wish to preserve the underlying benchmark stderr and stdout files after a run, you can pass the following argument: -preserve
 # This argument can be added to either:
 # 1. The agent stage: -Dnative-image.benchmark.extra-agent-run-arg=-preserve
@@ -490,13 +497,17 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     'xalan':    ['--report-unsupported-elements-at-runtime',
                  '--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
     # There are two main issues with fop:
-    # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However, DaCapo Harness sets the logging config file path system property at runtime.
-    #    This causes us to incorrectly parse the default log configuration, leading to output on stderr.
+    # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
+    #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
+    #    `java.util.logging.config.file` to an empty file to avoid incorrectly parsing the default log configuration,
+    #    leading to output on stderr. We cannot set it to scratch/fop.log as it would normally be, because the file does
+    #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
     'fop':      ['--allow-incomplete-classpath',
                  '--report-unsupported-elements-at-runtime',
-                 '-H:-EnableLoggingFeature',
+                 '-esa', '-ea',
+                 f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    ['--allow-incomplete-classpath']
 }

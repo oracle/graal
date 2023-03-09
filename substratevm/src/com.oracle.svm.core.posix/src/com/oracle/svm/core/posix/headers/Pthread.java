@@ -37,7 +37,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.OSThreadId;
@@ -50,7 +49,6 @@ import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class Pthread {
-
     public interface pthread_t extends OSThreadHandle, OSThreadId {
     }
 
@@ -108,7 +106,6 @@ public class Pthread {
     public static native int pthread_join_no_transition(pthread_t th, WordPointer thread_return);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static native pthread_t pthread_self();
 
     @CFunction
@@ -147,6 +144,9 @@ public class Pthread {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_mutex_init(pthread_mutex_t mutex, pthread_mutexattr_t mutexattr);
 
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_mutex_destroy(pthread_mutex_t mutex);
+
     @CFunction(value = "pthread_mutex_trylock", transition = Transition.NO_TRANSITION)
     public static native int pthread_mutex_trylock_no_transition(pthread_mutex_t mutex);
 
@@ -161,6 +161,9 @@ public class Pthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_cond_init(pthread_cond_t cond, pthread_condattr_t cond_attr);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_cond_destroy(pthread_cond_t cond);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_cond_signal(pthread_cond_t cond);
@@ -184,7 +187,7 @@ public class Pthread {
     public static native int pthread_condattr_init(pthread_condattr_t attr);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int pthread_condattr_setclock(pthread_condattr_t attr, int clock_id);
+    public static native int pthread_condattr_destroy(pthread_condattr_t attr);
 
     @CFunction
     public static native int pthread_kill(pthread_t thread, Signal.SignalEnum sig);
@@ -200,4 +203,5 @@ public class Pthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native VoidPointer pthread_getspecific(pthread_key_t key);
+
 }

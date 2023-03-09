@@ -39,7 +39,7 @@ public class JfrJavaEvents {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
-    public static void registerEventClass(Class<? extends jdk.internal.event.Event> eventClass) {
+    public static synchronized void registerEventClass(Class<? extends jdk.internal.event.Event> eventClass) {
         EVENT_CLASSES.add(eventClass);
         if (jdk.jfr.Event.class.isAssignableFrom(eventClass)) {
             JFR_EVENT_CLASSES.add((Class<? extends jdk.jfr.Event>) eventClass);

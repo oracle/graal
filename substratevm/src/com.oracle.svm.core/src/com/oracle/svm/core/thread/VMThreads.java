@@ -404,7 +404,7 @@ public abstract class VMThreads {
         // After that point, the freed thread must not access Object data in the Java heap.
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void cleanupExitedOsThreads() {
         OSThreadHandle threadToCleanup = detachedOsThreadToCleanup.getAndSet(WordFactory.nullPointer());
         cleanupExitedOsThread(threadToCleanup);
@@ -415,7 +415,7 @@ public abstract class VMThreads {
      * the previous thread (n-1) exited on the operating-system level as well (because thread n
      * joins thread n-1).
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void cleanupExitedOsThread(OSThreadHandle threadToCleanup) {
         if (threadToCleanup.isNonNull()) {
             joinNoTransition(threadToCleanup);
@@ -476,7 +476,7 @@ public abstract class VMThreads {
      * {@link #detachedOsThreadToCleanup}) that all other threads exited on the operating-system
      * level as well.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code during teardown.")
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     private void waitUntilLastOsThreadExited() {
         cleanupExitedOsThreads();
     }
@@ -513,7 +513,7 @@ public abstract class VMThreads {
      * As this method is marked as uninterruptible, it may only be used for joining threads that
      * were already detached from SVM. Otherwise, this could result in deadlocks.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract void joinNoTransition(OSThreadHandle osThreadHandle);
 
     /**
@@ -551,12 +551,12 @@ public abstract class VMThreads {
         return false;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean verifyThreadIsAttached(IsolateThread thread) {
         return nextThread(thread) != thread;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean verifyIsCurrentThread(IsolateThread thread) {
         OSThreadId osThreadId = getCurrentOSThreadId();
         return OSThreadIdTL.get(thread).equal(osThreadId);
@@ -886,11 +886,10 @@ public abstract class VMThreads {
          * thread status).
          * 
          * NOTE: Be careful with this method and make sure that this thread does not allocate any
-         * Java objects as this could result deadlocks. This method will only work prevent
-         * safepoints reliably if it is called from a thread with
-         * {@link StatusSupport#STATUS_IN_JAVA}.
+         * Java objects as this could result deadlocks. This method will only prevent safepoints
+         * reliably if it is called from a thread with {@link StatusSupport#STATUS_IN_JAVA}.
          */
-        @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+        @Uninterruptible(reason = "May only be called from uninterruptible code to prevent races with the safepoint handling.", callerMustBe = true)
         public static void preventSafepoints() {
             // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);

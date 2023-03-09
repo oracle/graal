@@ -95,7 +95,7 @@ public interface Invokable extends DeoptBciSupplier {
             } else {
                 // This node was added from a different graph.
                 // The adder is responsible for providing a context.
-                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided.");
+                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided."); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

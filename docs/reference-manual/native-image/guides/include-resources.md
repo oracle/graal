@@ -9,7 +9,12 @@ permalink: /reference-manual/native-image/guides/include-resources/
 
 The following steps illustrate how to include a resource in a native executable. The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
 
-1. Save the following Java source code as a file named _Fortune.java_:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Save the following Java source code as a file named _Fortune.java_:
 
     ```java
     import java.io.BufferedReader;
@@ -49,22 +54,19 @@ The following steps illustrate how to include a resource in a native executable.
     }
     ```
 
-2. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
+3. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
-3. Compile the Java source code:
-
+4. Compile the Java source code:
     ```shell
     $JAVA_HOME/bin/javac Fortune.java
     ```
 
-4. Build a native executable by specifying the resource path:
-
+5. Build a native executable by specifying the resource path:
     ```shell
     $JAVA_HOME/bin/native-image Fortune -H:IncludeResources=".*u8$"
     ```
 
-5. Run the executable image: 
-
+6. Run the executable image: 
     ```shell
     ./fortune
     ```

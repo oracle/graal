@@ -280,11 +280,8 @@ suite = {
                     "jdk.internal.perf",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
+                    "jdk.internal.vm",
                     "jdk.internal.util",
-                ],
-                "java.desktop": [
-                    "sun.java2d",
-                    "sun.java2d.pipe",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -292,6 +289,12 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
+                ],
+                "jdk.management.agent": [
+                    "jdk.internal.agent",
+                ],
+                "jdk.management.jfr": [
+                    "jdk.management.jfr"
                 ],
                 "jdk.httpserver@19+": [
                     "sun.net.httpserver.simpleserver",
@@ -610,7 +613,6 @@ suite = {
                 "com.oracle.graal.reachability"
             ],
             "requires" : [
-                "java.desktop",
                 "java.instrument",
                 "java.security.sasl",
                 "java.smartcardio",
@@ -858,6 +860,9 @@ suite = {
             "requires": [
                 "java.compiler",
                 "jdk.jfr",
+                "java.management",
+                "jdk.management.jfr",
+                "java.rmi",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1342,12 +1347,13 @@ suite = {
                     "java.management",
                     "jdk.management",
                     "java.xml.crypto",
-                    "java.desktop",
                     "java.security.sasl",
                     "java.smartcardio",
                     "java.net.http",
                     "jdk.sctp",
                     "jdk.scripting.nashorn@11..14",
+                    "jdk.management.agent",
+                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

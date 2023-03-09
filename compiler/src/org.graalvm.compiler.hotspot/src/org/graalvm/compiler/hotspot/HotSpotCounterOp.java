@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,7 +91,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int getDisplacementForLongIndex(TargetDescription target, long index) {
         long finalDisp = index * target.arch.getPlatformKind(JavaKind.Long).getSizeInBytes();
         if (!NumUtil.isInt(finalDisp)) {
-            throw GraalError.unimplemented("cannot deal with indices that big: " + index);
+            throw GraalError.unimplemented("cannot deal with indices that big: " + index); // ExcludeFromJacocoGeneratedReport
         }
         return (int) finalDisp;
     }
@@ -154,7 +154,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
      * @param increment
      */
     public void patchCounterIncrement(Assembler<?> asm, int[] increment) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     private static long asLong(JavaConstant value) {
@@ -175,7 +175,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     protected static int asInt(JavaConstant value) {
         long l = asLong(value);
         if (!NumUtil.isInt(l)) {
-            throw GraalError.shouldNotReachHere("value does not fit into int: " + l);
+            throw GraalError.shouldNotReachHere("value does not fit into int: " + l); // ExcludeFromJacocoGeneratedReport
         }
         return (int) l;
     }

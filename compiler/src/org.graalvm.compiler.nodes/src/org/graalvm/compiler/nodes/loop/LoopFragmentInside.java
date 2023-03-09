@@ -136,7 +136,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     @SuppressWarnings("unused")
     public void appendInside(LoopEx loop) {
-        GraalError.unimplemented();
+        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -328,7 +328,7 @@ public class LoopFragmentInside extends LoopFragment {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
             return (CompareNode) loopTest.condition();
         } else {
-            throw GraalError.shouldNotReachHere("Cannot unroll inverted loop");
+            throw GraalError.shouldNotReachHere("Cannot unroll inverted loop"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -360,7 +360,7 @@ public class LoopFragmentInside extends LoopFragment {
             if (next instanceof EndNode) {
                 mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
             } else {
-                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next + " duplicated node is " + begin + " main loop begin is " + mainLoopBegin);
+                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next + " duplicated node is " + begin + " main loop begin is " + mainLoopBegin); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -399,7 +399,7 @@ public class LoopFragmentInside extends LoopFragment {
             return phi.graph().addOrUnique(new GuardProxyNode((GuardingNode) proxyInput, lex));
 
         } else {
-            throw GraalError.shouldNotReachHere("Unknown phi type " + phi);
+            throw GraalError.shouldNotReachHere("Unknown phi type " + phi); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
@@ -558,21 +557,6 @@ public class MethodTypeFlowBuilder {
 
         /* Prune the method graph. Eliminate nodes with no uses. Collect flows that need init. */
         postInitFlows = typeFlowGraphBuilder.build();
-
-        /*
-         * Make sure that all existing InstanceOfNodes are registered even when only used as an
-         * input of a conditional.
-         */
-        for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode instanceOf = (InstanceOfNode) n;
-                markFieldsUsedInComparison(instanceOf.getValue());
-            } else if (n instanceof ObjectEqualsNode) {
-                ObjectEqualsNode compareNode = (ObjectEqualsNode) n;
-                markFieldsUsedInComparison(compareNode.getX());
-                markFieldsUsedInComparison(compareNode.getY());
-            }
-        }
     }
 
     protected void apply(boolean forceReparse, Object reason) {
@@ -612,22 +596,6 @@ public class MethodTypeFlowBuilder {
          */
         if (bb.strengthenGraalGraphs()) {
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, flowsGraph.getNodeFlows().getKeys()));
-        }
-    }
-
-    /**
-     * If the node corresponding to the compared value is an instance field load then mark that
-     * field as being used in a comparison.
-     *
-     * @param comparedValue the node corresponding to the compared value
-     */
-    private static void markFieldsUsedInComparison(ValueNode comparedValue) {
-        if (comparedValue instanceof LoadFieldNode) {
-            LoadFieldNode load = (LoadFieldNode) comparedValue;
-            AnalysisField field = (AnalysisField) load.field();
-            if (!field.isStatic()) {
-                field.markAsUsedInComparison();
-            }
         }
     }
 
@@ -1526,9 +1494,6 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
                 actualParametersBuilders[i] = paramBuilder;
                 paramBuilder.markAsBuildingAnActualParameter();
-                if (i == 0 && !targetIsStatic) {
-                    paramBuilder.markAsBuildingAnActualReceiver();
-                }
                 /*
                  * Actual parameters must not be removed. They are linked when the callee is
                  * analyzed, hence, although they might not have any uses, cannot be removed during

@@ -393,7 +393,16 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         } else {
             if (state instanceof SingleTypeState) {
                 AnalysisType type = state.exactType();
-                AnalysisObject analysisObject = type.getContextInsensitiveAnalysisObject();
+                AnalysisObject analysisObject;
+                if (state.asConstant() != null) {
+                    /*
+                     * If the state contains a single constant object preserve it for
+                     * StrengthenGraphWithConstants.
+                     */
+                    analysisObject = state.objects(bb).iterator().next();
+                } else {
+                    analysisObject = type.getContextInsensitiveAnalysisObject();
+                }
                 return singleTypeState(bb, state.canBeNull(), analysisObject.type(), analysisObject);
             } else {
                 ContextSensitiveMultiTypeState multiState = (ContextSensitiveMultiTypeState) state;

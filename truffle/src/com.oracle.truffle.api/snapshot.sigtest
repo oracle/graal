@@ -177,6 +177,7 @@ meth public abstract !hasdefault java.lang.String deprecationMessage()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String usageSyntax()
 meth public abstract !hasdefault org.graalvm.options.OptionStability stability()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 meth public abstract java.lang.String help()
 meth public abstract org.graalvm.options.OptionCategory category()
 
@@ -524,6 +525,7 @@ meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
 meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
 meth public org.graalvm.options.OptionValues getOptions()
+meth public org.graalvm.polyglot.SandboxPolicy getSandboxPolicy()
 meth public void addToHostClassPath(com.oracle.truffle.api.TruffleFile)
 meth public void exportSymbol(java.lang.String,java.lang.Object)
 meth public void registerOnDispose(java.io.Closeable)
@@ -590,6 +592,7 @@ meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 
 CLSS public final com.oracle.truffle.api.TruffleLogger
 meth public <%0 extends java.lang.Throwable> {%%0} throwing(java.lang.String,java.lang.String,{%%0})
@@ -633,6 +636,10 @@ meth public void warning(java.util.function.Supplier<java.lang.String>)
 supr java.lang.Object
 hfds DEFAULT_VALUE,MAX_CLEANED_REFS,OFF_VALUE,ROOT_NAME,children,childrenLock,levelNum,levelNumStable,levelObj,loggerCache,loggersRefQueue,name,parent
 hcls AbstractLoggerRef,ChildLoggerRef,LoggerCache
+
+CLSS public abstract interface com.oracle.truffle.api.TruffleOptionDescriptors
+intf org.graalvm.options.OptionDescriptors
+meth public abstract org.graalvm.polyglot.SandboxPolicy getSandboxPolicy(java.lang.String)
 
 CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean AOT
@@ -1405,6 +1412,11 @@ cons public init(java.lang.Throwable)
 supr java.lang.RuntimeException
 hfds serialVersionUID
 
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -1487,4 +1499,12 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+
+CLSS public abstract interface org.graalvm.options.OptionDescriptors
+fld public final static org.graalvm.options.OptionDescriptors EMPTY
+intf java.lang.Iterable<org.graalvm.options.OptionDescriptor>
+meth public !varargs static org.graalvm.options.OptionDescriptors createUnion(org.graalvm.options.OptionDescriptors[])
+meth public abstract java.util.Iterator<org.graalvm.options.OptionDescriptor> iterator()
+meth public abstract org.graalvm.options.OptionDescriptor get(java.lang.String)
+meth public static org.graalvm.options.OptionDescriptors create(java.util.List<org.graalvm.options.OptionDescriptor>)
 

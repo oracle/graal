@@ -221,10 +221,6 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Wrap the now safe call to interruptibly retrieve InstalledCode.", calleeMustBe = false)
     private static void invalidateCodeAtSafepoint0(CodeInfo info) {
-        invalidateCodeAtSafepoint(info);
-    }
-
-    private static void invalidateCodeAtSafepoint(CodeInfo info) {
         VMOperation.guaranteeInProgressAtSafepoint("Must be at a safepoint");
         RuntimeCodeCache codeCache = getRuntimeCodeCache();
         codeCache.invalidateMethod(info);

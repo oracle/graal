@@ -126,6 +126,11 @@ public class NumUtil {
         return (short) v;
     }
 
+    public static int safeToUInt(long v) {
+        assert isUInt(v);
+        return (int) v;
+    }
+
     public static int safeToInt(long v) {
         assert isInt(v);
         return (int) v;

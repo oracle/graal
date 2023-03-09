@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -202,7 +202,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                     return operandSize;
                 }
             }
-            throw GraalError.shouldNotReachHere("Unexpected kind: " + kind.toString());
+            throw GraalError.shouldNotReachHere("Unexpected kind: " + kind.toString()); // ExcludeFromJacocoGeneratedReport
         }
 
         /**
@@ -1189,7 +1189,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
         private static int verifyScalingFactor(int scalingFactor) {
             if (scalingFactor == NOT_SUPPORTED_VECTOR_LENGTH) {
-                throw GraalError.shouldNotReachHere("Invalid scaling factor.");
+                throw GraalError.shouldNotReachHere("Invalid scaling factor."); // ExcludeFromJacocoGeneratedReport
             }
             return scalingFactor;
         }
@@ -1203,7 +1203,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                 case ZMM:
                     return verifyScalingFactor(scalingFactorVL512);
                 default:
-                    throw GraalError.shouldNotReachHere("Unsupported vector size.");
+                    throw GraalError.shouldNotReachHere("Unsupported vector size."); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

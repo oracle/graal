@@ -88,6 +88,16 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getInitialEdenSize() {
+            return UNDEFINED;
+        }
+
+        @Override
+        public UnsignedWord getMaximumEdenSize() {
+            return getMaximumYoungGenerationSize();
+        }
+
+        @Override
         public final UnsignedWord getMaximumHeapSize() {
             long runtimeValue = SubstrateGCOptions.MaxHeapSize.getValue();
             if (runtimeValue != 0L) {
@@ -147,6 +157,16 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getInitialSurvivorSize() {
+            return UNDEFINED;
+        }
+
+        @Override
+        public UnsignedWord getMaximumSurvivorSize() {
+            return WordFactory.zero();
+        }
+
+        @Override
         public UnsignedWord getSurvivorSpacesCapacity() {
             return WordFactory.zero();
         }
@@ -157,6 +177,11 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getInitialOldSize() {
+            return UNDEFINED;
+        }
+
+        @Override
         public UnsignedWord getOldGenerationCapacity() {
             UnsignedWord heapCapacity = getCurrentHeapCapacity();
             UnsignedWord youngCapacity = getYoungGenerationCapacity();
@@ -164,6 +189,11 @@ final class BasicCollectionPolicies {
                 return WordFactory.zero(); // should never happen unless options change in between
             }
             return heapCapacity.subtract(youngCapacity);
+        }
+
+        @Override
+        public UnsignedWord getMaximumOldSize() {
+            return getOldGenerationCapacity();
         }
 
         @Override

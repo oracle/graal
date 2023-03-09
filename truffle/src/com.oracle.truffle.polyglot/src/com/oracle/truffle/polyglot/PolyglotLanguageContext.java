@@ -565,6 +565,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
 
         if (!created) {
+            language.validateSandbox(context.config.sandboxPolicy);
             checkAccess(accessingLanguage);
 
             Map<String, Object> creatorConfig = context.creator == language ? context.config.creatorArguments : Collections.emptyMap();

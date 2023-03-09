@@ -80,6 +80,10 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         acc.appendRange(lo, hi);
     }
 
+    public void appendCodePoint(int codePoint) {
+        acc.addSingleValue(codePoint);
+    }
+
     public void addSet(SortedListOfRanges set) {
         IntRangesBuffer t = getTmp();
         tmp = acc;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,7 +159,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                         if (state.getMethod().equals(executeRootMethod)) {
                             // we should not need to cross a call boundary to find a constant node
                             // it must be guaranteed that we find this earlier.
-                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
+                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node."); // ExcludeFromJacocoGeneratedReport
                         }
                         state = state.outerFrameState();
                     }
@@ -236,7 +236,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         if (osrRootNodeType.isAssignableFrom(type)) {
             JavaConstant loopNode = providers.getConstantReflection().readFieldValue(loopNodeField, rootNode);
             if (loopNode.isNull()) {
-                throw GraalError.shouldNotReachHere(String.format("%s must never be null but is for node %s.", loopNodeField.toString(), rootNode));
+                throw GraalError.shouldNotReachHere(String.format("%s must never be null but is for node %s.", loopNodeField.toString(), rootNode)); // ExcludeFromJacocoGeneratedReport
             }
             return getRootNode(loopNode);
         }
@@ -267,7 +267,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                 return m;
             }
         }
-        throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 
     static ResolvedJavaField findField(ResolvedJavaType type, String name) {
@@ -276,6 +276,6 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                 return field;
             }
         }
-        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 }

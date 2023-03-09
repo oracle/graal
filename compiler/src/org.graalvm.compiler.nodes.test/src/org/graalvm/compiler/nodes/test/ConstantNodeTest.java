@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heapdump;
+package org.graalvm.compiler.nodes.test;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.junit.Test;
 
-public final class UnimplementedHeapDumpWriter extends HeapDumpWriter {
-    private final String message;
+public class ConstantNodeTest {
 
-    public UnimplementedHeapDumpWriter(String message) {
-        this.message = message;
-    }
-
-    @Override
-    public void writeHeapTo(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException {
-        throw VMError.unimplemented(message);
-    }
-
-    @Override
-    public void writeHeapTo(AllocationFreeOutputStream fileOutputStream, boolean gcBefore) throws IOException {
-        throw VMError.unimplemented(message);
+    @Test
+    public void checkToString() {
+        ConstantNode node = ConstantNode.forInt(30);
+        assertEquals("Constant(30, i32)", node.toString(Verbosity.Name));
+        String str = node.toString(Verbosity.All);
+        assertTrue(str.contains("Constant(30, i32)"));
+        assertTrue(str.contains("stampKind=i32"));
     }
 }

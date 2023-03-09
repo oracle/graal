@@ -151,7 +151,7 @@ public class ProgressReporter {
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
         LAYOUTING("Layouting methods", true, true),
-        CREATING("Creating image");
+        CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
 
@@ -266,7 +266,7 @@ public class ProgressReporter {
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
-        String maxHeapValue = maxHeapSize == 0 ? "unlimited" : ByteFormattingUtil.bytesToHuman(maxHeapSize);
+        String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
     }
 

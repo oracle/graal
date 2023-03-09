@@ -111,7 +111,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             value = getScalarAlias(write.value());
                             object = GraphUtil.unproxify(write.getAddress());
                         } else {
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                         }
                         LoadCacheEntry identifier = new LoadCacheEntry(object, identity);
                         ValueNode cachedValue = state.getCacheEntry(identifier);
@@ -144,7 +144,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     killReadCacheByIdentity(state, identity);
                 }
             } else {
-                throw GraalError.shouldNotReachHere("Unknown memory kill " + node);
+                throw GraalError.shouldNotReachHere("Unknown memory kill " + node); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             if (node instanceof MemoryAccess) {

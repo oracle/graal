@@ -555,7 +555,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             } catch (UnsupportedClassVersionError e) {
                 // graal-test.jar can contain classes compiled for different Java versions
             } catch (Throwable t) {
-                GraalError.shouldNotReachHere(t);
+                GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
             }
         }
         return classes;

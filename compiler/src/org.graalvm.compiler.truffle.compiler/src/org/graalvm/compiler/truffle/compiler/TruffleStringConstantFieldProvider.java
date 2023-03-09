@@ -33,6 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class TruffleStringConstantFieldProvider implements ConstantFieldProvider {
+    private static final int FLAG_IMPRECISE = 1 << 4;
     protected final ConstantFieldProvider graalConstantFieldProvider;
     protected final MetaAccessProvider metaAccess;
     private final KnownTruffleTypes types;
@@ -62,7 +63,10 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     protected <T> T readWellKnownConstantTruffleField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         // well-known internal fields of AbstractTruffleString
-        if (types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field)) {
+        if (types.truffleStringDataField.equals(field) ||
+                        types.truffleStringHashCodeField.equals(field) ||
+                        types.truffleStringCodeRangeField.equals(field) ||
+                        types.truffleStringCodePointLengthField.equals(field)) {
             // only applies to the immutable subclass TruffleString, not MutableTruffleString
             if (types.truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
                 JavaConstant value = tool.readValue();
@@ -72,10 +76,20 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
                         if (byteArrayType.isAssignableFrom(metaAccess.lookupJavaType(value))) {
                             return tool.foldStableArray(value, 1, true);
                         }
-                    } else {
-                        assert types.truffleStringHashCodeField.equals(field);
+                    } else if (types.truffleStringHashCodeField.equals(field)) {
                         // the "hashCode" field is stable if its value is not zero
                         if (!value.isDefaultForKind()) {
+                            return tool.foldConstant(value);
+                        }
+                    } else if (types.truffleStringCodeRangeField.equals(field)) {
+                        // the "codeRange" field is stable if the IMPRECISE flag is not set
+                        if ((value.asInt() & FLAG_IMPRECISE) == 0) {
+                            return tool.foldConstant(value);
+                        }
+                    } else {
+                        assert types.truffleStringCodePointLengthField.equals(field);
+                        // the "codePointLength" field is stable if its value is positive
+                        if (value.asInt() >= 0) {
                             return tool.foldConstant(value);
                         }
                     }
@@ -87,6 +101,10 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     @Override
     public boolean maybeFinal(ResolvedJavaField field) {
-        return types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field) || graalConstantFieldProvider.maybeFinal(field);
+        return types.truffleStringDataField.equals(field) ||
+                        types.truffleStringHashCodeField.equals(field) ||
+                        types.truffleStringCodeRangeField.equals(field) ||
+                        types.truffleStringCodePointLengthField.equals(field) ||
+                        graalConstantFieldProvider.maybeFinal(field);
     }
 }

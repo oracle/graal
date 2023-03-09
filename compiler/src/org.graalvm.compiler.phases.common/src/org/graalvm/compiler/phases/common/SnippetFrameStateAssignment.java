@@ -129,7 +129,7 @@ public class SnippetFrameStateAssignment {
                         }
                         throw GraalError.shouldNotReachHere(
                                         "Invalid snippet replacing a node before FS assignment with node " + nodeWithState + " for graph " + nodeWithState.graph() + " other assignments=" +
-                                                        stateMapping);
+                                                        stateMapping); // ExcludeFromJacocoGeneratedReport
                     default:
                         break;
                 }
@@ -215,7 +215,7 @@ public class SnippetFrameStateAssignment {
                         bci = NodeStateAssignment.INVALID;
                         break forAllStates;
                     default:
-                        throw GraalError.shouldNotReachHere("Unhandled node state assignment: " + assignment + " at merge " + merge);
+                        throw GraalError.shouldNotReachHere("Unhandled node state assignment: " + assignment + " at merge " + merge); // ExcludeFromJacocoGeneratedReport
                 }
             }
             assert bci != null;
@@ -268,7 +268,7 @@ public class SnippetFrameStateAssignment {
                      */
                     for (LoopExitNode exit : loop.loopExits()) {
                         if (exit.proxies().filter(ValueProxyNode.class).isNotEmpty()) {
-                            GraalError.shouldNotReachHere("Snippet graphs containing loops with value proxies are not supported by snippet frame state assignment.");
+                            GraalError.shouldNotReachHere("Snippet graphs containing loops with value proxies are not supported by snippet frame state assignment."); // ExcludeFromJacocoGeneratedReport
                         }
                     }
                     stateMapping.put(loop, NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION);
