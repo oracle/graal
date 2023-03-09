@@ -29,6 +29,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * Annotation that overrides the default calling convention used for a method.
  */
@@ -36,4 +42,18 @@ import java.lang.annotation.Target;
 @Target(value = {ElementType.METHOD})
 public @interface ExplicitCallingConvention {
     SubstrateCallingConventionKind value();
+
+    class Util {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public static SubstrateCallingConventionKind getCallingConventionKind(ResolvedJavaMethod method, boolean isEntryPoint) {
+            ExplicitCallingConvention explicitCallingConvention = AnnotationAccess.getAnnotation(method, ExplicitCallingConvention.class);
+            if (explicitCallingConvention != null) {
+                return explicitCallingConvention.value();
+            } else if (isEntryPoint) {
+                return SubstrateCallingConventionKind.Native;
+            } else {
+                return SubstrateCallingConventionKind.Java;
+            }
+        }
+    }
 }

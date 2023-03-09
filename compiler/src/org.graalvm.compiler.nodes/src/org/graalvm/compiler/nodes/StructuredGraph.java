@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -336,24 +333,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert !isSubstitution || profileProvider == null;
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
-        assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
-    }
-
-    private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
-        if (!IS_IN_NATIVE_IMAGE && !IS_BUILDING_NATIVE_IMAGE) {
-            if (method != null) {
-                if (method.getAnnotation(Snippet.class) != null) {
-                    assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
-                                    " annotated by " + Snippet.class.getName() +
-                                    " must have its `isSubstitution` field set to true";
-                }
-            }
-        }
-        return true;
     }
 
     public void setLastSchedule(ScheduleResult result) {

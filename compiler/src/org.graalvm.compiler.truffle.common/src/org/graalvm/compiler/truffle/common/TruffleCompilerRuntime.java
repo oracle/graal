@@ -125,6 +125,19 @@ public interface TruffleCompilerRuntime {
         private ConstantFieldInfo(int dimensions) {
             this.dimensions = dimensions;
         }
+
+        @Override
+        public int hashCode() {
+            return dimensions;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof ConstantFieldInfo other) {
+                return dimensions == other.dimensions;
+            }
+            return false;
+        }
     }
 
     /**

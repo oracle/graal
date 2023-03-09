@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.hosted;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +47,6 @@ import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -63,11 +61,10 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateSignature;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
-import com.oracle.svm.hosted.analysis.AnnotationsProcessor;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -98,37 +95,33 @@ import jdk.vm.ci.meta.Signature;
 public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
     private final AnalysisUniverse aUniverse;
-    private final AnalysisMetaAccess aMetaAccess;
     private final HashMap<AnalysisMethod, SubstrateMethod> methods = new HashMap<>();
     private final HashMap<AnalysisField, SubstrateField> fields = new HashMap<>();
     private final HashMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new HashMap<>();
     private final HashMap<AnalysisType, SubstrateType> types = new HashMap<>();
     private final HashMap<Signature, SubstrateSignature> signatures = new HashMap<>();
     private final SubstrateProviders sProviders;
+    private final SubstrateUniverseFactory universeFactory;
     private SubstrateGraalRuntime sGraalRuntime;
 
     private final HostedStringDeduplication stringTable;
 
-    private final Field substrateFieldAnnotationsEncodingField;
     private final Field substrateFieldTypeField;
     private final Field substrateFieldDeclaringClassField;
     private final Field dynamicHubMetaTypeField;
     private final Field substrateTypeRawAllInstanceFieldsField;
     private final Field substrateMethodImplementationsField;
-    private final Field substrateMethodAnnotationsEncodingField;
 
-    public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, SubstrateProviders sProviders) {
+    public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, SubstrateProviders sProviders, SubstrateUniverseFactory universeFactory) {
         this.aUniverse = aUniverse;
-        this.aMetaAccess = aMetaAccess;
         this.sProviders = sProviders;
+        this.universeFactory = universeFactory;
         this.stringTable = HostedStringDeduplication.singleton();
-        substrateFieldAnnotationsEncodingField = ReflectionUtil.lookupField(SubstrateField.class, "annotationsEncoding");
         substrateFieldTypeField = ReflectionUtil.lookupField(SubstrateField.class, "type");
         substrateFieldDeclaringClassField = ReflectionUtil.lookupField(SubstrateField.class, "declaringClass");
         dynamicHubMetaTypeField = ReflectionUtil.lookupField(DynamicHub.class, "metaType");
         substrateTypeRawAllInstanceFieldsField = ReflectionUtil.lookupField(SubstrateType.class, "rawAllInstanceFields");
         substrateMethodImplementationsField = ReflectionUtil.lookupField(SubstrateMethod.class, "implementations");
-        substrateMethodAnnotationsEncodingField = ReflectionUtil.lookupField(SubstrateMethod.class, "annotationsEncoding");
     }
 
     public void setGraalRuntime(SubstrateGraalRuntime sGraalRuntime) {
@@ -230,7 +223,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateMethod sMethod = methods.get(aMethod);
         if (sMethod == null) {
             assert !(original instanceof HostedMethod) : "too late to create new method";
-            sMethod = new SubstrateMethod(aMethod, stringTable);
+            sMethod = universeFactory.createMethod(aMethod, stringTable);
             methods.put(aMethod, sMethod);
 
             /*
@@ -238,12 +231,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
              * infinite recursion.
              */
             sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
-
-            /*
-             * Annotations are updated in every analysis iteration, but this is a starting point. It
-             * also ensures that all types used by annotations are created eagerly.
-             */
-            setAnnotationsEncoding(aMethod, sMethod, null);
         }
         return sMethod;
     }
@@ -263,23 +250,12 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
         if (sField == null) {
             assert !(original instanceof HostedField) : "too late to create new field";
-
-            int modifiers = aField.getModifiers();
-            if (ReadableJavaField.injectFinalForRuntimeCompilation(aField.wrapped)) {
-                modifiers = modifiers | Modifier.FINAL;
-            }
-            sField = new SubstrateField(aField, modifiers, stringTable);
+            sField = universeFactory.createField(aField, stringTable);
             fields.put(aField, sField);
 
             sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
             aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
             aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
-
-            /*
-             * Annotations are updated in every analysis iteration, but this is a starting point. It
-             * also ensures that all types used by annotations are created eagerly.
-             */
-            setAnnotationsEncoding(aField, sField, null);
         }
         return sField;
     }
@@ -408,40 +384,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             }
         }
 
-        for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
-            AnalysisMethod aMethod = entry.getKey();
-            SubstrateMethod sMethod = entry.getValue();
-            if (setAnnotationsEncoding(aMethod, sMethod, sMethod.getAnnotationsEncoding())) {
-                result = true;
-            }
-        }
-        for (Map.Entry<AnalysisField, SubstrateField> entry : fields.entrySet()) {
-            AnalysisField aField = entry.getKey();
-            SubstrateField sField = entry.getValue();
-            if (setAnnotationsEncoding(aField, sField, sField.getAnnotationsEncoding())) {
-                result = true;
-            }
-        }
-
         return result;
-    }
-
-    private boolean setAnnotationsEncoding(AnalysisMethod aMethod, SubstrateMethod sMethod, Object oldEncoding) {
-        Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), oldEncoding);
-        if (sMethod.setAnnotationsEncoding(annotationsEncoding)) {
-            aUniverse.getHeapScanner().rescanField(sMethod, substrateMethodAnnotationsEncodingField);
-            return true;
-        }
-        return false;
-    }
-
-    private boolean setAnnotationsEncoding(AnalysisField aField, SubstrateField sField, Object oldEncoding) {
-        Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), oldEncoding);
-        if (sField.setAnnotationsEncoding(annotationsEncoding)) {
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldAnnotationsEncodingField);
-            return true;
-        }
-        return false;
     }
 
     /**

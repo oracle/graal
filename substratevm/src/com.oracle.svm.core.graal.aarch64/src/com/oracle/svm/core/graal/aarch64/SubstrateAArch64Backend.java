@@ -116,7 +116,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
@@ -152,7 +151,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -791,8 +789,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
-            ResolvedJavaMethod method = valueNode.graph().method();
-            if (method != null && AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class) != null) {
+            SharedMethod method = (SharedMethod) valueNode.graph().method();
+            if (method != null && method.isForeignCallTarget()) {
                 // Emit assembly for snippet stubs
                 return null;
             }

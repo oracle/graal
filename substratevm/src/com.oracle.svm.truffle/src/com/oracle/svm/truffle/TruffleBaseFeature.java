@@ -109,6 +109,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalGraphObjectReplacer;
 import com.oracle.svm.graal.hosted.SubstrateGraalCompilerSetup;
 import com.oracle.svm.graal.hosted.SubstrateProviders;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -423,9 +424,6 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
         metaAccess = config.getMetaAccess();
-        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
-                        .getSubstrateProviders(metaAccess);
-        graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), metaAccess, substrateProviders);
 
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
@@ -435,9 +433,20 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
+    void setGraalGraphObjectReplacer(GraalGraphObjectReplacer graalGraphObjectReplacer) {
+        assert this.graalGraphObjectReplacer == null;
+        this.graalGraphObjectReplacer = graalGraphObjectReplacer;
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (graalGraphObjectReplacer == null) {
+            BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+            SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
+            graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
+        }
+
         StaticObjectSupport.beforeAnalysis(access);
         markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
 
