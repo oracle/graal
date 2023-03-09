@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,9 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -651,4 +654,31 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public boolean freed() {
         return true;
     }
+
+    protected boolean outOfBounds(int offset, int length) {
+        return length < 0 || offset < 0 || offset > getBufferSize() - length;
+    }
+
+    /**
+     * Copy data from an input stream into memory.
+     * 
+     * @param node the node used for errors
+     * @param stream the input stream
+     * @param offset the offset in the memory
+     * @param length the length of the data
+     * @return the number of read bytes, -1 if the end of the stream has been reached.
+     * @throws IOException if reading the stream leads to an error.
+     */
+    public abstract int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException;
+
+    /**
+     * Copy data from memory into an output stream.
+     * 
+     * @param node the node used for errors
+     * @param stream the output stream
+     * @param offset the offset in the memory
+     * @param length the length of the data
+     * @throws IOException if writing the stream leads to an error.
+     */
+    public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
 }
