@@ -45,8 +45,11 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
 final class HostStackTraceElementObject implements TruffleObject {
@@ -64,8 +67,66 @@ final class HostStackTraceElementObject implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
     Object getExecutableName() {
-        return stackTraceElement.getClassName() + "." + stackTraceElement.getMethodName();
+        return stackTraceElement.getMethodName();
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return stackTraceElement.getLineNumber() >= 0;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    SourceSection getSourceLocation() throws UnsupportedMessageException {
+        int lineNumber = stackTraceElement.getLineNumber();
+        if (lineNumber >= 0) {
+            Source dummySource = Source.newBuilder("host", "", stackTraceElement.getFileName()).content(Source.CONTENT_NONE).cached(false).build();
+            return dummySource.createSection(lineNumber);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasDeclaringMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getDeclaringMetaObject() {
+        return new DeclaringMetaObject();
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    final class DeclaringMetaObject implements TruffleObject {
+
+        @ExportMessage
+        boolean isMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMetaQualifiedName() {
+            return stackTraceElement.getClassName();
+        }
+
+        /**
+         * Intentionally does not handle inner classes the same way as {@link Class#getSimpleName()}
+         * since, without the {@link Class} at hand, we cannot know for sure if {@code $} is an
+         * inner class separator. So an inner class will simply be formatted as "Enclosing$Inner".
+         */
+        @TruffleBoundary
+        @ExportMessage
+        Object getMetaSimpleName() {
+            String qualifiedName = stackTraceElement.getClassName();
+            return qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1);
+        }
+
+        @ExportMessage
+        boolean isMetaInstance(Object instance) {
+            return instance == HostStackTraceElementObject.this;
+        }
+
     }
 }
