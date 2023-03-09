@@ -38,6 +38,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -75,7 +76,7 @@ public class BaseInterop {
     @ExportMessage
     public static boolean isMetaObject(StaticObject object) {
         object.checkNotForeign();
-        return !isNull(object) && object.getKlass() == object.getKlass().getMeta().java_lang_Class;
+        return !isNull(object) && object.isMirrorKlass();
     }
 
     @ExportMessage
@@ -135,7 +136,14 @@ public class BaseInterop {
         if (object.isForeignObject()) {
             return false;
         }
-        return isMetaObject(object) && object.getMirrorKlass() != object.getKlass().getMeta().java_lang_Object;
+        if (isMetaObject(object)) {
+            Klass mirrorKlass = object.getMirrorKlass();
+            if (mirrorKlass.isInterface()) {
+                return mirrorKlass.getSuperInterfaces().length > 0;
+            }
+            return !mirrorKlass.isPrimitive() && mirrorKlass != object.getKlass().getMeta().java_lang_Object;
+        }
+        return false;
     }
 
     @ExportMessage
@@ -145,17 +153,27 @@ public class BaseInterop {
 
         if (hasMetaParents(object)) {
             Klass klass = object.getMirrorKlass();
-            StaticObject superKlass = klass.getSuperKlass().mirror();
-            Klass[] superInterfaces = klass.getSuperInterfaces();
+            Klass[] result;
+            if (klass.isInterface()) {
+                Klass[] superInterfaces = klass.getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
 
-            StaticObject[] result = new StaticObject[superInterfaces.length + 1];
-            // put the super class first in array
-            result[0] = superKlass;
-            // then all interfaces
-            for (int i = 0; i < superInterfaces.length; i++) {
-                result[i + 1] = superInterfaces[i].mirror();
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superClass = klass.getSuperKlass();
+                Klass[] superInterfaces = klass.getSuperInterfaces();
+
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superClass;
+                // then all interfaces
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
             }
-            return StaticObject.wrap(result, object.getKlass().getMeta());
+            return new KeysArray<>(result);
         }
 
         error.enter();

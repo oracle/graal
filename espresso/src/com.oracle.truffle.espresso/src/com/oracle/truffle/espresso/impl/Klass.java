@@ -295,7 +295,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
-        return new KeysArray(members.toArray(new String[members.size()]));
+        return new KeysArray<>(members.toArray(new String[members.size()]));
     }
 
     protected static boolean isObjectKlass(Klass receiver) {
@@ -467,23 +467,38 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     boolean hasMetaParents() {
+        if (isPrimitive()) {
+            return false;
+        }
+        if (isInterface()) {
+            return getSuperInterfaces().length > 0;
+        }
         return this != getMeta().java_lang_Object;
     }
 
     @ExportMessage
     Object getMetaParents() throws UnsupportedMessageException {
         if (hasMetaParents()) {
-            StaticObject superKlass = getSuperKlass().mirror();
-            ObjectKlass[] superInterfaces = getSuperInterfaces();
+            Klass[] result;
+            if (isInterface()) {
+                ObjectKlass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
 
-            StaticObject[] result = new StaticObject[superInterfaces.length + 1];
-            // put the super class first in array
-            result[0] = superKlass;
-            // then all interfaces
-            for (int i = 0; i < superInterfaces.length; i++) {
-                result[i + 1] = superInterfaces[i].mirror();
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superKlass = getSuperKlass();
+                Klass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superKlass;
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
             }
-            return StaticObject.wrap(result, getMeta());
+            return new KeysArray<>(result);
         }
         throw UnsupportedMessageException.create();
     }
