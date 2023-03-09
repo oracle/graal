@@ -465,6 +465,29 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
     }
 
+    @ExportMessage
+    boolean hasMetaParents() {
+        return this != getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (hasMetaParents()) {
+            StaticObject superKlass = getSuperKlass().mirror();
+            ObjectKlass[] superInterfaces = getSuperInterfaces();
+
+            StaticObject[] result = new StaticObject[superInterfaces.length + 1];
+            // put the super class first in array
+            result[0] = superKlass;
+            // then all interfaces
+            for (int i = 0; i < superInterfaces.length; i++) {
+                result[i + 1] = superInterfaces[i].mirror();
+            }
+            return StaticObject.wrap(result, getMeta());
+        }
+        throw UnsupportedMessageException.create();
+    }
+
     // endregion ### Meta-objects
 
     // region ### Identity/hashCode

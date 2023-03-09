@@ -130,6 +130,38 @@ public class BaseInterop {
         throw UnsupportedMessageException.create();
     }
 
+    @ExportMessage
+    public static boolean hasMetaParents(StaticObject object) {
+        if (object.isForeignObject()) {
+            return false;
+        }
+        return isMetaObject(object) && object.getMirrorKlass() != object.getKlass().getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    public static Object getMetaParents(StaticObject object,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        object.checkNotForeign();
+
+        if (hasMetaParents(object)) {
+            Klass klass = object.getMirrorKlass();
+            StaticObject superKlass = klass.getSuperKlass().mirror();
+            Klass[] superInterfaces = klass.getSuperInterfaces();
+
+            StaticObject[] result = new StaticObject[superInterfaces.length + 1];
+            // put the super class first in array
+            result[0] = superKlass;
+            // then all interfaces
+            for (int i = 0; i < superInterfaces.length; i++) {
+                result[i + 1] = superInterfaces[i].mirror();
+            }
+            return StaticObject.wrap(result, object.getKlass().getMeta());
+        }
+
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
     // endregion ### Meta-objects
 
     // region ### Identity/hashCode
