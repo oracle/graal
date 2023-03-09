@@ -38,7 +38,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -153,27 +152,27 @@ public class BaseInterop {
 
         if (hasMetaParents(object)) {
             Klass klass = object.getMirrorKlass();
-            Klass[] result;
+            StaticObject[] result;
             if (klass.isInterface()) {
                 Klass[] superInterfaces = klass.getSuperInterfaces();
-                result = new Klass[superInterfaces.length];
+                result = new StaticObject[superInterfaces.length];
 
                 for (int i = 0; i < superInterfaces.length; i++) {
-                    result[i] = superInterfaces[i];
+                    result[i] = superInterfaces[i].mirror();
                 }
             } else {
                 Klass superClass = klass.getSuperKlass();
                 Klass[] superInterfaces = klass.getSuperInterfaces();
 
-                result = new Klass[superInterfaces.length + 1];
+                result = new StaticObject[superInterfaces.length + 1];
                 // put the super class first in array
-                result[0] = superClass;
+                result[0] = superClass.mirror();
                 // then all interfaces
                 for (int i = 0; i < superInterfaces.length; i++) {
-                    result[i + 1] = superInterfaces[i];
+                    result[i + 1] = superInterfaces[i].mirror();
                 }
             }
-            return new KeysArray<>(result);
+            return StaticObject.wrap(result, object.getKlass().getMeta());
         }
 
         error.enter();
