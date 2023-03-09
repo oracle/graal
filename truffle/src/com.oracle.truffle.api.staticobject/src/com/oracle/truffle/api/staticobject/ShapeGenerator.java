@@ -60,19 +60,19 @@ abstract class ShapeGenerator<T> {
 
     abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName);
 
-    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy, String storageClassName) {
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoaders gcls, StaticShape<T> parentShape, StorageStrategy strategy, String storageClassName) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
         Class<?> storageSuperclass = strategy == StorageStrategy.ARRAY_BASED ? parentStorageClass.getSuperclass() : parentStorageClass;
-        return getShapeGenerator(language, gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy, storageClassName);
+        return getShapeGenerator(language, gcls, storageSuperclass, parentShape.getFactoryInterface(), strategy, storageClassName);
     }
 
-    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy,
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoaders gcls, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy,
                     String storageClassName) {
         switch (strategy) {
             case ARRAY_BASED:
-                return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface, storageClassName);
+                return ArrayBasedShapeGenerator.getShapeGenerator(language, gcls, storageSuperClass, storageFactoryInterface, storageClassName);
             case FIELD_BASED:
-                return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
+                return FieldBasedShapeGenerator.getShapeGenerator(gcls, storageSuperClass, storageFactoryInterface);
             case POD_BASED:
                 return PodBasedShapeGenerator.getShapeGenerator(storageSuperClass, storageFactoryInterface);
             default:
@@ -99,9 +99,9 @@ abstract class ShapeGenerator<T> {
     }
 
     @SuppressWarnings("unchecked")
-    static <T> Class<? extends T> load(GeneratorClassLoader gcl, String internalName, byte[] bytes) {
+    static <T> Class<? extends T> load(GeneratorClassLoaders gcls, String internalName, byte[] bytes, boolean isStorage) {
         try {
-            return (Class<T>) gcl.defineGeneratedClass(internalName.replace('/', '.'), bytes, 0, bytes.length);
+            return (Class<T>) gcls.defineGeneratedClass(internalName.replace('/', '.'), bytes, 0, bytes.length, isStorage);
         } catch (ClassFormatError e) {
             throw new RuntimeException(e);
         }
