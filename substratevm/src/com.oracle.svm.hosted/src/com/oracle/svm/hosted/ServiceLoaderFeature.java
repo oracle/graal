@@ -27,9 +27,9 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -86,7 +86,7 @@ public class ServiceLoaderFeature implements InternalFeature {
      * Services that should not be processed here, for example because they are handled by
      * specialized features.
      */
-    protected final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+    protected final Set<String> servicesToSkip = new HashSet<>(List.of(
                     // image builder internal ServiceLoader interfaces
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "org.graalvm.nativeimage.Platform",
@@ -96,8 +96,14 @@ public class ServiceLoaderFeature implements InternalFeature {
                      */
                     "java.util.random.RandomGenerator",
                     "java.security.Provider",                     // see SecurityServicesFeature
-                    "sun.util.locale.provider.LocaleDataMetaInfo" // see LocaleSubstitutions
-    ));
+                    "sun.util.locale.provider.LocaleDataMetaInfo", // see LocaleSubstitutions
+                    /* Graal hotspot-specific services */
+                    "jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory",
+                    "org.graalvm.compiler.hotspot.CompilerConfigurationFactory",
+                    "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
+                    "org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
+                    "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
+                    "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory"));
 
     // NOTE: Platform class had to be added to this list since our analysis discovers that
     // Platform.includedIn is reachable regardless of fact that it is constant folded at
@@ -105,7 +111,9 @@ public class ServiceLoaderFeature implements InternalFeature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    protected final Set<String> serviceProvidersToSkip = new HashSet<>();
+    protected final Set<String> serviceProvidersToSkip = new HashSet<>(List.of(
+                    /* Graal hotspot-specific service-providers */
+                    "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider"));
 
     private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private Predicate<AnnotatedElement> platformSupported;
@@ -130,9 +138,6 @@ public class ServiceLoaderFeature implements InternalFeature {
         classLoaderSupport = accessImpl.imageClassLoader.classLoaderSupport;
         classLoaderSupport.serviceProviders.forEach((serviceName, providers) -> {
             if (servicesToSkip.contains(serviceName)) {
-                return;
-            }
-            if (serviceName.startsWith("jdk.vm.ci.hotspot") || (serviceName.startsWith("org.graalvm.compiler") && serviceName.contains("hotspot"))) {
                 return;
             }
             Class<?> serviceClass = access.findClassByName(serviceName);
