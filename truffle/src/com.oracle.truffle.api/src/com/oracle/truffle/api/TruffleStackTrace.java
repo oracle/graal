@@ -375,15 +375,30 @@ public final class TruffleStackTrace extends Exception {
             lazy = findImpl(throwable);
             if (lazy == null) {
                 lazy = new LazyStackTrace();
-                throwable.addSuppressed(lazy);
-                if (throwable.getSuppressed().length == 0) {
-                    // Suppression has been disabled for this exception.
+                if (!tryAddSuppressed(throwable, lazy)) {
                     // Avoid attempt to capture a lazy stack trace for immutable exceptions.
                     lazy.stackTrace = EMPTY;
                 }
             }
         }
         return lazy;
+    }
+
+    private static boolean tryAddSuppressed(Throwable throwable, LazyStackTrace lazy) {
+        if (throwable instanceof StackOverflowError || throwable instanceof OutOfMemoryError) {
+            /*
+             * These VM errors are immutable if thrown by the JVM. Regardless, we treat them as
+             * immutable if manually constructed, too. This is useful for singleton errors that
+             * don't have suppression disabled but should have.
+             */
+            return false;
+        }
+        throwable.addSuppressed(lazy);
+        if (throwable.getSuppressed().length == 0) {
+            // Suppression has been disabled for this exception.
+            return false;
+        }
+        return true;
     }
 
     private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {

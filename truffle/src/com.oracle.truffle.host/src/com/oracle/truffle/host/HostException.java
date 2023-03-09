@@ -70,10 +70,6 @@ final class HostException extends AbstractTruffleException {
         return getOriginal().getMessage();
     }
 
-    static HostException wrapWithoutStackTrace(Throwable original, HostContext context) {
-        return new HostException(original, context, null);
-    }
-
     static HostException wrap(Throwable original, HostContext context) {
         return wrap(original, context, null);
     }
