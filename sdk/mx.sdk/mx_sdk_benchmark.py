@@ -220,7 +220,7 @@ class NativeImageBenchmarkMixin(object):
         """
         return []
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         """Returns all arguments passed to the profiling run.
 
         This includes those passed globally on the `mx benchmark` command line after the last `--`.
