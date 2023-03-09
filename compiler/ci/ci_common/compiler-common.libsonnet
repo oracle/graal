@@ -5,6 +5,7 @@
   local ci_resources = import "../../../ci/ci_common/ci-resources.libsonnet",
 
   enable_profiling:: {
+    should_upload_results:: false,
     environment+: {
       "MX_PROFILER" : "JFR,async"
     },
@@ -15,6 +16,7 @@
   },
 
   footprint_tracking:: {
+    should_upload_results:: false,
     python_version: 3,
     packages+: {
       "pip:psrecord": "==1.2",
@@ -92,10 +94,11 @@
   },
 
   compiler_benchmark:: self.compiler_bench_base + self.compiler_benchmarks_notifications + {
+    should_upload_results:: true,
     _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
-    teardown+: [
+    teardown+: if self.should_upload_results then [
       self._bench_upload()
-    ]
+    ] else []
   },
 
   // JVM configurations
