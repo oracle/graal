@@ -13,9 +13,27 @@ suite = {
       "packedResource": True,
     },
 
+    "MICRONAUT_MUSHOP_0.0.1" : {
+      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/mu-shop-0.0.1.zip"],
+      "digest": "sha512:41f91679c2077a9c252cfc29b8cbf7884f2e9f3c411cfe6c88d807d346178b76299bc5c3f446290b84139ca3a9f6f18c91511fc8ee90b47549b4a8c19cdb337d" ,
+      "packedResource": True
+    },
+
+    "QUARKUS_REGISTRY_0.0.1" : {
+      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/quarkus-registry-0.0.1.zip"],
+      "digest": "sha512:fb798881ea406f05dd01523479b323a8e5ed6a59a545a70c06ec153ccfdb0a45be9b98d544d9fc5360007aae519a1221a7b2a794316dfc9cb9a38126ae13a9b3" ,
+      "packedResource": True
+    },
+
     "PETCLINIC_0.1.6": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
       "digest": "sha512:d16f251e4b5727c8a0e2f653a7d1d2b41967414d960e6a490d8e9fa4715f752b7f7bfc73dd069a001053bc1a4f75583abb40577c79017fef4c8f5cc972c0ed25",
+      "packedResource": True,
+    },
+
+    "PETCLINIC_0.1.7": {
+      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/petclinic-jpa-0.1.7.zip"],
+      "digest": "sha512:fe8f34a6cbb24099e3cc68051c857e82536c6d81498c604157e6312c04e675745d6f77dd292adde006307d5319b77917bbc9e5f301501ab1e9c072870be113a5",
       "packedResource": True,
     },
 

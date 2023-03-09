@@ -195,7 +195,16 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
             if self.image_vm_args is not None:
                 self.base_image_build_args += self.image_vm_args
+            self.is_runnable = self.check_runnable()
             self.base_image_build_args += self.extra_image_build_arguments
+
+        def check_runnable(self):
+            # TODO remove once there is load available for the specified benchmarks
+            if self.benchmark_suite_name in ["mushop", "quarkus"]:
+                return False
+            if self.benchmark_suite_name == "petclinic-wrk":
+                return self.bmSuite.version() == "0.1.6"
+            return True
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
@@ -869,6 +878,8 @@ class NativeImageVM(GraalVm):
                 mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
     def run_stage_run(self, config, stages, out):
+        if not config.is_runnable:
+            mx.abort(f"Benchmark {config.benchmark_suite_name}:{config.benchmark_name} is not runnable.")
         image_path = os.path.join(config.output_dir, config.final_image_name)
         with stages.set_command([image_path] + config.image_run_args) as s:
             s.execute_command(vm=self)
