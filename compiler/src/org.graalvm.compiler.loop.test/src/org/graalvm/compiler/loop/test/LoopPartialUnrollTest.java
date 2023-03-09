@@ -65,8 +65,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
 
+    boolean check = true;
+
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
+        if (!check) {
+            return;
+        }
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
         // Loops might be optimizable after partial unrolling
         if (!loops.isEmpty()) {
@@ -372,4 +377,19 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         canonicalizer.apply(referenceGraph, getDefaultMidTierContext());
         assertEquals(referenceGraph, testGraph);
     }
+
+    public static void twoUsages(int n) {
+        for (int i = 0; injectIterationCount(100, i < n); i++) {
+            GraalDirectives.blackhole(i < n ? 1 : 2);
+        }
+    }
+
+    @Test
+    public void testUsages() {
+        check = false;
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(options, "twoUsages", 100);
+        check = true;
+    }
+
 }
