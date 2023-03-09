@@ -567,6 +567,7 @@ fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding BY
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding Big5
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding Big5_HKSCS
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding Big5_UAO
+fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding CESU_8
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding CP50220
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding CP50221
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding CP51932
@@ -589,6 +590,7 @@ fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding GB
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding GBK
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM037
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM437
+fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM720
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM737
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM775
 fld public final static com.oracle.truffle.api.strings.TruffleString$Encoding IBM852
