@@ -33,6 +33,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators.AbstractSpliterator;
 import java.util.function.Consumer;
@@ -59,6 +60,15 @@ public final class ConfigurationParserUtils {
                         ConfigurationFiles.Options.StrictConfiguration.getValue());
     }
 
+    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
+                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
+
+        List<Path> paths = configFilesOption.getValue().values();
+        List<String> resourceValues = configResourcesOption.getValue().values();
+        var configFilesOptionName = configFilesOption.getName();
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, configFilesOptionName, configResourcesOption.getName(), directoryFileName, paths, resourceValues);
+    }
+
     /**
      * Parses configurations in files specified by {@code configFilesOption} and resources specified
      * by {@code configResourcesOption} and registers the parsed elements using
@@ -68,22 +78,22 @@ public final class ConfigurationParserUtils {
      * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
      * @return the total number of successfully parsed configuration files and resources.
      */
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
-                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
-
+    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
+                    String featureName, String configFilesOptionName, String configResourcesOptionName,
+                    String directoryFileName, List<Path> paths,
+                    List<String> resourceValues) {
         int parsedCount = 0;
-
-        Stream<Path> files = Stream.concat(configFilesOption.getValue().values().stream(),
+        Stream<Path> files = Stream.concat(paths.stream(),
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
-            doParseAndRegister(parser, featureName, path, configFilesOption.getName());
+            doParseAndRegister(parser, featureName, path, configFilesOptionName);
             return 1;
         }).sum();
 
-        Stream<URL> configResourcesFromOption = configResourcesOption.getValue().values().stream().flatMap(s -> {
+        Stream<URL> configResourcesFromOption = resourceValues.stream().flatMap(s -> {
             Enumeration<URL> urls;
             try {
                 urls = classLoader.findResourcesByName(s);
@@ -106,7 +116,7 @@ public final class ConfigurationParserUtils {
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
         parsedCount += resources.mapToInt(url -> {
-            doParseAndRegister(parser, featureName, url, configResourcesOption.getName());
+            doParseAndRegister(parser, featureName, url, configResourcesOptionName);
             return 1;
         }).sum();
         return parsedCount;

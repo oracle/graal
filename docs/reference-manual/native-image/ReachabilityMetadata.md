@@ -354,16 +354,25 @@ Metadata for serialization is provided in `serialization-config.json` files.
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "name": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
+      "name": "<fully-qualified-class-name>"
     }
-  ]
+  ],
+ "proxies": [
+   {
+     "condition": {
+       "typeReachable": "<condition-class>"
+     },
+     "interfaces": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
+   }
+ ]
 }
 ```
 
 Each entry in `types` enables serializing and deserializing objects of the class given by `name`.
 
-Lambda serialization is also supported: all lambdas declared in the methods of the class given by `name` can be serialized/deserialized.
+Each entry in `lambdaCapturingTypes` enables lambda serialization: all lambdas declared in the methods of the class given by `name` can be serialized and deserialized.
+
+Each entry in `proxies` enables the [Proxy](https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html) serialization by providing an interface list that a proxy implements.
 
 ## Predefined Classes
 
