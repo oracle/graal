@@ -26,17 +26,19 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.utils.RecordingInput;
-import org.junit.Assert;
-
 import java.io.IOException;
 
-public class GCNameConstantPoolParser extends ConstantPoolParser {
+import org.junit.Assert;
+
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+
+public class GCNameConstantPoolParser extends AbstractSerializerParser {
 
     @Override
     public void parse(RecordingInput input) throws IOException {
-        int numberOfGCNames = input.readInt();
-        for (int i = 0; i < numberOfGCNames; i++) {
+        int count = input.readInt();
+        Assert.assertTrue(count > 0);
+        for (int i = 0; i < count; i++) {
             addFoundId(input.readInt()); // Id.
             Assert.assertFalse("GC name is empty!", input.readUTF().isEmpty());
         }

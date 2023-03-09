@@ -31,7 +31,7 @@ import java.io.IOException;
 import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class StacktraceConstantPoolParser extends ConstantPoolParser {
+public class StacktraceConstantPoolParser extends AbstractRepositoryParser {
 
     @Override
     public void reset() {

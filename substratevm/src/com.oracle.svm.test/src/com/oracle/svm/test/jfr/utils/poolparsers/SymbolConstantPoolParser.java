@@ -30,7 +30,7 @@ import java.io.IOException;
 
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class SymbolConstantPoolParser extends ConstantPoolParser {
+public class SymbolConstantPoolParser extends AbstractRepositoryParser {
 
     @Override
     public void reset() {

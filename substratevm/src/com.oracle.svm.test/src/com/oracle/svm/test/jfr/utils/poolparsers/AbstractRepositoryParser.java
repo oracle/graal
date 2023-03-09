@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,27 +25,5 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import java.io.IOException;
-
-import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
-
-public class ThreadGroupConstantPoolParser extends AbstractRepositoryParser {
-
-    @Override
-    public void reset() {
-        /* 0 is the null thread group, 1 is the virtual thread group. */
-        foundIds.add(0L);
-        foundIds.add(1L);
-    }
-
-    @Override
-    public void parse(RecordingInput input) throws IOException {
-        int numberOfThreadGroups = input.readInt();
-        for (int i = 0; i < numberOfThreadGroups; i++) {
-            addFoundId(input.readLong()); // ThreadGroupId.
-            addExpectedId(JfrType.ThreadGroup, input.readLong()); // ParentThreadGroupId.
-            input.readUTF(); // ThreadGroupName.
-        }
-    }
+public abstract class AbstractRepositoryParser extends ConstantPoolParser {
 }

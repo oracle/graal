@@ -52,6 +52,10 @@ public abstract class ConstantPoolParser {
         foundIds.add(0L);
     }
 
+    public boolean isEmpty() {
+        return foundIds.isEmpty();
+    }
+
     protected final void addFoundId(long id) {
         foundIds.add(id);
     }
