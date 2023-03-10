@@ -29,15 +29,18 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.JfrEvent;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorWaitInterruptEvent extends JfrTest {
+public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
     private static final int MILLIS = 50;
 
     private final Helper helper = new Helper();
@@ -54,8 +57,8 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
-        for (RecordedEvent event : getEvents()) {
+    public void validateEvents(List<RecordedEvent> events) throws Throwable {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
             if (!eventThread.equals(interrupterThread.getName()) &&

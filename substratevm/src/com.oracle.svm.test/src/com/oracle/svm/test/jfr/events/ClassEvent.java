@@ -26,11 +26,13 @@
 
 package com.oracle.svm.test.jfr.events;
 
+import jdk.jfr.Label;
+import jdk.jfr.Name;
+import jdk.jfr.StackTrace;
 import jdk.jfr.Description;
 import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
 
+@Name("com.jfr.Class")
 @Label("Class Event")
 @Description("An event with a class payload")
 @StackTrace(false)

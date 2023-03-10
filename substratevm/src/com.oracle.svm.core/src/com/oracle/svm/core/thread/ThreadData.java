@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -39,22 +38,12 @@ import jdk.internal.misc.Unsafe;
  * unexpectedly.
  */
 public final class ThreadData extends UnacquiredThreadData {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final long LOCK_OFFSET;
-    private static final long UNSAFE_PARK_EVENT_OFFSET;
-    private static final long SLEEP_PARK_EVENT_OFFSET;
+    private static final Unsafe U = Unsafe.getUnsafe();
+    private static final long LOCK_OFFSET = U.objectFieldOffset(ThreadData.class, "lock");
+    private static final long UNSAFE_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "unsafeParker");
+    private static final long SLEEP_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "sleepParker");
 
-    static {
-        try {
-            LOCK_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("lock"));
-            UNSAFE_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("unsafeParker"));
-            SLEEP_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("sleepParker"));
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private volatile int lock;
+    @SuppressWarnings("unused") private volatile int lock;
     private boolean detached;
     private long refCount;
 
@@ -167,7 +156,7 @@ public final class ThreadData extends UnacquiredThreadData {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void free() {
-        assert isLocked();
+        assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
         if (unsafeParker != null) {
             unsafeParker.release();
             unsafeParker = null;
@@ -189,10 +178,10 @@ public final class ThreadData extends UnacquiredThreadData {
     private boolean tryToStoreParker(long offset, Parker newEvent) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            if (UNSAFE.getObject(this, offset) != null) {
+            if (U.getObject(this, offset) != null) {
                 return false;
             }
-            UNSAFE.putObjectVolatile(this, offset, newEvent);
+            U.putObjectVolatile(this, offset, newEvent);
             return true;
         } finally {
             JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
@@ -202,11 +191,6 @@ public final class ThreadData extends UnacquiredThreadData {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isForCurrentThread() {
         return this == PlatformThreads.getCurrentThreadData();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean isLocked() {
-        return lock == 1;
     }
 }
 

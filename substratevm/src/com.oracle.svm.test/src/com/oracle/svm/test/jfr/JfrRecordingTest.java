@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +23,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.PointerBase;
+package com.oracle.svm.test.jfr;
 
-/**
- * The common interface for the LinkedList entries that can be used in an
- * {@link AbstractUninterruptibleHashtable}.
- */
-@RawStructure
-public interface UninterruptibleEntry extends PointerBase {
-    /**
-     * Gets the next entry.
-     */
-    @RawField
-    <T extends UninterruptibleEntry> T getNext();
+import jdk.jfr.Configuration;
+import jdk.jfr.Recording;
 
-    /**
-     * Sets the next entry.
-     */
-    @RawField
-    void setNext(UninterruptibleEntry value);
+/** Base class for JFR unit tests. */
+public abstract class JfrRecordingTest extends AbstractJfrTest {
+    private Recording recording;
 
-    /**
-     * Get the hashcode for the entry.
-     */
-    @RawField
-    int getHash();
+    @Override
+    public void startRecording(Configuration config) throws Throwable {
+        /* Enable a lot of events by default to increase the test coverage. */
+        recording = new Recording(config);
+        recording.setDestination(jfrFile);
+        enableEvents();
+        recording.start();
+    }
 
-    /**
-     * Sets the hashcode for the entry.
-     */
-    @RawField
-    void setHash(int value);
+    @Override
+    public void stopRecording() {
+        recording.stop();
+        recording.close();
+    }
+
+    private void enableEvents() {
+        /* Additionally, enable all events that the test case wants to test explicitly. */
+        String[] events = getTestedEvents();
+        for (String event : events) {
+            recording.enable(event);
+        }
+    }
 }

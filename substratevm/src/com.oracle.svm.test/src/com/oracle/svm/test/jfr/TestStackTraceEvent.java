@@ -25,17 +25,28 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.test.jfr.events.StackTraceEvent;
 
+import jdk.jfr.consumer.RecordedEvent;
+
 /**
  * Test if event ({@link StackTraceEvent}) with stacktrace payload is working.
  */
-public class TestStackTraceEvent extends JfrTest {
+public class TestStackTraceEvent extends JfrRecordingTest {
     @Override
     public String[] getTestedEvents() {
         return new String[]{StackTraceEvent.class.getName()};
+    }
+
+    @Override
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+        assertEquals(1, events.size());
     }
 
     @Test

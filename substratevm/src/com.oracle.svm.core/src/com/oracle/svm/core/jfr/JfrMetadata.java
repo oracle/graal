@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +25,25 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.c.struct.RawPointerTo;
-import org.graalvm.word.PointerBase;
+public class JfrMetadata {
+    private long currentMetadataId;
+    private byte[] metadataDescriptor;
 
-/**
- * Pointer to an array of {@link JfrBuffer}s.
- */
-@RawPointerTo(JfrBuffer.class)
-public interface JfrBuffers extends PointerBase {
+    public JfrMetadata(byte[] bytes) {
+        metadataDescriptor = bytes;
+        currentMetadataId = 0;
+    }
 
-    JfrBuffers addressOf(long index);
+    public void setDescriptor(byte[] bytes) {
+        metadataDescriptor = bytes;
+        currentMetadataId++;
+    }
 
-    void write(JfrBuffer value);
+    public byte[] getDescriptor() {
+        return metadataDescriptor;
+    }
 
-    JfrBuffer read();
+    public long getCurrentMetadataId() {
+        return currentMetadataId;
+    }
 }

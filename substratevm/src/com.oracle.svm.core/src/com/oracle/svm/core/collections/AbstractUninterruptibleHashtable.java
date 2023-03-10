@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.collections;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -145,6 +145,14 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
             UninterruptibleEntry newEntry = insertEntry(valueOnStack);
             return newEntry.isNonNull();
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UninterruptibleEntry putNew(UninterruptibleEntry valueOnStack) {
+        assert valueOnStack.isNonNull();
+        assert get(valueOnStack).isNull();
+        return insertEntry(valueOnStack);
     }
 
     @Override

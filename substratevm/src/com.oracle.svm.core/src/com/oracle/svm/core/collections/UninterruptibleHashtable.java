@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.collections;
 
 import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Common interface for all uninterruptible hashtable implementations. Please note that we don't use
- * generics as this sometimes breaks the {@link Uninterruptible} annotation when ECJ is used for
- * compiling the Java sources.
+ * generics as this may break the {@link Uninterruptible} annotations.
  */
 public interface UninterruptibleHashtable {
     /**
@@ -58,6 +57,14 @@ public interface UninterruptibleHashtable {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean putIfAbsent(UninterruptibleEntry valueOnStack);
+
+    /**
+     * Inserts {@code valueOnStack} into the hashtable. May only be called if it is guaranteed that
+     * there is no matching entry in the table. Returns the inserted entry. If an error occurred
+     * while inserting the entry, a null pointer is returned instead.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UninterruptibleEntry putNew(UninterruptibleEntry valueOnStack);
 
     /**
      * If the hashtable contains an existing entry that matches {@code valueOnStack}, then this

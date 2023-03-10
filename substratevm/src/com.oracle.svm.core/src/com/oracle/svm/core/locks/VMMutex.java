@@ -198,4 +198,9 @@ public class VMMutex {
         assert owner == (IsolateThread) UNSPECIFIED_OWNER;
         owner = WordFactory.nullPointer();
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean hasOwner() {
+        return owner.isNonNull();
+    }
 }

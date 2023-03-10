@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
@@ -39,20 +40,19 @@ import jdk.internal.misc.Unsafe;
  * Used to access the Java event writer class, see {@code jdk.jfr.internal.EventWriter}.
  */
 public final class JfrEventWriterAccess {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+    private static final Unsafe U = Unsafe.getUnsafe();
+    /*
+     * The fields "startPosition" and "startPositionAddress" in the JDK class EventWriter refer to
+     * the committed position and not to the start of the buffer.
+     */
+    private static final Field COMMITTED_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPosition");
+    private static final Field COMMITTED_POSITION_ADDRESS_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPositionAddress");
+    private static final Field CURRENT_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "currentPosition");
+    private static final Field MAX_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "maxPosition");
+    private static final Field VALID_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "valid");
 
-    private static final Field startPosition;
-    private static final Field startPositionAddress;
-    private static final Field currentPosition;
-    private static final Field maxPosition;
-    private static final Field valid;
-    static {
-        Class<?> declaringClass = getEventWriterClass();
-        startPosition = ReflectionUtil.lookupField(declaringClass, "startPosition");
-        startPositionAddress = ReflectionUtil.lookupField(declaringClass, "startPositionAddress");
-        currentPosition = ReflectionUtil.lookupField(declaringClass, "currentPosition");
-        maxPosition = ReflectionUtil.lookupField(declaringClass, "maxPosition");
-        valid = ReflectionUtil.lookupField(declaringClass, "valid");
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private JfrEventWriterAccess() {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -66,32 +66,43 @@ public final class JfrEventWriterAccess {
         return ReflectionUtil.lookupClass(false, className);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private JfrEventWriterAccess() {
+    public static Target_jdk_jfr_internal_EventWriter newEventWriter(JfrBuffer buffer, boolean isCurrentThreadExcluded) {
+        assert JfrBufferAccess.isEmpty(buffer) : "a fresh JFR buffer must be empty";
+
+        long committedPos = buffer.getCommittedPos().rawValue();
+        long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
+        long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
+        long jfrThreadId = SubstrateJVM.getCurrentThreadId();
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true, isCurrentThreadExcluded);
+        } else {
+            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
+        }
+    }
+
+    /** Update the EventWriter so that it uses the correct buffer and positions. */
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    public static void update(Target_jdk_jfr_internal_EventWriter writer, JfrBuffer buffer, int uncommittedSize, boolean valid) {
+        assert SubstrateJVM.getThreadLocal().getJavaBuffer() == buffer;
+        assert JfrBufferAccess.verify(buffer);
+
+        Pointer committedPos = buffer.getCommittedPos();
+        Pointer addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer);
+        Pointer currentPos = committedPos.add(uncommittedSize);
+        Pointer maxPos = JfrBufferAccess.getDataEnd(buffer);
+
+        U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_FIELD), committedPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_ADDRESS_FIELD), addressOfCommittedPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(CURRENT_POSITION_FIELD), currentPos.rawValue());
+        U.putLong(writer, U.objectFieldOffset(MAX_POSITION_FIELD), maxPos.rawValue());
+        if (!valid) {
+            markAsInvalid(writer);
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setStartPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
-        UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(startPosition), value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setStartPositionAddress(Target_jdk_jfr_internal_EventWriter writer, long value) {
-        UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(startPositionAddress), value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setCurrentPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
-        UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(currentPosition), value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setMaxPosition(Target_jdk_jfr_internal_EventWriter writer, long value) {
-        UNSAFE.putLong(writer, UNSAFE.objectFieldOffset(maxPosition), value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setValid(Target_jdk_jfr_internal_EventWriter writer, boolean value) {
-        UNSAFE.putBooleanVolatile(writer, UNSAFE.objectFieldOffset(valid), value);
+    public static void markAsInvalid(Target_jdk_jfr_internal_EventWriter writer) {
+        /* The VM should never write true (only the JDK code may do that). */
+        U.putBooleanVolatile(writer, U.objectFieldOffset(VALID_FIELD), false);
     }
 }

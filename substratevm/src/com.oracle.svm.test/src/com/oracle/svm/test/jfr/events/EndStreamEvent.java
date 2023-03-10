@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,17 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils;
+package com.oracle.svm.test.jfr.events;
 
-import java.io.IOException;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.Name;
+import jdk.jfr.StackTrace;
 
-import jdk.jfr.Recording;
-
-/**
- * Utility class to handle recording.
- */
-public interface Jfr {
-
-    Recording createRecording(String recordingName) throws Exception;
-
-    void startRecording(Recording recording);
-
-    void endRecording(Recording recording) throws Exception;
-
-    void cleanupRecording(Recording recording) throws IOException;
+@Name("com.jfr.EndStream")
+@Label("End Stream Event")
+@Description("Signals to end stream")
+@StackTrace(false)
+public class EndStreamEvent extends Event {
 }
