@@ -13,7 +13,6 @@ public class SmallBitSet {
             set[cardinality++] = i;
         }
         assert cardinality == other.cardinality();
-        // Arrays.fill(set, UNSET, cardinality, MAX_CARDINALITY);
     }
 
     public boolean get(int bit) {
@@ -39,7 +38,6 @@ public class SmallBitSet {
     //     }
     //     return true;
     // }
-
 
     private int lastSetBit() {
       assert cardinality > 0 : "SmallBitSet should never be empty";
@@ -67,9 +65,6 @@ public class SmallBitSet {
           }
         }
         return UNSET;
-        // int result = set[fromIndex];
-        // assert result != UNSET : "Should not have UNSET inside valid section of bitset";
-        // return result;
     }
 
     public String toString() {
