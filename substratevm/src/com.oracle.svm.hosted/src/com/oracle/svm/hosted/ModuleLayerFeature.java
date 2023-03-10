@@ -256,7 +256,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          */
         ModuleFinder builderModuleFinder = NativeImageClassLoaderSupport.finderFor("jdk.module.path");
         if (builderModuleFinder != null) {
-            systemModuleFinder = ModuleFinder.compose(builderModuleFinder, systemModuleFinder);
+            systemModuleFinder = ModuleFinder.compose(systemModuleFinder, builderModuleFinder);
         }
 
         if (upgradeModulePath != null) {
