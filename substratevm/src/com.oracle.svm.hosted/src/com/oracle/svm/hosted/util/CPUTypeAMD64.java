@@ -161,7 +161,7 @@ public enum CPUTypeAMD64 implements CPUType {
         String value = NativeImageOptions.MicroArchitecture.getValue();
         if (value == null) {
             if (NATIVE.getFeatures().containsAll(X86_64_V3.getFeatures())) {
-                value = X86_64_V3.getName();
+                value = X86_64_V3.getName(); // set default
             } else {
                 System.out.printf("Warning: The host machine does not support all features of '%s'. Falling back to '%s' for best compatibility.%n",
                                 X86_64_V3.getName(), SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, COMPATIBILITY.getName()));
@@ -180,6 +180,12 @@ public enum CPUTypeAMD64 implements CPUType {
                             List.of(values()).stream().map(v -> v.name).collect(Collectors.joining(", ")));
         }
         return value.getFeatures();
+    }
+
+    public static boolean nativeSupportsMoreFeaturesThanSelected() {
+        EnumSet<CPUFeature> nativeFeatures = NATIVE.getFeatures();
+        EnumSet<CPUFeature> selectedFeatures = getSelectedFeatures();
+        return nativeFeatures.containsAll(selectedFeatures) && nativeFeatures.size() > selectedFeatures.size();
     }
 
     private static CPUTypeAMD64 typeOf(String marchValue) {

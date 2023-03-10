@@ -412,6 +412,9 @@ public class SubstrateOptions {
     @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
 
+    @Option(help = "Show recommendations as part of the build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputRecommendations = new HostedOptionKey<>(true);
+
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
 
