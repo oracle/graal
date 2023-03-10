@@ -95,7 +95,7 @@ public final class EspressoBindings implements TruffleObject {
         if (useBindingsLoader) {
             members.add(ADD_PATH);
         }
-        return new KeysArray(members.toArray(new String[0]));
+        return new KeysArray<>(members.toArray(new String[0]));
     }
 
     @ExportMessage
