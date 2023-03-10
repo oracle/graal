@@ -185,7 +185,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
     }
 
     @SuppressWarnings("try")
-    private static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops) {
+    public static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops) {
         Node current = from;
         while (current != null) {
             if (GraalOptions.GuardPriorities.getValue(from.getOptions()) && current instanceof FixedGuardNode) {

@@ -41,6 +41,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
@@ -663,6 +664,9 @@ public class FrameInfoEncoder {
         } else if (value instanceof JavaConstant) {
             JavaConstant constant = (JavaConstant) value;
             result.value = constant;
+            if (constant instanceof CompressibleConstant) {
+                result.isCompressedReference = ((CompressibleConstant) constant).isCompressed();
+            }
             if (constant.isDefaultForKind()) {
                 result.type = ValueType.DefaultConstant;
             } else {
@@ -1110,7 +1114,7 @@ class FrameInfoVerifier {
             /* During compilation, the kind of a smaller-than-int constant is often Int. */
             assert FrameInfoEncoder.encodePrimitiveConstant(expectedConstant) == FrameInfoEncoder.encodePrimitiveConstant(actualConstant);
         } else {
-            assert Objects.equals(expectedConstant, actualConstant);
+            assert Objects.equals(expectedConstant, actualConstant) : " Constants are not equal: expected=" + expectedConstant + " actual=" + actualConstant;
         }
     }
 }
