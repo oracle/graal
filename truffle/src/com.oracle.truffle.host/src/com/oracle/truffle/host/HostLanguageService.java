@@ -316,6 +316,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
         System.exit(exitCode);
     }
 
+    @Override
+    public boolean allowsPublicAccess() {
+        return api.allowsPublicAccess(language.hostClassCache.hostAccess);
+    }
+
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
         assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
         assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");

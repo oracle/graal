@@ -75,7 +75,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -306,8 +305,6 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
-
-        public abstract HostAccess getHostAccess(TruffleLanguage<?> hostLanguage);
 
         public abstract Node inlineToHostNode(Object target);
 
@@ -639,8 +636,6 @@ public abstract class Accessor {
 
         public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
                         boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
-
-        public abstract boolean isHostStackTraceVisibleToGuest(Object polyglotEngine);
 
         public abstract boolean isHostToGuestRootNode(RootNode root);
 

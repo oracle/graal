@@ -1735,12 +1735,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostStackTraceVisibleToGuest(Object polyglotEngine) {
-            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            return engine.getAPIAccess().allowsPublicAccess(HOST.getHostAccess(engine.getHostLanguageSPI()));
-        }
-
-        @Override
         public boolean isHostToGuestRootNode(RootNode root) {
             return root instanceof HostToGuestRootNode;
         }

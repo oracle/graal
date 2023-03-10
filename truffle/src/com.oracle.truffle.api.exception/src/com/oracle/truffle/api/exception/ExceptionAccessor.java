@@ -201,7 +201,7 @@ final class ExceptionAccessor extends Accessor {
             }
 
             Iterator<TruffleStackTraceElement> guestStackIterator = guestStack.iterator();
-            boolean includeHostFrames = ACCESSOR.engineSupport().isHostStackTraceVisibleToGuest(polyglotEngine);
+            boolean includeHostFrames = ACCESSOR.engineSupport().getHostService(polyglotEngine).isHostStackTraceVisibleToGuest();
             Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost, includeHostFrames,
                             new Function<StackTraceElement, Object>() {
                                 @Override
