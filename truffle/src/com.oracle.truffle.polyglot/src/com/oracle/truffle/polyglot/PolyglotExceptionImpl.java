@@ -677,8 +677,10 @@ final class PolyglotExceptionImpl {
                     if (includeHostFrames) {
                         // construct host frame
                         T frame = hostFrameConvertor.apply(element);
-                        fetchedNext = frame;
-                        return fetchedNext;
+                        if (frame != null) {
+                            fetchedNext = frame;
+                            return fetchedNext;
+                        }
                     }
                 } else {
                     // skip stack frame that is part of guest language stack

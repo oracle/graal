@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
@@ -156,7 +157,7 @@ final class ExceptionAccessor extends Accessor {
             boolean hasGuestToHostCalls = false;
             boolean inHost = true;
             for (TruffleStackTraceElement element : stack) {
-                if (ExceptionAccessor.ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
+                if (ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
                     hasGuestToHostCalls = true;
                     break;
                 } else {
@@ -200,14 +201,24 @@ final class ExceptionAccessor extends Accessor {
                 hostStack = new StackTraceElement[0];
             }
 
-            Iterator<TruffleStackTraceElement> guestStackIterator = guestStack.iterator();
+            ListIterator<TruffleStackTraceElement> guestStackIterator = guestStack.listIterator();
             boolean includeHostFrames = ACCESSOR.engineSupport().getHostService(polyglotEngine).isHostStackTraceVisibleToGuest();
-            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost, includeHostFrames,
+            int lastGuestToHostIndex = includeHostFrames ? indexOfLastGuestToHostFrame(guestStack) : -1;
+            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine,
+                            hostStack, guestStackIterator, inHost, includeHostFrames,
                             new Function<StackTraceElement, Object>() {
                                 @Override
                                 public Object apply(StackTraceElement element) {
+                                    assert includeHostFrames;
                                     if (!guestStackIterator.hasNext()) {
                                         // omit trailing host frames
+                                        return null;
+                                    } else if (guestStackIterator.nextIndex() > lastGuestToHostIndex) {
+                                        /*
+                                         * omit host frames not followed by a guest-to-host frame;
+                                         * just in case we have extra guest frames due to the guest
+                                         * trace getting out of sync with the host trace.
+                                         */
                                         return null;
                                     }
                                     return new HostStackTraceElementObject(element);
@@ -233,6 +244,17 @@ final class ExceptionAccessor extends Accessor {
                 elementsList.add(mergedElements.next());
             }
             return elementsList.toArray();
+        }
+
+        private static int indexOfLastGuestToHostFrame(List<TruffleStackTraceElement> guestStack) {
+            for (var iterator = guestStack.listIterator(guestStack.size()); iterator.hasPrevious();) {
+                int index = iterator.previousIndex();
+                TruffleStackTraceElement element = iterator.previous();
+                if (ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
+                    return index;
+                }
+            }
+            return -1;
         }
 
         @Override
