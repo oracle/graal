@@ -29,8 +29,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

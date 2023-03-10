@@ -37,7 +37,7 @@ public interface OriginalClassProvider {
         if (javaType instanceof OriginalClassProvider) {
             result = ((OriginalClassProvider) javaType).getJavaClass();
         } else {
-            return GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
+            result = GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
         }
 
         /*

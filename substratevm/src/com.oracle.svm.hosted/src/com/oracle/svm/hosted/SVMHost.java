@@ -851,9 +851,9 @@ public class SVMHost extends HostVM {
         }
     }
 
-    public boolean preventConstantFolding(ResolvedJavaField field) {
+    public boolean allowConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
-        return finalFieldsInitializedOutsideOfConstructor.contains(aField);
+        return !finalFieldsInitializedOutsideOfConstructor.contains(aField);
     }
 
     @Override

@@ -374,7 +374,7 @@ public abstract class RuntimeCompilationFeature {
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
-                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(), originalProviders.getConstantReflection(),
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
                                         backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
                         .build();
 

@@ -1105,8 +1105,7 @@ public class NativeImageGenerator {
         ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aMetaAccess, (SVMHost) aUniverse.hostVM());
 
-        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
-                        aUniverse, aMetaAccess, originalProviders.getConstantReflection(), classInitializationSupport);
+        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, aMetaAccess, classInitializationSupport);
 
         WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
 
