@@ -85,7 +85,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private LambdaSubstitutionType getSubstitution(ResolvedJavaType original) {
         return typeSubstitutions.computeIfAbsent(original, (key) -> {
             OptionValues options = bb.getOptions();
-            DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
+            DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
 
             Providers providers = GraalAccess.getOriginalProviders();
             String lambdaTargetName = LambdaUtils.findStableLambdaName(new NoClassInitializationPlugin(), providers, key, options, debug, this);

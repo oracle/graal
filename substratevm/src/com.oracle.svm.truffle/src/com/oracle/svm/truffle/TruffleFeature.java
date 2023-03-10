@@ -393,6 +393,7 @@ public class TruffleFeature implements InternalFeature {
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
+        runtimeCompilationFeature.initializeAnalysisProviders(config.getBigBang(), HostedTruffleConstantFieldProvider::new);
 
         initializeMethodBlocklist(config.getMetaAccess(), access);
 

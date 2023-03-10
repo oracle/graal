@@ -321,7 +321,7 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return bb.getProviders().getSnippetReflection();
+        return bb.getSnippetReflectionProvider();
     }
 
     @Override

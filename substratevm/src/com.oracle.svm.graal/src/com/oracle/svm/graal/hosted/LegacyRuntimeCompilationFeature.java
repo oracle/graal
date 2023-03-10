@@ -36,9 +36,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -527,4 +529,12 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
     }
+
+    @Override
+    public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
+        /*
+         * No action is needed for the legacy implementation.
+         */
+    }
+
 }

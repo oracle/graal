@@ -167,6 +167,7 @@ import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -600,7 +601,7 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(), classInitializationSupport,
+                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD), classInitializationSupport,
                                 GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
@@ -650,7 +651,7 @@ public class NativeImageGenerator {
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(),
-                                bb.getProviders().getSnippetReflection(), compilationExecutor);
+                                bb.getSnippetReflectionProvider(), compilationExecutor);
                 if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
                     ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(hUniverse, compileQueue);
                 }
@@ -887,7 +888,9 @@ public class NativeImageGenerator {
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 HostedProviders aProviders = createHostedProviders(target, aUniverse,
                                 originalProviders, platformConfig, classInitializationSupport, aMetaAccess);
-                bb = createBigBang(options, aUniverse, aProviders, analysisExecutor, loader.watchdog::recordActivity,
+                aUniverse.hostVM().initializeProviders(aProviders);
+
+                bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, analysisExecutor, loader.watchdog::recordActivity,
                                 annotationSubstitutions);
                 aUniverse.setBigBang(bb);
 
@@ -1015,7 +1018,7 @@ public class NativeImageGenerator {
     public static void initializeBigBang(Inflation bb, OptionValues options, FeatureHandler featureHandler, NativeLibraries nativeLibraries, DebugContext debug,
                     AnalysisMetaAccess aMetaAccess, SubstitutionProcessor substitutions, ImageClassLoader loader, boolean initForeignCalls, ClassInitializationPlugin classInitializationPlugin,
                     boolean supportsStubBasedPlugins, HostedProviders aProviders) {
-        SubstrateReplacements aReplacements = bb.getReplacements();
+        SubstrateReplacements aReplacements = (SubstrateReplacements) bb.getProviders(MultiMethod.ORIGINAL_METHOD).getReplacements();
         AnalysisUniverse aUniverse = bb.getUniverse();
 
         /*
@@ -1129,9 +1132,12 @@ public class NativeImageGenerator {
         return aProviders;
     }
 
-    private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, HostedProviders aProviders, ForkJoinPool analysisExecutor,
+    private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
+        SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
+        ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
+        WordTypes wordTypes = aProviders.getWordTypes();
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
             ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
             if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {
@@ -1141,10 +1147,12 @@ public class NativeImageGenerator {
             } else {
                 reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
             }
-            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
+            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
+                            analysisExecutor, heartbeatCallback,
                             ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
-        return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
+        return new NativeImagePointsToAnalysis(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor, analysisExecutor,
+                        heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
     }
 

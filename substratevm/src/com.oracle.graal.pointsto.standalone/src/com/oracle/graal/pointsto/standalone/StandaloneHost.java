@@ -81,9 +81,9 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
-    public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+    public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
-        return new StandaloneGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        return new StandaloneGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     public void setImageName(String name) {
