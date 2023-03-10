@@ -367,11 +367,13 @@ public final class ModuleLayerFeature implements InternalFeature {
                             .stream()
                             .map(Module::getName)
                             .collect(Collectors.toSet());
-
-            Set<Module> syntheticModules = new HashSet<>();
             moduleNames.retainAll(allReachableAndRequiredModuleNames);
             if (isBootModuleLayer) {
                 moduleNames.addAll(rootModuleNames);
+            }
+
+            Set<Module> syntheticModules = new HashSet<>();
+            if (isBootModuleLayer) {
                 syntheticModules.addAll(reachableSyntheticModules);
             }
 
