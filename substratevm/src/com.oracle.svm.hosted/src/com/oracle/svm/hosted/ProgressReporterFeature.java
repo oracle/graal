@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
@@ -45,6 +46,9 @@ public class ProgressReporterFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reporter.reportStageProgress();
+    }
+
+    protected void appendGraalSuffix(@SuppressWarnings("unused") DirectPrinter graalLine) {
     }
 
     protected List<UserRecommendation> getRecommendations() {

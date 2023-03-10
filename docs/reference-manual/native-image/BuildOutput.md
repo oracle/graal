@@ -23,6 +23,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [1/8] Initializing...                                            (3.3s @ 0.25GB)
  Version info: 'GraalVM dev Java 19+36-jvmci-23.0-b01 CE'
  Java version info: '19+36-jvmci-23.0-b01'
+ Graal compiler: optimization level: '0', target machine: 'x86-64-v3'
  C compiler: gcc (linux, x86_64, 11.3.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 [2/8] Performing analysis...  [****]                             (6.2s @ 0.47GB)
@@ -86,6 +87,15 @@ Please report this version info when you [file issues](https://github.com/oracle
 #### <a name="glossary-java-version-info"></a>Java Version Info
 The Java version info (`java.runtime.version` property) of the Native Image build process.
 Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
+
+#### <a name="glossary-graal-compiler"></a>Graal Compiler
+The selected optimization level and targeted machine type used by the Graal compiler.
+The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
+Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling) during development.
+The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
+See [here](#recommendation-cpu) for recommendations on how to use this option.
+
+On Oracle GraalVM, the line also shows whether [Profile-Guided Optimizations](#recommendation-pgo) are *on* or *off*.
 
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.

@@ -95,6 +95,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -255,6 +256,10 @@ public class ProgressReporter {
         if (javaVersion != null) {
             l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
         }
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'",
+                        SubstrateOptions.Optimize.getValue(), CPUType.getSelectedOrDefaultMArch());
+        ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
+        graalLine.println();
         String cCompilerShort = null;
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             cCompilerShort = ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription();
@@ -965,7 +970,7 @@ public class ProgressReporter {
             return getThis();
         }
 
-        final T doclink(String text, String htmlAnchor) {
+        public final T doclink(String text, String htmlAnchor) {
             linkStrategy.doclink(this, text, htmlAnchor);
             return getThis();
         }
@@ -976,14 +981,14 @@ public class ProgressReporter {
         return linePrinter.a(outputPrefix);
     }
 
-    final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
+    public final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
         @Override
         DirectPrinter getThis() {
             return this;
         }
 
         @Override
-        DirectPrinter a(String text) {
+        public DirectPrinter a(String text) {
             print(text);
             return this;
         }

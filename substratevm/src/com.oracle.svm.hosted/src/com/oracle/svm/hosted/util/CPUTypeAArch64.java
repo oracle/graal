@@ -112,11 +112,15 @@ public enum CPUTypeAArch64 implements CPUType {
         }
     }
 
+    public static String getDefaultName() {
+        return ARMV8_A.getName();
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static EnumSet<CPUFeature> getSelectedFeatures() {
         String value = NativeImageOptions.MicroArchitecture.getValue();
         if (value == null) {
-            value = ARMV8_A.getName(); // set default
+            value = getDefaultName();
         }
         return getCPUFeaturesForArch(value);
     }
