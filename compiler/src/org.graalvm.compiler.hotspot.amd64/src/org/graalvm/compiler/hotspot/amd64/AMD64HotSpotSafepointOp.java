@@ -24,9 +24,16 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.r15;
 import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rip;
+import static jdk.vm.ci.amd64.AMD64.rsp;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 
+import java.util.function.IntConsumer;
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -34,6 +41,7 @@ import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -73,12 +81,35 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         assert !atReturn || state == null : "state is unneeded at return";
 
         assert config.threadPollingPageOffset >= 0;
-        asm.movptr(scratch, new AMD64Address(thread, config.threadPollingPageOffset));
-        crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-        final int pos = asm.position();
-        if (state != null) {
-            crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+        if (config.threadPollingWordOffset != -1 && atReturn && config.pollingPageReturnHandler != 0) {
+            // HotSpot uses this strategy even if the selected GC doesn't require any concurrent
+            // stack cleaning.
+
+            final int[] pos = new int[1];
+            IntConsumer doMark = value -> {
+                pos[0] = value;
+                crb.recordMark(HotSpotMarkId.POLL_RETURN_FAR);
+            };
+
+            Label entryPoint = new Label();
+            asm.cmpqAndJcc(rsp, new AMD64Address(thread, config.threadPollingWordOffset), AMD64Assembler.ConditionFlag.Above, entryPoint, false, doMark);
+            crb.getLIR().addSlowPath(null, () -> {
+                asm.bind(entryPoint);
+                // Load the pc of the poll instruction
+                asm.leaq(scratch, new AMD64Address(rip, 0));
+                final int afterLea = asm.position();
+                asm.emitInt(pos[0] - afterLea, afterLea - 4);
+                asm.movq(new AMD64Address(r15, config.savedExceptionPCOffset), scratch);
+                AMD64Call.directJmp(crb, asm, crb.foreignCalls.lookupForeignCall(POLLING_PAGE_RETURN_HANDLER), null);
+            });
+        } else {
+            asm.movptr(scratch, new AMD64Address(thread, config.threadPollingPageOffset));
+            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
+            final int pos = asm.position();
+            if (state != null) {
+                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            }
+            asm.testl(rax, new AMD64Address(scratch));
         }
-        asm.testl(rax, new AMD64Address(scratch));
     }
 }

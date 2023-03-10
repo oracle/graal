@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
 
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.ValueUtil;
-import jdk.vm.ci.meta.Value;
 
-public final class AMD64CCall extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64CCall> TYPE = LIRInstructionClass.create(AMD64CCall.class);
+public class AMD64HotSpotZReadBarrierOp extends AMD64HotSpotZBarrieredOp {
+    public static final LIRInstructionClass<AMD64HotSpotZReadBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZReadBarrierOp.class);
 
-    @Def({REG, ILLEGAL}) protected Value result;
-    @Use({REG, STACK}) protected Value[] parameters;
-    @Use({REG}) protected Value functionPtr;
-    @Use({REG}) protected Value numberOfFloatingPointArguments;
+    @State protected LIRFrameState state;
 
-    public AMD64CCall(Value result, Value functionPtr, Value numberOfFloatingPointArguments, Value[] parameters) {
-        super(TYPE);
-        this.result = result;
-        this.functionPtr = functionPtr;
-        this.parameters = parameters;
-        this.numberOfFloatingPointArguments = numberOfFloatingPointArguments;
+    public AMD64HotSpotZReadBarrierOp(Variable result, AMD64AddressValue loadAddress, LIRFrameState state, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget) {
+        super(TYPE, result, loadAddress, config, callTarget);
+        this.state = state;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        directCall(masm);
+        if (state != null) {
+            crb.recordImplicitException(masm.position(), state);
+        }
+        final Register resultReg = asRegister(result);
+        MOV.emit(masm, AMD64BaseAssembler.OperandSize.QWORD, resultReg, loadAddress.toAddress());
+        emitBarrier(crb, masm);
     }
-
-    private void directCall(AMD64MacroAssembler masm) {
-        Register reg = ValueUtil.asRegister(functionPtr);
-        masm.indirectCall(reg);
-        masm.ensureUniquePC();
-    }
-
-    @Override
-    public boolean destroysCallerSavedRegisters() {
-        return true;
-    }
-
 }

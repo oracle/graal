@@ -128,7 +128,7 @@ public abstract class Stub {
     }
 
     public boolean shouldSaveRegistersAroundCalls() {
-        return linkage.getEffect() == HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
+        return linkage.getEffect() != HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
     }
 
     protected final OptionValues options;
@@ -241,7 +241,7 @@ public abstract class Stub {
             Suites suites = createSuites();
             emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
             LIRSuites lirSuites = createLIRSuites();
-            backend.emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
+            backend.emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), compResult, CompilationResultBuilderFactory.Default, null, getRegisterConfig(), lirSuites);
             assert checkStubInvariants(compResult);
         } catch (Throwable e) {
             throw debug.handle(e);

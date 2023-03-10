@@ -1110,29 +1110,4 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutIntUnaligned");
         test("unsafeGetPutLongUnaligned");
     }
-
-    public static Object unsafeGetUncompressedObject(long address) {
-        return unsafe.getUncompressedObject(address);
-    }
-
-    @Test
-    public void testUnsafeGetUncompressionObject() {
-        testGraph("unsafeGetUncompressedObject");
-        // Allocate some memory and fill it with non-zero values.
-        final int size = 32;
-        final long address = unsafe.allocateMemory(size);
-        unsafe.setMemory(address, size, (byte) 0x23);
-
-        // The only thing we can do is check for null-ness.
-        // So, store a null somewhere.
-        unsafe.putAddress(address + 16, 0);
-
-        Object nullObj = unsafe.getUncompressedObject(address + 16);
-        if (nullObj != null) {
-            throw new InternalError("should be null");
-        }
-
-        test("unsafeGetUncompressedObject", address + 16);
-        unsafe.freeMemory(address);
-    }
 }

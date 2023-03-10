@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -72,6 +73,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     ArithmeticLIRGeneratorTool getArithmetic();
+
+    BarrierSetLIRGeneratorTool getBarrierSet();
 
     CodeGenProviders getProviders();
 
@@ -119,9 +122,9 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitNullCheck(Value address, LIRFrameState state);
 
-    Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder);
+    Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder, BarrierType barrierType);
 
-    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder);
+    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder, BarrierType barrierType);
 
     /**
      * Emit an atomic read-and-add instruction.
@@ -130,9 +133,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * @param address address of the value to be read and written
      * @param delta the value to be added
      */
-    default Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+    Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta);
 
     /**
      * Emit an atomic read-and-write instruction.
@@ -141,9 +142,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * @param address address of the value to be read and written
      * @param newValue the new value to be written
      */
-    default Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+    Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType);
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
 

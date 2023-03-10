@@ -43,6 +43,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -67,14 +68,12 @@ import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.RestoreRegistersOp;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
 import org.graalvm.compiler.lir.ValueConsumer;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Word;
@@ -107,9 +106,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         // @formatter:off
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
         public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
-        @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
-                        " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
-        public static final OptionKey<String> ASMInstructionProfiling = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -421,6 +417,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         }
 
+        // Only allocatable registers must be described as killed. This works around an issue where
+        // the set of allocatable registers is different than the registers actually used for
+        // allocation by linear scan on AVX512.
+        RegisterAllocationConfig registerAllocationConfig = newRegisterAllocationConfig(frameMap.getRegisterConfig(), null);
+        EconomicSet<Register> allocatableRegisters = EconomicSet.create();
+        for (Register r : registerAllocationConfig.getAllocatableRegisters()) {
+            allocatableRegisters.add(r);
+        }
+        destroyedRegisters.retainAll(allocatableRegisters);
+
         stub.initDestroyedCallerRegisters(destroyedRegisters);
 
         MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
@@ -441,12 +447,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @Override
     public SuitesProvider getSuites() {
         return getProviders().getSuites();
-    }
-
-    protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
-        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue(lir.getOptions()) != null) {
-            HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
-        }
     }
 
     @Override

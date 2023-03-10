@@ -82,11 +82,6 @@ public abstract class SubstrateBackend extends Backend {
         public String getName() {
             return name();
         }
-
-        @Override
-        public boolean isMarkAfter() {
-            return isMarkAfter;
-        }
     }
 
     private RuntimeConfiguration runtimeConfiguration;

@@ -26,8 +26,8 @@
 package org.graalvm.compiler.core.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugContext;
@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase.AddressLowering;
 
 import jdk.vm.ci.meta.JavaConstant;
 

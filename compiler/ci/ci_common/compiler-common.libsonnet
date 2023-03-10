@@ -167,5 +167,12 @@
     environment+: {
       "JVM_CONFIG"+: "-avx3",
     }
+  },
+
+  zgc_mode:: {
+    platform+:: "-zgc",
+    environment+: {
+      "JVM_CONFIG"+: "-zgc",
+    }
   }
 }

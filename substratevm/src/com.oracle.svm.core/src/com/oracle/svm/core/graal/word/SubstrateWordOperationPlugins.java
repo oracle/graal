@@ -25,15 +25,16 @@
 package com.oracle.svm.core.graal.word;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.word.WordOperationPlugin;
@@ -46,8 +47,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateWordOperationPlugins extends WordOperationPlugin {
 
-    public SubstrateWordOperationPlugins(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
-        super(snippetReflection, wordTypes);
+    public SubstrateWordOperationPlugins(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        super(snippetReflection, wordTypes, barrierSet);
     }
 
     @Override

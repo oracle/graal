@@ -2813,6 +2813,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     @Override
+    public void halt() {
+        hlt();
+    }
+
+    @Override
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);

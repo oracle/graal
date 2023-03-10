@@ -56,6 +56,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -122,6 +123,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorCompareOp;
+import org.graalvm.compiler.lir.gen.BarrierSetLIRGenerator;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.gen.MoveFactory;
@@ -130,7 +132,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -148,8 +149,14 @@ import jdk.vm.ci.meta.ValueKind;
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
 
-    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
-        super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+    public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, Providers providers,
+                    LIRGenerationResult lirGenRes) {
+        super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
+    }
+
+    @Override
+    public AMD64BarrierSetLIRGenerator getBarrierSet() {
+        return (AMD64BarrierSetLIRGenerator) super.getBarrierSet();
     }
 
     @Override
@@ -234,7 +241,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, BarrierType barrierType) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
 
@@ -256,7 +263,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue aRes = AMD64.rax.asValue(integerAccessKind);
         AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integerAccessKind);
         emitMove(aRes, reinterpretedExpectedValue);
-        append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, allocatableNewValue));
+        emitCompareAndSwapOp(integerAccessKind, memKind, aRes, addressValue, allocatableNewValue, barrierType);
 
         if (isLogic) {
             assert trueValue.getValueKind().equals(falseValue.getValueKind());
@@ -273,25 +280,34 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        return LIRValueUtil.asVariable(emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, trueValue, falseValue));
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder,
+                    BarrierType barrierType) {
+        return LIRValueUtil.asVariable(emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, trueValue, falseValue, barrierType));
     }
 
     @Override
-    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null);
+    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder, BarrierType barrierType) {
+        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null, barrierType);
     }
 
-    public void emitCompareAndSwapBranch(ValueKind<?> kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
-                    double trueLabelProbability) {
+    public void emitCompareAndSwapBranch(LIRKind kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
+                    double trueLabelProbability, BarrierType barrierType) {
         assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes();
         assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes();
         assert condition == Condition.EQ || condition == Condition.NE;
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
         RegisterValue raxValue = AMD64.rax.asValue(kind);
         emitMove(raxValue, expectedValue);
-        append(new CompareAndSwapOp(memKind, raxValue, address, raxValue, asAllocatable(newValue)));
+        emitCompareAndSwapOp(kind, memKind, raxValue, address, asAllocatable(newValue), barrierType);
         append(new BranchOp(condition, trueLabel, falseLabel, trueLabelProbability));
+    }
+
+    protected void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
+        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
+            getBarrierSet().emitCompareAndSwapOp(accessKind, memKind, raxValue, address, newValue, barrierType);
+        } else {
+            append(new CompareAndSwapOp(memKind, raxValue, address, raxValue, newValue));
+        }
     }
 
     @Override
@@ -303,7 +319,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
+    public Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType) {
+        if (barrierType != BarrierType.NONE && getBarrierSet() != null) {
+            return getBarrierSet().emitAtomicReadAndWrite(accessKind, address, newValue, barrierType);
+        }
         Variable result = newVariable(toRegisterKind(accessKind));
         AMD64AddressValue addressValue = asAddressValue(address);
         append(new AMD64Move.AtomicReadAndWriteOp((AMD64Kind) accessKind.getPlatformKind(), result, addressValue, asAllocatable(newValue)));
@@ -568,8 +587,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             append(new MembarOp(necessaryBarriers));
         }
     }
-
-    public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments);
 
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {

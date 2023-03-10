@@ -66,6 +66,11 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
 
+    /**
+     * Extra chunks of out of line assembly that must be emitted after all the LIR instructions.
+     */
+    private ArrayList<LIRInstruction.LIRInstructionSlowPath> slowPaths;
+
     private boolean hasArgInCallerFrame;
 
     private final OptionValues options;
@@ -169,6 +174,23 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     public boolean codeEmittingOrderAvailable() {
         return codeEmittingOrder != null;
+    }
+
+    /**
+     * The current set of out of line assembly chunks to be emitted.
+     */
+    public ArrayList<LIRInstruction.LIRInstructionSlowPath> getSlowPaths() {
+        return slowPaths;
+    }
+
+    /**
+     * Add a chunk of assembly that will be emitted out of line after all LIR has been emitted.
+     */
+    public void addSlowPath(LIRInstruction op, Runnable slowPath) {
+        if (slowPaths == null) {
+            slowPaths = new ArrayList<>();
+        }
+        slowPaths.add(new LIRInstruction.LIRInstructionSlowPath(op, slowPath));
     }
 
     /**
@@ -313,6 +335,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
                     }
                 }
             }
+        }
+        if (slowPaths != null) {
+            slowPaths.clear();
         }
     }
 }

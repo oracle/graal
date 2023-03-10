@@ -63,6 +63,19 @@
   for suite in bench.groups.main_suites
   ],
 
+  local zgc_builds = [
+    c.weekly + hw.x52 + jdk + cc.libgraal + cc.zgc_mode + suite,
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
+  local zgc_avx_builds = [
+    c.monthly + hw.x82 + jdk + cc.libgraal + cc.zgc_mode + avx + suite,
+  for avx in [cc.avx2_mode, cc.avx3_mode]
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
   local no_tiered_builds = [
     c.weekly + hw.x52 + jdk + cc.libgraal + cc.no_tiered_comp + suite,
   for jdk in cc.bench_jdks
@@ -76,7 +89,7 @@
   ],
 
 
-  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
+  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]

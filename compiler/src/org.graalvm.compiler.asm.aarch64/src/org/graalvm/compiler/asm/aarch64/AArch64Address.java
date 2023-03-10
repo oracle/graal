@@ -552,6 +552,18 @@ public final class AArch64Address extends AbstractAddress {
         return addressingMode;
     }
 
+    public boolean isBaseRegisterOnly() {
+        switch (getAddressingMode()) {
+            case IMMEDIATE_UNSIGNED_SCALED:
+            case IMMEDIATE_SIGNED_UNSCALED:
+                return immediate == 0;
+            case BASE_REGISTER_ONLY:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     @Override
     public String toString() {
         String addressEncoding;

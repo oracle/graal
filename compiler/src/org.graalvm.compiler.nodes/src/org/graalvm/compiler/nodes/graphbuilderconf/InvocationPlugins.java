@@ -817,9 +817,10 @@ public class InvocationPlugins {
      *
      * @param method the method to lookup
      * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
+     * @param allowDisable whether to respect the DisableIntrinsics flag
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
         if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
                 if (!isDisabledIntrinsicsFilterInitialized) {
@@ -837,7 +838,7 @@ public class InvocationPlugins {
         }
 
         if (parent != null) {
-            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, options);
+            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, allowDisable, options);
             if (plugin != null) {
                 return plugin;
             }
@@ -845,7 +846,7 @@ public class InvocationPlugins {
         InvocationPlugin invocationPlugin = get(method);
         if (invocationPlugin != null) {
             if (allowDecorators || !invocationPlugin.isDecorator()) {
-                if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
+                if (allowDisable && disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
                     if (invocationPlugin.canBeDisabled()) {
                         if (logDisabledIntrinsics) {
                             TTY.println("[Warning] Intrinsic for %s is disabled.", method.format("%H.%n(%p)"));
@@ -856,6 +857,9 @@ public class InvocationPlugins {
                             TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));
                         }
                     }
+                }
+                if (logDisabledIntrinsics && invocationPlugin.canBeDisabled()) {
+                    TTY.println("[Warning] Intrinsic for %s is enabled.", method.format("%H.%n(%p)"));
                 }
                 return invocationPlugin;
             }
@@ -872,7 +876,7 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, OptionValues options) {
-        return lookupInvocation(method, false, options);
+        return lookupInvocation(method, false, true, options);
     }
 
     /**

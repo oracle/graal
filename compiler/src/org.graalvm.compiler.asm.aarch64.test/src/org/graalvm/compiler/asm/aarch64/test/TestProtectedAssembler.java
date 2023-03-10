@@ -215,6 +215,10 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
+    public void halt() {
+    }
+
+    @Override
     public void jmp(Label l) {
     }
 

@@ -49,9 +49,11 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         BarrierSet barrierSet = context.getPlatformConfigurationProvider().getBarrierSet();
-        for (FixedAccessNode n : graph.getNodes(FixedAccessNode.TYPE)) {
-            try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
-                barrierSet.addBarriers(n);
+        if (barrierSet.hasWriteBarrier()) {
+            for (FixedAccessNode n : graph.getNodes(FixedAccessNode.TYPE)) {
+                try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
+                    barrierSet.addBarriers(n);
+                }
             }
         }
     }

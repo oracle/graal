@@ -59,9 +59,17 @@
   for suite in bench.groups.main_suites
   ]),
 
+  local zgc_builds = std.flattenArrays([
+    [
+    c.weekly + hw.x52 + jdk + cc.c2                         + cc.zgc_mode + suite,
+    ]
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ]),
   local all_builds = hotspot_amd64_builds + hotspot_aarch64_builds + hotspot_profiling_builds +
-    weekly_forks_amd64_builds + weekly_forks_aarch64_builds + daily_economy_builds + weekly_economy_builds + no_tiered_builds,
+    weekly_forks_amd64_builds + weekly_forks_aarch64_builds + daily_economy_builds + weekly_economy_builds + no_tiered_builds + zgc_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
+
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]
 }
