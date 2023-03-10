@@ -36,11 +36,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/x86.ad",
-          lineStart = 3708,
-          lineEnd   = 3716,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "28d6a6f670ba3c68ff0c7157a890cd7fbd69bbbc")
+@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.hpp",
+          lineStart = 205,
+          lineEnd   = 208,
+          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
+          sha1      = "98a131f29df93d80b238dc0a8c812fed59bd072d")
 // @formatter:on
 public final class AMD64HalfFloatToFloatOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64HalfFloatToFloatOp> TYPE = LIRInstructionClass.create(AMD64HalfFloatToFloatOp.class);

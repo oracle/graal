@@ -44,7 +44,7 @@ public class IntegerShuffleBitsStampTest extends GraalTest {
 
     @Test
     public void testICompress() {
-        BinaryOp<Compress> compressOp = StampFactory.forInteger(32).getOps().getCompress();
+        BinaryOp<Compress> compressOp = ((IntegerStamp) StampFactory.intValue()).getOps().getCompress();
         for (int value0 : inputs) {
             Stamp value0Stamp = StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK);
             for (int value1 : inputs) {
@@ -68,7 +68,7 @@ public class IntegerShuffleBitsStampTest extends GraalTest {
 
     @Test
     public void testIExpand() {
-        BinaryOp<Expand> expandOp = StampFactory.forInteger(64).getOps().getExpand();
+        BinaryOp<Expand> expandOp = ((IntegerStamp) StampFactory.intValue()).getOps().getExpand();
         for (int value0 : inputs) {
             Stamp value0Stamp = StampFactory.forInteger(JavaKind.Int, value0, value0, value0 & INT_MASK, value0 & INT_MASK);
             for (int value1 : inputs) {

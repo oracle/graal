@@ -41,8 +41,8 @@ public class LongShuffleBitsStampTest extends GraalTest {
                     0xCAFEBABECAFEBABEL, 0xFF00FFF0FF00FFF0L, 0x0000CABAB0000CABABL};
 
     @Test
-    public void testICompress() {
-        BinaryOp<Compress> compressOp = StampFactory.forInteger(32).getOps().getCompress();
+    public void testLCompress() {
+        BinaryOp<Compress> compressOp = ((IntegerStamp) StampFactory.forKind(JavaKind.Long)).getOps().getCompress();
         for (long value0 : inputs) {
             Stamp value0Stamp = StampFactory.forInteger(JavaKind.Long, value0, value0, value0, value0);
             for (long value1 : inputs) {
@@ -65,8 +65,8 @@ public class LongShuffleBitsStampTest extends GraalTest {
     }
 
     @Test
-    public void testIExpand() {
-        BinaryOp<Expand> expandOp = StampFactory.forInteger(64).getOps().getExpand();
+    public void testLExpand() {
+        BinaryOp<Expand> expandOp = ((IntegerStamp) StampFactory.forKind(JavaKind.Long)).getOps().getExpand();
         for (long value0 : inputs) {
             Stamp value0Stamp = StampFactory.forInteger(JavaKind.Long, value0, value0, value0, value0);
             for (long value1 : inputs) {

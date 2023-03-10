@@ -2296,33 +2296,33 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        protected Stamp foldStampImpl(Stamp a, Stamp b) {
                             IntegerStamp valueStamp = (IntegerStamp) a;
                             IntegerStamp maskStamp = (IntegerStamp) b;
 
                             if (valueStamp.getStackKind() == JavaKind.Int) {
-                                if (maskStamp.upMask() == INT_MASK && valueStamp.canBeNegative()) {
+                                if (maskStamp.mayBeSet() == INT_MASK && valueStamp.canBeNegative()) {
                                     // compress result can be negative
                                     return IntegerStamp.create(32, valueStamp.lowerBound(), CodeUtil.maxValue(32));
                                 }
                                 // compress result will always be positive
                                 return IntegerStamp.create(32,
-                                                integerCompress((int) valueStamp.downMask(), (int) maskStamp.downMask()) & INT_MASK,
-                                                integerCompress((int) valueStamp.upMask(), (int) maskStamp.upMask()) & INT_MASK,
+                                                integerCompress((int) valueStamp.mustBeSet(), (int) maskStamp.mustBeSet()) & INT_MASK,
+                                                integerCompress((int) valueStamp.mayBeSet(), (int) maskStamp.mayBeSet()) & INT_MASK,
                                                 0,
-                                                integerCompress((int) INT_MASK, (int) maskStamp.upMask()) & INT_MASK);
+                                                integerCompress((int) INT_MASK, (int) maskStamp.mayBeSet()) & INT_MASK);
                             } else {
                                 GraalError.guarantee(valueStamp.getStackKind() == JavaKind.Long, "unexpected Java kind %s", valueStamp.getStackKind());
-                                if (maskStamp.upMask() == LONG_MASK && valueStamp.canBeNegative()) {
+                                if (maskStamp.mayBeSet() == LONG_MASK && valueStamp.canBeNegative()) {
                                     // compress result can be negative
                                     return IntegerStamp.create(64, valueStamp.lowerBound(), CodeUtil.maxValue(64));
                                 }
                                 // compress result will always be positive
                                 return IntegerStamp.create(64,
-                                                longCompress(valueStamp.downMask(), maskStamp.downMask()),
-                                                longCompress(valueStamp.upMask(), maskStamp.upMask()),
+                                                longCompress(valueStamp.mustBeSet(), maskStamp.mustBeSet()),
+                                                longCompress(valueStamp.mayBeSet(), maskStamp.mayBeSet()),
                                                 0,
-                                                longCompress(LONG_MASK, maskStamp.upMask()));
+                                                longCompress(LONG_MASK, maskStamp.mayBeSet()));
                             }
                         }
                     },
@@ -2361,9 +2361,9 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp a, Stamp b) {
+                        public Stamp foldStampImpl(Stamp a, Stamp b) {
                             IntegerStamp maskStamp = (IntegerStamp) b;
-                            return IntegerStamp.stampForMask(maskStamp.getBits(), 0, maskStamp.upMask());
+                            return IntegerStamp.stampForMask(maskStamp.getBits(), 0, maskStamp.mayBeSet());
                         }
                     },
 

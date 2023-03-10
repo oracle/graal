@@ -59,10 +59,10 @@ public final class ReverseBitsNode extends UnaryNode implements LIRLowerable {
             switch (valueStamp.getBits()) {
                 case 32: {
                     long mask = CodeUtil.mask(32);
-                    return IntegerStamp.stampForMask(32, Integer.reverse((int) valueStamp.downMask()) & mask, Integer.reverse((int) valueStamp.upMask()) & mask);
+                    return IntegerStamp.stampForMask(32, Integer.reverse((int) valueStamp.mustBeSet()) & mask, Integer.reverse((int) valueStamp.mayBeSet()) & mask);
                 }
                 case 64: {
-                    return IntegerStamp.stampForMask(64, Long.reverse(valueStamp.downMask()), Long.reverse(valueStamp.upMask()));
+                    return IntegerStamp.stampForMask(64, Long.reverse(valueStamp.mustBeSet()), Long.reverse(valueStamp.mayBeSet()));
                 }
                 default:
                     throw GraalError.unimplemented("Unsupported bit size " + valueStamp.getBits());
