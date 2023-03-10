@@ -59,8 +59,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
@@ -73,6 +71,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -80,7 +79,6 @@ import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RecordSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.UserError;
@@ -111,16 +109,6 @@ public class SerializationFeature implements InternalFeature {
     static final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
-
-    static class Options {
-        @Option(help = "Throw Native Image-specific exceptions when encountering an unregistered reflection call.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> ThrowMissingRegistrationErrors = new HostedOptionKey<>(false);
-    }
-
-    private static Stream<? extends ResolvedJavaMethod> classMethods(ResolvedJavaType t) {
-        return Stream.concat(Arrays.stream(t.getDeclaredMethods()),
-                        Stream.concat(Arrays.stream(t.getDeclaredConstructors()), t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer())));
-    }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -251,7 +239,7 @@ public class SerializationFeature implements InternalFeature {
         MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
         capturingClasses.parallelStream()
                         .map(metaAccess::lookupJavaType)
-                        .flatMap(SerializationFeature::classMethods)
+                        .flatMap(SerializationFeature::allExecutablesDeclaredInClass)
                         .filter(m -> m.getCode() != null)
                         .forEach(m -> registerLambdasFromMethod(m, impl.getDebugContext()));
 
@@ -275,6 +263,13 @@ public class SerializationFeature implements InternalFeature {
 
     static void warn(String str) {
         System.err.println("Warning: " + str);
+    }
+
+    private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
+        return Stream.concat(Stream.concat(
+                        Arrays.stream(t.getDeclaredMethods()),
+                        Arrays.stream(t.getDeclaredConstructors())),
+                        t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
 }
 
@@ -443,7 +438,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         Class<?> serializationTargetClass = typeResolver.resolveType(lambdaCapturingClassName);
-        if (serializationTargetClass == null) {
+        if (serializationTargetClass == null || serializationTargetClass.isPrimitive() || serializationTargetClass.isArray()) {
             return;
         }
 
@@ -539,7 +534,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * serialization class consistency, so need to register all constructors, methods and
              * fields.
              */
-            if (SerializationFeature.Options.ThrowMissingRegistrationErrors.getValue()) {
+            if (SubstrateOptions.ThrowMissingRegistrationErrors.getValue()) {
                 RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredConstructors());
                 RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredMethods());
             } else {
@@ -571,6 +566,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * component accessor methods for reflection ensures that the record components are
              * available at run time.
              */
+            RuntimeReflection.registerAllRecordComponents(serializationTargetClass);
             RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
         } else if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             Optional.ofNullable(ReflectionUtil.lookupConstructor(true, serializationTargetClass, (Class<?>[]) null))

@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.io.ObjectInputFilter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -47,6 +49,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
@@ -101,6 +104,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -166,6 +170,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.reflect.ReflectionFactory;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -189,6 +194,7 @@ public class SubstrateGraphBuilderPlugins {
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
+        registerSerializationPlugins(snippetReflection, plugins, parsingReason);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, parsingReason);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, parsingReason);
@@ -207,6 +213,113 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
+    private static void registerSerializationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
+        if (reason.duringAnalysis()) {
+            Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
+            serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
+                    if (nonNullJavaConstants(patternNode)) {
+                        String pattern = snippetReflection.asObject(String.class, patternNode.asJavaConstant());
+                        parsePatternAndRegister(pattern);
+                    }
+                    return false;
+                }
+            });
+
+            Registration customConstructor = new Registration(plugins, ReflectionFactory.class);
+            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
+                    if (nonNullJavaConstants(receiver.get(), clazz)) {
+                        RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant()));
+                    }
+                    return false;
+                }
+            });
+
+            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class, Constructor.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
+                    if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
+                        var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
+                        RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
+                                        constructorDeclaringClass);
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
+    private static boolean nonNullJavaConstants(ValueNode... clazz) {
+        for (ValueNode valueNode : clazz) {
+            if (!valueNode.isJavaConstant() || valueNode.isNullConstant()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isParseLimit(String pattern) {
+        int eqNdx = pattern.indexOf('=');
+        // not a limit pattern
+        return eqNdx >= 0;
+    }
+
+    private static void parsePatternAndRegister(String pattern) {
+        String[] patterns = pattern.split(";");
+        for (String p : patterns) {
+            int nameLen = p.length();
+            if (nameLen == 0) {
+                continue;
+            }
+            if (isParseLimit(p)) {
+                continue;
+            }
+            boolean negate = p.charAt(0) == '!';
+            int poffset = negate ? 1 : 0;
+
+            // isolate module name, if any
+            int slash = p.indexOf('/', poffset);
+            if (slash == poffset) {
+                continue; // Module name is missing.
+            }
+            poffset = (slash >= 0) ? slash + 1 : poffset;
+
+            if (p.endsWith("*")) {
+                // Wildcard cases
+                if (!(p.endsWith(".*") || p.endsWith(".**"))) {
+                    // Pattern is a classname (possibly empty) with a trailing wildcard
+                    final String className = p.substring(poffset, nameLen - 1);
+                    if (!negate) {
+                        if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                            try {
+                                String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
+                                RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
+                            } catch (ClassNotFoundException e) {
+                                // no class, no registration
+                            }
+                        }
+                    }
+                }
+            } else {
+                final String name = p.substring(poffset);
+                if (name.isEmpty()) {
+                    return;
+                }
+                // Pattern is a class name
+                if (!negate) {
+                    try {
+                        RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
+                    } catch (ClassNotFoundException e) {
+                        // no class, no registration
+                    }
+                }
+            }
+        }
+    }
+
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
@@ -221,11 +334,13 @@ public class SubstrateGraphBuilderPlugins {
         }
 
         r.register(new RequiredInvocationPlugin("identityHashCode", Object.class) {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
                 return true;
             }
+
         });
     }
 
