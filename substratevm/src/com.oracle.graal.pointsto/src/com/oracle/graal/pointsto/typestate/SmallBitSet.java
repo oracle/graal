@@ -111,7 +111,7 @@ public class SmallBitSet {
 
     public BitSet asBitSet() {
         // System.out.printf("creating BitSet with cardinality %d and last bit %d\n", set.size(), set.last());
-        BitSet result = new BitSet(); //set.last());
+        BitSet result = new BitSet(set.last()+1);
         for (Integer i : set) {
             result.set(i);
         }
