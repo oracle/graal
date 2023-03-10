@@ -28,11 +28,17 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.file.FileSystem;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,15 +49,26 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.util.VMError;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -70,6 +87,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * <p>
@@ -405,5 +423,56 @@ public final class ResourcesFeature implements InternalFeature {
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
             Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
         }
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        Method[] resourceMethods = {
+                        ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
+                        ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
+        };
+
+        ResourcePlugins resourcePlugins = new ResourcePlugins(snippetReflection);
+
+        for (Method method : resourceMethods) {
+            resourcePlugins.registerResourcePlugin(plugins.getInvocationPlugins(), method);
+        }
+    }
+
+    public class ResourcePlugins {
+
+        private final SnippetReflectionProvider snippetReflectionProvider;
+        private final Method resolveResourceName;
+
+        public ResourcePlugins(SnippetReflectionProvider snippetReflectionProvider) {
+            this.snippetReflectionProvider = snippetReflectionProvider;
+            this.resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
+        }
+
+        public void registerResourcePlugin(InvocationPlugins plugins, Method method) {
+            List<Class<?>> parameterTypes = new ArrayList<>();
+            if (!Modifier.isStatic(method.getModifiers())) {
+                parameterTypes.add(InvocationPlugin.Receiver.class);
+            }
+            parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
+
+            plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                    try {
+                        if (!sealed && receiver.isConstant() && arg.isConstant()) {
+                            String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
+                            Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
+                            String resourceName = (String) resolveResourceName.invoke(clazz, resource);
+                            RuntimeResourceAccess.addResource(clazz.getModule(), resourceName);
+                        }
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw VMError.shouldNotReachHere(e);
+                    }
+                    return false;
+                }
+            });
+        }
+
     }
 }
