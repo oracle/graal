@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;

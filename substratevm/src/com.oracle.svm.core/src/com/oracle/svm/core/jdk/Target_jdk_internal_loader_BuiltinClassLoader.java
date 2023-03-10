@@ -30,7 +30,6 @@ import java.lang.module.ModuleReference;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Optional;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;

@@ -100,14 +100,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return false;
     }
 
-    private static class ResourceLookupInfo {
-        ResolvedModule resolvedModule;
-        Module module;
-
-        public ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
-            this.resolvedModule = resolvedModule;
-            this.module = module;
-        }
+    private record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
     }
 
     private static Stream<ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
@@ -144,7 +137,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private static void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            String moduleName = info.resolvedModule.name();
             List<String> foundResources = moduleReader.list()
                             .filter(resourceName -> resourceCollector.isIncluded(info.module, resourceName, moduleReference.location().orElse(null)))
                             .collect(Collectors.toList());

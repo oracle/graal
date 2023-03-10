@@ -67,11 +67,11 @@ public final class Resources {
     }
 
     /**
-     * The hosted map used to collect registered resources. Using a {@link Pair} of (module,
+     * The hosted map used to collect registered resources. Using a {@link Pair} of (moduleName,
      * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
      * the map keys.
      */
-    private final EconomicMap<Pair<Module, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
+    private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -83,7 +83,7 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<Pair<Module, String>, ResourceStorageEntry> getResourceStorage() {
+    public EconomicMap<Pair<String, String>, ResourceStorageEntry> getResourceStorage() {
         return resources;
     }
 
@@ -99,6 +99,10 @@ public final class Resources {
         return lastModifiedTime;
     }
 
+    public static String moduleName(Module module) {
+        return module == null ? null : module.getName();
+    }
+
     public static byte[] inputStreamToByteArray(InputStream is) {
         try {
             return is.readAllBytes();
@@ -107,15 +111,11 @@ public final class Resources {
         }
     }
 
-    private static boolean moduleIsNullOrUnnamed(Module module) {
-        return module == null || !module.isNamed();
-    }
-
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        Module moduleKey = moduleIsNullOrUnnamed(module) ? null : module;
+        String moduleName = moduleName(module);
         var resources = singleton().resources;
         synchronized (resources) {
-            Pair<Module, String> key = Pair.create(moduleKey, resourceName);
+            Pair<String, String> key = Pair.create(moduleName, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
                 if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
@@ -205,8 +205,8 @@ public final class Resources {
 
     public static ResourceStorageEntry get(Module module, String resourceName) {
         String canonicalResourceName = toCanonicalForm(resourceName);
-        Module moduleKey = moduleIsNullOrUnnamed(module) ? null : module;
-        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleKey, canonicalResourceName));
+        String moduleName = moduleName(module);
+        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
         if (entry == null) {
             return null;
         }
@@ -230,8 +230,8 @@ public final class Resources {
     @SuppressWarnings("deprecation")
     private static URL createURL(Module module, String resourceName, int index) {
         try {
-            String moduleName = moduleIsNullOrUnnamed(module) ? null : module.getName();
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
+            String moduleName = moduleName(module);
             return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
@@ -262,10 +262,10 @@ public final class Resources {
         }
 
         ResourceStorageEntry entry = Resources.get(module, resourceName);
-        if (moduleIsNullOrUnnamed(module) && entry == null) {
+        if (moduleName(module) == null && entry == null) {
             /*
-             * If no module is specified and entry was not found as classpath-resource we have
-             * to search for the resource in all modules in the image.
+             * If module is not specified or is an unnamed module and entry was not found as
+             * classpath-resource we have to search for the resource in all modules in the image.
              */
             for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
                 entry = Resources.get(m, resourceName);
@@ -294,8 +294,8 @@ public final class Resources {
         List<URL> resourcesURLs = new ArrayList<>();
         String canonicalResourceName = toCanonicalForm(resourceName);
         boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
-        /* If module was unspecified we have to consider all modules in the image */
-        if (moduleIsNullOrUnnamed(module)) {
+        /* If module was unspecified or unnamed, we have to consider all modules in the image */
+        if (moduleName(module) == null) {
             for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
                 ResourceStorageEntry entry = Resources.get(m, resourceName);
                 addURLEntries(resourcesURLs, entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
