@@ -47,7 +47,7 @@ public class JmxCommonFeature implements InternalFeature {
     }
 
     /**
-     * This methods adds JMX-specific initialization policies when JMX support is enabled.
+     * This method adds JMX-specific initialization policies when JMX support is enabled.
      * <p>
      * Note that
      * {@link com.oracle.svm.core.jdk.management.ManagementFeature#duringSetup(org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess)
@@ -246,15 +246,11 @@ public class JmxCommonFeature implements InternalFeature {
                         "sun.rmi.transport.DGCImpl_Stub"
         };
 
-        String[] fields = {"com.sun.management.GcInfo"};
-
         String[] constructors = {
-                        "com.sun.management.internal.GarbageCollectorExtImpl",
-                        "com.sun.management.internal.OperatingSystemImpl", "java.lang.management.ManagementPermission",
-                        "javax.management.MBeanServerBuilder", "javax.management.remote.rmi.RMIConnectionImpl_Stub",
-                        "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.transport.DGCImpl_Stub",
-                        "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.registry.RegistryImpl_Stub",
-                        "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl_Skel"
+                 "javax.management.remote.rmi.RMIConnectionImpl_Stub",
+                "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.transport.DGCImpl_Stub",
+                "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.registry.RegistryImpl_Stub",
+                 "sun.rmi.transport.DGCImpl_Skel"
         };
 
         for (String clazz : classes) {
@@ -265,9 +261,6 @@ public class JmxCommonFeature implements InternalFeature {
         }
         for (String clazz : constructors) {
             RuntimeReflection.register(access.findClassByName(clazz).getConstructors());
-        }
-        for (String clazz : fields) {
-            RuntimeReflection.register(access.findClassByName(clazz).getFields());
         }
     }
 }

@@ -107,40 +107,6 @@ public class JmxServerFeature implements InternalFeature {
             }
             Class<?> clazz = p.getClass();
             RuntimeReflection.register(clazz);
-            RuntimeReflection.register(clazz.getDeclaredConstructors());
-            RuntimeReflection.register(clazz.getDeclaredMethods());
-            RuntimeReflection.register(clazz.getDeclaredFields());
-            RuntimeReflection.register(clazz.getInterfaces());
-        }
-
-        // Only JmxServerFeature, not JmxClientFeature, has registrations for platform MBeans
-        String[] classes = {
-                        "com.sun.management.GarbageCollectorMXBean",
-                        "com.sun.management.OperatingSystemMXBean",
-                        "com.sun.management.ThreadMXBean",
-                        "com.sun.management.UnixOperatingSystemMXBean", "java.lang.management.CompilationMXBean",
-                        "java.lang.management.GarbageCollectorMXBean", "java.lang.management.MemoryMXBean",
-                        "java.lang.management.MemoryManagerMXBean", "java.lang.management.MemoryPoolMXBean",
-                        "java.lang.management.RuntimeMXBean", "java.lang.management.BufferPoolMXBean",
-                        "java.lang.management.ClassLoadingMXBean", "java.lang.management.PlatformLoggingMXBean"
-        };
-
-        String[] methods = {
-                        "com.sun.management.OperatingSystemMXBean",
-                        "com.sun.management.ThreadMXBean", "com.sun.management.UnixOperatingSystemMXBean",
-                        "java.lang.management.BufferPoolMXBean",
-                        "java.lang.management.ClassLoadingMXBean", "java.lang.management.CompilationMXBean",
-                        "java.lang.management.GarbageCollectorMXBean", "java.lang.management.MemoryMXBean",
-                        "java.lang.management.MemoryManagerMXBean", "java.lang.management.MemoryPoolMXBean",
-                        "java.lang.management.RuntimeMXBean",
-                        "java.lang.management.PlatformLoggingMXBean"
-        };
-
-        for (String clazz : classes) {
-            RuntimeReflection.register(access.findClassByName(clazz));
-        }
-        for (String clazz : methods) {
-            RuntimeReflection.register(access.findClassByName(clazz).getMethods());
         }
     }
 }
