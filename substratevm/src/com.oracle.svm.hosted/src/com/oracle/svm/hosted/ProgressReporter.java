@@ -49,6 +49,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -108,7 +109,7 @@ public class ProgressReporter {
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
-    private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
+    public static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
@@ -501,6 +502,16 @@ public class ProgressReporter {
     }
 
     private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
+    }
+
+    public void calculateHeapBreakdown(Map<String, Long> breakdown, LinkStrategy strategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(breakdown, strategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
+        });
+    }
+
+    public static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
+                    boolean reportStringBytes, long graphEncodingByteLength, BiConsumer<JsonMetric, Object> jsonMetricAction) {
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
@@ -533,13 +544,13 @@ public class ProgressReporter {
                     resourcesByteLength += resource.length;
                 }
             }
-            recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
+            jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
             if (resourcesByteLength > 0) {
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
                 remainingBytes -= resourcesByteLength;
             }
             if (graphEncodingByteLength >= 0) {
-                recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
+                jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }
@@ -903,10 +914,10 @@ public class ProgressReporter {
      * PRINTERS
      */
 
-    abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
+    public abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
         abstract T getThis();
 
-        abstract T a(String text);
+        public abstract T a(String text);
 
         final T a(String text, Object... args) {
             return a(String.format(text, args));
@@ -976,7 +987,9 @@ public class ProgressReporter {
         }
     }
 
-    /** Start printing a new line. */
+    /**
+     * Start printing a new line.
+     */
     private DirectPrinter l() {
         return linePrinter.a(outputPrefix);
     }
@@ -1010,7 +1023,7 @@ public class ProgressReporter {
         protected final List<String> lineParts = new ArrayList<>();
 
         @Override
-        T a(String value) {
+        public T a(String value) {
             lineParts.add(value);
             return getThis();
         }
@@ -1165,7 +1178,7 @@ public class ProgressReporter {
          * re-printed.
          */
         @Override
-        CharacterwiseStagePrinter a(String value) {
+        public CharacterwiseStagePrinter a(String value) {
             print(value);
             return super.a(value);
         }
@@ -1230,7 +1243,7 @@ public class ProgressReporter {
         }
 
         @Override
-        TwoColumnPrinter a(String value) {
+        public TwoColumnPrinter a(String value) {
             super.a(value);
             return this;
         }
@@ -1345,7 +1358,7 @@ public class ProgressReporter {
         }
     }
 
-    private interface LinkStrategy {
+    public interface LinkStrategy {
         void link(AbstractPrinter<?> printer, String text, String url);
 
         String asDocLink(String text, String htmlAnchor);
@@ -1360,7 +1373,7 @@ public class ProgressReporter {
         }
     }
 
-    final class LinklessStrategy implements LinkStrategy {
+    static final class LinklessStrategy implements LinkStrategy {
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(text);
@@ -1372,8 +1385,10 @@ public class ProgressReporter {
         }
     }
 
-    final class LinkyStrategy implements LinkStrategy {
-        /** Adding link part individually for {@link LinePrinter#getCurrentTextLength()}. */
+    static final class LinkyStrategy implements LinkStrategy {
+        /**
+         * Adding link part individually for {@link LinePrinter#getCurrentTextLength()}.
+         */
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(ANSI.LINK_START + url).a(ANSI.LINK_TEXT).a(text).a(ANSI.LINK_END);

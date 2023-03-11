@@ -66,6 +66,14 @@ public class JsonWriter implements AutoCloseable {
         return append('}');
     }
 
+    public JsonWriter appendArrayStart() throws IOException {
+        return append('[');
+    }
+
+    public JsonWriter appendArrayEnd() throws IOException {
+        return append(']');
+    }
+
     public JsonWriter appendSeparator() throws IOException {
         return append(',');
     }
