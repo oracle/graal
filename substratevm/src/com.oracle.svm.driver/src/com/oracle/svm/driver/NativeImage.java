@@ -292,6 +292,7 @@ public class NativeImage {
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
+    private final LinkedHashSet<String> limitModules = new LinkedHashSet<>();
 
     private long imageBuilderPid = -1;
 
@@ -1208,6 +1209,9 @@ public class NativeImage {
         if (!addModules.isEmpty()) {
             imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
         }
+        if (!limitModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES + "=" + String.join(",", limitModules));
+        }
         if (config.modulePathBuild && !finalImageClasspath.isEmpty()) {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
@@ -1693,6 +1697,10 @@ public class NativeImage {
 
     public void addAddedModules(String addModulesArg) {
         addModules.addAll(Arrays.asList(SubstrateUtil.split(addModulesArg, ",")));
+    }
+
+    public void addLimitedModules(String limitModulesArg) {
+        limitModules.addAll(Arrays.asList(SubstrateUtil.split(limitModulesArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {
