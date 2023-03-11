@@ -18,10 +18,10 @@
 
   local hotspot_profiling_builds = std.flattenArrays([
     [
-    c.weekly + hw.x52  + cc.latest_jdk + cc.c2 + cc.enable_profiling   + suite + { job_prefix:: "bench-profiling" },
-    c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + cc.enable_profiling   + suite + { job_prefix:: "bench-profiling" },
-    c.weekly + hw.x52  + cc.latest_jdk + cc.c2 + cc.footprint_tracking + suite + { job_prefix:: "bench-footprint" },
-    c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + cc.footprint_tracking + suite + { job_prefix:: "bench-footprint" }
+    c.weekly + hw.x52  + cc.latest_jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + suite + cc.enable_profiling   + { job_prefix:: "bench-compiler-profiling" },
+    c.weekly + hw.x52  + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" },
+    c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
     ]
   for suite in bench.groups.profiled_suites
   ]),
