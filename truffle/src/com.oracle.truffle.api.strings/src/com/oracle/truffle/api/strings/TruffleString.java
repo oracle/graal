@@ -371,25 +371,25 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        UTF_32LE(littleEndian() ? 0 : 97, "UTF_32LE", littleEndian() ? 2 : 0, littleEndian()),
+        UTF_32LE(littleEndian() ? 0 : 99, "UTF_32LE", littleEndian() ? 2 : 0, littleEndian()),
         /**
          * UTF-32BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_32BE(littleEndian() ? 97 : 0, "UTF_32BE", littleEndian() ? 0 : 2, bigEndian()),
+        UTF_32BE(littleEndian() ? 99 : 0, "UTF_32BE", littleEndian() ? 0 : 2, bigEndian()),
         /**
          * UTF-16LE. Directly supported if the current system is little-endian.
          *
          * @since 22.1
          */
-        UTF_16LE(littleEndian() ? 1 : 98, "UTF_16LE", littleEndian() ? 1 : 0, false),
+        UTF_16LE(littleEndian() ? 1 : 100, "UTF_16LE", littleEndian() ? 1 : 0, false),
         /**
          * UTF-16BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_16BE(littleEndian() ? 98 : 1, "UTF_16BE", littleEndian() ? 0 : 1, false),
+        UTF_16BE(littleEndian() ? 100 : 1, "UTF_16BE", littleEndian() ? 0 : 1, false),
         /**
          * ISO-8859-1, also known as LATIN-1, which is equivalent to US-ASCII + the LATIN-1
          * Supplement Unicode block.
@@ -442,534 +442,546 @@ public final class TruffleString extends AbstractTruffleString {
          */
         Big5_UAO(8, "Big5_UAO"),
         /**
+         * CESU-8.
+         *
+         * @since 23.0
+         */
+        CESU_8(9, "CESU_8"),
+        /**
          * CP51932.
          *
          * @since 22.1
          */
-        CP51932(9, "CP51932"),
+        CP51932(10, "CP51932"),
         /**
          * CP850.
          *
          * @since 22.1
          */
-        CP850(10, "CP850"),
+        CP850(11, "CP850"),
         /**
          * CP852.
          *
          * @since 22.1
          */
-        CP852(11, "CP852"),
+        CP852(12, "CP852"),
         /**
          * CP855.
          *
          * @since 22.1
          */
-        CP855(12, "CP855"),
+        CP855(13, "CP855"),
         /**
          * CP949.
          *
          * @since 22.1
          */
-        CP949(13, "CP949"),
+        CP949(14, "CP949"),
         /**
          * CP950.
          *
          * @since 22.1
          */
-        CP950(14, "CP950"),
+        CP950(15, "CP950"),
         /**
          * CP951.
          *
          * @since 22.1
          */
-        CP951(15, "CP951"),
+        CP951(16, "CP951"),
         /**
          * EUC-JIS-2004.
          *
          * @since 22.1
          */
-        EUC_JIS_2004(16, "EUC_JIS_2004"),
+        EUC_JIS_2004(17, "EUC_JIS_2004"),
         /**
          * EUC-JP.
          *
          * @since 22.1
          */
-        EUC_JP(17, "EUC_JP"),
+        EUC_JP(18, "EUC_JP"),
         /**
          * EUC-KR.
          *
          * @since 22.1
          */
-        EUC_KR(18, "EUC_KR"),
+        EUC_KR(19, "EUC_KR"),
         /**
          * EUC-TW.
          *
          * @since 22.1
          */
-        EUC_TW(19, "EUC_TW"),
+        EUC_TW(20, "EUC_TW"),
         /**
          * Emacs-Mule.
          *
          * @since 22.1
          */
-        Emacs_Mule(20, "Emacs_Mule"),
+        Emacs_Mule(21, "Emacs_Mule"),
         /**
          * EucJP-ms.
          *
          * @since 22.1
          */
-        EucJP_ms(21, "EucJP_ms"),
+        EucJP_ms(22, "EucJP_ms"),
         /**
          * GB12345.
          *
          * @since 22.1
          */
-        GB12345(22, "GB12345"),
+        GB12345(23, "GB12345"),
         /**
          * GB18030.
          *
          * @since 22.1
          */
-        GB18030(23, "GB18030"),
+        GB18030(24, "GB18030"),
         /**
          * GB1988.
          *
          * @since 22.1
          */
-        GB1988(24, "GB1988"),
+        GB1988(25, "GB1988"),
         /**
          * GB2312.
          *
          * @since 22.1
          */
-        GB2312(25, "GB2312"),
+        GB2312(26, "GB2312"),
         /**
          * GBK.
          *
          * @since 22.1
          */
-        GBK(26, "GBK"),
+        GBK(27, "GBK"),
         /**
          * IBM437.
          *
          * @since 22.1
          */
-        IBM437(27, "IBM437"),
+        IBM437(28, "IBM437"),
+        /**
+         * IBM720.
+         *
+         * @since 23.0
+         */
+        IBM720(29, "IBM720"),
         /**
          * IBM737.
          *
          * @since 22.1
          */
-        IBM737(28, "IBM737"),
+        IBM737(30, "IBM737"),
         /**
          * IBM775.
          *
          * @since 22.1
          */
-        IBM775(29, "IBM775"),
+        IBM775(31, "IBM775"),
         /**
          * IBM852.
          *
          * @since 22.1
          */
-        IBM852(30, "IBM852"),
+        IBM852(32, "IBM852"),
         /**
          * IBM855.
          *
          * @since 22.1
          */
-        IBM855(31, "IBM855"),
+        IBM855(33, "IBM855"),
         /**
          * IBM857.
          *
          * @since 22.1
          */
-        IBM857(32, "IBM857"),
+        IBM857(34, "IBM857"),
         /**
          * IBM860.
          *
          * @since 22.1
          */
-        IBM860(33, "IBM860"),
+        IBM860(35, "IBM860"),
         /**
          * IBM861.
          *
          * @since 22.1
          */
-        IBM861(34, "IBM861"),
+        IBM861(36, "IBM861"),
         /**
          * IBM862.
          *
          * @since 22.1
          */
-        IBM862(35, "IBM862"),
+        IBM862(37, "IBM862"),
         /**
          * IBM863.
          *
          * @since 22.1
          */
-        IBM863(36, "IBM863"),
+        IBM863(38, "IBM863"),
         /**
          * IBM864.
          *
          * @since 22.1
          */
-        IBM864(37, "IBM864"),
+        IBM864(39, "IBM864"),
         /**
          * IBM865.
          *
          * @since 22.1
          */
-        IBM865(38, "IBM865"),
+        IBM865(40, "IBM865"),
         /**
          * IBM866.
          *
          * @since 22.1
          */
-        IBM866(39, "IBM866"),
+        IBM866(41, "IBM866"),
         /**
          * IBM869.
          *
          * @since 22.1
          */
-        IBM869(40, "IBM869"),
+        IBM869(42, "IBM869"),
         /**
          * ISO-8859-10.
          *
          * @since 22.1
          */
-        ISO_8859_10(41, "ISO_8859_10"),
+        ISO_8859_10(43, "ISO_8859_10"),
         /**
          * ISO-8859-11.
          *
          * @since 22.1
          */
-        ISO_8859_11(42, "ISO_8859_11"),
+        ISO_8859_11(44, "ISO_8859_11"),
         /**
          * ISO-8859-13.
          *
          * @since 22.1
          */
-        ISO_8859_13(43, "ISO_8859_13"),
+        ISO_8859_13(45, "ISO_8859_13"),
         /**
          * ISO-8859-14.
          *
          * @since 22.1
          */
-        ISO_8859_14(44, "ISO_8859_14"),
+        ISO_8859_14(46, "ISO_8859_14"),
         /**
          * ISO-8859-15.
          *
          * @since 22.1
          */
-        ISO_8859_15(45, "ISO_8859_15"),
+        ISO_8859_15(47, "ISO_8859_15"),
         /**
          * ISO-8859-16.
          *
          * @since 22.1
          */
-        ISO_8859_16(46, "ISO_8859_16"),
+        ISO_8859_16(48, "ISO_8859_16"),
         /**
          * ISO-8859-2.
          *
          * @since 22.1
          */
-        ISO_8859_2(47, "ISO_8859_2"),
+        ISO_8859_2(49, "ISO_8859_2"),
         /**
          * ISO-8859-3.
          *
          * @since 22.1
          */
-        ISO_8859_3(48, "ISO_8859_3"),
+        ISO_8859_3(50, "ISO_8859_3"),
         /**
          * ISO-8859-4.
          *
          * @since 22.1
          */
-        ISO_8859_4(49, "ISO_8859_4"),
+        ISO_8859_4(51, "ISO_8859_4"),
         /**
          * ISO-8859-5.
          *
          * @since 22.1
          */
-        ISO_8859_5(50, "ISO_8859_5"),
+        ISO_8859_5(52, "ISO_8859_5"),
         /**
          * ISO-8859-6.
          *
          * @since 22.1
          */
-        ISO_8859_6(51, "ISO_8859_6"),
+        ISO_8859_6(53, "ISO_8859_6"),
         /**
          * ISO-8859-7.
          *
          * @since 22.1
          */
-        ISO_8859_7(52, "ISO_8859_7"),
+        ISO_8859_7(54, "ISO_8859_7"),
         /**
          * ISO-8859-8.
          *
          * @since 22.1
          */
-        ISO_8859_8(53, "ISO_8859_8"),
+        ISO_8859_8(55, "ISO_8859_8"),
         /**
          * ISO-8859-9.
          *
          * @since 22.1
          */
-        ISO_8859_9(54, "ISO_8859_9"),
+        ISO_8859_9(56, "ISO_8859_9"),
         /**
          * KOI8-R.
          *
          * @since 22.1
          */
-        KOI8_R(55, "KOI8_R"),
+        KOI8_R(57, "KOI8_R"),
         /**
          * KOI8-U.
          *
          * @since 22.1
          */
-        KOI8_U(56, "KOI8_U"),
+        KOI8_U(58, "KOI8_U"),
         /**
          * MacCentEuro.
          *
          * @since 22.1
          */
-        MacCentEuro(57, "MacCentEuro"),
+        MacCentEuro(59, "MacCentEuro"),
         /**
          * MacCroatian.
          *
          * @since 22.1
          */
-        MacCroatian(58, "MacCroatian"),
+        MacCroatian(60, "MacCroatian"),
         /**
          * MacCyrillic.
          *
          * @since 22.1
          */
-        MacCyrillic(59, "MacCyrillic"),
+        MacCyrillic(61, "MacCyrillic"),
         /**
          * MacGreek.
          *
          * @since 22.1
          */
-        MacGreek(60, "MacGreek"),
+        MacGreek(62, "MacGreek"),
         /**
          * MacIceland.
          *
          * @since 22.1
          */
-        MacIceland(61, "MacIceland"),
+        MacIceland(63, "MacIceland"),
         /**
          * MacJapanese.
          *
          * @since 22.1
          */
-        MacJapanese(62, "MacJapanese"),
+        MacJapanese(64, "MacJapanese"),
         /**
          * MacRoman.
          *
          * @since 22.1
          */
-        MacRoman(63, "MacRoman"),
+        MacRoman(65, "MacRoman"),
         /**
          * MacRomania.
          *
          * @since 22.1
          */
-        MacRomania(64, "MacRomania"),
+        MacRomania(66, "MacRomania"),
         /**
          * MacThai.
          *
          * @since 22.1
          */
-        MacThai(65, "MacThai"),
+        MacThai(67, "MacThai"),
         /**
          * MacTurkish.
          *
          * @since 22.1
          */
-        MacTurkish(66, "MacTurkish"),
+        MacTurkish(68, "MacTurkish"),
         /**
          * MacUkraine.
          *
          * @since 22.1
          */
-        MacUkraine(67, "MacUkraine"),
+        MacUkraine(69, "MacUkraine"),
         /**
          * SJIS-DoCoMo.
          *
          * @since 22.1
          */
-        SJIS_DoCoMo(68, "SJIS_DoCoMo"),
+        SJIS_DoCoMo(70, "SJIS_DoCoMo"),
         /**
          * SJIS-KDDI.
          *
          * @since 22.1
          */
-        SJIS_KDDI(69, "SJIS_KDDI"),
+        SJIS_KDDI(71, "SJIS_KDDI"),
         /**
          * SJIS-SoftBank.
          *
          * @since 22.1
          */
-        SJIS_SoftBank(70, "SJIS_SoftBank"),
+        SJIS_SoftBank(72, "SJIS_SoftBank"),
         /**
          * Shift-JIS.
          *
          * @since 22.1
          */
-        Shift_JIS(71, "Shift_JIS"),
+        Shift_JIS(73, "Shift_JIS"),
         /**
          * Stateless-ISO-2022-JP.
          *
          * @since 22.1
          */
-        Stateless_ISO_2022_JP(72, "Stateless_ISO_2022_JP"),
+        Stateless_ISO_2022_JP(74, "Stateless_ISO_2022_JP"),
         /**
          * Stateless-ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
-        Stateless_ISO_2022_JP_KDDI(73, "Stateless_ISO_2022_JP_KDDI"),
+        Stateless_ISO_2022_JP_KDDI(75, "Stateless_ISO_2022_JP_KDDI"),
         /**
          * TIS-620.
          *
          * @since 22.1
          */
-        TIS_620(74, "TIS_620"),
+        TIS_620(76, "TIS_620"),
         /**
          * UTF8-DoCoMo.
          *
          * @since 22.1
          */
-        UTF8_DoCoMo(75, "UTF8_DoCoMo"),
+        UTF8_DoCoMo(77, "UTF8_DoCoMo"),
         /**
          * UTF8-KDDI.
          *
          * @since 22.1
          */
-        UTF8_KDDI(76, "UTF8_KDDI"),
+        UTF8_KDDI(78, "UTF8_KDDI"),
         /**
          * UTF8-MAC.
          *
          * @since 22.1
          */
-        UTF8_MAC(77, "UTF8_MAC"),
+        UTF8_MAC(79, "UTF8_MAC"),
         /**
          * UTF8-SoftBank.
          *
          * @since 22.1
          */
-        UTF8_SoftBank(78, "UTF8_SoftBank"),
+        UTF8_SoftBank(80, "UTF8_SoftBank"),
         /**
          * Windows-1250.
          *
          * @since 22.1
          */
-        Windows_1250(79, "Windows_1250"),
+        Windows_1250(81, "Windows_1250"),
         /**
          * Windows-1251.
          *
          * @since 22.1
          */
-        Windows_1251(80, "Windows_1251"),
+        Windows_1251(82, "Windows_1251"),
         /**
          * Windows-1252.
          *
          * @since 22.1
          */
-        Windows_1252(81, "Windows_1252"),
+        Windows_1252(83, "Windows_1252"),
         /**
          * Windows-1253.
          *
          * @since 22.1
          */
-        Windows_1253(82, "Windows_1253"),
+        Windows_1253(84, "Windows_1253"),
         /**
          * Windows-1254.
          *
          * @since 22.1
          */
-        Windows_1254(83, "Windows_1254"),
+        Windows_1254(85, "Windows_1254"),
         /**
          * Windows-1255.
          *
          * @since 22.1
          */
-        Windows_1255(84, "Windows_1255"),
+        Windows_1255(86, "Windows_1255"),
         /**
          * Windows-1256.
          *
          * @since 22.1
          */
-        Windows_1256(85, "Windows_1256"),
+        Windows_1256(87, "Windows_1256"),
         /**
          * Windows-1257.
          *
          * @since 22.1
          */
-        Windows_1257(86, "Windows_1257"),
+        Windows_1257(88, "Windows_1257"),
         /**
          * Windows-1258.
          *
          * @since 22.1
          */
-        Windows_1258(87, "Windows_1258"),
+        Windows_1258(89, "Windows_1258"),
         /**
          * Windows-31J.
          *
          * @since 22.1
          */
-        Windows_31J(88, "Windows_31J"),
+        Windows_31J(90, "Windows_31J"),
         /**
          * Windows-874.
          *
          * @since 22.1
          */
-        Windows_874(89, "Windows_874"),
+        Windows_874(91, "Windows_874"),
         /* non-ascii-compatible encodings */
         /**
          * CP50220.
          *
          * @since 22.1
          */
-        CP50220(90, "CP50220"),
+        CP50220(92, "CP50220"),
         /**
          * CP50221.
          *
          * @since 22.1
          */
-        CP50221(91, "CP50221"),
+        CP50221(93, "CP50221"),
         /**
          * IBM037.
          *
          * @since 22.1
          */
-        IBM037(92, "IBM037"),
+        IBM037(94, "IBM037"),
         /**
          * ISO-2022-JP.
          *
          * @since 22.1
          */
-        ISO_2022_JP(93, "ISO_2022_JP"),
+        ISO_2022_JP(95, "ISO_2022_JP"),
         /**
          * ISO-2022-JP-2.
          *
          * @since 22.1
          */
-        ISO_2022_JP_2(94, "ISO_2022_JP_2"),
+        ISO_2022_JP_2(96, "ISO_2022_JP_2"),
         /**
          * ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
-        ISO_2022_JP_KDDI(95, "ISO_2022_JP_KDDI"),
+        ISO_2022_JP_KDDI(97, "ISO_2022_JP_KDDI"),
         /**
          * UTF-7.
          *
          * @since 22.1
          */
-        UTF_7(96, "UTF_7");
+        UTF_7(98, "UTF_7");
 
         /**
          * UTF-32 in <i>the current system's endianness</i>, without byte-order mark, with
@@ -1112,7 +1124,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         static boolean is7BitCompatible(int encoding) {
-            return encoding < 90;
+            return encoding < 92;
         }
 
         static boolean is8BitCompatible(int encoding) {
