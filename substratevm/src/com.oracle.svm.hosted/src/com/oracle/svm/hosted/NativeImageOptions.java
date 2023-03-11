@@ -51,8 +51,6 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
-import com.oracle.svm.hosted.util.CPUTypeAArch64;
-import com.oracle.svm.hosted.util.CPUTypeAMD64;
 
 public class NativeImageOptions {
 
@@ -93,12 +91,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<String> MicroArchitecture = new HostedOptionKey<>(null) {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if (MICRO_ARCHITECTURE_LIST.equals(newValue)) {
-                if (System.getProperty("os.arch").equalsIgnoreCase("aarch64")) {
-                    CPUType.print("AArch64", CPUTypeAArch64.values());
-                    CPUTypeAArch64.printFeatureModifiers();
-                } else {
-                    CPUType.print("AMD64", CPUTypeAMD64.values());
-                }
+                CPUType.printList();
                 throw new InterruptImageBuilding("");
             }
         }

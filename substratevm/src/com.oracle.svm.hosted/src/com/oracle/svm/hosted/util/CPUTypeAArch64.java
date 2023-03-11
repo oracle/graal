@@ -89,10 +89,6 @@ public enum CPUTypeAArch64 implements CPUType {
         assert parent == null || parent.getFeatures().stream().noneMatch(f -> specificFeatures.contains(f)) : "duplicate features detected but not allowed";
     }
 
-    public static String getDefault() {
-        return ARMV8_A.getName();
-    }
-
     @Override
     public String getName() {
         return name;
@@ -116,11 +112,15 @@ public enum CPUTypeAArch64 implements CPUType {
         }
     }
 
+    public static String getDefaultName() {
+        return ARMV8_A.getName();
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static EnumSet<CPUFeature> getSelectedFeatures() {
         String value = NativeImageOptions.MicroArchitecture.getValue();
         if (value == null) {
-            value = ARMV8_A.getName(); // set default
+            value = getDefaultName();
         }
         return getCPUFeaturesForArch(value);
     }
@@ -144,6 +144,12 @@ public enum CPUTypeAArch64 implements CPUType {
                         "Example: '%s+lse' enables Large System Extension instructions.%n" +
                         "The following feature modifiers are available: %s.%n",
                         ARMV8_1_A.getName(), AVAILABLE_FEATURE_MODIFIERS);
+    }
+
+    public static boolean nativeSupportsMoreFeaturesThanSelected() {
+        EnumSet<CPUFeature> nativeFeatures = NATIVE.getFeatures();
+        EnumSet<CPUFeature> selectedFeatures = getSelectedFeatures();
+        return nativeFeatures.containsAll(selectedFeatures) && nativeFeatures.size() > selectedFeatures.size();
     }
 
     private static void processFeatureModifiers(List<CPUFeature> features, String[] archParts) {

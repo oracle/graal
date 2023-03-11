@@ -74,8 +74,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
@@ -84,6 +82,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
@@ -96,6 +95,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -256,6 +256,10 @@ public class ProgressReporter {
         if (javaVersion != null) {
             l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
         }
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'",
+                        SubstrateOptions.Optimize.getValue(), CPUType.getSelectedOrDefaultMArch());
+        ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
+        graalLine.println();
         String cCompilerShort = null;
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             cCompilerShort = ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription();
@@ -438,6 +442,7 @@ public class ProgressReporter {
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
+        printRecommendations();
     }
 
     public void ensureCreationStageEndCompleted() {
@@ -598,6 +603,23 @@ public class ProgressReporter {
         p.l().a(String.format("%9s for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
                         .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
+    }
+
+    private void printRecommendations() {
+        if (!SubstrateOptions.BuildOutputRecommendations.getValue()) {
+            return;
+        }
+        l().printLineSeparator();
+        List<UserRecommendation> recommendations = ImageSingletons.lookup(ProgressReporterFeature.class).getRecommendations();
+        List<UserRecommendation> topApplicableRecommendations = recommendations.stream().filter(r -> r.isApplicable().get()).limit(5).toList();
+        if (topApplicableRecommendations.isEmpty()) {
+            return;
+        }
+        l().yellowBold().a("Recommendations:").reset().println();
+        for (UserRecommendation r : topApplicableRecommendations) {
+            String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
+            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase()).a(":").a(alignment).a(r.description()).println();
+        }
     }
 
     public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, Optional<Throwable> optionalError,
@@ -948,7 +970,7 @@ public class ProgressReporter {
             return getThis();
         }
 
-        final T doclink(String text, String htmlAnchor) {
+        public final T doclink(String text, String htmlAnchor) {
             linkStrategy.doclink(this, text, htmlAnchor);
             return getThis();
         }
@@ -959,14 +981,14 @@ public class ProgressReporter {
         return linePrinter.a(outputPrefix);
     }
 
-    final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
+    public final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
         @Override
         DirectPrinter getThis() {
             return this;
         }
 
         @Override
-        DirectPrinter a(String text) {
+        public DirectPrinter a(String text) {
             print(text);
             return this;
         }
@@ -1387,15 +1409,5 @@ public class ProgressReporter {
         public static String strip(String string) {
             return string.replaceAll(STRIP_COLORS, "").replaceAll(STRIP_LINKS, "$1");
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class ProgressReporterFeature implements InternalFeature {
-    private final ProgressReporter reporter = ProgressReporter.singleton();
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        reporter.reportStageProgress();
     }
 }

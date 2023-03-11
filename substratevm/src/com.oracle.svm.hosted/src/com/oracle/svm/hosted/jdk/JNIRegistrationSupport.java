@@ -142,7 +142,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    boolean isRegisteredLibrary(String libname) {
+    public boolean isRegisteredLibrary(String libname) {
         return registeredLibraries.containsKey(libname);
     }
 

@@ -27,6 +27,10 @@ package com.oracle.svm.hosted.util;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import org.graalvm.nativeimage.Platform;
+
+import com.oracle.svm.hosted.NativeImageOptions;
+
 public interface CPUType {
 
     String getName();
@@ -35,7 +39,18 @@ public interface CPUType {
 
     CPUType getParent();
 
-    static void print(String name, CPUType[] values) {
+    static void printList() {
+        if (Platform.includedIn(Platform.AMD64.class)) {
+            print("AMD64", CPUTypeAMD64.values());
+        } else if (Platform.includedIn(Platform.AARCH64.class)) {
+            print("AArch64", CPUTypeAArch64.values());
+            CPUTypeAArch64.printFeatureModifiers();
+        } else {
+            throw new UnsupportedOperationException("");
+        }
+    }
+
+    private static void print(String name, CPUType[] values) {
         Arrays.sort(values, Comparator.comparing(v -> v.getName()));
         System.out.printf("On %s, the following machine types are available:%n%n", name);
         for (CPUType m : values) {
@@ -52,5 +67,18 @@ public interface CPUType {
             System.out.printf("'%s'%n  CPU features: %s%s%n", m.getName(), parentText, specificFeatures);
         }
         System.out.println();
+    }
+
+    static String getSelectedOrDefaultMArch() {
+        String userValue = NativeImageOptions.MicroArchitecture.getValue();
+        if (userValue != null) {
+            return userValue;
+        } else if (Platform.includedIn(Platform.AMD64.class)) {
+            return CPUTypeAMD64.getDefaultName(false);
+        } else if (Platform.includedIn(Platform.AARCH64.class)) {
+            return CPUTypeAArch64.getDefaultName();
+        } else {
+            return "unknown";
+        }
     }
 }
