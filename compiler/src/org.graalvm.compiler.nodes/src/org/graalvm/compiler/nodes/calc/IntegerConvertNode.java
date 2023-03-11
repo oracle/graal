@@ -32,6 +32,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
@@ -45,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.StampInverter;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * An {@code IntegerConvert} converts an integer to an integer of different width.
@@ -192,5 +195,13 @@ public abstract class IntegerConvertNode<OP> extends UnaryNode implements Arithm
     @Override
     public Stamp invertStamp(Stamp outStamp) {
         return getArithmeticOp().invertStamp(inputBits, resultBits, outStamp);
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
+        GraalError.guarantee(val.isPrimitive(), "value doesn't interpret to primitive");
+
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(getInputBits(), getResultBits(), val.asPrimitiveConstant()));
     }
 }

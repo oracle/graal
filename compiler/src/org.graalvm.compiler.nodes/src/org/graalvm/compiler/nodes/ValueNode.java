@@ -27,17 +27,20 @@ package org.graalvm.compiler.nodes;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -296,5 +299,23 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
 
         return true;
+    }
+
+    /**
+     * Graal IR Interpreter - evaluate this node as a pure side-effect-free expression.
+     *
+     * Each subclass should define this method according to the usual Java semantics of that node.
+     * However, subclasses of FixedNode (which defines the control-flow interpret method)
+     * have a default implementation that just returns the pre-calculated result of the control-flow pass.
+     *
+     * The default implementation throws a GraalError to say which node is not yet implemented.
+     *
+     * @param interpreter
+     * @return the value that this expression evaluates to.
+     */
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        String name = String.format("%s.interpretExpr", this.getClass().getName());
+        GraalError.unimplemented(name);
+        return null;
     }
 }

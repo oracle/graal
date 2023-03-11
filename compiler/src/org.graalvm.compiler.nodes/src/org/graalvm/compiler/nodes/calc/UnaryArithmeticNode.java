@@ -26,9 +26,13 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
+import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -37,6 +41,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo
 public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticOperation, ArithmeticLIRLowerable {
@@ -78,5 +83,14 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
             return ConstantNode.forPrimitive(op.foldStamp(forValue.stamp(NodeView.DEFAULT)), op.foldConstant(forValue.asConstant()));
         }
         return null;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
+        GraalError.guarantee(val.isPrimitive(), "value doesn't interpret to primitive");
+        PrimitiveConstant x = ((InterpreterValuePrimitive) val).asPrimitiveConstantForCalculation();
+
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(x));
     }
 }

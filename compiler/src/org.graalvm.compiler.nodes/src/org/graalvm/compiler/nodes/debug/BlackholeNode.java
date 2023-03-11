@@ -31,11 +31,13 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Ensures that the provided values remains alive in the high-level IR and LIR until after register
@@ -73,5 +75,10 @@ public final class BlackholeNode extends FixedWithNextNode implements LIRLowerab
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitBlackhole(gen.operand(value));
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        return next();
     }
 }

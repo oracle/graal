@@ -28,12 +28,14 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
@@ -57,5 +59,16 @@ public final class UnwindNode extends MemoryMapControlSinkNode implements Lowera
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue ex = interpreter.interpretExpr(exception());
+        ex.setUnwindException();
+        System.err.println("setting unwind flag on " + ex.toString());
+        interpreter.setNodeLookupValue(this, ex);
+        // the last node in this execution
+        // return null;
+        throw new IllegalArgumentException("BAD!");
     }
 }

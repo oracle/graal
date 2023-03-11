@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.lang.invoke.MethodHandles;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
@@ -63,6 +64,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
+import org.graalvm.compiler.core.interpreter.GraalInterpreter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.phases.fuzzing.PhasePlanSerializer;
@@ -113,6 +115,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.nodes.util.InterpreterException;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -892,7 +895,64 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Result test(String name, Object... args) {
-        return test(getInitialOptions(), name, args);
+        // return test(getInitialOptions(), name, args);
+        Result result = test(getInitialOptions(), name, args);
+        String interpret = System.getProperty("test.graal.interpreter");
+        if (
+            "ALL".equals(interpret) ||
+                "PRIM".equals(interpret) &&
+                primitiveArgs(args) && result.exception == null) {
+            checkAgainstInterpreter(result, false, name, args);
+        }
+        return result;
+    }
+
+    /**
+     * Check that the (static) method name(args) returns result when interpreted.
+     *
+     * @param result normal or exceptional result
+     * @param strict false means silently succeed if the method tries to execute any unimplemented nodes.
+     * @param name the name of a static method in this class.
+     * @param args arguments to call the method with.
+     */
+    public void checkAgainstInterpreter(Result result, boolean strict, String name, Object... args) {
+        System.out.print("?");
+        try {
+            ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(name));
+            if (!method.isStatic()) {
+                // non static methods not handled yet.
+                return;
+            }
+            StructuredGraph methodGraph = parseForCompile(method, getOrCreateCompilationId(method, null), getInitialOptions());
+            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext(), getClass().getClassLoader(), MethodHandles.lookup());
+            Result interpreterResult = null;
+            try {
+                Object resultValue = interpreter.executeGraph(methodGraph, args);
+                JavaKind resultKind = method.getSignature().getReturnKind();
+                if (resultValue instanceof Number) {
+                    // we coerce numeric results to the desired size (including Boolean)
+                    resultValue = GraalInterpreter.coerceNumberTo(resultKind, resultValue);
+                }
+                interpreterResult = new Result(resultValue, null);
+            } catch (InvocationTargetException e) {
+                interpreterResult = new Result(null, e.getTargetException());
+            } catch (InterpreterException e) {
+                interpreterResult = new Result(null, e.getCause());
+            }
+            assertEquals(result, interpreterResult);
+        } catch (GraalError ex) {
+            if (ex.getMessage().startsWith("unimplemented: ")) {
+                // this test contained a Node that does not yet implement the interpret methods.
+                System.out.print("U");
+                if (strict) {
+                    throw new RuntimeException(ex);
+                    // fail(ex.getMessage());
+                }
+            } else {
+                // any other kind of exception is serious, so we propagate it.
+                throw ex;
+            }
+        }
     }
 
     protected final Result test(OptionValues options, String name, Object... args) {
@@ -1649,4 +1709,20 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CanonicalizerPhase createCanonicalizerPhase() {
         return CanonicalizerPhase.create();
     }
+
+    /**
+     * True if all arguments are primitive (non-object) values.
+     *
+     * @param args Array of method arguments.
+     * @return true if all are Integer constants.
+     */
+    private static boolean primitiveArgs(Object... args) {
+        for (Object arg : args) {
+            if (!(arg instanceof Integer)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

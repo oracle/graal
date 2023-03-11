@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,15 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
@@ -47,8 +50,10 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+//import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Constant;
@@ -202,36 +207,6 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     NarrowNode narrowNode = (NarrowNode) convert;
                     if (narrowNode.getInputBits() > 32 && !constant.isDefaultForKind()) {
                         // Avoid large integer constants.
-                        return null;
-                    }
-                    Stamp convertInputStamp = narrowNode.getValue().stamp(NodeView.DEFAULT);
-
-                    // if we don't know the range the narrowing cannot be safely folded away
-                    if (convertInputStamp.isUnrestricted()) {
-                        return null;
-                    }
-
-                    // don't proceed if we will be changing the range of values
-                    if (convertInputStamp instanceof IntegerStamp) {
-                        IntegerStamp intConvertInputStamp = (IntegerStamp) convertInputStamp;
-                        IntegerStamp intConvertStamp = (IntegerStamp) narrowNode.stamp(NodeView.DEFAULT);
-                        if (condition.isUnsigned()) {
-                            if (intConvertInputStamp.unsignedLowerBound() < intConvertStamp.unsignedLowerBound() || intConvertInputStamp.unsignedUpperBound() > intConvertStamp.unsignedUpperBound()) {
-                                return null;
-                            }
-                        } else {
-                            if (intConvertInputStamp.lowerBound() < intConvertStamp.lowerBound() || intConvertInputStamp.upperBound() > intConvertStamp.upperBound()) {
-                                return null;
-                            }
-                        }
-                    } else if (convertInputStamp instanceof FloatStamp) {
-                        FloatStamp floatConvertInputStamp = (FloatStamp) convertInputStamp;
-                        FloatStamp floatConvertStamp = (FloatStamp) narrowNode.stamp(NodeView.DEFAULT);
-                        GraalError.guarantee(!condition.isUnsigned(), "An unsigned floating point comparison makes no sense");
-                        if (floatConvertInputStamp.lowerBound() < floatConvertStamp.lowerBound() || floatConvertInputStamp.upperBound() > floatConvertStamp.upperBound()) {
-                            return null;
-                        }
-                    } else {
                         return null;
                     }
                 }
@@ -512,5 +487,18 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
 
         return comparison;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
+
+        GraalError.guarantee(xVal.isPrimitive(), "compare gets non-primitive x: %s", xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "compare gets non-primitive y: %s", yVal);
+
+        boolean result = condition().foldCondition(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant(), unorderedIsTrue());
+        // System.out.printf("   %s %s %s -> %s\n", xVal, condition(), yVal, result);
+        return InterpreterValuePrimitive.ofBoolean(result);
     }
 }

@@ -26,10 +26,12 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * The {@code Parameter} instruction is a placeholder for an incoming argument to a function call.
@@ -49,5 +51,10 @@ public final class ParameterNode extends AbstractLocalNode implements IterableNo
     @Override
     public Stamp uncheckedStamp() {
         return uncheckedStamp;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.getParameter(index());
     }
 }

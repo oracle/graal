@@ -44,6 +44,7 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -87,6 +88,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
@@ -2350,5 +2352,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
         // unknown
         return false;
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue condValue = interpreter.interpretExpr(condition());
+        GraalError.guarantee(condValue.isPrimitive() && condValue.getJavaKind() == JavaKind.Boolean, "IfNode condition doesn't interpret to boolean");
+        return getSuccessor(condValue.asPrimitiveConstant().asBoolean());
     }
 }

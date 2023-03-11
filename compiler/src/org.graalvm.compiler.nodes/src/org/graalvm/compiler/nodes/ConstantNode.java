@@ -40,6 +40,8 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -49,6 +51,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -550,5 +553,18 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             return null;
         }
         return ConstantNode.forInt(length);
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        Constant cVal = getValue();
+        if (cVal instanceof PrimitiveConstant) {
+            return InterpreterValuePrimitive.ofPrimitiveConstant(cVal);
+        }
+        if (cVal instanceof JavaConstant && ((JavaConstant) cVal).isNull()) {
+            return InterpreterValue.InterpreterValueNullPointer.INSTANCE;
+        }
+        String msg = String.format("cannot interpret constant Value=%s class=%s\n", cVal, cVal.getClass());
+        throw GraalError.unimplemented(msg);
     }
 }

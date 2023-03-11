@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(allowedUsageTypes = {Association}, cycles = CYCLES_0, size = SIZE_4)
 public final class LoopExitNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable {
@@ -156,5 +157,11 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         // the LoopExitNode creates an earlier location where those nodes can be scheduled.
         assert !(predecessor() instanceof InvokeWithExceptionNode);
         return super.verify();
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        // Doesn't do anything except move to next node.
+        return next();
     }
 }

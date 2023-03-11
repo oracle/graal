@@ -27,11 +27,14 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -50,6 +53,7 @@ import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
@@ -579,4 +583,20 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return false;
     }
 
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        // TODO: handle exact nodes - how to throw exceptions correctly out of them?
+        GraalError.guarantee(!isExactMathOperation(asNode()), "Exact BinaryArithmeticNodes not implemented yet");
+
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
+
+        GraalError.guarantee(xVal != null, "null result from x: %s", getX());
+        GraalError.guarantee(yVal != null, "null result from y: %s", getY());
+        GraalError.guarantee(xVal.isPrimitive(), "non-primitive x: %s", xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "non_primitive y: %s", yVal);
+        PrimitiveConstant x = ((InterpreterValuePrimitive) xVal).asPrimitiveConstantForCalculation();
+        PrimitiveConstant y = ((InterpreterValuePrimitive) yVal).asPrimitiveConstantForCalculation();
+        return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(x, y));
+    }
 }
