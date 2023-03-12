@@ -45,8 +45,6 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.debugging.data.objects.DebugRelocatedMember;
 
 /**
@@ -54,8 +52,8 @@ import org.graalvm.wasm.debugging.data.objects.DebugRelocatedMember;
  */
 public class DebugStructType extends DebugType {
     private final String name;
-    @CompilationFinal(dimensions = 1) private final DebugObject[] members;
-    @CompilationFinal(dimensions = 1) private final DebugType[] superTypes;
+    private final DebugObject[] members;
+    private final DebugType[] superTypes;
 
     public DebugStructType(String name, DebugObject[] members, DebugType[] superTypes) {
         this.name = name;

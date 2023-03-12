@@ -48,27 +48,26 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.DebugLineMap;
+import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugAddressSize;
 import org.graalvm.wasm.debugging.encoding.DataEncoding;
 import org.graalvm.wasm.debugging.encoding.Opcodes;
 import org.graalvm.wasm.debugging.encoding.Tags;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.debugging.data.DebugAddressSize;
 import org.graalvm.wasm.nodes.WasmDataAccess;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 /**
  * Represents a parser for the DWARF Debug Information Format.
  */
 public class DebugParser {
 
-    @CompilationFinal(dimensions = 1) private final byte[] data;
+    private final byte[] data;
     private int offset;
 
     public DebugParser(byte[] data) {

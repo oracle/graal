@@ -162,33 +162,6 @@ This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 These JAR files contain `.wasm` files that correspond to the tests and the benchmarks
 whose source code is in C.
 
-### Test setup for debugging tests
-
-The GraalWasm repository includes a set of precompiled debugging tests that are written in C, C++, and Rust.
-They are not part of the default build and are copied to the output directory when needed.
-
-Building the C and C++ tests requires the [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-19). The latest version of the tests were built with version 19.
-
-To build them:
-
-1. Navigate to the directory of the test `src/org.graalvm.wasm.debugcases/src/wasm/[c|cpp]`.
-2. Run `$WASI_SDK/bin/clang -g [source-name].[c|cpp] -o [source-name].wasm`.
-3. Make sure that both files remain in the same directory.
-
-Building the Rust tests requires **cargo**. The latest version of the tests were built with version 1.66.1.
-
-To build them:
-
-1. Navigate to the directory of the rust tests `src/org.graalvm.wasm.debugcases/src/rust`.
-2. Run `cargo build --target wasm32-wasi` in the root directory of a test (e.g. `scopes`).
-3. Create a directory with the same name as the test in `src/org.graalvm.wasm.debugcases/src/wasm/rust`.
-4. Copy the wasm file from `src/org.graalvm.wasm.debugcases/src/rust/[test-name]/target/wasm32-wasi/debug/[source-name].wasm` into the new directory.
-5. Copy the `src/org.graalvm.wasm.debugcases/src/rust/[test-name]/src` folder into the new directory.
-
-Run `mx --dy /truffle,/compiler build --all` to make the test files available for unit tests. When first running this command, an error will occur. The error contains a hash that has to be copied into `suite.py` at the corresponding project. Run the command again to complete the build.
-
-The debugging test can be executed via `mx --dy /compiler unittest DebuggingSuite`.
-
 ### Run additional tests
 
 You can run the additional tests as follows:

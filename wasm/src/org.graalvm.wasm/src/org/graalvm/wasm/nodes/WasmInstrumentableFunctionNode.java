@@ -71,7 +71,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents an instrumentable Wasm function node.
+ * Represents an instrumentable Wasm function node. See {@link WasmFunctionNode} for a description
+ * of the bytecode replacement that is performed when an instrument attaches.
  */
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)

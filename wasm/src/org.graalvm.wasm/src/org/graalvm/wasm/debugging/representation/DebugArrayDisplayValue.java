@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -99,16 +98,6 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
     }
 
     @ExportMessage
-    public boolean isArrayElementModifiable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @ExportMessage
-    public boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @ExportMessage
     @TruffleBoundary
     public Object readArrayElement(long index) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
@@ -121,13 +110,6 @@ public final class DebugArrayDisplayValue extends DebugDisplayValue implements T
         }
         final DebugObject object = array.readArrayElement(context, location, offset);
         return resolveDebugObject(object, context, location);
-    }
-
-    @SuppressWarnings("unused")
-    @ExportMessage
-    @TruffleBoundary
-    public void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage

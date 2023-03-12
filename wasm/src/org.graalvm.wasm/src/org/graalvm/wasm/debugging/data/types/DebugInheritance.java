@@ -47,15 +47,13 @@ import org.graalvm.wasm.debugging.data.DebugObject;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.parser.DebugParser;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 /**
  * Represents an inheritance relationship in the debug information. Forwards all method calls except
  * for the location resolution to the underlying reference type.
  */
 public class DebugInheritance extends DebugType {
     private final DebugType referenceType;
-    @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
+    private final byte[] locationExpression;
     private final int memberOffset;
 
     /**

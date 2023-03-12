@@ -154,22 +154,6 @@ public final class DebugObjectDisplayValue extends DebugDisplayValue implements 
         return members.containsKey(member);
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
-        return false;
-    }
-
-    @SuppressWarnings("unused")
-    @ExportMessage
-    void writeMember(String member, Object value) {
-    }
-
-    @ExportMessage
-    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
-        return false;
-    }
-
     @SuppressWarnings("static-method")
     @ExportLibrary(InteropLibrary.class)
     static final class WasmVariableNamesObject implements TruffleObject {

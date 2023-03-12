@@ -46,14 +46,12 @@ import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugType;
 import org.graalvm.wasm.debugging.parser.DebugParser;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 /**
  * Represents a debug object that is a member of a structure type like a struct or a variant type.
  */
 public class DebugMember extends DebugBinding {
     private final String name;
-    @CompilationFinal(dimensions = 1) private final byte[] locationExpression;
+    private final byte[] locationExpression;
     private final int offset;
     private final int bitOffset;
     private final int bitSize;

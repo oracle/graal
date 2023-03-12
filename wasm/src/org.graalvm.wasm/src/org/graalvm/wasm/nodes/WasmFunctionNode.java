@@ -96,6 +96,16 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * This node represents the function body of a WebAssembly function. It executes the instruction
+ * sequence contained in a function and represents the main interpreter loop. This node also
+ * functions as a support node for the {@link WasmInstrumentableFunctionNode}. When an instrument
+ * attaches, the {@link WasmInstrumentableFunctionNode} replaces the current instruction sequence of
+ * this node with a slightly modified version. The modified version contains {@link Bytecode#NOTIFY}
+ * instructions for all locations in the WebAssembly bytecode that map to a position in the source
+ * code (C, C++, Rust, ...). When the {@link Bytecode#NOTIFY} instruction is executed, the
+ * instrument gets notified that a certain line in the source code was reached.
+ */
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
@@ -246,10 +256,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += opcode;
                     break;
                 case Bytecode.RETURN: {
-                    // Reset the current line position to support recursion of single line
-                    // functions.
-                    line = -1;
-
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution to resume after the instruction that invoked
                     // the current frame.

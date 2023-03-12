@@ -46,17 +46,15 @@ import java.util.Optional;
 import org.graalvm.wasm.debugging.WasmDebugException;
 import org.graalvm.wasm.debugging.encoding.DataEncoding;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 /**
  * Represents the data of an entry in the Dwarf Debug Information Format v4.
  */
 public class DebugData {
     private final int tag;
     private final int offset;
-    @CompilationFinal(dimensions = 1) private final long[] attributeInfo;
-    @CompilationFinal(dimensions = 1) private final Object[] attributes;
-    @CompilationFinal(dimensions = 1) private final DebugData[] children;
+    private final long[] attributeInfo;
+    private final Object[] attributes;
+    private final DebugData[] children;
 
     public DebugData(int tag, int offset, long[] attributeInfo, Object[] attributes, DebugData[] children) {
         this.tag = tag;
@@ -95,6 +93,14 @@ public class DebugData {
         return -1;
     }
 
+    private WasmDebugException unsupportedAttributeException(int attribute) {
+        return new WasmDebugException(String.format("Debug entry %d does not contain attribute %d", tag, attribute));
+    }
+
+    private WasmDebugException unsupportedEncodingException(int encoding) {
+        return new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
+    }
+
     /**
      * Converts the underlying attribute value to an integer.
      *
@@ -104,7 +110,7 @@ public class DebugData {
     public int asI32(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
-            throw new WasmDebugException(String.format("Debug entry %d does not contain attribute %d", tag, attribute));
+            throw unsupportedAttributeException(attribute);
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         final int value;
@@ -115,7 +121,7 @@ public class DebugData {
         } else if (DataEncoding.isInt(encoding)) {
             value = (int) attributes[index];
         } else {
-            throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
+            throw unsupportedEncodingException(encoding);
         }
         return value;
     }
@@ -152,7 +158,7 @@ public class DebugData {
     public long asI64(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
-            throw new WasmDebugException(String.format("Debug entry %d does not contain attribute %d", tag, attribute));
+            throw unsupportedAttributeException(attribute);
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         final long value;
@@ -165,7 +171,7 @@ public class DebugData {
         } else if (DataEncoding.isLong(encoding)) {
             value = (long) attributes[index];
         } else {
-            throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
+            throw unsupportedEncodingException(encoding);
         }
         return value;
     }
@@ -204,13 +210,13 @@ public class DebugData {
     public String asString(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
-            throw new WasmDebugException(String.format("Debug entry %d does not contain attribute %d", tag, attribute));
+            throw unsupportedAttributeException(attribute);
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isString(encoding)) {
             return (String) attributes[index];
         }
-        throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
+        throw unsupportedEncodingException(encoding);
     }
 
     /**
@@ -239,13 +245,13 @@ public class DebugData {
     public byte[] asByteArray(int attribute) {
         final int index = attributeIndex(attribute);
         if (index == -1) {
-            throw new WasmDebugException(String.format("Debug entry %d does not contain attribute %d", tag, attribute));
+            throw unsupportedAttributeException(attribute);
         }
         final int encoding = attributeEncoding(attributeInfo[index]);
         if (DataEncoding.isByteArray(encoding)) {
             return (byte[]) attributes[index];
         }
-        throw new WasmDebugException(String.format("Debug entry %d attribute encoding %d not supported", tag, encoding));
+        throw unsupportedEncodingException(encoding);
     }
 
     /**

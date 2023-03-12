@@ -48,7 +48,6 @@ import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.objects.DebugScopeValue;
 import org.graalvm.wasm.nodes.WasmDataAccess;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -59,7 +58,7 @@ public class DebugFunction extends DebugType {
     private final String name;
     private final DebugLineMap lineMap;
     private final SourceSection sourceSection;
-    @CompilationFinal(dimensions = 1) private final byte[] frameBaseExpression;
+    private final byte[] frameBaseExpression;
     private final List<DebugObject> variables;
     private final List<DebugObject> globals;
 
