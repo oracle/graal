@@ -28,11 +28,13 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
@@ -50,7 +52,8 @@ public class LinuxStat {
         long st_ino();
 
         @CField
-        int st_mode();
+        @AllowWideningCast
+        UnsignedWord st_mode();
 
         @CField
         int st_uid();
@@ -59,7 +62,8 @@ public class LinuxStat {
         long st_size();
 
         @CField
-        long st_nlink();
+        @AllowWideningCast
+        UnsignedWord st_nlink();
     }
 
     public static class NoTransitions {
