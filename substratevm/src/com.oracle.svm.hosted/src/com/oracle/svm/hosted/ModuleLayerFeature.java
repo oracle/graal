@@ -177,10 +177,10 @@ public final class ModuleLayerFeature implements InternalFeature {
          */
         Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
         Set<String> includedResourceModules = ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules
-                .stream()
-                .map(Module::getName)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                        .stream()
+                        .map(Module::getName)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
         extraModules.addAll(includedResourceModules);
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
