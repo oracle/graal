@@ -70,6 +70,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.After;
 import org.junit.Before;
@@ -120,6 +121,8 @@ public class HostExceptionTest {
     private static final String RUNNER = "runner";
     private static final String RETHROWER = "rethrower";
     private static final String THROW_EXCEPTION = "throwException";
+    private static final String TRY_CATCH = "catchException";
+    private static final String GET_STACK = "getStack";
 
     private static final String VALUE_EXECUTE = Value.class.getName() + "." + "execute";
 
@@ -153,23 +156,16 @@ public class HostExceptionTest {
 
                 @Override
                 protected CallTarget parse(ParsingRequest request) throws Exception {
-                    RootNode rootNode;
-                    switch (request.getSource().getCharacters().toString()) {
-                        case CATCHER:
-                            rootNode = new CatcherRootNode();
-                            break;
-                        case RUNNER:
-                            rootNode = new RunnerRootNode();
-                            break;
-                        case RETHROWER:
-                            rootNode = new RethrowerRootNode();
-                            break;
-                        case THROW_EXCEPTION:
-                            rootNode = new ThrowExceptionRootNode();
-                            break;
-                        default:
-                            throw new IllegalArgumentException();
-                    }
+                    String requestedSource = request.getSource().getCharacters().toString();
+                    RootNode rootNode = switch (requestedSource) {
+                        case CATCHER -> new CatcherRootNode();
+                        case RUNNER -> new RunnerRootNode();
+                        case RETHROWER -> new RethrowerRootNode();
+                        case THROW_EXCEPTION -> new ThrowExceptionRootNode();
+                        case TRY_CATCH -> new TryCatchRootNode();
+                        case GET_STACK -> new GetStackRootNode();
+                        default -> throw new IllegalArgumentException(requestedSource);
+                    };
                     return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
                 }
             });
@@ -829,6 +825,53 @@ public class HostExceptionTest {
                         formatPolyglotExceptionStackTrace(polyglotException));
     }
 
+    /**
+     * Simulate out-of-sync guest stack trace due to missing {@link TruffleStackTrace#fillIn}.
+     */
+    @Test
+    public void testHostAndGuestStackTraceOutOfSync() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        expectedException = NoSuchElementException.class;
+        String expectedMessage = "oh";
+
+        Value tryCatch = context.eval(ProxyLanguage.ID, TRY_CATCH);
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value getStack = context.eval(ProxyLanguage.ID, GET_STACK);
+        Runnable hostThrower = () -> {
+            throw newExceptionWithCause(expectedMessage);
+        };
+
+        hostExceptionVerifier = null;
+        customExceptionVerifier = (hostEx) -> {
+            assertEquals(List.of(expectedException.getSimpleName() + ": " + expectedMessage,
+                            hostQualify("newExceptionWithCause"),
+                            hostQualify("lambda"),
+                            RUNNER,
+                            RUNNER,
+                            GET_STACK,
+                            TRY_CATCH),
+                            formatInteropExceptionStackTrace(hostEx, false, false));
+        };
+
+        Value result = tryCatch.execute(false,
+                        ProxyArray.fromArray(runner, runner, hostThrower),
+                        ProxyArray.fromArray(getStack));
+        assertTrue(result.toString(), result.isException());
+
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
+
+        assertEquals(List.of(expectedMessage,
+                        hostQualify("newExceptionWithCause"),
+                        hostQualify("lambda"),
+                        RUNNER,
+                        RUNNER,
+                        GET_STACK,
+                        TRY_CATCH,
+                        VALUE_EXECUTE),
+                        formatPolyglotExceptionStackTrace(polyglotException));
+    }
+
     @Test
     public void testGuestExceptionCaughtByHost() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
@@ -1161,11 +1204,7 @@ public class HostExceptionTest {
             Object[] args = Arrays.copyOfRange(frame.getArguments(), 1, frame.getArguments().length);
             try {
                 Object result = interop.execute(thrower, args);
-                if (expectedException != null) {
-                    shouldHaveThrown(expectedException);
-                } else if (customExceptionVerifier != null) {
-                    shouldHaveThrown(Throwable.class);
-                }
+                checkShouldHaveThrown();
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
@@ -1207,6 +1246,14 @@ public class HostExceptionTest {
             customExceptionVerifier.accept(ex);
         }
         return ex;
+    }
+
+    private void checkShouldHaveThrown() {
+        if (expectedException != null) {
+            shouldHaveThrown(expectedException);
+        } else if (customExceptionVerifier != null || hostExceptionVerifier != null) {
+            shouldHaveThrown(Throwable.class);
+        }
     }
 
     class RunnerRootNode extends RootNode {
@@ -1316,6 +1363,94 @@ public class HostExceptionTest {
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
+        }
+    }
+
+    class TryCatchRootNode extends RootNode {
+        @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
+
+        TryCatchRootNode() {
+            super(ProxyLanguage.get(null));
+        }
+
+        @TruffleBoundary
+        @Override
+        public SourceSection getSourceSection() {
+            return Source.newBuilder(ProxyLanguage.ID, TRY_CATCH, TRY_CATCH).build().createSection(1);
+        }
+
+        @Override
+        public String getName() {
+            return TRY_CATCH;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            boolean fillIn = (boolean) frame.getArguments()[0];
+            Object[] tryArgs = toArray(frame.getArguments()[1]);
+            Object[] catchArgs = toArray(frame.getArguments()[2]);
+            try {
+                try {
+                    Object result = interop.execute(tryArgs[0], Arrays.copyOfRange(tryArgs, 1, tryArgs.length));
+                    checkShouldHaveThrown();
+                    return result;
+                } catch (AbstractTruffleException ex) {
+                    if (fillIn) {
+                        TruffleStackTrace.fillIn(ex);
+                    }
+                    Object exceptionObj = ex;
+                    Object[] a = new Object[catchArgs.length];
+                    System.arraycopy(catchArgs, 1, a, 0, catchArgs.length - 1);
+                    a[a.length - 1] = exceptionObj;
+                    exceptionObj = interop.execute(catchArgs[0], a);
+                    return exceptionObj;
+                }
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        private Object[] toArray(Object array) {
+            try {
+                int size = (int) interop.getArraySize(array);
+                var result = new Object[size];
+                for (int i = 0; i < size; i++) {
+                    result[i] = interop.readArrayElement(array, i);
+                }
+                return result;
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    class GetStackRootNode extends RootNode {
+        @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
+
+        GetStackRootNode() {
+            super(ProxyLanguage.get(null));
+        }
+
+        @TruffleBoundary
+        @Override
+        public SourceSection getSourceSection() {
+            return Source.newBuilder(ProxyLanguage.ID, GET_STACK, GET_STACK).build().createSection(1);
+        }
+
+        @Override
+        public String getName() {
+            return GET_STACK;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object[] arguments = frame.getArguments();
+            Object exceptionObj = arguments[0];
+            if (!interop.hasExceptionStackTrace(exceptionObj)) {
+                throw CompilerDirectives.shouldNotReachHere("!hasExceptionStackTrace");
+            }
+            checkAndUnwrapException((Throwable) exceptionObj);
+            return exceptionObj;
         }
     }
 
