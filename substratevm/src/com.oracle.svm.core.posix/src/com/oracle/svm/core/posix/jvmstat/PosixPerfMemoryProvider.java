@@ -401,7 +401,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         if (result == -1) {
             return false;
         }
-        if (PosixStat.st_nlink(buf) > 1) {
+        if (PosixStat.st_nlink(buf).aboveThan(1)) {
             return false;
         }
         return true;
@@ -422,7 +422,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             return false;
         }
 
-        if ((PosixStat.st_mode(statp) & (PosixStat.S_IWGRP() | PosixStat.S_IWOTH())) != 0) {
+        if (PosixStat.st_mode(statp).and(PosixStat.S_IWGRP() | PosixStat.S_IWOTH()).notEqual(0)) {
             /*
              * The directory is open for writing and could be subjected to a symlink or a hard link
              * attack. Declare it insecure.
