@@ -56,6 +56,9 @@ import com.oracle.svm.core.util.VMError;
  * <li>Unflushed data refers to the data of a JFR event that is currently being written.</li>
  * </ul>
  *
+ * All code that access {@link JfrBuffer}s must be uninterruptible to avoid races with JFR code that
+ * is executed at a safepoint (such code may access, modify, and free the buffers of other threads).
+ *
  * Multiple threads may access the same {@link JfrBuffer} concurrently:
  * <li>If a thread owns/created a thread-local buffer, then it may access and modify most of that
  * buffer's data at any time, without the need for any locking. Only the following operations
@@ -144,4 +147,10 @@ public interface JfrBuffer extends PointerBase {
      */
     @RawField
     void setNode(JfrBufferNode value);
+
+    @RawField
+    byte getFlags();
+
+    @RawField
+    void setFlags(byte value);
 }
