@@ -235,6 +235,12 @@ public class SubstrateJVM {
         JfrTeardownOperation vmOp = new JfrTeardownOperation();
         vmOp.enqueue();
 
+        try {
+            recorderThread.join();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
         return true;
     }
 
@@ -252,7 +258,10 @@ public class SubstrateJVM {
      */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(int skipCount) {
-        return stackTraceRepo.getStackTraceId(skipCount);
+        if (isRecording()) {
+            return stackTraceRepo.getStackTraceId(skipCount);
+        }
+        return 0L;
     }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
@@ -329,7 +338,10 @@ public class SubstrateJVM {
      */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
-        return typeRepo.getClassId(clazz);
+        if (isRecording()) {
+            return typeRepo.getClassId(clazz);
+        }
+        return 0L;
     }
 
     /**

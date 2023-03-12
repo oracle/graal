@@ -273,7 +273,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         JfrBufferNode node = buffer.getNode();
-        if (node == null) {
+        if (node.isNull()) {
             assert JfrBufferAccess.isRetired(buffer);
             JfrBufferAccess.reinitialize(buffer);
             JfrBufferAccess.clearRetired(buffer);
