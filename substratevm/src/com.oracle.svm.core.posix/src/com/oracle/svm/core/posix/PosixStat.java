@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.CErrorNumber;
@@ -126,16 +127,16 @@ public final class PosixStat {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean S_ISLNK(stat buf) {
-        return (st_mode(buf) & S_IFLNK()) == S_IFLNK();
+        return st_mode(buf).and(S_IFLNK()).equal(S_IFLNK());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean S_ISDIR(stat buf) {
-        return (st_mode(buf) & S_IFDIR()) == S_IFDIR();
+        return st_mode(buf).and(S_IFDIR()).equal(S_IFDIR());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int st_mode(stat buf) {
+    public static UnsignedWord st_mode(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
             return ((LinuxStat.stat64) buf).st_mode();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -145,7 +146,7 @@ public final class PosixStat {
         }
     }
 
-    public static long st_nlink(stat buf) {
+    public static UnsignedWord st_nlink(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class)) {
             return ((LinuxStat.stat64) buf).st_nlink();
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
