@@ -202,7 +202,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
-    Variable emitByteSwap(Value operand);
+    Variable emitReverseBytes(Value operand);
 
     @SuppressWarnings("unused")
     default Variable emitArrayCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value lengthA, Value arrayB, Value lengthB) {

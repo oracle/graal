@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,10 +33,11 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CONTINUATION_DO_YIELD;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
@@ -48,6 +49,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
@@ -617,8 +619,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.electronicCodeBookDecrypt != 0L) {
             registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
         }
-        if (c.contDoYield != 0) {
-            registerForeignCall(CONTINUATION_DO_YIELD, c.contDoYield, NativeCall);
+        if (c.galoisCounterModeCrypt != 0L) {
+            registerForeignCall(GALOIS_COUNTER_MODE_CRYPT, c.galoisCounterModeCrypt, NativeCall);
+        }
+        if (c.poly1305ProcessBlocks != 0) {
+            registerForeignCall(POLY1305_PROCESSBLOCKS, c.poly1305ProcessBlocks, NativeCall);
+        }
+        if (c.chacha20Block != 0) {
+            registerForeignCall(CHACHA20Block, c.chacha20Block, NativeCall);
         }
 
         TargetDescription target = providers.getCodeCache().getTarget();

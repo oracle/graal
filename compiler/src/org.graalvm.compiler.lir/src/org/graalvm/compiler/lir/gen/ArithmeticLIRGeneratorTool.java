@@ -175,6 +175,41 @@ public interface ArithmeticLIRGeneratorTool {
         throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
+    @SuppressWarnings("unused")
+    default Value emitIntegerCompress(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitIntegerExpand(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitFloatIsInfinite(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitReverseBits(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHalfFloatToFloat(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitFloatToHalfFloat(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     enum RoundingMode {
         NEAREST(0),
         DOWN(1),

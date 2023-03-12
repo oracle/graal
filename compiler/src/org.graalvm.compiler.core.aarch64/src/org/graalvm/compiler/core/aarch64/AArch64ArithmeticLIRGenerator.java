@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,14 +49,19 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BitSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
+import org.graalvm.compiler.lir.aarch64.AArch64FloatToHalfFloatOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HalfFloatToFloatOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathCopySignOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreZeroOp;
+import org.graalvm.compiler.lir.aarch64.AArch64NormalizedUnsignedCompareOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
+import org.graalvm.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
@@ -650,5 +655,42 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
 
         return emitUnary(op, value);
+    }
+
+    @Override
+    public Value emitRoundFloatToInteger(Value value) {
+        PlatformKind valuePlatformKind = value.getPlatformKind();
+        GraalError.guarantee(valuePlatformKind == AArch64Kind.SINGLE || valuePlatformKind == AArch64Kind.DOUBLE, "Unsupported type");
+        Variable result = getLIRGen().newVariable(LIRKind.value(value.getPlatformKind() == AArch64Kind.SINGLE ? AArch64Kind.DWORD : AArch64Kind.QWORD));
+        getLIRGen().append(new AArch64RoundFloatToIntegerOp(getLIRGen(), result, asAllocatable(value)));
+        return result;
+    }
+
+    @Override
+    public Variable emitReverseBits(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input));
+        getLIRGen().append(new AArch64BitSwapOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitHalfFloatToFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.SINGLE));
+        getLIRGen().append(new AArch64HalfFloatToFloatOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitFloatToHalfFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
+        getLIRGen().append(new AArch64FloatToHalfFloatOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
+        getLIRGen().append(new AArch64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
+        return result;
     }
 }

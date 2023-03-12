@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -297,9 +297,14 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
                     : NamedLocationIdentity.mutable("JavaThread::_vthread");
 
+    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION
+                    : NamedLocationIdentity.mutable("JavaThread::_threadObj");
+
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
     public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
+
+    public static final LocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_scopedValueCache");
 
     @Fold
     public static JavaKind getWordKind() {
@@ -866,6 +871,11 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
                     : NamedLocationIdentity.mutable("_vthread OopHandle contents");
 
+    public static final LocationIdentity HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
+                    : NamedLocationIdentity.mutable("_threadObj OopHandle contents");
+
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION = NamedLocationIdentity.mutable("_scopedValueCache OopHandle contents");
+
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.layoutHelperHeaderSizeShift;
@@ -938,6 +948,47 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int arrayClassElementOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.arrayClassElementOffset;
+    }
+
+    @Fold
+    public static int threadCarrierThreadOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadCarrierThreadObjectOffset;
+    }
+
+    public static boolean supportsVirtualThreadUpdateJFR(GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset != -1 && config.jfrThreadLocalVthreadIDOffset != -1 && config.jfrThreadLocalVthreadEpochOffset != -1 &&
+                        config.jfrThreadLocalVthreadExcludedOffset != -1 && config.jfrThreadLocalVthreadOffset != -1 && config.javaLangThreadJFREpochOffset != -1 &&
+                        config.javaLangThreadTIDOffset != -1;
+    }
+
+    @Fold
+    public static int jfrThreadLocalVthreadIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset + config.jfrThreadLocalVthreadIDOffset;
+    }
+
+    @Fold
+    public static int jfrThreadLocalVthreadEpochOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset + config.jfrThreadLocalVthreadEpochOffset;
+    }
+
+    @Fold
+    public static int jfrThreadLocalVthreadExcludedOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset + config.jfrThreadLocalVthreadExcludedOffset;
+    }
+
+    @Fold
+    public static int jfrThreadLocalVthreadOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadJFRThreadLocalOffset + config.jfrThreadLocalVthreadOffset;
+    }
+
+    @Fold
+    public static int javaLangThreadJFREpochOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.javaLangThreadJFREpochOffset;
+    }
+
+    @Fold
+    public static int javaLangThreadTIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.javaLangThreadTIDOffset;
     }
 
     public static final LocationIdentity PRIMARY_SUPERS_LOCATION = NamedLocationIdentity.immutable("PrimarySupers");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,20 +35,26 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.EvexRMIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -232,6 +238,54 @@ public class AMD64VectorUnary {
                 VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
             }
+        }
+    }
+
+    public static final class FloatPointClassTestOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<FloatPointClassTestOp> TYPE = LIRInstructionClass.create(FloatPointClassTestOp.class);
+
+        // @formatter:off
+        public static final int QUIET_NAN = 0b00000001;
+        public static final int POS_ZERO  = 0b00000010;
+        public static final int NEG_ZERO  = 0b00000100;
+        public static final int POS_INF   = 0b00001000;
+        public static final int NEG_INF   = 0b00010000;
+        public static final int DENORMAL  = 0b00100000;
+        public static final int FIN_NEG   = 0b01000000;
+        public static final int SIG_NAN   = 0b10000000;
+        // @formatter:on
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        @Temp({REG}) protected AllocatableValue maskTemp;
+
+        private final OperandSize size;
+        private final int imm8;
+
+        public FloatPointClassTestOp(LIRGeneratorTool tool, OperandSize size, int imm8, AllocatableValue result, AllocatableValue input) {
+            super(TYPE);
+
+            this.result = result;
+            this.input = input;
+            this.size = size;
+            this.imm8 = imm8;
+            this.maskTemp = tool.newVariable(LIRKind.value(AMD64Kind.MASK8));
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            switch (size) {
+                case SS:
+                    EvexRMIOp.VFPCLASSSS.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
+                    break;
+                case SD:
+                    EvexRMIOp.VFPCLASSSD.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("unsupported operand size " + size);
+            }
+            masm.kmovb(asRegister(result), asRegister(maskTemp));
         }
     }
 }

@@ -533,7 +533,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitByteSwap(Value input) {
+    public Variable emitReverseBytes(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AArch64ByteSwap.ByteSwapOp(result, asAllocatable(input)));
         return result;

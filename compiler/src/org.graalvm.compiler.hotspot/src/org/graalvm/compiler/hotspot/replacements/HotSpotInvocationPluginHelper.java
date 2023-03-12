@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,15 +27,19 @@ package org.graalvm.compiler.hotspot.replacements;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -43,8 +47,8 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
+import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -53,6 +57,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -120,6 +125,8 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
         JAVA_THREAD_THREAD_OBJECT(config -> config.threadCurrentThreadObjectOffset, JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION, null),
+        JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
+        JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
@@ -199,28 +206,65 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read the injected field {@code java.lang.Class.array_klass}.
+     * Reads the injected field {@code java.lang.Class.array_klass}.
      */
     public ValueNode loadArrayKlass(ValueNode componentType) {
         return readLocation(componentType, HotSpotVMConfigField.CLASS_ARRAY_KLASS_OFFSET);
     }
 
-    public ValueNode readCurrentThreadObject() {
-        return readCurrentThreadObject(b.add(new CurrentJavaThreadNode(getWordKind())));
-    }
-
-    public ValueNode readCurrentThreadObject(CurrentJavaThreadNode thread) {
+    /**
+     * Reads thread object from current thread. {@code readVirtualThread} indicates whether the
+     * caller wants the current virtual thread or its carrier -- the current platform thread.
+     */
+    public ValueNode readCurrentThreadObject(boolean readVirtualThread) {
+        CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(getWordKind()));
         // JavaThread::_threadObj is never compressed
         ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
         Stamp fieldStamp = StampFactory.forKind(getWordKind());
-        ValueNode value = readLocation(thread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, fieldStamp);
+        ValueNode value = readLocation(thread, readVirtualThread ? HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT : HotSpotVMConfigField.JAVA_THREAD_CARRIER_THREAD_OBJECT, fieldStamp);
 
         // Read the Object from the OopHandle
-        ValueNode handleOffset = ConstantNode.forIntegerKind(getWordKind(), 0, b.getGraph());
-        AddressNode handleAddress = b.add(new OffsetAddressNode(value, handleOffset));
-        value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp,
-                        barrierSet.readBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, handleAddress, threadStamp), MemoryOrderMode.PLAIN));
+        AddressNode handleAddress = b.add(OffsetAddressNode.create(value));
+        LocationIdentity location = readVirtualThread ? HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION : HOTSPOT_OOP_HANDLE_LOCATION;
+        value = b.add(new ReadNode(handleAddress, location, threadStamp, barrierSet.readBarrierType(location, handleAddress, threadStamp), MemoryOrderMode.PLAIN));
         return value;
+    }
+
+    /**
+     * Sets {@code thread} into {@code JavaThread::_threadObj}.
+     */
+    public void setCurrentThread(ValueNode thread) {
+        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(getWordKind()));
+        ValueNode threadObjectHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, StampFactory.forKind(getWordKind()));
+        AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
+        b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
+            b.add(new VirtualThreadUpdateJFRNode(thread));
+        }
+    }
+
+    private AddressNode scopedValueCacheHelper() {
+        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(getWordKind()));
+        ValueNode scopedValueCacheHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET, StampFactory.forKind(getWordKind()));
+        return b.add(OffsetAddressNode.create(scopedValueCacheHandle));
+    }
+
+    /**
+     * Reads {@code JavaThread::_scopedValueCache}.
+     */
+    public ValueNode readThreadScopedValueCache() {
+        AddressNode handleAddress = scopedValueCacheHelper();
+        ObjectStamp stamp = StampFactory.object(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Object[].class)));
+        return b.add(new ReadNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, stamp,
+                        barrierSet.readBarrierType(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, handleAddress, stamp), MemoryOrderMode.PLAIN));
+    }
+
+    /**
+     * Sets {@code cache} into {@code JavaThread::_scopedValueCache}.
+     */
+    public void setThreadScopedValueCache(ValueNode cache) {
+        AddressNode handleAddress = scopedValueCacheHelper();
+        b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, cache, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
     /**

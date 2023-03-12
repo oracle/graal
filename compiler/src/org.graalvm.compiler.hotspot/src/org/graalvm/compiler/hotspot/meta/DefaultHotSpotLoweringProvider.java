@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
+import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
@@ -80,6 +81,7 @@ import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
+import org.graalvm.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -265,6 +267,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
     protected RegisterFinalizerSnippets.Templates registerFinalizerSnippets;
+    protected VirtualThreadUpdateJFRSnippets.Templates virtualThreadUpdateJFRSnippets;
 
     protected final Map<Class<? extends Node>, Extension> extensions = new HashMap<>();
 
@@ -317,6 +320,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
         objectSnippets = new ObjectSnippets.Templates(options, providers);
         unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
+        virtualThreadUpdateJFRSnippets = new VirtualThreadUpdateJFRSnippets.Templates(options, providers);
 
         replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
 
@@ -510,6 +514,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof IntegerDivRemNode) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
                 lowerIntegerDivRem((IntegerDivRemNode) n, tool);
+            }
+        } else if (n instanceof VirtualThreadUpdateJFRNode) {
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                virtualThreadUpdateJFRSnippets.lower((VirtualThreadUpdateJFRNode) n, registers, tool);
             }
         } else {
             return false;

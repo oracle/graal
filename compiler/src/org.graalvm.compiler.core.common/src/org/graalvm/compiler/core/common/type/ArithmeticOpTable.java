@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,9 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Compress;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Div;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Expand;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Max;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Min;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
@@ -101,6 +103,9 @@ public final class ArithmeticOpTable {
 
     private final ReinterpretOp reinterpret;
 
+    private final BinaryOp<Compress> compress;
+    private final BinaryOp<Expand> expand;
+
     private final FloatConvertOp[] floatConvert;
     private final int hash;
 
@@ -129,7 +134,7 @@ public final class ArithmeticOpTable {
     }
 
     public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null, null, null, null);
+                    null, null, null, null, null, null);
 
     public interface ArithmeticOpWrapper {
 
@@ -188,15 +193,18 @@ public final class ArithmeticOpTable {
 
         ReinterpretOp reinterpret = wrapIfNonNull(wrapper::wrapReinterpretOp, inner.getReinterpret());
 
+        BinaryOp<Compress> compress = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getCompress());
+        BinaryOp<Expand> expand = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getExpand());
+
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
         return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret,
-                        floatConvert);
+                        compress, expand, floatConvert);
     }
 
     protected ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
                     IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, BinaryOp<UMax> umax,
-                    BinaryOp<UMin> umin, ReinterpretOp reinterpret, FloatConvertOp... floatConvert) {
+                    BinaryOp<UMin> umin, ReinterpretOp reinterpret, BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -222,12 +230,15 @@ public final class ArithmeticOpTable {
         this.umax = umax;
         this.umin = umin;
         this.reinterpret = reinterpret;
+        this.compress = compress;
+        this.expand = expand;
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         for (FloatConvertOp op : floatConvert) {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, floatConvert);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, compress, expand,
+                        floatConvert);
     }
 
     @Override
@@ -411,6 +422,20 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes an integer bit-compress operation.
+     */
+    public BinaryOp<Compress> getCompress() {
+        return compress;
+    }
+
+    /**
+     * Describes an integer bit-expand operation.
+     */
+    public BinaryOp<Expand> getExpand() {
+        return expand;
+    }
+
+    /**
      * Describes integer/float/double conversions.
      */
     public FloatConvertOp getFloatConvert(FloatConvert op) {
@@ -447,7 +472,9 @@ public final class ArithmeticOpTable {
                Objects.equals(min, that.min) &&
                Objects.equals(umax, that.umax) &&
                Objects.equals(umin, that.umin) &&
-               Objects.equals(reinterpret, that.reinterpret);
+               Objects.equals(reinterpret, that.reinterpret) &&
+               Objects.equals(compress, that.compress) &&
+               Objects.equals(expand, that.expand);
         // @formatter:on
     }
 
@@ -474,7 +501,8 @@ public final class ArithmeticOpTable {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" +
-                        toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret) +
+                        toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt,
+                                        zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, compress, expand) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -674,6 +702,20 @@ public final class ArithmeticOpTable {
 
             protected UMin(boolean associative, boolean commutative) {
                 super("UMIN", associative, commutative);
+            }
+        }
+
+        public abstract static class Compress extends BinaryOp<Compress> {
+
+            protected Compress(boolean associative, boolean commutative) {
+                super("COMPRESS", associative, commutative);
+            }
+        }
+
+        public abstract static class Expand extends BinaryOp<Expand> {
+
+            protected Expand(boolean associative, boolean commutative) {
+                super("EXPAND", associative, commutative);
             }
         }
 

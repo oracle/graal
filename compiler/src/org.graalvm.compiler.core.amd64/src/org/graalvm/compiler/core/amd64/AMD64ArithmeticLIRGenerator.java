@@ -84,6 +84,8 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
+import static org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.FloatPointClassTestOp.NEG_INF;
+import static org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.FloatPointClassTestOp.POS_INF;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -117,7 +119,10 @@ import org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
+import org.graalvm.compiler.lir.amd64.AMD64BitSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
+import org.graalvm.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
+import org.graalvm.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCopySignOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
@@ -129,6 +134,7 @@ import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
+import org.graalvm.compiler.lir.amd64.AMD64NormalizedUnsignedCompareOp;
 import org.graalvm.compiler.lir.amd64.AMD64RoundFloatToIntegerOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
@@ -1433,6 +1439,33 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    @Override
+    public Value emitIntegerCompress(Value value, Value mask) {
+        AMD64Kind kind = (AMD64Kind) value.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.QWORD || kind == AMD64Kind.DWORD, "Unsupported value kind");
+        Variable result = getLIRGen().newVariable(value.getValueKind());
+        getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PEXT, kind == AMD64Kind.QWORD ? AVXSize.QWORD : AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
+        return result;
+    }
+
+    @Override
+    public Value emitIntegerExpand(Value value, Value mask) {
+        AMD64Kind kind = (AMD64Kind) value.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.QWORD || kind == AMD64Kind.DWORD, "Unsupported value kind");
+        Variable result = getLIRGen().newVariable(value.getValueKind());
+        getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, kind == AMD64Kind.QWORD ? AVXSize.QWORD : AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
+        return result;
+    }
+
+    @Override
+    public Value emitFloatIsInfinite(Value input) {
+        AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
+        GraalError.guarantee(kind == AMD64Kind.DOUBLE || kind == AMD64Kind.SINGLE, "Unsupported value kind %s", input.getPlatformKind());
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), kind == AMD64Kind.DOUBLE ? OperandSize.SD : OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
+        return result;
+    }
+
     public boolean supportAVX() {
         TargetDescription target = getLIRGen().target();
         return ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
@@ -1635,4 +1668,31 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    @Override
+    public Variable emitReverseBits(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input));
+        getLIRGen().append(new AMD64BitSwapOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitHalfFloatToFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.SINGLE));
+        getLIRGen().append(new AMD64HalfFloatToFloatOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitFloatToHalfFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        getLIRGen().append(new AMD64FloatToHalfFloatOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
+        return result;
+    }
 }

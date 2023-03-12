@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,10 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VCVTPS2PH;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp.VCVTPH2PS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VGF2P8AFFINEQB;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z1;
@@ -1108,9 +1111,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, XMM, XMM, null),
         MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, null, XMM, null),
         MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_DQ_VL, MASK, null, XMM, null),
+        MASK_NULL_XMM_AVX512DQ(CPUFeature.AVX512DQ, CPUFeature.AVX512DQ, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, MASK, null, XMM, null),
         MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_CLMUL(CPUFeature.AVX, null, CPUFeature.CLMUL, null, XMM, XMM, XMM, XMM),
-        AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM);
+        AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM),
+        AVX1_GFNI_AVX512F_VL(asCPUFeature("GFNI"), asCPUFeature("GFNI"), CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
+        F16C_AVX512F_VL(asCPUFeature("F16C"), asCPUFeature("F16C"), null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
 
         private final CPUFeature l128feature;
         private final CPUFeature l256feature;
@@ -1321,6 +1327,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPABSW          = new VexRMOp("VPABSW",          P_66, M_0F38, WIG, 0x1D, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.FVM,       WIG);
         public static final VexRMOp VPABSD          = new VexRMOp("VPABSD",          P_66, M_0F38, WIG, 0x1E, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.FVM,       W0);
         public static final VexRMOp VPABSQ          = new VexRMOp("VPABSQ",          P_66, M_0F38, WIG, 0x1F, VEXOpAssertion.AVX512F_VL,                EVEXTuple.FVM,       W1);
+
+        public static final VexRMOp VCVTPH2PS       = new VexRMOp("VCVTPH2PS",       P_66, M_0F38, W0,  0x13, VEXOpAssertion.F16C_AVX512F_VL,           EVEXTuple.HVM,       W0);
         // @formatter:on
 
         protected VexRMOp(String opcode, int pp, int mmmmm, int w, int op) {
@@ -1441,7 +1449,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     /**
      * VEX-encoded instructions with an operand order of RMI.
      */
-    public static final class VexRMIOp extends VexOp implements VexRRIOp {
+    public static class VexRMIOp extends VexOp implements VexRRIOp {
         // @formatter:off
         public static final VexRMIOp VAESKEYGENASSIST = new VexRMIOp("VAESKEYGENASSIST", P_66, M_0F3A, WIG, 0xDF, VEXOpAssertion.AVX1_128ONLY_AES);
         public static final VexRMIOp VPERMQ           = new VexRMIOp("VPERMQ",           P_66, M_0F3A, W1,  0x00, VEXOpAssertion.AVX2_AVX512F_VL_256_512, EVEXTuple.FVM, W1);
@@ -1451,11 +1459,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            P_F2, M_0F3A, W1,  0xF0, VEXOpAssertion.BMI2);
         // @formatter:on
 
-        private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+        protected VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, WIG);
         }
 
-        private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+        protected VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
         }
 
@@ -1490,6 +1498,32 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
             asm.emitByte(imm8);
+        }
+    }
+
+    /**
+     * EVEX-encoded instructions with an operand order of RMI.
+     */
+    public static final class EvexRMIOp extends VexRMIOp {
+        // @formatter:off
+        public static final EvexRMIOp VFPCLASSSS = new EvexRMIOp("VFPCLASS", P_66, M_0F3A, W0, 0x67, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ, EVEXTuple.T1S_32BIT, W0);
+        public static final EvexRMIOp VFPCLASSSD = new EvexRMIOp("VFPCLASD", P_66, M_0F3A, W1, 0x67, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ, EVEXTuple.T1S_64BIT, W1);
+        // @formatter:on
+
+        private EvexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+            super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
+            emit(asm, size, dst, src, imm8, Register.None, Z0, B0);
         }
     }
 
@@ -1545,6 +1579,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMRIOp VEXTRACTI32X8 = new VexMRIOp("VEXTRACTI32X8", P_66, M_0F3A, W0, 0x3B, VEXOpAssertion.AVX512DQ_512ONLY,    EVEXTuple.T8_32BIT, W0);
         public static final VexMRIOp VEXTRACTF64X4 = new VexMRIOp("VEXTRACTF64X2", P_66, M_0F3A, W1, 0x1B, VEXOpAssertion.AVX512F_512ONLY,     EVEXTuple.T4_64BIT, W1);
         public static final VexMRIOp VEXTRACTI64X4 = new VexMRIOp("VEXTRACTI64X2", P_66, M_0F3A, W1, 0x3B, VEXOpAssertion.AVX512F_512ONLY,     EVEXTuple.T4_64BIT, W1);
+
+        // Half precision floating-point values conversion
+        public static final VexMRIOp VCVTPS2PH     = new VexMRIOp("VCVTPS2PH",     P_66, M_0F3A, W0, 0x1D, VEXOpAssertion.F16C_AVX512F_VL,     EVEXTuple.HVM,      W0);
         // @formatter:on
 
         private VexMRIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -1567,6 +1604,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.emitByte(op);
+            asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
+            asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, dst), "emitting invalid instruction");
+            asm.vexPrefix(src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(src, dst);
+            asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8, Register mask, int z, int b) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
+            boolean useEvex = asm.vexPrefix(src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
             asm.emitByte(imm8);
@@ -2225,6 +2278,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VPCMPUD      = new VexRVMIOp("VPCMPUD",      P_66, M_0F3A, W0,  0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,      W0);
         public static final VexRVMIOp VPCMPUQ      = new VexRVMIOp("VPCMPUQ",      P_66, M_0F3A, W1,  0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,      W1);
 
+        // Galois Field New Instructions
+        public static final VexRVMIOp VGF2P8AFFINEQB = new VexRVMIOp("VGF2P8AFFINEQB", P_66, M_0F3A, W1, 0xCE, VEXOpAssertion.AVX1_GFNI_AVX512F_VL,  EVEXTuple.FVM, W1);
         // @formatter:on
 
         private VexRVMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -3172,6 +3227,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         SSEOp.MUL.emit(this, SS, dst, src);
     }
 
+    public final void movswl(Register dst, Register src) {
+        AMD64RMOp.MOVSX.emit(this, DWORD, dst, src);
+    }
+
     public final void movswl(Register dst, AMD64Address src) {
         AMD64RMOp.MOVSX.emit(this, DWORD, dst, src);
     }
@@ -3609,7 +3668,36 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         pmovSZx(dst, src, 0x35);
     }
 
+    public final void gf2p8affineqb(Register dst, Register src, int imm8) {
+        GraalError.guarantee(supportsCPUFeature("GFNI"), "gf2p8affineqb requires GFNI");
+        assert inRC(XMM, dst) && inRC(XMM, src);
+
+        if (supports(CPUFeature.AVX)) {
+            VGF2P8AFFINEQB.emit(this, AVXSize.XMM, dst, dst, src, imm8);
+        } else {
+            simdPrefix(dst, dst, src, PD, P_0F3A, false);
+            emitByte(0xCE);
+            emitModRM(dst, src);
+            emitByte(imm8);
+        }
+    }
+
+    public final void vcvtps2ph(Register dst, Register src, int imm8) {
+        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtps2ph requires F16C");
+        assert inRC(XMM, dst) && inRC(XMM, src);
+
+        VCVTPS2PH.emit(this, AVXSize.XMM, dst, src, imm8);
+    }
+
+    public final void vcvtph2ps(Register dst, Register src) {
+        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtph2ps requires F16C");
+        assert inRC(XMM, dst) && inRC(XMM, src);
+
+        VCVTPH2PS.emit(this, AVXSize.XMM, dst, src);
+    }
+
     public final void push(Register src) {
+        assert inRC(CPU, src);
         prefix(src);
         emitByte(0x50 + encode(src));
     }
@@ -5231,5 +5319,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         evexPrefix(dst, mask, Register.None, src, AVXSize.ZMM, P_66, M_0F38, WIG, Z0, B0);
         emitByte(0x30);
         emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXSize.ZMM));
+    }
+
+    // Insn: vfpclassss k2 {k1}, xmm2/m32, imm8
+    public final void vfpclassss(Register dst, Register mask, Register src, int imm8) {
+        assert supports(CPUFeature.AVX512DQ);
+        assert inRC(MASK, mask) && inRC(MASK, mask) && inRC(XMM, src);
+        // Code: EVEX.LIG.66.0F3A.W0 67 /r
+        evexPrefix(dst, mask, Register.None, src, AVXSize.XMM, P_66, M_0F3A, W0, Z0, B0);
+        emitByte(0x67);
+        emitModRM(dst, src);
+        emitByte(imm8);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -599,7 +599,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitByteSwap(Value input) {
+    public Variable emitReverseBytes(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
         return result;
