@@ -62,8 +62,9 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * A TruffleStackTrace is automatically added when a {@link Throwable} passes through a
  * {@link CallTarget call target}. {@link ControlFlowException} and {@link PolyglotException} do not
- * get a TruffleStackTrace. Other {@link Throwable} are added a TruffleStackTrace, as long as there
- * is a {@code null} {@link Throwable#getCause() cause} available to insert the TruffleStackTrace.
+ * get a TruffleStackTrace. An internal or host {@link Throwable} is added a TruffleStackTrace, as
+ * long as suppression is not disabled for this throwable, via a Throwable added to the list of
+ * {@linkplain Throwable#addSuppressed(Throwable) suppressed exceptions}.
  * <p>
  * A guest language stack trace element is automatically added by the Truffle runtime every time the
  * {@link Throwable} passes through a {@link CallTarget call target}. This is incremental and
@@ -193,12 +194,13 @@ public final class TruffleStackTrace extends Exception {
 
     /**
      * Fills in the guest language stack frames from the current frames on the stack. If the stack
-     * was already filled before then this method has no effect. The implementation attaches a
-     * lightweight exception object to the last location in the {@link Throwable#getCause() cause}
-     * chain of the exception. The number stack trace elements that are filled in can be customized
-     * by the {@code stackTraceElementLimit} parameter of the
+     * was already filled before then this method has no effect. The number stack trace elements
+     * that are filled in can be customized by the {@code stackTraceElementLimit} parameter of the
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
      * AbstractTruffleException constructor}.
+     *
+     * The implementation attaches a lightweight exception object as a suppressed exception to
+     * internal and host (but not guest) exceptions.
      *
      * @param throwable the {@link Throwable} to fill
      * @throws NullPointerException if the {@link Throwable} is null
