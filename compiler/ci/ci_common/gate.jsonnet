@@ -269,7 +269,7 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": {},
+    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": t("5:00:00"),
 
     "weekly-compiler-test_serialgc-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
     "weekly-compiler-test_serialgc-labsjdk-20-linux-aarch64": t("1:50:00"),
