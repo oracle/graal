@@ -97,6 +97,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
 
+    public record Signature(String name, AnalysisType[] parameterTypes) {
+    }
+
     public final ResolvedJavaMethod wrapped;
 
     private final int id;

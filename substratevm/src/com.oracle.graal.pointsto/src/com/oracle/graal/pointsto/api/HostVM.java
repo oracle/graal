@@ -155,6 +155,13 @@ public abstract class HostVM {
     public abstract void onTypeReachable(AnalysisType newValue);
 
     /**
+     * Run initialization tasks for a newly instantiated {@link AnalysisType}.
+     *
+     * @param newValue the type to initialize
+     */
+    public abstract void onTypeInstantiated(AnalysisType newValue);
+
+    /**
      * Check if an {@link AnalysisType} is initialized.
      */
     public abstract boolean isInitialized(AnalysisType type);

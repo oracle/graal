@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.AnnotationFormatError;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
@@ -108,7 +107,7 @@ public final class TypeAnnotationValue {
                 buf.get();
                 break;
             default:
-                throw new AnnotationFormatError("Could not parse bytes for type annotations");
+                throw new IllegalArgumentException("Invalid target info code");
         }
         int endPos = buf.position();
         byte[] targetInfo = new byte[endPos - startPos];

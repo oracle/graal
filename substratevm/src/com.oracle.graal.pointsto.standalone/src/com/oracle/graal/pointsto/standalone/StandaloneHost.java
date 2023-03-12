@@ -81,6 +81,10 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
+    public void onTypeInstantiated(AnalysisType newValue) {
+    }
+
+    @Override
     public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
         return new StandaloneGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);

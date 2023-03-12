@@ -348,6 +348,17 @@ public class HostedUniverse implements Universe {
         return types.get(type);
     }
 
+    public HostedType[] optionalLookup(JavaType... javaTypes) {
+        HostedType[] result = new HostedType[javaTypes.length];
+        for (int i = 0; i < javaTypes.length; ++i) {
+            result[i] = optionalLookup(javaTypes[i]);
+            if (result[i] == null) {
+                return null;
+            }
+        }
+        return result;
+    }
+
     @Override
     public HostedField lookup(JavaField field) {
         JavaField result = lookupAllowUnresolved(field);

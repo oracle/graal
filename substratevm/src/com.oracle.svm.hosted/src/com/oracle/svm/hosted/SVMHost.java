@@ -70,6 +70,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -148,6 +150,7 @@ public class SVMHost extends HostVM {
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
+    private final RuntimeReflectionSupport reflectionSupport;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -185,6 +188,7 @@ public class SVMHost extends HostVM {
             multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
         }
         parsingSupport = ImageSingletons.contains(SVMParsingSupport.class) ? ImageSingletons.lookup(SVMParsingSupport.class) : null;
+        this.reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -310,6 +314,14 @@ public class SVMHost extends HostVM {
 
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
+    }
+
+    @Override
+    public void onTypeInstantiated(AnalysisType newValue) {
+        if (newValue.isAnnotation()) {
+            /* getDeclaredMethods is called in the AnnotationType constructor */
+            reflectionSupport.registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, newValue.getJavaClass());
+        }
     }
 
     @Override

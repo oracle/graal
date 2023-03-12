@@ -654,7 +654,7 @@ public class HeapDumpWriter {
         writeInt(DUMMY_STACK_TRACE_ID);
         writeClassId(clazz.getSuperclass());
         writeObjectId(getClassLoader(clazz));
-        writeObjectId(clazz.getSigners());
+        writeObjectId(null); // signers
         writeObjectId(null); // protection domain
         writeObjectId(null); // reserved field
         writeObjectId(null); // reserved field
