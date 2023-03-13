@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
@@ -62,11 +63,11 @@ public class ProgressReporterFeature implements InternalFeature {
         if (NativeImageOptions.MicroArchitecture.getValue() != null) {
             return false; // explicitly set by user
         }
-        if (System.getProperty("os.arch").equalsIgnoreCase("aarch64")) {
-            return CPUTypeAArch64.nativeSupportsMoreFeaturesThanSelected();
-        } else {
-            return CPUTypeAMD64.nativeSupportsMoreFeaturesThanSelected();
-        }
+        return switch (SubstrateUtil.getArchitectureName()) {
+            case "aarch64" -> CPUTypeAArch64.nativeSupportsMoreFeaturesThanSelected();
+            case "amd64" -> CPUTypeAMD64.nativeSupportsMoreFeaturesThanSelected();
+            default -> false;
+        };
     }
 
     private static boolean recommendTraceAgentForAWT() {
