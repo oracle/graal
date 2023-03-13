@@ -450,7 +450,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         boolean hasShift = false;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
-                forwardHeader = WordFactory.unsigned(0xf0f0f0f0f0f0f0f0L);
+                forwardHeader = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);
                 hasShift = true;
             } else {
                 forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
