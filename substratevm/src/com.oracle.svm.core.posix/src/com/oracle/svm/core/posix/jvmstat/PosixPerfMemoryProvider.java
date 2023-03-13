@@ -281,7 +281,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 
         boolean success = true;
         for (int pos = 0; pos < size; pos += pageSize) {
-            success = fs.seek(rawFd, pos);
+            success = fs.seek(rawFd, WordFactory.signed(pos));
             if (!success) {
                 break;
             }
