@@ -30,7 +30,6 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.util.ArrayList;
@@ -49,8 +48,6 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.util.VMError;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -84,10 +81,13 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * <p>
@@ -451,16 +451,14 @@ public final class ResourcesFeature implements InternalFeature {
 
         public void registerResourcePlugin(InvocationPlugins plugins, Method method) {
             List<Class<?>> parameterTypes = new ArrayList<>();
-            if (!Modifier.isStatic(method.getModifiers())) {
-                parameterTypes.add(InvocationPlugin.Receiver.class);
-            }
+            parameterTypes.add(InvocationPlugin.Receiver.class);
             parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
 
             plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                     try {
-                        if (!sealed && receiver.isConstant() && arg.isConstant()) {
+                        if (!sealed && receiver.isConstant() && arg.isConstant() && !arg.isNullConstant()) {
                             String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                             Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
                             String resourceName = (String) resolveResourceName.invoke(clazz, resource);
