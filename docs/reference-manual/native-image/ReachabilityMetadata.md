@@ -69,7 +69,7 @@ Computing metadata in code can be achieved in two ways:
 
 Each dynamic Java feature that requires metadata has a corresponding JSON file named `<feature>-config.json`.
 The JSON file consists of entries that tell Native Image the elements to include.
-For example, Java reflection metadata is specified in `reflection-config.json`, and a sample entry looks like:
+For example, Java reflection metadata is specified in `reflect-config.json`, and a sample entry looks like:
 ```json
 {
   "name": "Foo"
