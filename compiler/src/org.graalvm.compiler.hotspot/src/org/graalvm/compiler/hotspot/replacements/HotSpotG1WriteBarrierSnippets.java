@@ -85,7 +85,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
-    protected int objectArrayIndexScale() {
+    protected long objectArrayIndexScale() {
         return ReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, JavaKind.Object);
     }
 
