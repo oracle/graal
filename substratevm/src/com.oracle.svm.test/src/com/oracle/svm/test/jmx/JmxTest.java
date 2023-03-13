@@ -37,7 +37,6 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.BufferPoolMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.HashMap;
@@ -199,7 +198,7 @@ public class JmxTest {
         ObjectName objectName = new ObjectName("java.lang:type=Threading");
         try {
             mbsc.invoke(objectName, "resetPeakThreadCount", null, null);
-            assertTrue("Peak thread count should be positive ",(int) mbsc.getAttribute(objectName, "PeakThreadCount") > 0);
+            assertTrue("Peak thread count should be positive ", (int) mbsc.getAttribute(objectName, "PeakThreadCount") > 0);
         } catch (Exception e) {
             Assert.fail("Remote invocations failed : " + e.getMessage());
         }
@@ -227,7 +226,7 @@ public class JmxTest {
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         ObjectName objectName = new ObjectName("java.lang:type=Memory");
         try {
-            mbsc.invoke(objectName, "gc", null,null);
+            mbsc.invoke(objectName, "gc", null, null);
         } catch (Exception e) {
             Assert.fail("Remote invocations failed : " + e.getMessage());
         }

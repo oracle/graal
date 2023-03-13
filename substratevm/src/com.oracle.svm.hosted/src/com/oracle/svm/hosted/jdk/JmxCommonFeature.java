@@ -39,8 +39,6 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
-import javax.management.openmbean.CompositeData;
-
 @AutomaticallyRegisteredFeature
 public class JmxCommonFeature implements InternalFeature {
     @Override
@@ -141,7 +139,7 @@ public class JmxCommonFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.RuntimeMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.ThreadMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
-                access.findClassByName("javax.management.NotificationEmitter"));
+                        access.findClassByName("javax.management.NotificationEmitter"));
     }
 
     private static void configureJNI() {
@@ -206,26 +204,10 @@ public class JmxCommonFeature implements InternalFeature {
 
     private static void configureReflection(BeforeAnalysisAccess access) {
         String[] classes = {
-                        "com.sun.crypto.provider.AESCipher$General", "com.sun.crypto.provider.ARCFOURCipher",
-                        "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305", "com.sun.crypto.provider.DESCipher",
-                        "com.sun.crypto.provider.DESedeCipher", "com.sun.crypto.provider.DHParameters",
-                        "com.sun.crypto.provider.HmacCore$HmacSHA256",
-                        "com.sun.management.GcInfo",
                         "com.sun.management.internal.OperatingSystemImpl",
-                        "javax.management.remote.rmi.RMIConnection", "com.sun.management.VMOption",
-                        "javax.management.remote.rmi.RMIConnectionImpl_Stub", "javax.management.remote.rmi.RMIServer",
+                        "javax.management.remote.rmi.RMIConnectionImpl_Stub",
                         "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.registry.RegistryImpl_Stub",
-                        "java.rmi.MarshalledObject", "java.rmi.Remote", "java.rmi.dgc.Lease", "java.rmi.dgc.VMID",
-                        "java.rmi.registry.Registry", "java.rmi.server.ObjID", "java.rmi.server.RemoteObject",
-                        "java.rmi.server.RemoteStub", "java.rmi.server.UID", "javax.management.openmbean.OpenType",
-                        "java.lang.management.LockInfo", "java.lang.management.ManagementPermission",
-                        "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
-                        "java.lang.management.ThreadInfo", "java.security.SecureRandomParameters",
-                        "javax.management.MBeanServerBuilder", "javax.management.NotificationBroadcaster",
-                        "javax.management.NotificationEmitter", "javax.management.NotificationFilterSupport",
-                        "javax.management.ObjectName", "jdk.management.jfr.ConfigurationInfo",
-                        "jdk.management.jfr.EventTypeInfo",
-                        "jdk.management.jfr.RecordingInfo", "jdk.management.jfr.SettingDescriptorInfo",
+                        "java.rmi.server.RemoteStub",
                         "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.transport.DGCImpl_Skel",
                         "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl", "sun.rmi.transport.DGCImpl_Skel",
                         "sun.rmi.transport.DGCImpl_Stub"
@@ -241,10 +223,10 @@ public class JmxCommonFeature implements InternalFeature {
         };
 
         String[] constructors = {
-                 "javax.management.remote.rmi.RMIConnectionImpl_Stub",
-                "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.transport.DGCImpl_Stub",
-                "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.registry.RegistryImpl_Stub",
-                 "sun.rmi.transport.DGCImpl_Skel"
+                        "javax.management.remote.rmi.RMIConnectionImpl_Stub",
+                        "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.transport.DGCImpl_Stub",
+                        "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.registry.RegistryImpl_Stub",
+                        "sun.rmi.transport.DGCImpl_Skel"
         };
 
         for (String clazz : classes) {
