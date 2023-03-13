@@ -24,17 +24,49 @@
  */
 package org.graalvm.profdiff.test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 
 import org.graalvm.profdiff.Profdiff;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class MainTest {
+
+    /**
+     * The saved value of {@link System#out}.
+     */
+    private PrintStream savedSystemOut;
+
+    /**
+     * The saved value of {@link System#err}.
+     */
+    private PrintStream savedSystemErr;
+
+    @Before
+    public void replaceSystemStreams() {
+        savedSystemOut = System.out;
+        System.setOut(new PrintStream(new ByteArrayOutputStream()));
+        savedSystemErr = System.err;
+        System.setErr(new PrintStream(new ByteArrayOutputStream()));
+    }
+
+    @After
+    public void restoreSystemStreams() {
+        System.out.close();
+        System.setOut(savedSystemOut);
+        savedSystemOut = null;
+        System.err.close();
+        System.setErr(savedSystemErr);
+        savedSystemErr = null;
+    }
 
     @Test
     public void testHelp() {
