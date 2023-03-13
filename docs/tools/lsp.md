@@ -20,7 +20,7 @@ $JAVA_HOME/bin/node --experimental-options --lsp app.js
 Example app listening on port 3000!
 ```
 ![](img/vscode_cc_1.png)
-_GraalVM Enterprise-provided code completion for R script, part of the Node.js Polyglot application_
+_Oracle GraalVM-provided code completion for R script, part of the Node.js Polyglot application_
 
 The GraalVM Language Server itself does not provide the static data usually gathered by parsing the application sources (as these data are sometimes fuzzy in the cases of dynamic languages).
 Instead, the Language Server was designed to provide the accurate dynamic data gathered from the application runtime.
