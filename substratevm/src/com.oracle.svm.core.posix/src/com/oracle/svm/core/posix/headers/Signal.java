@@ -389,7 +389,7 @@ public class Signal {
         @CEnumValue
         public native int getCValue();
     }
-    
+
     public static class NoTransitions {
         @CFunction(transition = NO_TRANSITION)
         public static native int kill(int pid, int sig);

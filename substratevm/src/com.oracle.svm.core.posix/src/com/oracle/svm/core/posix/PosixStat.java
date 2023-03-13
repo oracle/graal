@@ -30,19 +30,20 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CConst;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
@@ -83,6 +84,21 @@ public final class PosixStat {
 
     @CConstant
     public static native int S_IXOTH();
+
+    public static boolean isOpen(int fd) {
+        int result;
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
+            result = LinuxStat.NoTransitions.fstat64(fd, stat);
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            result = DarwinStat.NoTransitions.fstat(fd, stat);
+        } else {
+            throw VMError.shouldNotReachHere("Unsupported platform");
+        }
+
+        return result == 0 || CErrorNumber.getCErrorNumber() != Errno.EBADF();
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SignedWord getSize(int fd) {

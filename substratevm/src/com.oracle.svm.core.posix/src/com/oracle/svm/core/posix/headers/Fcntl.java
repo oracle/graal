@@ -30,7 +30,8 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CConst;
+
+import com.oracle.svm.core.c.CConst;
 
 // Checkstyle: stop
 
