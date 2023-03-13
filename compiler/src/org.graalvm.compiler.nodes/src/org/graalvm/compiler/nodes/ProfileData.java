@@ -98,6 +98,10 @@ public abstract class ProfileData {
             return source == INJECTED || source == PROFILED || source == ADOPTED || source == INFERRED;
         }
 
+        public boolean isInjected() {
+            return this == INJECTED;
+        }
+
         public boolean isProfiled() {
             return this == PROFILED;
         }

@@ -2007,7 +2007,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        if (this.getProfileData().getProfileSource() == ProfileSource.INJECTED) {
+        if (this.getProfileData().getProfileSource().isInjected()) {
             // Attempt to propagate the injected profile to predecessor if without a profile.
             propagateInjectedProfile(this.getProfileData(), trueEnds, falseEnds);
         }
