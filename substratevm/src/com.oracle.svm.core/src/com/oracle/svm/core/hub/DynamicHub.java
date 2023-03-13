@@ -527,7 +527,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void checkClassFlag(int mask, String methodName) {
         if (throwMissingRegistrationErrors() && !isClassFlagSet(mask)) {
-            throw MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
+            MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
         }
     }
 
@@ -995,22 +995,22 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         Class<?> clazz = DynamicHub.toClass(this);
         if (field == null) {
             if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_FIELDS_FLAG, ALL_FIELDS_FLAG)) {
-                throw MissingReflectionRegistrationUtils.forField(clazz, fieldName);
-            } else {
-                /*
-                 * If getDeclaredFields (or getFields for a public field) is registered, we know for
-                 * sure that the field does indeed not exist if we don't find it.
-                 */
-                throw new NoSuchFieldException(fieldName);
+                MissingReflectionRegistrationUtils.forField(clazz, fieldName);
             }
+            /*
+             * If getDeclaredFields (or getFields for a public field) is registered, we know for
+             * sure that the field does indeed not exist if we don't find it.
+             */
+            throw new NoSuchFieldException(fieldName);
         } else {
             ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
             int fieldModifiers = field.getModifiers();
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
             if (throwMissingErrors && hiding) {
-                throw MissingReflectionRegistrationUtils.forField(clazz, fieldName);
-            } else if (negative || hiding) {
+                MissingReflectionRegistrationUtils.forField(clazz, fieldName);
+            }
+            if (negative || hiding) {
                 throw new NoSuchFieldException(fieldName);
             }
         }
@@ -1029,22 +1029,22 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
             if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_METHODS_FLAG, ALL_METHODS_FLAG)) {
-                throw MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
-            } else {
-                /*
-                 * If getDeclaredMethods (or getMethods for a public method) is registered, we know
-                 * for sure that the method does indeed not exist if we don't find it.
-                 */
-                throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
+                MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
             }
+            /*
+             * If getDeclaredMethods (or getMethods for a public method) is registered, we know for
+             * sure that the method does indeed not exist if we don't find it.
+             */
+            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
         } else {
             ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
             int methodModifiers = method.getModifiers();
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
             if (throwMissingErrors && hiding) {
-                throw MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
-            } else if (negative || hiding) {
+                MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
+            }
+            if (negative || hiding) {
                 throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
             }
         }
@@ -1487,7 +1487,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
         if (arrayHub == null) {
-            throw MissingReflectionRegistrationUtils.forClass(getTypeName() + "[]");
+            MissingReflectionRegistrationUtils.forClass(getTypeName() + "[]");
         }
         return arrayHub;
     }
