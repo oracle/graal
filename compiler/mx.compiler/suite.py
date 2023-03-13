@@ -1530,6 +1530,19 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.compiler.hightiercodegen": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [
+            "org.graalvm.compiler.replacements",
+        ],
+        "javaCompliance": "17+",
+        "workingSets": "Graal",
+        "annotationProcessors": ["GRAAL_PROCESSOR"],
+        "checkstyle" : "org.graalvm.compiler.graph",
+        "spotbugsIgnoresGenerated": True,
+    },
+
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle.common" : {
@@ -2108,6 +2121,7 @@ suite = {
         "org.graalvm.compiler.runtime",
         "org.graalvm.compiler.code",
         "org.graalvm.compiler.printer",
+        "org.graalvm.compiler.hightiercodegen",
         "org.graalvm.compiler.core.aarch64",
         "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.core.amd64",
