@@ -176,7 +176,12 @@ public final class ModuleLayerFeature implements InternalFeature {
          * is required when filtering the analysis reachable module set.
          */
         Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
-        extraModules.addAll(ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules);
+        Set<String> includedResourceModules = ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules
+                        .stream()
+                        .map(Module::getName)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        extraModules.addAll(includedResourceModules);
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {

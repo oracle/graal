@@ -53,8 +53,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -419,8 +417,7 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageFileSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
-        int numResources = resources.size();
+        int numResources = Resources.singleton().count();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageFileSize * 100)
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
@@ -539,7 +536,7 @@ public class ProgressReporter {
                 remainingBytes -= metadataByteLength;
             }
             long resourcesByteLength = 0;
-            for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+            for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
                 for (byte[] resource : resourceList.getData()) {
                     resourcesByteLength += resource.length;
                 }

@@ -56,7 +56,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(mn, name);
+        Module module = ModuleLayer.boot().findModule(mn).orElse(null);
+        return ResourcesHelper.nameToResourceURL(module, name);
     }
 
     @Substitute
@@ -81,7 +82,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     private URL findResource(ModuleReference mref, String name) {
-        return ResourcesHelper.nameToResourceURL(mref.descriptor().name(), name);
+        Module module = ModuleLayer.boot().findModule(mref.descriptor().name()).orElse(null);
+        return ResourcesHelper.nameToResourceURL(module, name);
     }
 
     @Substitute

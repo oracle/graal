@@ -40,9 +40,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
@@ -148,8 +145,7 @@ public class ImageHeapConnectedComponentsPrinter {
     }
 
     private static void markResources(NativeImageHeap heap) {
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
-        for (ResourceStorageEntry value : resources.getValues()) {
+        for (ResourceStorageEntry value : Resources.singleton().resources()) {
             for (byte[] arr : value.getData()) {
                 ObjectInfo info = heap.getObjectInfo(arr);
                 if (info != null) {
