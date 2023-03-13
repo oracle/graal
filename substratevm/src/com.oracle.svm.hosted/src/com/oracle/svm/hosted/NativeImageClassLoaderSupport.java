@@ -53,6 +53,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -69,6 +70,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -108,7 +110,7 @@ public class NativeImageClassLoaderSupport {
     private final EconomicSet<String> emptySet;
     private final EconomicSet<URI> builderURILocations;
 
-    final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
 
     private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
@@ -354,8 +356,12 @@ public class NativeImageClassLoaderSupport {
         }
     }
 
-    LinkedHashSet<String> serviceProviders(String serviceName) {
+    private LinkedHashSet<String> serviceProviders(String serviceName) {
         return serviceProviders.computeIfAbsent(serviceName, unused -> new LinkedHashSet<>());
+    }
+
+    void serviceProvidersForEach(BiConsumer<String, Collection<String>> action) {
+        serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
     private static void implAddReadsAllUnnamed(Module module) {

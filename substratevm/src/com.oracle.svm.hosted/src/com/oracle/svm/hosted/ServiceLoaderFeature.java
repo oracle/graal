@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -136,7 +137,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         annotationSubstitutionProcessor = ((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor();
         platformSupported = accessImpl.getHostVM()::platformSupported;
         classLoaderSupport = accessImpl.imageClassLoader.classLoaderSupport;
-        classLoaderSupport.serviceProviders.forEach((serviceName, providers) -> {
+        classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (servicesToSkip.contains(serviceName)) {
                 return;
             }
@@ -149,10 +150,9 @@ public class ServiceLoaderFeature implements InternalFeature {
             }
             access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
         });
-        classLoaderSupport.serviceProviders.clear();
     }
 
-    void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, LinkedHashSet<String> providers) {
+    void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, Collection<String> providers) {
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
