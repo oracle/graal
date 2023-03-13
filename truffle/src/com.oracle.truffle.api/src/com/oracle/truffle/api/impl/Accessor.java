@@ -634,9 +634,10 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor);
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
+
+        public abstract boolean isHostToGuestRootNode(RootNode root);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
 
@@ -746,6 +747,8 @@ public abstract class Accessor {
 
         public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
 
+        public abstract Object getEngineFromPolyglotObject(Object polyglotObject);
+
         public abstract SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext);
 
         public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
@@ -827,7 +830,7 @@ public abstract class Accessor {
 
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
-        public abstract void materializeHostFrames(Throwable original);
+        public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
 
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
 
@@ -1047,7 +1050,7 @@ public abstract class Accessor {
 
         public abstract boolean hasExceptionStackTrace(Object receiver);
 
-        public abstract Object getExceptionStackTrace(Object receiver);
+        public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
         public abstract boolean hasSourceLocation(Object receiver);
 

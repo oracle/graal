@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -755,7 +755,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
             /*
              * We reset the incomplete state and try again after canonicalization. Canonicalization
-             * might reduce the node cost and therefore may allow new methods to be inliend.
+             * might reduce the node cost and therefore may allow new methods to be inlined.
              */
             incomplete = false;
 

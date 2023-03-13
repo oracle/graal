@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.host;
+package com.oracle.truffle.api.exception;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportMessage;
 
-/**
- * Exception wrapper for an error occurred in the host language.
- */
-@SuppressWarnings("serial")
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-final class HostException extends AbstractTruffleException {
+@ExportLibrary(InteropLibrary.class)
+final class InteropList implements TruffleObject {
 
-    private final Throwable original;
-    final HostObject delegate;
+    private final Object[] items;
 
-    private HostException(Throwable original, HostContext context, Node location) {
-        super(location);
-        this.original = original;
-        this.delegate = HostObject.forException(original, context, this);
+    InteropList(Object[] items) {
+        this.items = items;
     }
 
-    Throwable getOriginal() {
-        return original;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasArrayElements() {
+        return true;
     }
 
-    @Override
-    public String getMessage() {
-        return getOriginal().getMessage();
+    @ExportMessage
+    long getArraySize() {
+        return items.length;
     }
 
-    static HostException wrap(Throwable original, HostContext context) {
-        return wrap(original, context, null);
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < items.length;
     }
 
-    static HostException wrap(Throwable original, HostContext context, Node location) {
-        HostException hostException = new HostException(original, context, location);
-        // Share LazyStackTrace with the underlying host exception so that lazy stack trace elements
-        // appended to the HostException propagate to original exception and vice versa.
-        HostAccessor.EXCEPTION.setLazyStackTrace(hostException, HostAccessor.LANGUAGE.getOrCreateLazyStackTrace(original));
-        return hostException;
+    @ExportMessage
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (index < 0 || index >= items.length) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return items[(int) index];
     }
-
-    HostException withContext(HostContext context) {
-        HostException hostException = new HostException(original, context, getLocation());
-        HostAccessor.EXCEPTION.setLazyStackTrace(this, HostAccessor.EXCEPTION.getLazyStackTrace(hostException));
-        return hostException;
-    }
-
 }
