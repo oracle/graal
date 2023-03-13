@@ -39,6 +39,8 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
+import javax.management.openmbean.CompositeData;
+
 @AutomaticallyRegisteredFeature
 public class JmxCommonFeature implements InternalFeature {
     @Override
@@ -205,7 +207,6 @@ public class JmxCommonFeature implements InternalFeature {
     }
 
     private static void configureReflection(BeforeAnalysisAccess access) {
-        // Only JmxServerFeature, not JmxClientFeature, has registrations for platform MBeans
         String[] classes = {
                         "com.sun.crypto.provider.AESCipher$General", "com.sun.crypto.provider.ARCFOURCipher",
                         "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305", "com.sun.crypto.provider.DESCipher",
@@ -233,17 +234,12 @@ public class JmxCommonFeature implements InternalFeature {
         };
 
         String[] methods = {
-                        "com.sun.management.GcInfo",
-                        "com.sun.management.VMOption",
-                        "java.lang.management.MemoryUsage", "java.rmi.registry.Registry",
-                        "javax.management.remote.rmi.RMIConnection", "javax.management.remote.rmi.RMIConnectionImpl_Stub",
-                        "javax.management.remote.rmi.RMIServer", "javax.management.remote.rmi.RMIServerImpl_Stub",
-                        "java.lang.management.MonitorInfo",
+                        "com.sun.management.GcInfo", "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
+                        "javax.management.remote.rmi.RMIConnection",
+                        "javax.management.remote.rmi.RMIServer",
                         "java.lang.management.ThreadInfo", "jdk.management.jfr.ConfigurationInfo",
                         "jdk.management.jfr.EventTypeInfo", "jdk.management.jfr.RecordingInfo",
-                        "jdk.management.jfr.SettingDescriptorInfo", "sun.rmi.registry.RegistryImpl_Stub",
-                        "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl", "sun.rmi.transport.DGCImpl_Skel",
-                        "sun.rmi.transport.DGCImpl_Stub"
+                        "jdk.management.jfr.SettingDescriptorInfo"
         };
 
         String[] constructors = {
