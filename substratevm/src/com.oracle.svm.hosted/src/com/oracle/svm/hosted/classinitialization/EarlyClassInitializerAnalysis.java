@@ -69,6 +69,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
@@ -174,8 +175,9 @@ final class EarlyClassInitializerAnalysis {
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
 
         SubstrateGraphBuilderPlugins.registerClassDesiredAssertionStatusPlugin(invocationPlugins, originalProviders.getSnippetReflection());
+        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(classInitializationSupport.loader, originalProviders.getSnippetReflection(), null, classInitializationPlugin, invocationPlugins, null,
-                        ParsingReason.EarlyClassInitializerAnalysis);
+                        ParsingReason.EarlyClassInitializerAnalysis, fallbackFeature);
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
 
