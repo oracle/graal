@@ -19,6 +19,7 @@
         "name",
         "graalvm_version",
         "java_version",
+        "graal_compiler",
         "c_compiler",
         "garbage_collector"
       ],
@@ -38,6 +39,29 @@
           "default": null,
           "title": "The Java version of the Native Image build process (or null if not available)"
         },
+        "graal_compiler": {
+          "type": "object",
+          "default": {},
+          "required": ["optimization_level", "march"],
+          "properties": {
+            "optimization_level": {
+              "type": "string",
+              "default": "",
+              "title": "The optimization level used by Graal"
+            },
+            "march": {
+              "type": "string",
+              "default": "",
+              "title": "The marchine type targeted by Graal"
+            },
+            "pgo": {
+              "type": "boolean",
+              "default": "",
+              "title": "Whether Profile-Guided Optimizations are enabled or not (Oracle GraalVM only)"
+            }
+          },
+          "title": "Information about the Graal compiler"
+        },
         "c_compiler": {
           "type": ["string", "null"],
           "default": null,
@@ -52,7 +76,12 @@
       "examples": [
         {
           "name": "helloworld",
-          "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+          "graalvm_version": "GraalVM 22.2.0-dev Java 17 EE",
+          "graal_compiler": {
+            "pgo": false,
+            "march": "x86-64-v3",
+            "optimization_level": "0"
+          },
           "java_version": "17.0.4+5-jvmci-22.2-b03",
           "c_compiler": "gcc (linux, x86_64, 9.3.0)",
           "garbage_collector": "Serial GC"
@@ -478,6 +507,10 @@
       "general_info": {
         "name": "helloworld",
         "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "graal_compiler": {
+          "march": "x86-64-v3",
+          "optimization_level": "0"
+        },
         "java_version": "17.0.4+5-jvmci-22.2-b03",
         "c_compiler": "gcc (linux, x86_64, 9.3.0)",
         "garbage_collector": "Serial GC"
@@ -542,6 +575,10 @@
       "general_info": {
         "name": "helloworld",
         "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "graal_compiler": {
+          "march": "x86-64-v3",
+          "optimization_level": "0"
+        },
         "java_version": null,
         "c_compiler": null,
         "garbage_collector": "Serial GC"
