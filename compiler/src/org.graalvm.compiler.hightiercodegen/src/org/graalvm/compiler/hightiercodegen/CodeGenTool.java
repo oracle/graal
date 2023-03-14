@@ -53,6 +53,13 @@ public abstract class CodeGenTool {
 
     protected final VariableAllocation variableAllocation;
 
+    /**
+     * Used for generating method-scoped unique IDs.
+     *
+     * Its value is reset to 0 in {@link CodeGenTool#prepareForMethod(StructuredGraph)}.
+     */
+    private int methodScopeUniqueID = 0;
+
     protected CodeGenTool(CodeBuffer codeBuffer, VariableAllocation variableAllocation) {
         this.codeBuffer = codeBuffer;
         this.variableAllocation = variableAllocation;
@@ -90,10 +97,21 @@ public abstract class CodeGenTool {
      */
     public void prepareForMethod(StructuredGraph g) {
         this.variableMap = variableAllocation.compute(g, this);
+        this.methodScopeUniqueID = 0;
     }
 
     public boolean declared(Node n) {
         return n instanceof ValueNode valueNode && getAllocatedVariable(valueNode) != null;
+    }
+
+    /**
+     * Generate a unique ID within the scope of the current method.
+     *
+     * Invariant: each call of this method will return a different value for the current method under lowering.
+     */
+    public int genUniqueID() {
+        methodScopeUniqueID++;
+        return methodScopeUniqueID;
     }
 
     public void lowerStatement(Node n) {
