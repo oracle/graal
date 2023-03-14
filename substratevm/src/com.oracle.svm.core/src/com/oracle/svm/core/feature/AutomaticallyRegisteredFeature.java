@@ -34,9 +34,8 @@ import org.graalvm.nativeimage.Platforms;
 
 /**
  * {@link InternalFeature} classes with this annotation are automatically registered using an
- * annotation processor. If multiple implementations for a class are annotated with
- * {@link AutomaticallyRegisteredFeature}, only the most specific one will be registered as a
- * feature.
+ * annotation processor. If both a class and a subclass are annotated with
+ * {@link AutomaticallyRegisteredFeature}, only the subclass will be registered as a feature.
  *
  * Note that this requires the `SVM_PROCESSOR` to be defined as an annotation processor in the
  * suite.py file.

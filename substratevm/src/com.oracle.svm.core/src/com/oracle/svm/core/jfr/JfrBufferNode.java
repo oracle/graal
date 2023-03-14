@@ -35,10 +35,13 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and have a longer lifetime than the
- * {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
+ * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and may have a longer lifetime than
+ * the {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
  * threads can iterate over the thread-local JFR buffers of other threads, which enables use cases
  * such as JFR event streaming.
+ *
+ * Note that {@link JfrBufferNode}s may be freed at safepoints. Code that accesses
+ * {@link JfrBufferNode}s must therefore be fully uninterruptible.
  */
 @RawStructure
 public interface JfrBufferNode extends PointerBase {
@@ -67,10 +70,4 @@ public interface JfrBufferNode extends PointerBase {
 
     @RawField
     void setLockOwner(IsolateThread value);
-
-    @RawField
-    byte getFlags();
-
-    @RawField
-    void setFlags(byte value);
 }

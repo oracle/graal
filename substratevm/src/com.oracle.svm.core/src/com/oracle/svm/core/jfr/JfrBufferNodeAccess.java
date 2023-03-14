@@ -42,9 +42,6 @@ import com.oracle.svm.core.thread.VMOperation;
  * Used to access the raw memory of a {@link JfrBufferNode}.
  */
 public final class JfrBufferNodeAccess {
-    private static final byte NONE = 0b00;
-    private static final byte RETIRED = 0b01;
-
     private JfrBufferNodeAccess() {
     }
 
@@ -55,7 +52,6 @@ public final class JfrBufferNodeAccess {
             node.setBuffer(buffer);
             node.setNext(WordFactory.nullPointer());
             node.setLockOwner(WordFactory.nullPointer());
-            node.setFlags(NONE);
             NativeSpinLockUtils.initialize(ptrToLock(node));
         }
         return node;
@@ -113,32 +109,5 @@ public final class JfrBufferNodeAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static CIntPointer ptrToLock(JfrBufferNode node) {
         return (CIntPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLock());
-    }
-
-    /**
-     * The thread-local {@link JfrBuffer}s that are used for Java-level JFR events can't be freed
-     * when JFR recording is stopped because the JDK class {@code EventWriter} is not
-     * uninterruptible (i.e., threads could continue using such {@link JfrBuffer}s even after the
-     * 'StopRecording' safepoint ends). Therefore, we mark those buffers as retired and either free
-     * or reinstantiate them at a later point in time.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setRetired(JfrBufferNode node) {
-        assert isLockedByCurrentThread(node);
-        assert !isRetired(node);
-        node.setFlags((byte) (node.getFlags() | RETIRED));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void clearRetired(JfrBufferNode node) {
-        assert isLockedByCurrentThread(node);
-        assert isRetired(node);
-        node.setFlags((byte) (node.getFlags() & ~RETIRED));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isRetired(JfrBufferNode node) {
-        assert isLockedByCurrentThread(node);
-        return (node.getFlags() & RETIRED) != 0;
     }
 }

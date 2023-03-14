@@ -232,15 +232,15 @@ public class SubstrateJVM {
 
         recorderThread.shutdown();
 
-        threadLocal.teardown(true);
-        globalMemory.teardown();
-        symbolRepo.teardown();
-        threadRepo.teardown();
-        stackTraceRepo.teardown();
-        methodRepo.teardown();
-        typeRepo.teardown();
+        JfrTeardownOperation vmOp = new JfrTeardownOperation();
+        vmOp.enqueue();
 
-        initialized = false;
+        try {
+            recorderThread.join();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
         return true;
     }
 
@@ -258,7 +258,10 @@ public class SubstrateJVM {
      */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(int skipCount) {
-        return stackTraceRepo.getStackTraceId(skipCount);
+        if (isRecording()) {
+            return stackTraceRepo.getStackTraceId(skipCount);
+        }
+        return 0L;
     }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
@@ -335,7 +338,10 @@ public class SubstrateJVM {
      */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
-        return typeRepo.getClassId(clazz);
+        if (isRecording()) {
+            return typeRepo.getClassId(clazz);
+        }
+        return 0L;
     }
 
     /**
@@ -723,9 +729,31 @@ public class SubstrateJVM {
              * If JFR recording is restarted later on, then it needs to start with a clean state.
              * Therefore, we clear all data that is still pending.
              */
-            SubstrateJVM.getThreadLocal().teardown(false);
+            SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
+        }
+    }
+
+    private class JfrTeardownOperation extends JavaVMOperation {
+        JfrTeardownOperation() {
+            super(VMOperationInfos.get(JfrTeardownOperation.class, "JFR teardown", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            if (!initialized) {
+                return;
+            }
+
+            globalMemory.teardown();
+            symbolRepo.teardown();
+            threadRepo.teardown();
+            stackTraceRepo.teardown();
+            methodRepo.teardown();
+            typeRepo.teardown();
+
+            initialized = false;
         }
     }
 }
