@@ -9,28 +9,7 @@ redirect_from: /$version/reference-manual/native-image/inspect/
 # Native Image Inspection Tool
 
 Native Image Enterprise Edition includes a tool to list the methods included in an executable or shared library created by GraalVM Native Image.
-The tool is available as the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>`. It lists methods as a JSON array in the following format:
-
-```shell
-$JAVA_HOME/bin/native-image-inspect helloworld
-{
-  "methods": [
-    {
-      "declaringClass": "java.lang.Object",
-      "name": "equals",
-      "paramTypes": [
-        "java.lang.Object"
-      ]
-    },
-    {
-      "declaringClass": "java.lang.Object",
-      "name": "toString",
-      "paramTypes": []
-    },
-    ...
-  ]
-}
-```
+The tool is available as the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>`. It lists classes, methods, fields, and constructors as JSON that validates against the JSON schema defined in [`native-image-inspect-schema-v0.2.0.json`](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/native-image-inspect-schema-v0.2.0.json).
 
 The Native Image tool, by default, includes metadata in the native executable which then enables the inspection tool to list the included methods.
 

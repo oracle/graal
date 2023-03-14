@@ -1,0 +1,104 @@
+{
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/native-image-inspect-schema-v0.2.0.json",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "title": "JSON schema for the output of the 'native-image-inspect' utility",
+  "type": "object",
+  "required": ["classes", "fields", "methods", "constructors"],
+  "default": {},
+  "properties": {
+    "classes": {
+      "title": "The classes and interfaces included in the generated image",
+      "type": "array",
+      "default": [],
+      "items": {
+        "format": "string",
+        "title": "An informative string for the name of this class or interface",
+        "type": "string"
+      }
+    },
+    "fields": {
+      "title": "Fields included in the generated image",
+      "type": "array",
+      "default": [],
+      "items": {
+        "title": "Field information",
+        "type": "object",
+        "required": ["declaringClass", "name"],
+        "default": {},
+        "properties": {
+          "declaringClass": {
+            "default": "",
+            "title": "An informative string for the name of the field's declaring class or interface",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "The name of the field",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "methods": {
+      "title": "Methods included in the generated image",
+      "type": "array",
+      "default": [],
+      "items": {
+        "title": "Method information",
+        "type": "object",
+        "required": ["declaringClass", "name", "parameterTypes"],
+        "default": {},
+        "properties": {
+          "declaringClass": {
+            "default": "",
+            "title": "An informative string for the name of the method's declaring class or interface",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "The name of the method",
+            "type": "string"
+          },
+          "parameterTypes": {
+            "title": "Names of parameter types of the method",
+            "type": "array",
+            "default": [],
+            "items": {
+              "default": "",
+              "title": "An informative string for the name of the parameter's class or interface",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "constructors": {
+      "title": "Constructors included in the generated image",
+      "type": "array",
+      "default": [],
+      "items": {
+        "title": "Constructor information",
+        "type": "object",
+        "required": ["declaringClass", "parameterTypes"],
+        "default": {},
+        "properties": {
+          "declaringClass": {
+            "default": "",
+            "title": "An informative string for the name of the constructor's declaring class or interface",
+            "type": "string"
+          },
+          "parameterTypes": {
+            "title": "Names of parameter types of the constructor",
+            "type": "array",
+            "default": [],
+            "items": {
+              "default": "",
+              "title": "An informative string for the name of the parameter's class or interface",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
