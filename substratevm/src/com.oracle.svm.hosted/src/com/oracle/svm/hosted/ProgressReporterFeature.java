@@ -41,7 +41,7 @@ import com.oracle.svm.hosted.util.CPUTypeAMD64;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
-    private final ProgressReporter reporter = ProgressReporter.singleton();
+    protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
