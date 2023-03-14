@@ -776,7 +776,7 @@ public class NativeImage {
 
     void addMacroOptionRoot(Path configDir) {
         Path origRootDir = canonicalize(configDir);
-        Path rootDir = bundleSupport != null ? bundleSupport.substituteClassPath(origRootDir) : origRootDir;
+        Path rootDir = useBundle() ? bundleSupport.substituteClassPath(origRootDir) : origRootDir;
         optionRegistry.addMacroOptionRoot(rootDir);
     }
 
@@ -1671,7 +1671,7 @@ public class NativeImage {
     }
 
     Path canonicalize(Path path, boolean strict) {
-        if (bundleSupport != null) {
+        if (useBundle()) {
             Path prev = bundleSupport.restoreCanonicalization(path);
             if (prev != null) {
                 return prev;
@@ -1679,14 +1679,14 @@ public class NativeImage {
         }
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
         if (!strict) {
-            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
+            return useBundle() ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
         }
         try {
             Path realPath = absolutePath.toRealPath();
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path + " is not readable");
             }
-            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
+            return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
         }
@@ -1806,7 +1806,7 @@ public class NativeImage {
             return;
         }
 
-        Path mpEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
+        Path mpEntryFinal = useBundle() ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
         imageModulePath.add(mpEntryFinal);
         processClasspathNativeImageMetaInf(mpEntryFinal);
     }
@@ -1870,7 +1870,7 @@ public class NativeImage {
             return;
         }
 
-        Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
+        Path classpathEntryFinal = useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
             destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
