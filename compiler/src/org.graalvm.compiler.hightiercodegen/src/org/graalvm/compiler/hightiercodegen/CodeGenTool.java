@@ -107,7 +107,8 @@ public abstract class CodeGenTool {
     /**
      * Generate a unique ID within the scope of the current method.
      *
-     * Invariant: each call of this method will return a different value for the current method under lowering.
+     * Invariant: each call of this method will return a different value for the current method
+     * under lowering.
      */
     public int genUniqueID() {
         methodScopeUniqueID++;
