@@ -280,7 +280,7 @@ public class NativeImage {
 
     private int verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS")) ? 1 : 0;
     private boolean diagnostics = false;
-    String diagnosticsDir;
+    Path diagnosticsDir;
     private boolean jarOptionMode = false;
     private boolean moduleOptionMode = false;
     private boolean dryRun = false;
@@ -1497,7 +1497,8 @@ public class NativeImage {
         final String commandLine = SubstrateUtil.getShellCommandString(completeCommandList, true);
         if (isDiagnostics()) {
             // write to the diagnostics dir
-            ReportUtils.report("command line arguments", diagnosticsDir, "command-line", "txt", printWriter -> printWriter.write(commandLine));
+            Path finalDiagnosticsDir = useBundle() ? bundleSupport.substituteAuxiliaryPath(diagnosticsDir, BundleMember.Role.Output) : diagnosticsDir.toAbsolutePath();
+            ReportUtils.report("command line arguments", finalDiagnosticsDir.toString(), "command-line", "txt", printWriter -> printWriter.write(commandLine));
         } else {
             showVerboseMessage(isVerbose(), "Executing [");
             showVerboseMessage(isVerbose(), commandLine);
@@ -1887,13 +1888,15 @@ public class NativeImage {
         verbose += 1;
     }
 
-    void setDiagnostics(boolean val) {
-        diagnostics = val;
-        diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString();
-        if (val) {
-            addVerbose();
-            addVerbose();
+    void enableDiagnostics() {
+        if (diagnostics) {
+            /* Already enabled */
+            return;
         }
+        diagnostics = true;
+        diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""));
+        addVerbose();
+        addVerbose();
     }
 
     void setJarOptionMode(boolean val) {

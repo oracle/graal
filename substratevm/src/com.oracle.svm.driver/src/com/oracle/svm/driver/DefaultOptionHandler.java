@@ -122,7 +122,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--diagnostics-mode":
                 args.poll();
-                nativeImage.setDiagnostics(true);
+                nativeImage.enableDiagnostics();
                 nativeImage.addPlainImageBuilderArg("-H:+DiagnosticsMode");
                 nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
                 System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
