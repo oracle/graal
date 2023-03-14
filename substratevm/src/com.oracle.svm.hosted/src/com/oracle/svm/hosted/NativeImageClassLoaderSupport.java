@@ -729,8 +729,8 @@ public class NativeImageClassLoaderSupport {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
-                    registerClassPathServiceProviders(file);
                     String fileName = root.relativize(file).toString();
+                    registerClassPathServiceProviders(fileName, file);
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
@@ -754,35 +754,32 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
-        private void registerClassPathServiceProviders(Path serviceRegistrationFile) {
-            Path servicesDir = serviceRegistrationFile.getParent();
-            if (servicesDir == null) {
+        private void registerClassPathServiceProviders(String fileName, Path serviceRegistrationFile) {
+            if (!fileName.startsWith("META-INF/services/")) {
                 return;
             }
-            if (servicesDir.toString().equals("/META-INF/services")) {
-                Path serviceFileName = serviceRegistrationFile.getFileName();
-                if (serviceFileName == null) {
-                    return;
-                }
-                String serviceName = serviceFileName.toString();
-                if (!serviceName.isEmpty()) {
-                    List<String> providerNames = new ArrayList<>();
-                    try (Stream<String> serviceConfig = Files.lines(serviceRegistrationFile)) {
-                        serviceConfig.forEach(ln -> {
-                            int ci = ln.indexOf('#');
-                            String providerName = (ci >= 0 ? ln.substring(0, ci) : ln).trim();
-                            if (!providerName.isEmpty()) {
-                                providerNames.add(providerName);
-                            }
-                        });
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    if (!providerNames.isEmpty()) {
-                        LinkedHashSet<String> providersForService = serviceProviders(serviceName);
-                        synchronized (providersForService) {
-                            providersForService.addAll(providerNames);
+            Path serviceFileName = serviceRegistrationFile.getFileName();
+            if (serviceFileName == null) {
+                return;
+            }
+            String serviceName = serviceFileName.toString();
+            if (!serviceName.isEmpty()) {
+                List<String> providerNames = new ArrayList<>();
+                try (Stream<String> serviceConfig = Files.lines(serviceRegistrationFile)) {
+                    serviceConfig.forEach(ln -> {
+                        int ci = ln.indexOf('#');
+                        String providerName = (ci >= 0 ? ln.substring(0, ci) : ln).trim();
+                        if (!providerName.isEmpty()) {
+                            providerNames.add(providerName);
                         }
+                    });
+                } catch (Exception e) {
+                    System.out.println("Warning: Image builder cannot read service configuration file " + fileName);
+                }
+                if (!providerNames.isEmpty()) {
+                    LinkedHashSet<String> providersForService = serviceProviders(serviceName);
+                    synchronized (providersForService) {
+                        providersForService.addAll(providerNames);
                     }
                 }
             }
