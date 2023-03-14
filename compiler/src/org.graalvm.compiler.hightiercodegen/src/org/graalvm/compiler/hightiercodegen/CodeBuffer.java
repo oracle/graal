@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -150,11 +151,20 @@ public abstract class CodeBuffer {
         emitText(getStringLiteral(s));
     }
 
+    public void emitBoolLiteral(boolean b) {
+        emitText(b ? "true" : "false");
+    }
+
     public void emitKeyword(Keyword keyword) {
         emitText(keyword.toString());
     }
 
     public abstract void emitDeclarationPrefix();
+
+    @SuppressWarnings("unused")
+    public void emitDeclarationPrefix(ResolvedJavaType type) {
+        emitDeclarationPrefix();
+    }
 
     public abstract void emitAnonymousClassHeader(String superClass);
 
@@ -283,6 +293,14 @@ public abstract class CodeBuffer {
         emitWhiteSpace();
     }
 
+    public void emitDeclPrefix(ResolvedJavaType type, String name) {
+        emitDeclarationPrefix(type);
+        emitDeclarationName(name);
+        emitWhiteSpace();
+        emitAssignmentSymbol();
+        emitWhiteSpace();
+    }
+
     public abstract void emitAssignmentSymbol();
 
     public void emitNew() {
@@ -300,6 +318,8 @@ public abstract class CodeBuffer {
     protected abstract void emitTrySymbol();
 
     public abstract void emitCatch(String expName);
+
+    public abstract void emitCatch(String expName, ResolvedJavaType type);
 
     /**
      * Emit a simple linebreak.

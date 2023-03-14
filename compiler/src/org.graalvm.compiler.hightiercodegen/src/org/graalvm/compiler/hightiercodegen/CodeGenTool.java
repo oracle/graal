@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hightiercodegen.variables.ResolvedVar;
 import org.graalvm.compiler.hightiercodegen.variables.VariableAllocation;
@@ -42,6 +43,7 @@ import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 public abstract class CodeGenTool {
 
@@ -68,7 +70,7 @@ public abstract class CodeGenTool {
     /**
      * Generates an efficient representation of an integer value literal.
      */
-    public static String getEfficientIntLiteral(int i) {
+    public static String getEfficientIntLiteral(long i) {
         StringBuilder sb = new StringBuilder();
         /*
          * Once a number gets larger than 10^6, representing it in hex gets cheaper in terms of
@@ -77,13 +79,13 @@ public abstract class CodeGenTool {
          * 10^6 takes 7 decimal digits and also 7 hex digits (0xF4240) to represent. After that
          * point, hex is more efficient.
          */
-        int abs = Math.abs(i);
+        long abs = Math.abs(i);
         if (abs >= 1000000) {
             if (i < 0) {
                 sb.append('-');
             }
             sb.append("0x");
-            sb.append(Integer.toHexString(abs));
+            sb.append(Long.toHexString(abs));
         } else {
             // Write in decimal
             sb.append(i);
@@ -91,6 +93,8 @@ public abstract class CodeGenTool {
 
         return sb.toString();
     }
+
+    public abstract CoreProviders getProviders();
 
     /**
      * Prepare the current object to be ready for use in generating code for a method.
@@ -173,13 +177,17 @@ public abstract class CodeGenTool {
         genArrayAccessPostfix();
     }
 
-    public void genArrayStore(IEmitter index, ValueNode array, ValueNode value) {
-        nodeLowerer().lowerValue(array);
+    public void genArrayStore(IEmitter index, IEmitter array, IEmitter value) {
+        lower(array);
         genArrayAccessPrefix();
         lower(index);
         genArrayAccessPostfix();
         genAssignment();
-        nodeLowerer().lowerValue(value);
+        lower(value);
+    }
+
+    public void genArrayStore(IEmitter index, ValueNode array, ValueNode value) {
+        genArrayStore(index, Emitter.of(array), Emitter.of(value));
     }
 
     protected abstract void genArrayAccessPostfix();
@@ -202,9 +210,13 @@ public abstract class CodeGenTool {
         codeBuffer.emitNewLine();
     }
 
-    public void genIfHeader(LogicNode logicNode) {
+    public void genIfHeader(LogicNode condition) {
+        genIfHeader(Emitter.of(condition));
+    }
+
+    public void genIfHeader(IEmitter condition) {
         codeBuffer.emitIfHeaderLeft();
-        lowerValue(logicNode);
+        lower(condition);
         codeBuffer.emitIfHeaderRight();
     }
 
@@ -290,6 +302,14 @@ public abstract class CodeGenTool {
         codeBuffer.emitDeclPrefix(name);
     }
 
+    public void genResolvedVarDeclPrefix(String name, Stamp stamp) {
+        genResolvedVarDeclPrefix(name, stamp.javaType(getProviders().getMetaAccess()));
+    }
+
+    public void genResolvedVarDeclPrefix(String name, ResolvedJavaType javaType) {
+        codeBuffer.emitDeclPrefix(javaType, name);
+    }
+
     public abstract void genResolvedVarDeclPostfix(String comment);
 
     public void genResolvedVarAssignmentPrefix(String name) {
@@ -300,6 +320,11 @@ public abstract class CodeGenTool {
     }
 
     public abstract void genNewInstance(ResolvedJavaType t);
+
+    /**
+     * @param arrayType the array type to be generated (not the component type)
+     */
+    public abstract void genNewArray(ResolvedJavaType arrayType, IEmitter length);
 
     /**
      * Generates a declaration without initialization. Marks the definition as lowered.
@@ -334,6 +359,14 @@ public abstract class CodeGenTool {
 
     public void genCatchBlockPrefix(String expName) {
         codeBuffer.emitCatch(expName);
+    }
+
+    public void genCatchBlockPrefix(String expName, Stamp stamp) {
+        genCatchBlockPrefix(expName, stamp.javaType(getProviders().getMetaAccess()));
+    }
+
+    public void genCatchBlockPrefix(String expName, ResolvedJavaType javaType) {
+        codeBuffer.emitCatch(expName, javaType);
     }
 
     public abstract void genThrow(ValueNode exception);

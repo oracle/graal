@@ -26,6 +26,7 @@ package org.graalvm.compiler.hightiercodegen.lowerer;
 
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 
@@ -74,7 +75,7 @@ public class PhiResolveLowerer {
                 if (tmpName == null) {
                     // This is the first move into the temp variable, declare it first.
                     tmpName = "TEMP_" + codeGenTool.genUniqueID();
-                    codeGenTool.genResolvedVarDeclPrefix(tmpName);
+                    codeGenTool.genResolvedVarDeclPrefix(tmpName, move.source.stamp(NodeView.DEFAULT));
                 } else {
                     codeGenTool.genResolvedVarAssignmentPrefix(tmpName);
                 }
