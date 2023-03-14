@@ -329,7 +329,7 @@ public class SubstrateOptions {
     private static void requireMultiThreading(OptionKey<?> optionKey) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             throw new InterruptImageBuilding(
-                    "The option '" + optionKey.getName() + "' requires the option MultiThreaded to be set.");
+                            "The option '" + optionKey.getName() + "' requires the option MultiThreaded to be set.");
         }
     }
 

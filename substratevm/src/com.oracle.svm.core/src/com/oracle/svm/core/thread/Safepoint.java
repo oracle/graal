@@ -761,7 +761,7 @@ public final class Safepoint {
                     if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
                         notAtSafepoint++;
                     } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED ||
-                               safepointBehavior == SafepointBehavior.PARALLEL_GC_THREAD) {
+                                    safepointBehavior == SafepointBehavior.PARALLEL_GC_THREAD) {
                         ignoreSafepoints++;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
@@ -907,7 +907,7 @@ public final class Safepoint {
                     if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
                         notAtSafepoint++;
                     } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED ||
-                               safepointBehavior == SafepointBehavior.PARALLEL_GC_THREAD) {
+                                    safepointBehavior == SafepointBehavior.PARALLEL_GC_THREAD) {
                         ignoreSafepoints += 1;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;

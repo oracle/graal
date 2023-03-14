@@ -81,7 +81,8 @@ public final class SerialAndEpsilonGCOptions {
     private static void markAndCopyOrEpsilonGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.useMarkAndCopyOrEpsilonGC()) {
             throw new InterruptImageBuilding(
-                    "The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial'), parallel ('--gc=parallel'), or the epsilon garbage collector ('--gc=epsilon').");
+                            "The option '" + optionKey.getName() +
+                                            "' can only be used together with the serial ('--gc=serial'), parallel ('--gc=parallel'), or the epsilon garbage collector ('--gc=epsilon').");
         }
     }
 }

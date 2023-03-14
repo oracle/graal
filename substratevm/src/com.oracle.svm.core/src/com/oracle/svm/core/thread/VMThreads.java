@@ -887,7 +887,7 @@ public abstract class VMThreads {
          * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
          * thread will also actively prevent the VM from reaching a safepoint (regardless of its
          * thread status).
-         * 
+         *
          * NOTE: Be careful with this method and make sure that this thread does not allocate any
          * Java objects as this could result deadlocks. This method will only work prevent
          * safepoints reliably if it is called from a thread with
@@ -902,7 +902,7 @@ public abstract class VMThreads {
         /**
          * Marks the thread as crashed. This method may only be used in places where it is not
          * possible to safely detach a thread.
-         * 
+         *
          * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
          * safepoint handling will ignore the thread so that the VM can reach a safepoint regardless
          * of the status of this thread.
@@ -919,8 +919,8 @@ public abstract class VMThreads {
         }
 
         /**
-         * Marks the thread as ParallelGC worker thread. The thread won't freeze at safepoints,
-         * so it must not keep references to movable heap objects on its stack.
+         * Marks the thread as ParallelGC worker thread. The thread won't freeze at safepoints, so
+         * it must not keep references to movable heap objects on its stack.
          */
         public static void useAsParallelGCThread() {
             safepointBehaviorTL.setVolatile(PARALLEL_GC_THREAD);

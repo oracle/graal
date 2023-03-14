@@ -442,7 +442,8 @@ public final class Space {
         // Install forwarding pointer into the original header
         Object forward = ohi.installForwardingPointerParallel(original, originalHeader, copy);
         if (forward == copy) {
-            // We have won the race, now we must copy the object bits. First install the original header
+            // We have won the race, now we must copy the object bits. First install the original
+            // header
             copyMemory.writeWord(hubOffset, originalHeader);
             // Copy the rest of original object
             if (hubOffset > 0) {

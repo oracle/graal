@@ -60,14 +60,12 @@ public class ParallelGC {
     public static final int UNALIGNED_BIT = 0x01;
 
     /**
-     * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
+     * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new
+     * chunk needs to be allocated.
      */
-    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> allocChunkTL =
-            FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkTL");
-    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> scannedChunkTL =
-            FastThreadLocalFactory.createWord("ParallelGCImpl.scannedChunkTL");
-    private static final FastThreadLocalWord<UnsignedWord> allocChunkScanOffsetTL =
-            FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkScanOffsetTL");
+    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> allocChunkTL = FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkTL");
+    private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> scannedChunkTL = FastThreadLocalFactory.createWord("ParallelGCImpl.scannedChunkTL");
+    private static final FastThreadLocalWord<UnsignedWord> allocChunkScanOffsetTL = FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkScanOffsetTL");
 
     public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
     private final VMCondition seqPhase = new VMCondition(mutex);
@@ -145,36 +143,36 @@ public class ParallelGC {
 
     private Thread startWorkerThread(int n) {
         Thread t = new Thread(() -> {
-                VMThreads.SafepointBehavior.useAsParallelGCThread();
-                debugLog().string("WW start ").unsigned(n).newline();
+            VMThreads.SafepointBehavior.useAsParallelGCThread();
+            debugLog().string("WW start ").unsigned(n).newline();
 
-                while (true) {
-                    try {
-                        Pointer ptr;
-                        while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning()) {
-                            mutex.lock();
-                            try {
-                                if (--busyWorkers == 0) {
-                                    inParallelPhase = false;
-                                    seqPhase.signal();
-                                }
-                                debugLog().string("WW idle ").unsigned(n).newline();
-                                parPhase.block();
-                                ++busyWorkers;
-                                debugLog().string("WW run ").unsigned(n).newline();
-                            } finally {
-                                mutex.unlock();
+            while (true) {
+                try {
+                    Pointer ptr;
+                    while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning()) {
+                        mutex.lock();
+                        try {
+                            if (--busyWorkers == 0) {
+                                inParallelPhase = false;
+                                seqPhase.signal();
                             }
+                            debugLog().string("WW idle ").unsigned(n).newline();
+                            parPhase.block();
+                            ++busyWorkers;
+                            debugLog().string("WW run ").unsigned(n).newline();
+                        } finally {
+                            mutex.unlock();
                         }
-
-                        do {
-                            scanChunk(ptr);
-                        } while ((ptr = buffer.pop()).isNonNull());
-                        scanAllocChunk();
-                    } catch (Throwable ex) {
-                        VMError.shouldNotReachHere(ex);
                     }
+
+                    do {
+                        scanChunk(ptr);
+                    } while ((ptr = buffer.pop()).isNonNull());
+                    scanAllocChunk();
+                } catch (Throwable ex) {
+                    VMError.shouldNotReachHere(ex);
                 }
+            }
         });
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
@@ -184,8 +182,9 @@ public class ParallelGC {
 
     /**
      * Start parallel phase and wait until all chunks have been processed.
-     * @return false if worker threads have not been started yet. This can happen if GC happens very early
-     *          during application startup.
+     *
+     * @return false if worker threads have not been started yet. This can happen if GC happens very
+     *         early during application startup.
      */
     public boolean waitForIdle() {
         if (workers == null) {
@@ -216,7 +215,7 @@ public class ParallelGC {
 
         assert buffer.isEmpty();
         // clean up thread local allocation chunks
-        for (Thread t: workers) {
+        for (Thread t : workers) {
             allocChunkTL.set(PlatformThreads.getIsolateThreadUnsafe(t), WordFactory.nullPointer());
         }
         return true;

@@ -325,7 +325,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        /* Number of parallel GC workers can be affected by a runtime option, so call this after options are parsed */
+        // Number of parallel GC workers can be affected by a runtime option,
+        // so call this after options are parsed
         Heap.getHeap().initGC();
 
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();

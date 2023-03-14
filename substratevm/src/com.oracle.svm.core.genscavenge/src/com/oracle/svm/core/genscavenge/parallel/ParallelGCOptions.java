@@ -34,6 +34,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 
 public class ParallelGCOptions {
 
-    @Option(help = "Number of worker threads used by ParallelGC.", type = OptionType.User)
+    @Option(help = "Number of worker threads used by ParallelGC.", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
 }

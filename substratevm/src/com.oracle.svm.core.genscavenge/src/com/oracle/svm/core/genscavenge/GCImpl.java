@@ -1061,7 +1061,8 @@ public final class GCImpl implements GC {
             if (isIncremental) {
                 scanGreyObjectsLoop();
             } else if (ParallelGC.isEnabled() && ParallelGC.singleton().waitForIdle()) {
-                // GC can happen before parallel worker threads have been started. In this case, fall back to serial GC.
+                // GC can happen before parallel worker threads have been started. In this case,
+                // fall back to serial GC.
             } else {
                 HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
             }
