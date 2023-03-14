@@ -68,7 +68,7 @@ public class JmxServerFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         handleNativeLibraries(access);
         registerJMXAgentResources();
-        configureReflection(access);
+        configureReflection();
         configureProxy(access);
         RuntimeSupport.getRuntimeSupport().addStartupHook(new ManagementAgentStartupHook());
     }
@@ -92,7 +92,7 @@ public class JmxServerFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
-    private static void configureReflection(BeforeAnalysisAccess access) {
+    private static void configureReflection() {
         /*
          * Register all the custom substrate MXBeans. They won't be accounted for by the native
          * image tracing agent so a user may not know they need to register them.
