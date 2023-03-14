@@ -54,10 +54,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -269,19 +270,19 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     @Override
-    public JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
         if (constantValue != null) {
             return constantValue;
         }
         switch (kind) {
             case None:
             case Manual:
-                return ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+                return ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver);
 
             case FromAlias:
                 assert Modifier.isStatic(annotated.getModifiers()) : "Cannot use " + kind + " on non-static alias " + annotated.format("%H.%n");
                 annotated.getDeclaringClass().initialize();
-                constantValue = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), annotated, null);
+                constantValue = ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, annotated, null);
                 return constantValue;
 
             case ArrayBaseOffset:
@@ -325,7 +326,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
              * Note that the value computation must be inside the lock, because we want to guarantee
              * that field-value computers are only executed once per unique receiver.
              */
-            result = computeValue(metaAccess, receiver);
+            result = computeValue(metaAccess, classInitializationSupport, receiver);
             putCached(receiver, result);
             return result;
         } finally {
@@ -333,28 +334,28 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         }
     }
 
-    private JavaConstant computeValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+    private JavaConstant computeValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
         assert isValueAvailable() : "Field " + format("%H.%n") + " value not available for reading.";
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         JavaConstant result;
         Object originalValue;
         switch (kind) {
             case NewInstanceWhenNotNull:
-                originalValue = fetchOriginalValue(metaAccess, receiver, originalSnippetReflection);
+                originalValue = fetchOriginalValue(metaAccess, classInitializationSupport, receiver, originalSnippetReflection);
                 result = originalValue == null ? originalSnippetReflection.forObject(null) : createNewInstance(originalSnippetReflection);
                 break;
             case NewInstance:
                 result = createNewInstance(originalSnippetReflection);
                 break;
             case AtomicFieldUpdaterOffset:
-                result = computeAtomicFieldUpdaterOffset(metaAccess, receiver);
+                result = computeAtomicFieldUpdaterOffset(metaAccess, classInitializationSupport, receiver);
                 break;
             case TranslateFieldOffset:
-                result = translateFieldOffset(metaAccess, receiver, targetClass);
+                result = translateFieldOffset(metaAccess, classInitializationSupport, receiver, targetClass);
                 break;
             case Custom:
                 Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
-                originalValue = fetchOriginalValue(metaAccess, receiver, originalSnippetReflection);
+                originalValue = fetchOriginalValue(metaAccess, classInitializationSupport, receiver, originalSnippetReflection);
                 Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
                 checkValue(newValue);
                 result = originalSnippetReflection.forBoxed(original.getJavaKind(), newValue);
@@ -424,8 +425,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         return result;
     }
 
-    private Object fetchOriginalValue(MetaAccessProvider metaAccess, JavaConstant receiver, SnippetReflectionProvider originalSnippetReflection) {
-        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+    private Object fetchOriginalValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver,
+                    SnippetReflectionProvider originalSnippetReflection) {
+        JavaConstant originalValueConstant = ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver);
         if (originalValueConstant == null) {
             /*
              * The class is still uninitialized, so static fields cannot be read. Or it is an
@@ -472,8 +474,8 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         return ReadableJavaField.injectFinalForRuntimeCompilation(original);
     }
 
-    private JavaConstant translateFieldOffset(MetaAccessProvider metaAccess, JavaConstant receiver, Class<?> tclass) {
-        long searchOffset = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver).asLong();
+    private JavaConstant translateFieldOffset(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver, Class<?> tclass) {
+        long searchOffset = ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver).asLong();
         // search the declared fields for a field with a matching offset
         for (Field f : tclass.getDeclaredFields()) {
             if (!Modifier.isStatic(f.getModifiers())) {
@@ -488,7 +490,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         throw shouldNotReachHere("unknown field offset class: " + tclass + ", offset = " + searchOffset);
     }
 
-    private JavaConstant computeAtomicFieldUpdaterOffset(MetaAccessProvider metaAccess, JavaConstant receiver) {
+    private JavaConstant computeAtomicFieldUpdaterOffset(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
         assert !Modifier.isStatic(original.getModifiers());
         assert receiver.isNonNull();
 
@@ -501,9 +503,8 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
          */
         ResolvedJavaField tclassField = findField(original.getDeclaringClass(), "tclass");
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        Class<?> tclass = originalSnippetReflection.asObject(Class.class,
-                        ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), tclassField, receiver));
-        return translateFieldOffset(metaAccess, receiver, tclass);
+        Class<?> tclass = originalSnippetReflection.asObject(Class.class, ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, tclassField, receiver));
+        return translateFieldOffset(metaAccess, classInitializationSupport, receiver, tclass);
     }
 
     private static ResolvedJavaField findField(ResolvedJavaType declaringClass, String name) {

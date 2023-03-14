@@ -26,14 +26,18 @@
 
 package com.oracle.graal.pointsto.meta;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.function.Function;
+
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class UninitializedStaticFieldValueReader {
     /*
@@ -63,7 +67,8 @@ public class UninitializedStaticFieldValueReader {
      * GR-41856 should provide a proper JVMCI API to read the ConstantValue attribute of a field,
      * which then makes this method unnecessary.
      */
-    public static JavaConstant readUninitializedStaticValue(AnalysisField field, Function<Object, JavaConstant> function) {
+    public static JavaConstant readUninitializedStaticValue(ResolvedJavaField field, Function<Object, JavaConstant> function) {
+        AnalysisError.guarantee(!(field instanceof AnalysisField), "must have been unwrapped");
         JavaKind kind = field.getJavaKind();
 
         boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
@@ -74,15 +79,15 @@ public class UninitializedStaticFieldValueReader {
         assert Modifier.isStatic(field.getModifiers());
 
         /* On HotSpot the base of a static field is the Class object. */
-        Object base = field.getDeclaringClass().getJavaClass();
-        long offset = field.wrapped.getOffset();
+        Object base = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
+        long offset = field.getOffset();
 
         /*
          * We cannot rely on the reflectionField because it can be null if there is some incomplete
          * classpath issue or the field is either missing or hidden from reflection. However we can
          * still use it to double check our assumptions.
          */
-        Field reflectionField = field.getJavaField();
+        Field reflectionField = OriginalFieldProvider.getJavaField(field);
         if (reflectionField != null) {
             assert kind == JavaKind.fromJavaClass(reflectionField.getType());
 
