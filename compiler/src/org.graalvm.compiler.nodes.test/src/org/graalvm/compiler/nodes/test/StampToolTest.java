@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,13 @@
 package org.graalvm.compiler.nodes.test;
 
 import static org.graalvm.compiler.nodes.type.StampTool.stampForTrailingZeros;
+import static org.graalvm.compiler.test.GraalTest.assertFalse;
 import static org.graalvm.compiler.test.GraalTest.assertTrue;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.test.GraphTest;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.junit.Test;
 
 public class StampToolTest extends GraphTest {
@@ -45,7 +46,7 @@ public class StampToolTest extends GraphTest {
     }
 
     private static IntegerStamp forInt(int value) {
-        return StampFactory.forInteger(32, value, value);
+        return IntegerStamp.create(32, value, value);
     }
 
     private static void assertIntegerStampEquals(Stamp stamp, int value) {
@@ -53,6 +54,26 @@ public class StampToolTest extends GraphTest {
         IntegerStamp iStamp = (IntegerStamp) stamp;
         assertTrue(iStamp.lowerBound() == value);
         assertTrue(iStamp.upperBound() == value);
+    }
+
+    @Test
+    public void testStampToolUnsignedCompare() {
+        Stamp stamp1 = stampForTrailingZeros(forInt(0));
+        Stamp stamp2 = stampForTrailingZeros(forInt(1));
+
+        assertTrue(StampTool.unsignedCompare(stamp1, stamp2) != null);
+        assertTrue(StampTool.unsignedCompare(stamp1, stamp1) == null);
+        assertTrue(StampTool.unsignedCompare(stamp2, stamp1) == null);
+    }
+
+    @Test
+    /**
+     * Tests certain paths not reached by other testing.
+     */
+    public void testStampToolPaths() {
+        Stamp stamp1 = stampForTrailingZeros(forInt(0));
+        assertFalse(StampTool.isAlwaysArray(stamp1));
+        assertFalse(StampTool.isExactType(stamp1));
     }
 
 }

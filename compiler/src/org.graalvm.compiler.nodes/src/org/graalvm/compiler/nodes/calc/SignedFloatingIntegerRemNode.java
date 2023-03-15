@@ -79,7 +79,7 @@ public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<Bina
             if (yConst == 0) {
                 // Replacing a previous never 0 with constant zero can create this situation
                 if (floatingGuard == null) {
-                    throw GraalError.shouldNotReachHere("Must have never been a floating rem");
+                    throw GraalError.shouldNotReachHere("Must have never been a floating rem"); // ExcludeFromJacocoGeneratedReport
                 } else {
                     return this;
                 }

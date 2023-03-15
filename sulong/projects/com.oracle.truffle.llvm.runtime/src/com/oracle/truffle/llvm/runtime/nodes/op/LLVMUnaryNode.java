@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -63,6 +64,9 @@ public abstract class LLVMUnaryNode extends LLVMExpressionNode {
         abstract double doDouble(double operand);
 
         abstract LLVM80BitFloat doFP80(LLVM80BitFloat operand);
+
+        abstract LLVM128BitFloat doFP128(LLVM128BitFloat operand);
+
     }
 
     final LLVMUnaryOp op;
@@ -125,6 +129,18 @@ public abstract class LLVMUnaryNode extends LLVMExpressionNode {
         }
     }
 
+    public abstract static class LLVMFP128UnaryNode extends LLVMFloatingUnaryNode {
+
+        LLVMFP128UnaryNode(UnaryOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        LLVM128BitFloat do128BitFloat(LLVM128BitFloat operand) {
+            return fpOp().doFP128(operand);
+        }
+    }
+
     private static final LLVMFPUnaryOp NEG = new LLVMFPUnaryOp() {
 
         @Override
@@ -139,6 +155,11 @@ public abstract class LLVMUnaryNode extends LLVMExpressionNode {
 
         @Override
         LLVM80BitFloat doFP80(LLVM80BitFloat operand) {
+            return operand.negate();
+        }
+
+        @Override
+        LLVM128BitFloat doFP128(LLVM128BitFloat operand) {
             return operand.negate();
         }
 

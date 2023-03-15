@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -291,6 +291,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
             contextBuilder.option("wasm.Builtins", includedExternalModules());
+            contextBuilder.option("wasm.WasiConstantRandomGet", "true");
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.

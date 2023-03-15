@@ -98,7 +98,7 @@ public class AArch64BitManipulationOp extends AArch64LIRInstruction {
                 masm.popcnt(size, dst, src, vreg);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

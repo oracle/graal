@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -104,8 +105,8 @@ public class ReflectionGraphKit extends HostedGraphKit {
     private final List<FixedWithNextNode> illegalArgumentExceptionPaths = new ArrayList<>();
     private final List<ExceptionObjectNode> invocationTargetExceptionPaths = new ArrayList<>();
 
-    public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        super(debug, providers, method);
+    public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
+        super(debug, providers, method, purpose);
     }
 
     @Override

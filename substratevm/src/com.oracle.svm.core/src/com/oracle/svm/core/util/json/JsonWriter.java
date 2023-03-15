@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
@@ -56,6 +58,34 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    public JsonWriter appendObjectStart() throws IOException {
+        return append('{');
+    }
+
+    public JsonWriter appendObjectEnd() throws IOException {
+        return append('}');
+    }
+
+    public JsonWriter appendArrayStart() throws IOException {
+        return append('[');
+    }
+
+    public JsonWriter appendArrayEnd() throws IOException {
+        return append(']');
+    }
+
+    public JsonWriter appendSeparator() throws IOException {
+        return append(',');
+    }
+
+    public JsonWriter appendFieldSeparator() throws IOException {
+        return append(':');
+    }
+
+    public JsonWriter appendKeyValue(String key, Object value) throws IOException {
+        return quote(key).appendFieldSeparator().quote(value);
+    }
+
     @SuppressWarnings("unchecked")
     public void print(Map<String, Object> map) throws IOException {
         if (map.isEmpty()) {
@@ -78,6 +108,26 @@ public class JsonWriter implements AutoCloseable {
             }
         }
         append('}');
+    }
+
+    public void print(List<String> list) throws IOException {
+        print(list, s -> s);
+    }
+
+    public <T> void print(List<T> list, Function<T, String> mapper) throws IOException {
+        if (list.isEmpty()) {
+            append("[]");
+            return;
+        }
+        append('[');
+        Iterator<T> iter = list.iterator();
+        while (iter.hasNext()) {
+            quote(mapper.apply(iter.next()));
+            if (iter.hasNext()) {
+                append(',');
+            }
+        }
+        append(']');
     }
 
     public JsonWriter quote(Object o) throws IOException {

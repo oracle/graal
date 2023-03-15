@@ -264,6 +264,10 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return isInConfiguration();
+    }
+
+    public static boolean isInConfiguration() {
         return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
     }
 
@@ -389,6 +393,7 @@ public class TruffleFeature implements InternalFeature {
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
+        runtimeCompilationFeature.initializeAnalysisProviders(config.getBigBang(), HostedTruffleConstantFieldProvider::new);
 
         initializeMethodBlocklist(config.getMetaAccess(), access);
 
@@ -803,7 +808,7 @@ public class TruffleFeature implements InternalFeature {
                 System.out.println();
                 for (RuntimeCompilationCandidate violation : blocklistViolations) {
                     System.out.println("Blocklisted method");
-                    System.out.format("   %s (target: %s)\n", violation.getImplementationMethod().format("%H.%n(%p)"), violation.getTargetMethod().format("%H.%n(%p)"));
+                    System.out.format("   %s (target: %s)%n", violation.getImplementationMethod().format("%H.%n(%p)"), violation.getTargetMethod().format("%H.%n(%p)"));
                     System.out.println("trace:");
                     RuntimeCompilationFeature.singleton().getCallTrace(violation).forEach(item -> System.out.println("  " + item));
                 }
@@ -878,14 +883,19 @@ public class TruffleFeature implements InternalFeature {
      * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(ResolvedJavaMethod)}.
      */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (runtimeCompiledMethods != null && !runtimeCompiledMethods.contains(caller)) {
+        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(callee)) {
             /*
-             * Make sure we do not make any decisions for non-runtime compiled methods.
+             * Some methods should never be trivial inlined.
              */
-            return false;
-        } else if (TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+            return true;
+        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+            /*
+             * Deny trivial inlining in methods which can be included as part of a runtime
+             * compilation.
+             */
             return true;
         }
+
         return false;
     }
 

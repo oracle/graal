@@ -37,11 +37,15 @@ import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.gc.ZBarrierSet;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -51,14 +55,21 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCIBackend;
 
 public abstract class AssemblerTest extends GraalTest {
 
     private final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
     private final Backend backend;
+    private final Providers providers;
+
+    @Before
+    public void disable() {
+        // These tests all simply inject a chunk of assembly as the body of a compiled method. Some
+        // configurations have requirements on the assembly generated in the prolog which are
+        // violated by doing this.
+        Assume.assumeFalse("can't work on HotSpot with nmethod entry barriers", providers.getPlatformConfigurationProvider().getBarrierSet() instanceof ZBarrierSet);
+    }
 
     public interface CodeGenTest {
         byte[] generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc);
@@ -73,10 +84,10 @@ public abstract class AssemblerTest extends GraalTest {
     }
 
     public AssemblerTest() {
-        JVMCIBackend providers = JVMCI.getRuntime().getHostJVMCIBackend();
+        this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
+        this.providers = backend.getProviders();
         this.metaAccess = providers.getMetaAccess();
         this.codeCache = providers.getCodeCache();
-        this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
     }
 
     public MetaAccessProvider getMetaAccess() {

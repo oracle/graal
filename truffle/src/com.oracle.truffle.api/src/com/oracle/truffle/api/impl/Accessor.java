@@ -77,6 +77,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -633,9 +634,10 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor);
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor);
+
+        public abstract boolean isHostToGuestRootNode(RootNode root);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
 
@@ -655,9 +657,9 @@ public abstract class Accessor {
 
         public abstract Object getContext(Object polyglotLanguageContext);
 
-        public abstract ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass);
+        public abstract Object getStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass);
 
-        public abstract void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
+        public abstract void setStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass, Object value);
 
         public abstract ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> getGeneratorCache(Object polyglotLanguageInstance);
 
@@ -744,6 +746,14 @@ public abstract class Accessor {
         public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
 
         public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Object getEngineFromPolyglotObject(Object polyglotObject);
+
+        public abstract SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext);
+
+        public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
+
+        public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -820,7 +830,7 @@ public abstract class Accessor {
 
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
-        public abstract void materializeHostFrames(Throwable original);
+        public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
 
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
 
@@ -877,6 +887,8 @@ public abstract class Accessor {
         public abstract boolean isRecurringTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
+        public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
     }
 
@@ -1038,7 +1050,7 @@ public abstract class Accessor {
 
         public abstract boolean hasExceptionStackTrace(Object receiver);
 
-        public abstract Object getExceptionStackTrace(Object receiver);
+        public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
         public abstract boolean hasSourceLocation(Object receiver);
 

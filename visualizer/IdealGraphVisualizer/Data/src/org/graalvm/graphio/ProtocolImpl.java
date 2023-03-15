@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -350,10 +350,6 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     @Override
     protected int findLocationEnd(Location loc) {
         return locations.locationOffsetEnd(loc);
-    }
-
-    @Override
-    protected void findExtraNodes(Node node, Collection<? super Node> extraNodes) {
     }
 
     @Override

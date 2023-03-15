@@ -31,6 +31,7 @@ from __future__ import print_function
 import os
 import re
 from glob import glob
+import tempfile
 
 import zipfile
 import mx
@@ -286,7 +287,6 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             # explicitly passed also to the final image.
             return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + run_args
         else:
-
             return run_args
 
     def renaissance_additional_lib(self, lib):
@@ -297,10 +297,14 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         # remove -r X argument from image run args
         return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -r X argument from image run args
-        extra_profile_run_args = ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        if should_strip_run_args:
+            extra_profile_run_args = ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        else:
+            extra_profile_run_args = user_args
+
         if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
             # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
             # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
@@ -472,6 +476,12 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         return deps
 
 
+def _empty_file():
+    with tempfile.NamedTemporaryFile(delete=False) as empty_file:
+        empty_file.write(b"")
+    return empty_file.name
+
+
 # Note: If you wish to preserve the underlying benchmark stderr and stdout files after a run, you can pass the following argument: -preserve
 # This argument can be added to either:
 # 1. The agent stage: -Dnative-image.benchmark.extra-agent-run-arg=-preserve
@@ -490,13 +500,17 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     'xalan':    ['--report-unsupported-elements-at-runtime',
                  '--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
     # There are two main issues with fop:
-    # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However, DaCapo Harness sets the logging config file path system property at runtime.
-    #    This causes us to incorrectly parse the default log configuration, leading to output on stderr.
+    # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
+    #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
+    #    `java.util.logging.config.file` to an empty file to avoid incorrectly parsing the default log configuration,
+    #    leading to output on stderr. We cannot set it to scratch/fop.log as it would normally be, because the file does
+    #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
     'fop':      ['--allow-incomplete-classpath',
                  '--report-unsupported-elements-at-runtime',
-                 '-H:-EnableLoggingFeature',
+                 '-esa', '-ea',
+                 f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    ['--allow-incomplete-classpath']
 }
@@ -584,10 +598,13 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         # remove -n X argument from image run args
         return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         # remove -n X argument from image run args
-        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+        if should_strip_run_args:
+            return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
+        else:
+            return user_args
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
@@ -704,10 +721,13 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         # remove -n X argument from image run args
         return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
-        # remove -n X argument from image run args
-        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
+        # remove -n X argument from image run args if the flag is true.
+        if should_strip_run_args:
+            return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
+        else:
+            return user_args
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)

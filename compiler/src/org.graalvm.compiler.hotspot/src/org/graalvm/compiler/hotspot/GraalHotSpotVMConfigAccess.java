@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,6 +122,10 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_23_0_b04 = new Version(23, 0, 4);
+    protected static final Version JVMCI_23_0_b05 = new Version(23, 0, 5);
+    protected static final Version JVMCI_23_0_b06 = new Version(23, 0, 6);
+    protected static final Version JVMCI_23_0_b07 = new Version(23, 0, 7);
+    protected static final Version JVMCI_23_0_b10 = new Version(23, 0, 10);
 
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);

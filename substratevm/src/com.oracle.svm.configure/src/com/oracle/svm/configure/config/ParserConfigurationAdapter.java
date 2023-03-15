@@ -104,8 +104,23 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
+    public void registerRecordComponents(ConfigurationType type) {
+        type.setAllRecordComponents();
+    }
+
+    @Override
     public void registerPermittedSubclasses(ConfigurationType type) {
         type.setAllPermittedSubclasses();
+    }
+
+    @Override
+    public void registerNestMembers(ConfigurationType type) {
+        type.setAllNestMembers();
+    }
+
+    @Override
+    public void registerSigners(ConfigurationType type) {
+        type.setAllSigners();
     }
 
     @Override

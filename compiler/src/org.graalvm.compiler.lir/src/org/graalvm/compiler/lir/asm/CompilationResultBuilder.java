@@ -47,8 +47,8 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
@@ -137,7 +137,7 @@ public class CompilationResultBuilder {
     /**
      * The LIR for which code is being generated.
      */
-    protected LIR lir;
+    protected final LIR lir;
 
     /**
      * The index of the block currently being emitted.
@@ -192,31 +192,10 @@ public class CompilationResultBuilder {
                     OptionValues options,
                     DebugContext debug,
                     CompilationResult compilationResult,
-                    Register uncompressedNullRegister) {
-        this(providers,
-                        frameMap,
-                        asm,
-                        dataBuilder,
-                        frameContext,
-                        options,
-                        debug,
-                        compilationResult,
-                        uncompressedNullRegister,
-                        EconomicMap.create(Equivalence.DEFAULT),
-                        NO_VERIFIERS);
-    }
-
-    public CompilationResultBuilder(CodeGenProviders providers,
-                    FrameMap frameMap,
-                    Assembler<?> asm,
-                    DataBuilder dataBuilder,
-                    FrameContext frameContext,
-                    OptionValues options,
-                    DebugContext debug,
-                    CompilationResult compilationResult,
                     Register uncompressedNullRegister,
                     EconomicMap<Constant, Data> dataCache,
-                    List<LIRInstructionVerifier> lirInstructionVerifiers) {
+                    List<LIRInstructionVerifier> lirInstructionVerifiers,
+                    LIR lir) {
         this.target = providers.getCodeCache().getTarget();
         this.providers = providers;
         this.codeCache = providers.getCodeCache();
@@ -224,6 +203,7 @@ public class CompilationResultBuilder {
         this.frameMap = frameMap;
         this.asm = asm;
         this.dataBuilder = dataBuilder;
+        this.lir = lir;
         this.compilationResult = compilationResult;
         this.uncompressedNullRegister = uncompressedNullRegister;
         this.frameContext = frameContext;
@@ -349,10 +329,11 @@ public class CompilationResultBuilder {
         return call;
     }
 
-    public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
+    public Call recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
         recordIfCallInvalidForDeoptimization(info, infopoint);
+        return infopoint;
     }
 
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
@@ -531,11 +512,9 @@ public class CompilationResultBuilder {
     /**
      * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
-    public void emit(@SuppressWarnings("hiding") LIR lir) {
-        assert this.lir == null;
+    public void emitLIR() {
         assert currentBlockIndex == 0;
         assert lastImplicitExceptionOffset == Integer.MIN_VALUE;
-        this.lir = lir;
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
@@ -569,14 +548,28 @@ public class CompilationResultBuilder {
             }
             currentBlockIndex++;
         }
+
+        ArrayList<LIRInstruction.LIRInstructionSlowPath> slowPaths = lir.getSlowPaths();
+        if (slowPaths != null) {
+            for (LIRInstruction.LIRInstructionSlowPath slowPath : slowPaths) {
+                try {
+                    emitSlowPath(slowPath);
+                } catch (GraalError e) {
+                    if (slowPath.forOp() != null) {
+                        throw e.addContext("lir instruction", "slow path for " + slowPath.forOp() + " " + slowPath);
+                    } else {
+                        throw e.addContext("lir instruction", "slow path " + slowPath);
+                    }
+                }
+            }
+        }
+
         logger.close();
-        this.lir = null;
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
     }
 
     public LIR getLIR() {
-        assert lir != null;
         return lir;
     }
 
@@ -599,6 +592,20 @@ public class CompilationResultBuilder {
             } catch (GraalError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
+        }
+    }
+
+    private void emitSlowPath(LIRInstruction.LIRInstructionSlowPath op) {
+        try {
+            op.emitSlowPathCode();
+            // Ensure the slow path doesn't fall through
+            asm.halt();
+        } catch (BailoutException e) {
+            throw e;
+        } catch (AssertionError t) {
+            throw new GraalError(t);
+        } catch (RuntimeException t) {
+            throw new GraalError(t);
         }
     }
 
@@ -645,9 +652,9 @@ public class CompilationResultBuilder {
         if (dataCache != null) {
             dataCache.clear();
         }
-        lir = null;
         currentBlockIndex = 0;
         lastImplicitExceptionOffset = Integer.MIN_VALUE;
+        lir.resetLabels();
     }
 
     public OptionValues getOptions() {
@@ -658,16 +665,16 @@ public class CompilationResultBuilder {
      * Builds up a map for label and LIR instruction positions where labels are or labels pointing
      * to.
      */
-    public void buildLabelOffsets(LIR generatedLIR) {
+    public void buildLabelOffsets() {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (int blockId : generatedLIR.getBlocks()) {
+        for (int blockId : lir.getBlocks()) {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            BasicBlock<?> block = generatedLIR.getBlockById(blockId);
-            for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
+            for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op instanceof LabelHoldingOp) {
                     Label label = ((LabelHoldingOp) op).getLabel();
                     if (label != null) {

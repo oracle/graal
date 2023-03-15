@@ -81,11 +81,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         return objectFlow;
     }
 
-    /** Return the state of the receiver object. */
-    public TypeState getObjectState() {
-        return objectFlow.getState();
-    }
-
     @Override
     public abstract TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 

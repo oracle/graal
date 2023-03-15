@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,8 +115,8 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
         if (bits > 0 && valueStamp instanceof IntegerStamp) {
             IntegerStamp integerStamp = (IntegerStamp) valueStamp;
             if (integerStamp.isPositive()) {
-                long valueUpMask = integerStamp.upMask();
-                if ((valueUpMask & CodeUtil.mask(bits)) == valueUpMask) {
+                long valueMayBeSet = integerStamp.mayBeSet();
+                if ((valueMayBeSet & CodeUtil.mask(bits)) == valueMayBeSet) {
                     // value is unsigned and fits
                     return true;
                 }
@@ -135,7 +135,7 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
                 // We may use signed stamps to represent unsigned integers.
                 return isSignedLossless() || isUnsignedLossless();
             default:
-                throw GraalError.shouldNotReachHere("Unsupported canonical condition.");
+                throw GraalError.shouldNotReachHere("Unsupported canonical condition."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -188,9 +188,9 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
             Stamp yStamp = andNode.getY().stamp(view);
             if (xStamp instanceof IntegerStamp && yStamp instanceof IntegerStamp) {
                 long relevantMask = CodeUtil.mask(this.getResultBits());
-                if ((relevantMask & ((IntegerStamp) yStamp).downMask()) == relevantMask) {
+                if ((relevantMask & ((IntegerStamp) yStamp).mustBeSet()) == relevantMask) {
                     return create(andNode.getX(), this.getResultBits(), view);
-                } else if ((relevantMask & ((IntegerStamp) xStamp).downMask()) == relevantMask) {
+                } else if ((relevantMask & ((IntegerStamp) xStamp).mustBeSet()) == relevantMask) {
                     return create(andNode.getY(), this.getResultBits(), view);
                 }
             }

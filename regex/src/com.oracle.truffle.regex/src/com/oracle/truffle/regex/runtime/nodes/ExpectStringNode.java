@@ -41,11 +41,11 @@
 package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -53,26 +53,27 @@ import com.oracle.truffle.api.strings.TruffleString;
 @GenerateUncached
 public abstract class ExpectStringNode extends Node {
 
-    public abstract Object execute(Object arg) throws UnsupportedTypeException;
+    public abstract TruffleString execute(Object arg, TruffleString.Encoding encoding);
 
     @Specialization
-    static String doString(String input) {
-        return input;
+    static TruffleString doString(String input, TruffleString.Encoding encoding,
+                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+        return fromJavaStringNode.execute(input, encoding);
     }
 
     @Specialization
-    static TruffleString doTString(TruffleString input) {
+    static TruffleString doTString(TruffleString input, @SuppressWarnings("unused") TruffleString.Encoding encoding) {
         return input;
     }
 
     @Specialization(guards = "inputs.isString(input)", limit = "2")
-    static TruffleString doBoxedString(Object input,
-                    @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
+    static TruffleString doBoxedString(Object input, @SuppressWarnings("unused") TruffleString.Encoding encoding,
+                    @CachedLibrary("input") InteropLibrary inputs) {
         try {
             return inputs.asTruffleString(input);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw UnsupportedTypeException.create(new Object[]{input});
+            throw CompilerDirectives.shouldNotReachHere("unexpected string type passed to TRegex: " + input.getClass());
         }
     }
 

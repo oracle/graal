@@ -26,8 +26,6 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -54,7 +52,7 @@ public final class PosixStat {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SignedWord getSize(int fd) {
+    public static long getSize(int fd) {
         long size = -1;
         if (Platform.includedIn(Platform.LINUX.class)) {
             LinuxStat.stat64 stat = UnsafeStackValue.get(LinuxStat.stat64.class);
@@ -67,7 +65,7 @@ public final class PosixStat {
                 size = stat.st_size();
             }
         }
-        return WordFactory.signed(size);
+        return size;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

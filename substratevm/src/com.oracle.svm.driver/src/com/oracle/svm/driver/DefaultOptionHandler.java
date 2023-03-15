@@ -43,7 +43,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String newStyleClasspathOptionName = "--class-path";
 
     static final String addModulesOption = "--add-modules";
-    private static final String addModulesErrorMessage = " requires modules to be specified";
+    static final String limitModulesOption = "--limit-modules";
+    private static final String moduleSetModifierOptionErrorMessage = " requires modules to be specified";
+
+    static final String ADD_ENV_VAR_OPTION = "-E";
 
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String noServerOption = "--no-server";
@@ -95,10 +98,18 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 String addModulesArgs = args.poll();
                 if (addModulesArgs == null) {
-                    NativeImage.showError(headArg + addModulesErrorMessage);
+                    NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
                 }
                 nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
                 nativeImage.addAddedModules(addModulesArgs);
+                return true;
+            case limitModulesOption:
+                args.poll();
+                String limitModulesArgs = args.poll();
+                if (limitModulesArgs == null) {
+                    NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
+                }
+                nativeImage.addLimitedModules(limitModulesArgs);
                 return true;
             case "-jar":
                 args.poll();
@@ -166,6 +177,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
             return true;
         }
+        if (headArg.startsWith(ADD_ENV_VAR_OPTION)) {
+            args.poll();
+            String envVarSetting = headArg.substring(ADD_ENV_VAR_OPTION.length());
+            String[] keyValue = envVarSetting.split("=", 2);
+            String valueDefinedOrInherited = keyValue.length > 1 ? keyValue[1] : null;
+            nativeImage.imageBuilderEnvironment.put(keyValue[0], valueDefinedOrInherited);
+            return true;
+        }
         if (headArg.startsWith("-J")) {
             args.poll();
             if (headArg.equals("-J")) {
@@ -179,10 +198,19 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             String addModulesArgs = headArg.substring(addModulesOption.length() + 1);
             if (addModulesArgs.isEmpty()) {
-                NativeImage.showError(headArg + addModulesErrorMessage);
+                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
             nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
             nativeImage.addAddedModules(addModulesArgs);
+            return true;
+        }
+        if (headArg.startsWith(limitModulesOption + "=")) {
+            args.poll();
+            String limitModulesArgs = headArg.substring(limitModulesOption.length() + 1);
+            if (limitModulesArgs.isEmpty()) {
+                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
+            }
+            nativeImage.addLimitedModules(limitModulesArgs);
             return true;
         }
         if (headArg.startsWith("@") && !disableAtFiles) {
@@ -191,10 +219,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             Path origArgFile = Paths.get(headArg);
             Path argFile = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteAuxiliaryPath(origArgFile, BundleMember.Role.Input) : origArgFile;
             NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(OptionOrigin.argFilePrefix + argFile);
-            readArgFile(argFile).forEach(processor::accept);
+            readArgFile(argFile).forEach(processor);
             List<String> leftoverArgs = processor.apply(false);
             if (leftoverArgs.size() > 0) {
-                NativeImage.showError("Found unrecognized options while parsing argument file '" + argFile + "':\n" + String.join("\n", leftoverArgs));
+                NativeImage.showError(String.format("Found unrecognized options while parsing argument file '%s':%n%s", argFile, String.join(System.lineSeparator(), leftoverArgs)));
             }
             return true;
         }
@@ -211,7 +239,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         IN_TOKEN
     }
 
-    class CTX_ARGS {
+    static class CTX_ARGS {
         PARSER_STATE state;
         int cptr;
         int eob;
@@ -221,7 +249,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private List<String> readArgFile(Path file) {
+    private static List<String> readArgFile(Path file) {
         List<String> arguments = new ArrayList<>();
         // Use of the at sign (@) to recursively interpret files isn't supported.
         arguments.add("--disable-@files");

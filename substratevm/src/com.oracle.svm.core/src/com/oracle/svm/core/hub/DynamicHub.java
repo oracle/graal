@@ -24,7 +24,21 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_FIELDS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_METHODS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FIELDS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_METHODS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -45,6 +59,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
+import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,6 +100,7 @@ import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.ConstructorDescriptor;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.FieldDescriptor;
@@ -97,6 +113,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
 import sun.reflect.annotation.AnnotationType;
@@ -497,13 +514,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex) {
-        this.hubMetadata = new DynamicHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesEncodingIndex);
+    public void setHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex,
+                    int nestMembersEncodingIndex, int signersEncodingIndex) {
+        this.hubMetadata = new DynamicHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesEncodingIndex, nestMembersEncodingIndex,
+                        signersEncodingIndex);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
-        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classAccessFlags);
+    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classFlags) {
+        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classFlags);
+    }
+
+    private void checkClassFlag(int mask, String methodName) {
+        if (throwMissingRegistrationErrors() && !isClassFlagSet(mask)) {
+            throw MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
+        }
+    }
+
+    private boolean isClassFlagSet(int mask) {
+        return (reflectionMetadata != null && (reflectionMetadata.classFlags & mask) != 0);
     }
 
     /** Executed at runtime. */
@@ -695,7 +724,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public int getClassAccessFlags() {
-        return reflectionMetadata != null ? reflectionMetadata.classAccessFlags : modifiers;
+        return reflectionMetadata != null ? (reflectionMetadata.classFlags & CLASS_ACCESS_FLAGS_MASK) : modifiers;
     }
 
     @Substitute
@@ -757,9 +786,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
-        String moduleName = module == null ? null : module.getName();
         String resolvedName = resolveName(resourceName);
-        return Resources.createInputStream(moduleName, resolvedName);
+        return Resources.createInputStream(module, resolvedName);
     }
 
     @KeepOriginal
@@ -768,8 +796,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native boolean isOpenToCaller(String resourceName, Class<?> caller);
 
-    @KeepOriginal
-    private native ClassLoader getClassLoader();
+    @Substitute
+    public ClassLoader getClassLoader() {
+        return companion.getClassLoader();
+    }
 
     @KeepOriginal
     private native ClassLoader getClassLoader0();
@@ -933,71 +963,193 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
 // Checkstyle: disallow direct annotation access
 
-    @KeepOriginal
-    private native Field[] getFields();
+    @Substitute
+    private Field[] getFields() {
+        checkClassFlag(ALL_FIELDS_FLAG, "getFields");
+        return copyFields(privateGetPublicFields());
+    }
 
-    @KeepOriginal
-    private native Method[] getMethods();
+    @Substitute
+    @CallerSensitive
+    public Method[] getMethods() throws SecurityException {
+        checkClassFlag(ALL_METHODS_FLAG, "getMethods");
+        return copyMethods(privateGetPublicMethods());
+    }
 
-    @KeepOriginal
-    private native Constructor<?>[] getConstructors();
+    @Substitute
+    private Constructor<?>[] getConstructors() {
+        checkClassFlag(ALL_CONSTRUCTORS_FLAG, "getConstructors");
+        return copyConstructors(privateGetDeclaredConstructors(true));
+    }
 
     @Substitute
     public Field getField(String fieldName) throws NoSuchFieldException, SecurityException {
         Objects.requireNonNull(fieldName);
-        @SuppressWarnings("removal")
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            checkMemberAccess(sm, Member.PUBLIC, Reflection.getCallerClass(), true);
-        }
         Field field = getField0(fieldName);
-        if (field == null || ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
-            throw new NoSuchFieldException(fieldName);
-        }
+        checkField(fieldName, field, true);
         return getReflectionFactory().copyField(field);
     }
 
-    @KeepOriginal
-    private native Method getMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes) throws NoSuchMethodException;
+    private void checkField(String fieldName, Field field, boolean publicOnly) throws NoSuchFieldException {
+        boolean throwMissingErrors = throwMissingRegistrationErrors();
+        boolean noSuchField = false;
+        boolean missingRegistration = false;
+        if (field == null) {
+            if (throwMissingErrors) {
+                if (isClassFlagSet(ALL_DECLARED_FIELDS_FLAG) || (publicOnly && isClassFlagSet(ALL_FIELDS_FLAG))) {
+                    /*
+                     * If getDeclaredFields (or getFields for a public field) is registered, we know
+                     * for sure that the field does indeed not exist if we don't find it.
+                     */
+                    noSuchField = true;
+                } else {
+                    missingRegistration = true;
+                }
+            } else {
+                noSuchField = true;
+            }
+        } else {
+            ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+            int fieldModifiers = field.getModifiers();
+            if (decoder.isNegative(fieldModifiers)) {
+                noSuchField = true;
+            } else if (decoder.isHiding(fieldModifiers)) {
+                if (throwMissingErrors) {
+                    missingRegistration = true;
+                } else {
+                    noSuchField = true;
+                }
+            }
+        }
+        VMError.guarantee(!missingRegistration || !noSuchField, "Either a MissingRegistrationError or a NoSuchFieldException should be thrown, not both");
+        if (missingRegistration) {
+            throw MissingReflectionRegistrationUtils.forField(DynamicHub.toClass(this), fieldName);
+        } else if (noSuchField) {
+            throw new NoSuchFieldException(fieldName);
+        }
+    }
+
+    @Substitute
+    private Method getMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        Objects.requireNonNull(methodName);
+        Method method = getMethod0(methodName, parameterTypes);
+        checkMethod(methodName, parameterTypes, method, true);
+        return getReflectionFactory().copyMethod(method);
+    }
+
+    private void checkMethod(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
+        boolean throwMissingErrors = throwMissingRegistrationErrors();
+        boolean noSuchMethod = false;
+        boolean missingRegistration = false;
+        if (method == null) {
+            if (throwMissingErrors) {
+                if (isClassFlagSet(ALL_DECLARED_METHODS_FLAG) || (publicOnly && isClassFlagSet(ALL_METHODS_FLAG))) {
+                    /*
+                     * If getDeclaredMethods (or getMethods for a public method) is registered, we
+                     * know for sure that the method does indeed not exist if we don't find it.
+                     */
+                    noSuchMethod = true;
+                } else {
+                    missingRegistration = true;
+                }
+            } else {
+                noSuchMethod = true;
+            }
+        } else {
+            ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+            int methodModifiers = method.getModifiers();
+            if (decoder.isNegative(methodModifiers)) {
+                noSuchMethod = true;
+            } else if (decoder.isHiding(methodModifiers)) {
+                if (throwMissingErrors) {
+                    missingRegistration = true;
+                } else {
+                    noSuchMethod = true;
+                }
+            }
+        }
+        VMError.guarantee(!missingRegistration || !noSuchMethod, "Either a MissingRegistrationError or a NoSuchMethodException should be thrown, not both");
+        if (missingRegistration) {
+            throw MissingReflectionRegistrationUtils.forMethod(DynamicHub.toClass(this), methodName, parameterTypes);
+        } else if (noSuchMethod) {
+            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
+        }
+    }
 
     @KeepOriginal
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
 
-    @KeepOriginal
-    private native Class<?>[] getDeclaredClasses();
+    @Substitute
+    public Class<?>[] getDeclaredClasses() throws SecurityException {
+        checkClassFlag(ALL_DECLARED_CLASSES_FLAG, "getDeclaredClasses");
+        return getDeclaredClasses0();
+    }
 
-    @KeepOriginal
-    private native Class<?>[] getClasses();
+    @Substitute
+    @SuppressWarnings("deprecation")
+    public Class<?>[] getClasses() {
+        checkClassFlag(ALL_CLASSES_FLAG, "getClasses");
 
-    @KeepOriginal
-    private native Field[] getDeclaredFields();
+        // Privileged so this implementation can look at DECLARED classes,
+        // something the caller might not have privilege to do. The code here
+        // is allowed to look at DECLARED classes because (1) it does not hand
+        // out anything other than public members and (2) public member access
+        // has already been ok'd by the SecurityManager.
 
-    @KeepOriginal
-    private native Method[] getDeclaredMethods();
+        return java.security.AccessController.doPrivileged(
+                        (PrivilegedAction<Class<?>[]>) () -> {
+                            List<Class<?>> list = new ArrayList<>();
+                            DynamicHub currentClass = DynamicHub.this;
+                            while (currentClass != null) {
+                                for (Class<?> m : currentClass.getDeclaredClasses0()) {
+                                    if (Modifier.isPublic(m.getModifiers())) {
+                                        list.add(m);
+                                    }
+                                }
+                                currentClass = currentClass.getSuperHub();
+                            }
+                            return list.toArray(new Class<?>[0]);
+                        });
+    }
 
-    @KeepOriginal
-    private native Constructor<?>[] getDeclaredConstructors();
+    @Substitute
+    private Field[] getDeclaredFields() {
+        checkClassFlag(ALL_DECLARED_FIELDS_FLAG, "getDeclaredFields");
+        return copyFields(privateGetDeclaredFields(false));
+    }
+
+    @Substitute
+    @CallerSensitive
+    public Method[] getDeclaredMethods() throws SecurityException {
+        checkClassFlag(ALL_DECLARED_METHODS_FLAG, "getDeclaredMethods");
+        return copyMethods(privateGetDeclaredMethods(false));
+    }
+
+    @Substitute
+    private Constructor<?>[] getDeclaredConstructors() {
+        checkClassFlag(ALL_DECLARED_CONSTRUCTORS_FLAG, "getDeclaredConstructors");
+        return copyConstructors(privateGetDeclaredConstructors(false));
+    }
 
     /**
-     * @see #filterHidingFields(Field...)
+     * @see #filterFields(Field...)
      */
     @Substitute
     public Field getDeclaredField(String fieldName) throws NoSuchFieldException, SecurityException {
         Objects.requireNonNull(fieldName);
-        @SuppressWarnings("removal")
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            checkMemberAccess(sm, Member.DECLARED, Reflection.getCallerClass(), true);
-        }
         Field field = searchFields(privateGetDeclaredFields(false), fieldName);
-        if (field == null || ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
-            throw new NoSuchFieldException(fieldName);
-        }
+        checkField(fieldName, field, false);
         return getReflectionFactory().copyField(field);
     }
 
-    @KeepOriginal
-    private native Method getDeclaredMethod(@SuppressWarnings("hiding") String name, Class<?>... parameterTypes);
+    @Substitute
+    @CallerSensitive
+    public Method getDeclaredMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
+        Objects.requireNonNull(methodName);
+        Method method = searchMethods(privateGetDeclaredMethods(false), methodName, parameterTypes);
+        checkMethod(methodName, parameterTypes, method, false);
+        return getReflectionFactory().copyMethod(method);
+    }
 
     @KeepOriginal
     private native Constructor<?> getDeclaredConstructor(Class<?>... parameterTypes);
@@ -1024,6 +1176,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
+        checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
         if (reflectionMetadata == null || reflectionMetadata.recordComponentsEncodingIndex == NO_DATA) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
@@ -1056,35 +1209,33 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private static native Field searchFields(Field[] fields, String name);
 
-    /**
-     * @see #filterHidingMethods(Method...)
-     */
+    @KeepOriginal
+    private static native Method searchMethods(Method[] allMethods, String name, Class<?>[] parameterTypes);
+
     @Substitute
-    private static Method searchMethods(Method[] allMethods, String name, Class<?>[] parameterTypes) {
-        Method[] methods = filterHidingMethods(allMethods);
+    private Constructor<?> getConstructor0(Class<?>[] parameterTypes, int which) throws NoSuchMethodException {
         ReflectionFactory fact = getReflectionFactory();
-        Method res = null;
-        for (Method m : methods) {
-            if (m.getName().equals(name) && arrayContentsEq(parameterTypes, fact.getExecutableSharedParameterTypes(m)) &&
-                            (res == null || (res.getReturnType() != m.getReturnType() && res.getReturnType().isAssignableFrom(m.getReturnType())))) {
-                res = m;
+        Constructor<?>[] constructors = privateGetDeclaredConstructors((which == Member.PUBLIC));
+        Constructor<?> candidate = null;
+        for (Constructor<?> constructor : constructors) {
+            if (arrayContentsEq(parameterTypes,
+                            fact.getExecutableSharedParameterTypes(constructor))) {
+                candidate = constructor;
             }
         }
-        return res;
+        checkMethod("<init>", parameterTypes, candidate, which == Member.PUBLIC);
+        return candidate;
     }
-
-    @KeepOriginal
-    private native Constructor<?> getConstructor0(Class<?>[] parameterTypes, int which);
 
     @KeepOriginal
     private static native boolean arrayContentsEq(Object[] a1, Object[] a2);
 
     /**
-     * @see #filterHidingFields(Field...)
+     * @see #filterFields(Field...)
      */
     @Substitute
     private static Field[] copyFields(Field[] original) {
-        Field[] arg = filterHidingFields(original);
+        Field[] arg = filterFields(original);
         Field[] out = new Field[arg.length];
         ReflectionFactory fact = getReflectionFactory();
         for (int i = 0; i < arg.length; i++) {
@@ -1094,11 +1245,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     /**
-     * @see #filterHidingMethods(Method...)
+     * @see #filterMethods(Method...)
      */
     @Substitute
     private static Method[] copyMethods(Method[] original) {
-        Method[] arg = filterHidingMethods(original);
+        Method[] arg = filterMethods(original);
         Method[] out = new Method[arg.length];
         ReflectionFactory fact = getReflectionFactory();
         for (int i = 0; i < arg.length; i++) {
@@ -1107,8 +1258,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return out;
     }
 
-    @KeepOriginal
-    private static native <U> Constructor<U>[] copyConstructors(Constructor<U>[] arg);
+    /**
+     * @see #filterConstructors(Constructor[])
+     */
+    @Substitute
+    private static Constructor<?>[] copyConstructors(Constructor<?>[] original) {
+        Constructor<?>[] arg = filterConstructors(original);
+        Constructor<?>[] out = new Constructor<?>[arg.length];
+        ReflectionFactory fact = getReflectionFactory();
+        for (int i = 0; i < arg.length; i++) {
+            out[i] = fact.copyConstructor(arg[i]);
+        }
+        return out;
+    }
 
     @KeepOriginal
     @Override
@@ -1239,7 +1401,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public Object[] getSigners() {
-        return null;
+        if (isPrimitive()) {
+            return null;
+        }
+        checkClassFlag(ALL_SIGNERS_FLAG, "getSigners");
+        if (hubMetadata == null || hubMetadata.signersEncodingIndex == NO_DATA) {
+            return null;
+        }
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex);
     }
 
     @Substitute
@@ -1294,12 +1463,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     /**
-     * @see #filterHidingMethods(Method...)
+     * @see #filterMethods(Method...)
      */
     @Substitute //
     @SuppressWarnings({"unused"})
     List<Method> getDeclaredPublicMethods(String methodName, Class<?>... parameterTypes) {
-        Method[] methods = filterHidingMethods(privateGetDeclaredMethods(/* publicOnly */ true));
+        checkClassFlag(ALL_METHODS_FLAG | ALL_DECLARED_METHODS_FLAG, "getMethods or getDeclaredMethods");
+
+        Method[] methods = filterMethods(privateGetDeclaredMethods(/* publicOnly */ true));
         ReflectionFactory factory = getReflectionFactory();
         List<Method> result = new ArrayList<>();
         for (Method method : methods) {
@@ -1320,19 +1491,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return nestHost == DynamicHub.fromClass(c).nestHost;
     }
 
-    @Substitute
-    private Class<?>[] getNestMembers() {
-        /*
-         * Supporting all nest members is not as easy as supporting only the nest host. It is not
-         * enough to just preserve the result of Class.getNestMembers() returned during image
-         * generation. This would significantly worsen the static analysis quality, because it would
-         * make all nest members reachable if only a single class of the nest is reachable. A full
-         * solution would need to filter the nest members based on reachability, i.e., only add nest
-         * members when they are reachable by the static analysis. If necessary, this can be
-         * implemented though.
-         */
-        throw VMError.unsupportedFeature("Class.getNestMembers is not supported yet");
-    }
+    @KeepOriginal
+    public native Class<?>[] getNestMembers();
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
@@ -1345,6 +1505,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub arrayType() {
+        if (toClass(this) == void.class) {
+            throw new UnsupportedOperationException(new IllegalArgumentException());
+        }
+        if (arrayHub == null) {
+            throw MissingReflectionRegistrationUtils.forClass(getTypeName() + "[]");
+        }
         return arrayHub;
     }
 
@@ -1488,8 +1654,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Delete
     private native Class<?> getNestHost0();
 
-    @Delete
-    private native Class<?>[] getNestMembers0();
+    @Substitute
+    private Class<?>[] getNestMembers0() {
+        checkClassFlag(ALL_NEST_MEMBERS_FLAG, "getNestMembers");
+        if (hubMetadata == null || hubMetadata.nestMembersEncodingIndex == NO_DATA) {
+            return new Class<?>[]{DynamicHub.toClass(this)};
+        }
+        Class<?>[] nestMembers = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex);
+        for (Class<?> clazz : nestMembers) {
+            PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
+        }
+        return nestMembers;
+    }
 
     @Delete
     private native String initClassName();
@@ -1530,8 +1706,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private Class<?>[] getPermittedSubclasses0() {
-        if (hubMetadata == null || hubMetadata.permittedSubclassesEncodingIndex == NO_DATA) {
+        if (!isSealed()) {
             return null;
+        }
+        checkClassFlag(ALL_PERMITTED_SUBCLASSES_FLAG, "getPermittedSubclasses");
+        if (hubMetadata == null || hubMetadata.permittedSubclassesEncodingIndex == NO_DATA) {
+            return new Class<?>[0];
         }
         Class<?>[] permittedSubclasses = ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex);
         for (Class<?> clazz : permittedSubclasses) {
@@ -1569,28 +1749,43 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     native boolean casAnnotationType(AnnotationType oldType, AnnotationType newType);
 
     /*
-     * We need to filter out hiding elements at the last moment. This ensures that the JDK internals
-     * see them as regular methods and fields and ensure their visibility is correct, but they
-     * should not be returned to application code.
+     * We need to filter out hiding and negative elements at the last moment. This ensures that the
+     * JDK internals see them as regular methods and fields and ensure their visibility is correct,
+     * but they should not be returned to application code.
      */
-    private static Field[] filterHidingFields(Field... fields) {
+    private static Field[] filterFields(Field... fields) {
         List<Field> filtered = new ArrayList<>();
+        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
         for (Field field : fields) {
-            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(field.getModifiers())) {
+            int modifiers = field.getModifiers();
+            if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(field);
             }
         }
         return filtered.toArray(new Field[0]);
     }
 
-    private static Method[] filterHidingMethods(Method... methods) {
+    private static Method[] filterMethods(Method... methods) {
         List<Method> filtered = new ArrayList<>();
+        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
         for (Method method : methods) {
-            if (!ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(method.getModifiers())) {
+            int modifiers = method.getModifiers();
+            if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(method);
             }
         }
         return filtered.toArray(new Method[0]);
+    }
+
+    private static Constructor<?>[] filterConstructors(Constructor<?>... constructors) {
+        List<Constructor<?>> filtered = new ArrayList<>();
+        ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
+        for (Constructor<?> constructor : constructors) {
+            if (!decoder.isNegative(constructor.getModifiers())) {
+                filtered.add(constructor);
+            }
+        }
+        return filtered.toArray(new Constructor<?>[0]);
     }
 
     public void setJrfEventConfiguration(Object configuration) {
@@ -1672,12 +1867,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         @TargetElement(onlyWith = JDK17OrLater.class)//
         final int permittedSubclassesEncodingIndex;
 
-        private DynamicHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex) {
+        final int nestMembersEncodingIndex;
+
+        final int signersEncodingIndex;
+
+        private DynamicHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex,
+                        int nestMembersEncodingIndex, int signersEncodingIndex) {
             this.enclosingMethodInfoIndex = enclosingMethodInfoIndex;
             this.annotationsIndex = annotationsIndex;
             this.typeAnnotationsIndex = typeAnnotationsIndex;
             this.classesEncodingIndex = classesEncodingIndex;
             this.permittedSubclassesEncodingIndex = permittedSubclassesEncodingIndex;
+            this.nestMembersEncodingIndex = nestMembersEncodingIndex;
+            this.signersEncodingIndex = signersEncodingIndex;
         }
     }
 
@@ -1691,14 +1893,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         @TargetElement(onlyWith = JDK17OrLater.class)//
         final int recordComponentsEncodingIndex;
 
-        final int classAccessFlags;
+        final int classFlags;
 
-        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
+        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classFlags) {
             this.fieldsEncodingIndex = fieldsEncodingIndex;
             this.methodsEncodingIndex = methodsEncodingIndex;
             this.constructorsEncodingIndex = constructorsEncodingIndex;
             this.recordComponentsEncodingIndex = recordComponentsEncodingIndex;
-            this.classAccessFlags = classAccessFlags;
+            this.classFlags = classFlags;
         }
     }
 
@@ -1812,28 +2014,6 @@ final class Target_java_lang_Class_AnnotationData {
 
 @TargetClass(className = "java.lang.PublicMethods", innerClass = "MethodList")
 final class Target_java_lang_PublicMethods_MethodList {
-    @Alias //
-    Method method;
-
-    @Alias //
-    Target_java_lang_PublicMethods_MethodList next;
-
-    @Substitute
-    Method getMostSpecific() {
-        Method m = method;
-        Class<?> rt = m.getReturnType();
-        for (Target_java_lang_PublicMethods_MethodList ml = next; ml != null; ml = ml.next) {
-            Method m2 = ml.method;
-            Class<?> rt2 = m2.getReturnType();
-            if (rt2 != rt && rt.isAssignableFrom(rt2)) {
-                // found more specific return type
-                m = m2;
-                rt = rt2;
-            }
-        }
-        /* Filter out hiding methods after the retursive lookup is done */
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).isHiding(m.getModifiers()) ? null : m;
-    }
 }
 
 @TargetClass(className = "java.lang.Class", innerClass = "Atomic")

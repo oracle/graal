@@ -86,16 +86,17 @@ public class AArch64AtomicMove {
 
         private final AArch64Kind accessKind;
         private final MemoryOrderMode memoryOrder;
-        private final boolean setConditionFlags;
+        protected final boolean setConditionFlags;
 
         @Def({REG}) protected AllocatableValue resultValue;
         @Alive({REG}) protected Value expectedValue;
         @Alive({REG}) protected AllocatableValue newValue;
         @Alive({REG}) protected AllocatableValue addressValue;
 
-        public CompareAndSwapOp(AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
+        protected CompareAndSwapOp(LIRInstructionClass<? extends AArch64LIRInstruction> c,
+                        AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
                         AllocatableValue addressValue) {
-            super(TYPE);
+            super(c);
             this.accessKind = accessKind;
             this.memoryOrder = memoryOrder;
             this.setConditionFlags = setConditionFlags;
@@ -103,6 +104,11 @@ public class AArch64AtomicMove {
             this.expectedValue = expectedValue;
             this.newValue = newValue;
             this.addressValue = addressValue;
+        }
+
+        public CompareAndSwapOp(AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
+                        AllocatableValue addressValue) {
+            this(TYPE, accessKind, memoryOrder, setConditionFlags, result, expectedValue, newValue, addressValue);
         }
 
         /**
@@ -122,7 +128,7 @@ public class AArch64AtomicMove {
                     masm.cmp(memAccessSize, result, expected);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -160,7 +166,7 @@ public class AArch64AtomicMove {
                     release = true;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             if (AArch64LIRFlags.useLSE(masm)) {
@@ -358,7 +364,7 @@ public class AArch64AtomicMove {
      * </pre>
      */
     @Opcode("ATOMIC_READ_AND_WRITE")
-    public static final class AtomicReadAndWriteOp extends AArch64LIRInstruction {
+    public static class AtomicReadAndWriteOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<AtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AtomicReadAndWriteOp.class);
 
         private final AArch64Kind accessKind;
@@ -367,13 +373,17 @@ public class AArch64AtomicMove {
         @Alive({REG}) protected AllocatableValue addressValue;
         @Alive({REG}) protected AllocatableValue newValue;
 
-        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue) {
-            super(TYPE);
+        protected AtomicReadAndWriteOp(LIRInstructionClass<? extends AArch64LIRInstruction> c, AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue) {
+            super(c);
             assert kind.isInteger();
             this.accessKind = kind;
             this.resultValue = result;
             this.addressValue = address;
             this.newValue = newValue;
+        }
+
+        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue) {
+            this(TYPE, kind, result, address, newValue);
         }
 
         @Override

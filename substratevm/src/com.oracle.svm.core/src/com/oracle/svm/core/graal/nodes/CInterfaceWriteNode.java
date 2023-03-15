@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;

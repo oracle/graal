@@ -54,7 +54,7 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
             case 64:
                 return LIRKind.value(AMD64Kind.DOUBLE);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

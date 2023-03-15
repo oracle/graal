@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.dead;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
@@ -57,7 +58,7 @@ public final class DeadRegexExecNode extends RegexExecNode {
     }
 
     @Override
-    protected RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
+    protected RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex) {
         return RegexResult.getNoMatchInstance();
     }
 

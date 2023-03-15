@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,6 +76,11 @@
 #define LONGDOUBLE_SIZE sizeof(long double)
 #endif
 
+#define LONG_SIZE sizeof(long)
+#define DOUBLE_SIZE sizeof(double)
+#define INT_SIZE sizeof(int)
+#define FLOAT_SIZE sizeof(float)
+
 static void printfp(const char *msg, long double *x) {
     uint8_t *p = (uint8_t *) x;
     size_t i;
@@ -84,6 +89,60 @@ static void printfp(const char *msg, long double *x) {
     for (i = 0; i < LONGDOUBLE_SIZE; i++)
         printf(" %02x", *(p++));
     printf("\n");
+}
+
+static void printfpdouble(const char *msg, double *x) {
+    uint8_t *p = (uint8_t *) x;
+    size_t i;
+
+    printf("%s:", msg);
+    for (i = 0; i < DOUBLE_SIZE; i++)
+        printf(" %02x", *(p++));
+    printf("\n");
+}
+
+static void printfplong(const char *msg, long *x) {
+    uint8_t *p = (uint8_t *) x;
+    size_t i;
+
+    printf("%s:", msg);
+    for (i = 0; i < LONG_SIZE; i++)
+        printf(" %02x", *(p++));
+    printf("\n");
+}
+
+static void printfpint(const char *msg, int *x) {
+    uint8_t *p = (uint8_t *) x;
+    size_t i;
+
+    printf("%s:", msg);
+    for (i = 0; i < INT_SIZE; i++)
+        printf(" %02x", *(p++));
+    printf("\n");
+}
+
+static void printfpfloat(const char *msg, float *x) {
+    uint8_t *p = (uint8_t *) x;
+    size_t i;
+
+    printf("%s:", msg);
+    for (i = 0; i < FLOAT_SIZE; i++)
+        printf(" %02x", *(p++));
+    printf("\n");
+}
+
+void printBits(size_t const size, void const *const ptr) {
+    unsigned char *b = (unsigned char *) ptr;
+    unsigned char byte;
+    int i, j;
+
+    for (i = size - 1; i >= 0; i--) {
+        for (j = 7; j >= 0; j--) {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
 }
 
 #endif

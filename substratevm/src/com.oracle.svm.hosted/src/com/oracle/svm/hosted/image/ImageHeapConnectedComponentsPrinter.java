@@ -40,9 +40,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
@@ -148,8 +145,7 @@ public class ImageHeapConnectedComponentsPrinter {
     }
 
     private static void markResources(NativeImageHeap heap) {
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
-        for (ResourceStorageEntry value : resources.getValues()) {
+        for (ResourceStorageEntry value : Resources.singleton().resources()) {
             for (byte[] arr : value.getData()) {
                 ObjectInfo info = heap.getObjectInfo(arr);
                 if (info != null) {
@@ -259,7 +255,7 @@ public class ImageHeapConnectedComponentsPrinter {
         String title = "Native image heap connected components report";
         out.println(fillHeading(title));
         out.println(fillHeading(imageName));
-        out.printf("Total Heap Size: %s\n", ByteFormattingUtil.bytesToHuman(totalHeapSizeInBytes));
+        out.printf("Total Heap Size: %s%n", ByteFormattingUtil.bytesToHuman(totalHeapSizeInBytes));
         ObjectReachabilityGroup[] headerGroups = {
                         ObjectReachabilityGroup.ImageCodeInfo,
                         ObjectReachabilityGroup.DynamicHubs,
@@ -269,11 +265,11 @@ public class ImageHeapConnectedComponentsPrinter {
         long totalHeaderGroupSize = 0;
         for (ObjectReachabilityGroup headerGroup : headerGroups) {
             long groupSize = groups.get(headerGroup).sizeInBytes;
-            out.printf("\t%s size: %s\n", headerGroup.description, ByteFormattingUtil.bytesToHuman(groupSize));
+            out.printf("\t%s size: %s%n", headerGroup.description, ByteFormattingUtil.bytesToHuman(groupSize));
             totalHeaderGroupSize += groupSize;
         }
-        out.printf("\tIn connected components report: %s\n", ByteFormattingUtil.bytesToHuman(totalHeapSizeInBytes - totalHeaderGroupSize));
-        out.printf("Total number of objects in the heap: %d\n", this.heap.getObjects().size());
+        out.printf("\tIn connected components report: %s%n", ByteFormattingUtil.bytesToHuman(totalHeapSizeInBytes - totalHeaderGroupSize));
+        out.printf("Total number of objects in the heap: %d%n", this.heap.getObjects().size());
         out.printf("Number of connected components in the report %d", this.connectedComponents.size());
         for (int i = 0; i < connectedComponents.size(); i++) {
             ConnectedComponent connectedComponent = connectedComponents.get(i);
@@ -287,7 +283,7 @@ public class ImageHeapConnectedComponentsPrinter {
 
             out.println();
             String fullHeading = fillHeading(headingInfo);
-            objectHistogram.printHeadings(String.format("%s\n%s", "=".repeat(fullHeading.length()), fullHeading));
+            objectHistogram.printHeadings(String.format("%s%n%s", "=".repeat(fullHeading.length()), fullHeading));
             objectHistogram.print();
 
             Collection<ObjectInfo> roots = connectedComponent.getObjects();
@@ -295,21 +291,21 @@ public class ImageHeapConnectedComponentsPrinter {
             Collection<String> staticFields = getHostedFieldsAccess(roots);
             int entryPointLimit = 10;
             if (!staticFields.isEmpty()) {
-                out.printf("\nStatic fields accessing component %d:\n", i);
+                out.printf("%nStatic fields accessing component %d:%n", i);
                 for (String field : staticFields.stream().limit(entryPointLimit).collect(Collectors.toList())) {
-                    out.printf("\t%s\n", field);
+                    out.printf("\t%s%n", field);
                 }
                 if (staticFields.size() > entryPointLimit) {
-                    out.printf("\t... %d more in the access_points report\n", staticFields.size() - entryPointLimit);
+                    out.printf("\t... %d more in the access_points report%n", staticFields.size() - entryPointLimit);
                 }
             }
             if (!methods.isEmpty()) {
-                out.printf("\nMethods accessing connected component %d:\n", i);
+                out.printf("%nMethods accessing connected component %d:%n", i);
                 for (String methodName : methods.stream().limit(entryPointLimit).collect(Collectors.toList())) {
-                    out.printf("\t%s\n", formatMethodAsLink(methodName));
+                    out.printf("\t%s%n", formatMethodAsLink(methodName));
                 }
                 if (methods.size() > entryPointLimit) {
-                    out.printf("\t... %d more in the access_points report\n", methods.size() - entryPointLimit);
+                    out.printf("\t... %d more in the access_points report%n", methods.size() - entryPointLimit);
                 }
             }
         }
@@ -324,7 +320,7 @@ public class ImageHeapConnectedComponentsPrinter {
                             percentageOfTotalHeapSize);
             out.println();
             String fullHeading = fillHeading(headingInfo);
-            objectHistogram.printHeadings(String.format("%s\n%s", "=".repeat(fullHeading.length()), fullHeading));
+            objectHistogram.printHeadings(String.format("%s%n%s", "=".repeat(fullHeading.length()), fullHeading));
             objectHistogram.print();
         }
     }

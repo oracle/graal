@@ -31,6 +31,7 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
@@ -42,7 +43,9 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -61,6 +64,7 @@ public final class Stubs {
     @Platforms(Platform.AMD64.class)
     public static class AMD64Features {
         public static final EnumSet<AMD64.CPUFeature> RUNTIME_CHECKED_CPU_FEATURES_AMD64 = EnumSet.of(
+                        SSE2,
                         SSE3,
                         SSSE3,
                         SSE4_1,
@@ -71,6 +75,7 @@ public final class Stubs {
         public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AES);
         public static final EnumSet<AMD64.CPUFeature> GHASH_CPU_FEATURES_AMD64 = EnumSet.of(AVX, CLMUL);
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2, ADX);
+        public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
             if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass) || CipherBlockChainingAESNode.class.equals(klass)) {
@@ -80,6 +85,12 @@ public final class Stubs {
                 return GHASH_CPU_FEATURES_AMD64;
             }
             if (BigIntegerMultiplyToLenNode.class.equals(klass)) {
+                return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
+            }
+            if (BigIntegerMulAddNode.class.equals(klass)) {
+                return BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64;
+            }
+            if (BigIntegerSquareToLenNode.class.equals(klass)) {
                 return BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64;
             }
             return RUNTIME_CHECKED_CPU_FEATURES_AMD64;
@@ -111,7 +122,7 @@ public final class Stubs {
         if (arch instanceof AArch64) {
             return AArch64Features.getRequiredCPUFeatures(klass);
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Fold

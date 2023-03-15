@@ -186,4 +186,5 @@ public class CommonConstants {
     public static final String JSON_KEY_COMPONENT_REQUIRES = "requires"; // NOI18N
     public static final String JSON_KEY_COMPONENT_ERRORS = "errors"; // NOI18N
     public static final String JSON_KEY_COMPONENT_PROBLEMS = "problems"; // NOI18N
+    public static final String JSON_KEY_COMPONENT_LIC_IMPL_ACCEPT = "isLicenseImplicitlyAccepted"; // NOI18N
 }

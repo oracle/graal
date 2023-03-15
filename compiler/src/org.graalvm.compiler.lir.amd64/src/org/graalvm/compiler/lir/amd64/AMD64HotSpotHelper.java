@@ -49,7 +49,7 @@ public final class AMD64HotSpotHelper {
             } else if (AMD64.XMM.equals(register.getRegisterCategory())) {
                 temps[i] = register.asValue(LIRKind.value(AMD64Kind.DOUBLE));
             } else {
-                throw GraalError.shouldNotReachHere("Unsupported register type in math stubs.");
+                throw GraalError.shouldNotReachHere("Unsupported register type in math stubs."); // ExcludeFromJacocoGeneratedReport
             }
         }
         return temps;

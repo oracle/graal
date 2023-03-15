@@ -66,9 +66,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 5977,
-          lineEnd   = 6111,
-          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
+          lineStart = 6094,
+          lineEnd   = 6228,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
           sha1      = "f11f84b57df21c9b49473f204e11efc0e6da53d0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
           lineStart = 285,
@@ -541,7 +541,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.insXX(ElementSize.DoubleWord, resultLo, 1, tmp2, 0);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -651,7 +651,7 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
                     masm.neon.eorVVV(ASIMDSize.FullReg, result, lo, t0);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             // Sprinkle load instructions into the generated instructions

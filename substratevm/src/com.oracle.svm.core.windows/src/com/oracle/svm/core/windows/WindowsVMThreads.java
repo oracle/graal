@@ -62,7 +62,7 @@ public final class WindowsVMThreads extends VMThreads {
         return WordFactory.unsigned(Process.NoTransitions.GetCurrentThreadId());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected void joinNoTransition(OSThreadHandle osThreadHandle) {
         WinBase.HANDLE handle = (WinBase.HANDLE) osThreadHandle;

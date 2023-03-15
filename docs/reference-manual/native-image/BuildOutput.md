@@ -23,8 +23,9 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [1/8] Initializing...                                            (3.3s @ 0.25GB)
  Version info: 'GraalVM dev Java 19+36-jvmci-23.0-b01 CE'
  Java version info: '19+36-jvmci-23.0-b01'
+ Graal compiler: optimization level: '0', target machine: 'x86-64-v3'
  C compiler: gcc (linux, x86_64, 11.3.0)
- Garbage collector: Serial GC (max heap size: unlimited)
+ Garbage collector: Serial GC (max heap size: 80% of RAM)
 [2/8] Performing analysis...  [****]                             (6.2s @ 0.47GB)
    2,880 (71.50%) of  4,028 types reachable
    3,519 (51.06%) of  6,892 fields reachable
@@ -37,7 +38,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [5/8] Inlining methods...     [***]                              (0.8s @ 0.99GB)
 [6/8] Compiling methods...    [***]                              (6.4s @ 4.86GB)
 [7/8] Layouting methods...    [**]                               (4.2s @ 3.98GB)
-[8/8] Creating image...                                          (4.0s @ 2.04GB)
+[8/8] Creating image...       [*]                                (4.0s @ 2.04GB)
    4.52MB (22.97%) for code area:     7,470 compilation units
    7.06MB (35.87%) for image heap:  101,764 objects and 5 resources
    7.52MB (38.24%) for debug info generated in 1.8s
@@ -56,6 +57,10 @@ Top 10 origins of code area:            Top 10 object types in image heap:
   11.10KB jdk.proxy2                     173.15KB java.lang.String[]
    8.10KB jdk.internal.vm.compiler       163.22KB j.u.c.ConcurrentHashMap$Node
    1.39KB for 2 more origins               1.70MB for 808 more object types
+--------------------------------------------------------------------------------
+Recommendations:
+ HEAP: Set max heap for improved and more predictable memory usage.
+ CPU:  Enable more CPU features with '-march=native' for improved performance.
 --------------------------------------------------------------------------------
     0.5s (1.8% of total time) in 24 GCs | Peak RSS: 5.62GB | CPU load: 8.92
 --------------------------------------------------------------------------------
@@ -83,6 +88,15 @@ Please report this version info when you [file issues](https://github.com/oracle
 The Java version info (`java.runtime.version` property) of the Native Image build process.
 Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
 
+#### <a name="glossary-graal-compiler"></a>Graal Compiler
+The selected optimization level and targeted machine type used by the Graal compiler.
+The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
+Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling) during development.
+The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
+See [here](#recommendation-cpu) for recommendations on how to use this option.
+
+On Oracle GraalVM, the line also shows whether [Profile-Guided Optimizations](#recommendation-pgo) are *on* or *off*.
+
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
 
@@ -92,10 +106,10 @@ The garbage collector used within the generated executable:
 - The *G1 GC* (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
-For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
+For more information see the [docs on Memory Management](MemoryManagement.md).
 
 #### <a name="glossary-gc-max-heap-size"></a>Maximum Heap Size
-By default, the heap size is *unlimited*, allowing the garbage collector to freely allocate memory according to its policy.
+By default, the heap size is limited to a certain percentage of your system memory, allowing the garbage collector to freely allocate memory according to its policy.
 Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
 This can also improve latency in some cases.
 Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
@@ -190,6 +204,49 @@ The total size of generated debug information (if enabled).
 #### <a name="glossary-other-data"></a>Other Data
 The amount of data in the binary that is neither in the [code area](#glossary-code-area), nor in the [heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
 This data typically contains internal information for Native Image and should not be dominating.
+
+## Recommendations
+
+The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
+
+#### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
+
+The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/17/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
+Use the [tracing agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
+Otherwise, your application is unlikely to work properly.
+If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
+
+#### <a name="recommendation-cpu"></a>`CPU`: Enable More CPU Features for Improved Performance
+
+The Native Image build process has determined that your CPU supports more features, such as AES or LSE, than currently enabled.
+If you deploy your application on the same machine or a similar machine with support for the same CPU features, consider using `-march=native` at build time.
+This option allows the Graal compiler to use all CPU features available, which in turn can significantly improve the performance of your application.
+Use `-march=list` to list all available machine types that can be targeted explicitly.
+
+#### <a name="recommendation-g1gc"></a>`G1GC`: Use G1 Garbage Collector for Improved Latency and Throughput
+
+The G1 garbage collector is available for your platform.
+Consider enabling it using `--gc=G1` at build time to improve the latency and throughput of your application.
+For more information see the [docs on Memory Management](MemoryManagement.md).
+For best peak performance, also consider using [Profile-Guided Optimizations](#recommendation-pgo).
+
+#### <a name="recommendation-heap"></a>`HEAP`: Specify a Maximum Heap Size
+
+Please refer to [Maximum Heap Size](#glossary-gc-max-heap-size).
+
+#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimizations for Improved Throughput
+
+Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
+For this, perform the following steps:
+
+1. Build your application with `--pgo-instrument`.
+2. Run your instrumented application with a representative workload to generate profiling information in the form of an `.iprof` file.
+3. Re-build your application and pass in the profiling information with `--pgo=<your>.iprof` to generate an optimized version of your application.
+
+Relevant guide: [Optimize a Native Executable with Profile-Guided Optimizations](guides/optimize-native-executable-with-pgo.md).
+
+For best peak performance, also consider using the [G1 garbage collector](#recommendation-g1gc).
 
 ## Resource Usage Statistics
 

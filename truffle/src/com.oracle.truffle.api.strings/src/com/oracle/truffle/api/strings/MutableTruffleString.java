@@ -73,46 +73,32 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
  */
 public final class MutableTruffleString extends AbstractTruffleString {
 
-    private int codePointLength = -1;
-    private byte codeRange = (byte) TSCodeRange.getUnknown();
-
-    private MutableTruffleString(Object data, int offset, int length, int stride, Encoding encoding) {
-        super(data, offset, length, stride, encoding, 0);
+    private MutableTruffleString(Object data, int offset, int length, int stride, int codePointLength, Encoding encoding) {
+        super(data, offset, length, stride, encoding, 0, codePointLength, TSCodeRange.getUnknownCodeRangeForEncoding(encoding.id));
         assert data instanceof byte[] || data instanceof NativePointer;
-        if (Encoding.isFixedWidth(encoding)) {
-            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding.jCoding);
-        }
     }
 
     private static MutableTruffleString create(Object data, int offset, int length, Encoding encoding) {
-        MutableTruffleString string = new MutableTruffleString(data, offset, length, encoding.naturalStride, encoding);
+        final int codePointLength;
+        if (encoding.isFixedWidth()) {
+            codePointLength = encoding.isSupported() ? length : length / JCodings.getInstance().minLength(encoding.jCoding);
+        } else {
+            codePointLength = -1;
+        }
+        MutableTruffleString string = new MutableTruffleString(data, offset, length, encoding.naturalStride, codePointLength, encoding);
         if (AbstractTruffleString.DEBUG_ALWAYS_CREATE_JAVA_STRING) {
             string.toJavaStringUncached();
         }
         return string;
     }
 
-    int codePointLength() {
-        return codePointLength;
-    }
-
-    int codeRange() {
-        return codeRange;
-    }
-
-    void updateCachedAttributes(int newCodePointLength, int newCodeRange) {
-        assert newCodePointLength >= 0;
-        assert TSCodeRange.isCodeRange(newCodeRange);
-        this.codePointLength = newCodePointLength;
-        this.codeRange = (byte) newCodeRange;
-    }
-
     void invalidateCachedAttributes() {
-        if (!Encoding.isFixedWidth(encoding())) {
-            codePointLength = -1;
+        boolean isFixedWidth = Encoding.isFixedWidth(encoding());
+        if (!isFixedWidth) {
+            invalidateCodePointLength();
         }
-        codeRange = (byte) TSCodeRange.getUnknown();
-        hashCode = 0;
+        invalidateCodeRange();
+        invalidateHashCode();
         if (data() instanceof NativePointer) {
             ((NativePointer) data()).invalidateCachedByteArray();
         }
@@ -421,7 +407,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
             int byteLength = a.length() << a.stride();
             TruffleString.boundsCheckI(byteIndex, byteLength);
             TStringOps.writeS0(a.data(), a.offset(), byteLength, byteIndex, value);
-            if (!(TSCodeRange.is7Bit(a.codeRange) && value >= 0)) {
+            if (!(TSCodeRange.is7Bit(a.codeRange()) && value >= 0)) {
                 a.invalidateCachedAttributes();
             }
         }
@@ -539,20 +525,20 @@ public final class MutableTruffleString extends AbstractTruffleString {
         public abstract MutableTruffleString execute(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding);
 
         @Specialization
-        MutableTruffleString substring(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding,
+        MutableTruffleString substring(AbstractTruffleString a, int fromIndex, int length, Encoding encoding,
                         @Cached TruffleString.ToIndexableNode toIndexableNode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
+                        @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.CodePointIndexToRawNode translateIndexNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
-            a.checkEncoding(expectedEncoding);
-            a.boundsCheckRegion(this, fromIndex, length, getCodePointLengthNode);
+            a.checkEncoding(encoding);
+            a.boundsCheckRegion(this, fromIndex, length, encoding, getCodePointLengthNode);
             Object arrayA = toIndexableNode.execute(this, a, a.data());
-            final int codeRangeA = getCodeRangeANode.execute(this, a);
-            int fromIndexRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, expectedEncoding, 0, fromIndex, length == 0);
-            int lengthRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, expectedEncoding, fromIndexRaw, length, true);
-            int stride = expectedEncoding.naturalStride;
-            return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, expectedEncoding, copyToByteArrayNode);
+            final int codeRangeA = getCodeRangeANode.execute(this, a, encoding);
+            int fromIndexRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, encoding, 0, fromIndex, length == 0);
+            int lengthRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, encoding, fromIndexRaw, length, true);
+            int stride = encoding.naturalStride;
+            return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, encoding, copyToByteArrayNode);
         }
 
         /**
@@ -671,12 +657,12 @@ public final class MutableTruffleString extends AbstractTruffleString {
          */
         public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding);
 
-        @Specialization(guards = "a.isCompatibleTo(encoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(encoding)")
         static MutableTruffleString compatibleMutable(MutableTruffleString a, @SuppressWarnings("unused") Encoding encoding) {
             return a;
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(encoding) || a.isImmutable()")
+        @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
         static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
@@ -727,13 +713,13 @@ public final class MutableTruffleString extends AbstractTruffleString {
          */
         public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding);
 
-        @Specialization(guards = "a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
         static MutableTruffleString compatible(MutableTruffleString a, Encoding expectedEncoding, @SuppressWarnings("unused") Encoding targetEncoding) {
             a.checkEncoding(expectedEncoding);
             return a;
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(targetEncoding) || a.isImmutable()")
+        @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding) || a.isImmutable()")
         static MutableTruffleString reinterpret(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
             a.checkEncoding(expectedEncoding);
@@ -839,7 +825,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }
             }
-            a.updateCachedAttributes(codePointLength, codeRange);
+            a.updateAttributes(codePointLength, codeRange);
         }
     }
 

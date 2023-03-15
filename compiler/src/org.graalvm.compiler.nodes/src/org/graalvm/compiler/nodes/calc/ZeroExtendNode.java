@@ -36,11 +36,11 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -70,11 +70,11 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
     }
 
     public static ValueNode create(ValueNode input, int resultBits, NodeView view) {
-        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, false);
+        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, inputAlwaysPositive(input));
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view) {
-        return create(input, inputBits, resultBits, view, false);
+        return create(input, inputBits, resultBits, view, inputAlwaysPositive(input));
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
@@ -84,6 +84,10 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
             return synonym;
         }
         return canonical(null, input, inputBits, resultBits, view, alwaysPositive);
+    }
+
+    private static boolean inputAlwaysPositive(ValueNode v) {
+        return ((IntegerStamp) v.stamp(NodeView.DEFAULT)).isPositive();
     }
 
     @Override
@@ -141,7 +145,7 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
                 IntegerStamp istamp = (IntegerStamp) inputStamp;
                 long mask = CodeUtil.mask(PrimitiveStamp.getBits(narrow.stamp(view)));
 
-                if ((istamp.upMask() & ~mask) == 0) {
+                if ((istamp.mayBeSet() & ~mask) == 0) {
                     // The original value cannot change because of the narrow and zero extend.
 
                     if (istamp.getBits() < resultBits) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -94,7 +95,7 @@ public class FloatStamp extends PrimitiveStamp {
             case 64:
                 return JavaConstant.forDouble(buffer.getDouble());
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -125,7 +126,7 @@ public class FloatStamp extends PrimitiveStamp {
             case 64:
                 return metaAccess.lookupJavaType(Double.TYPE);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -352,7 +353,7 @@ public class FloatStamp extends PrimitiveStamp {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         if (result.isConstant()) {
             return result;
@@ -400,12 +401,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(-value.asDouble());
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -432,12 +433,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(a.asDouble() + b.asDouble());
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -462,7 +463,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(n.asDouble(), -0.0) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -480,12 +481,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(a.asDouble() - b.asDouble());
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -510,7 +511,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(n.asDouble(), 0.0) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -528,12 +529,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(a.asDouble() * b.asDouble());
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -558,7 +559,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(n.asDouble(), 1.0) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -582,12 +583,12 @@ public class FloatStamp extends PrimitiveStamp {
                                     double doubleDivisor = b.asDouble();
                                     return (doubleDivisor == 0) ? null : JavaConstant.forDouble(a.asDouble() / doubleDivisor);
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -612,7 +613,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(n.asDouble(), 1.0) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -630,12 +631,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(a.asDouble() % b.asDouble());
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -665,12 +666,12 @@ public class FloatStamp extends PrimitiveStamp {
                                     long d = Double.doubleToRawLongBits(value.asDouble());
                                     return JavaConstant.forDouble(Double.longBitsToDouble(~d));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -706,12 +707,12 @@ public class FloatStamp extends PrimitiveStamp {
                                     long db = Double.doubleToRawLongBits(b.asDouble());
                                     return JavaConstant.forDouble(Double.longBitsToDouble(da & db));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -736,7 +737,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.doubleToRawLongBits(value.asDouble()) == 0xFFFFFFFFFFFFFFFFL;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -760,12 +761,12 @@ public class FloatStamp extends PrimitiveStamp {
                                     long db = Double.doubleToRawLongBits(b.asDouble());
                                     return JavaConstant.forDouble(Double.longBitsToDouble(da | db));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -790,7 +791,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.doubleToRawLongBits(value.asDouble()) == 0L;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -812,12 +813,12 @@ public class FloatStamp extends PrimitiveStamp {
                                     long db = Double.doubleToRawLongBits(b.asDouble());
                                     return JavaConstant.forDouble(Double.longBitsToDouble(da ^ db));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -842,7 +843,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.doubleToRawLongBits(value.asDouble()) == 0L;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -860,12 +861,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(Math.abs(value.asDouble()));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -892,12 +893,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(Math.sqrt(value.asDouble()));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s) {
+                        protected Stamp foldStampImpl(Stamp s) {
                             if (s.isEmpty()) {
                                 return s;
                             }
@@ -925,12 +926,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(Math.max(a.asDouble(), b.asDouble()));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -956,7 +957,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(value.asDouble(), Double.NEGATIVE_INFINITY) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -974,12 +975,12 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return JavaConstant.forDouble(Math.min(a.asDouble(), b.asDouble()));
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                        protected Stamp foldStampImpl(Stamp s1, Stamp s2) {
                             if (s1.isEmpty()) {
                                 return s1;
                             }
@@ -1004,7 +1005,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 case Double:
                                     return Double.compare(value.asDouble(), Double.POSITIVE_INFINITY) == 0;
                                 default:
-                                    throw GraalError.shouldNotReachHere();
+                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                             }
                         }
                     },
@@ -1031,6 +1032,9 @@ public class FloatStamp extends PrimitiveStamp {
                         }
                     },
 
+                    null, // Compress
+                    null, // Expand
+
                     new FloatConvertOp(F2I) {
 
                         @Override
@@ -1040,7 +1044,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Int);
                             }
@@ -1069,7 +1073,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Long);
                             }
@@ -1098,7 +1102,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Int);
                             }
@@ -1127,7 +1131,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Long);
                             }
@@ -1156,7 +1160,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Double);
                             }
@@ -1175,7 +1179,7 @@ public class FloatStamp extends PrimitiveStamp {
                         }
 
                         @Override
-                        public Stamp foldStamp(Stamp stamp) {
+                        protected Stamp foldStampImpl(Stamp stamp) {
                             if (stamp.isEmpty()) {
                                 return StampFactory.empty(JavaKind.Float);
                             }

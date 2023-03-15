@@ -1974,6 +1974,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (EspressoException e) {
+                // make sure we don't try to convert espresso exceptions
+                throw e;
             } catch (AbstractTruffleException ex) {
                 exceptionProfile.enter();
                 StaticObject foreignException = getAllocator().createForeignException(getContext(), ex, exceptionInterop);

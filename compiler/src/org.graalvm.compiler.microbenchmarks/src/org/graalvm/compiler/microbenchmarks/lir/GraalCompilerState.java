@@ -325,7 +325,7 @@ public abstract class GraalCompilerState {
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                         graph.getProfilingInfo(), createSuites(getOptions()), createLIRSuites(getOptions()), new CompilationResult(graph.compilationId()), CompilationResultBuilderFactory.Default,
-                        true);
+                        null, true);
     }
 
     /**
@@ -468,7 +468,7 @@ public abstract class GraalCompilerState {
         request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
         LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), speculationLog,
                         bytecodeSize, lirGenRes, request.compilationResult,
-                        request.installedCodeOwner, request.factory);
+                        request.installedCodeOwner, request.factory, request.entryPointDecorator);
     }
 
     protected StructuredGraph graph() {

@@ -61,6 +61,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
+import org.graalvm.polyglot.SandboxPolicy;
 
 final class InstrumentCache {
 
@@ -77,6 +78,7 @@ final class InstrumentCache {
     private final boolean internal;
     private final Set<String> services;
     private final TruffleInstrument.Provider provider;
+    private final SandboxPolicy sandboxPolicy;
 
     /**
      * Initializes state for native image generation.
@@ -117,7 +119,7 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    TruffleInstrument.Provider provider, String website) {
+                    TruffleInstrument.Provider provider, String website, SandboxPolicy sandboxPolicy) {
         this.id = id;
         this.name = name;
         this.version = version;
@@ -126,6 +128,7 @@ final class InstrumentCache {
         this.internal = internal;
         this.services = services;
         this.provider = provider;
+        this.sandboxPolicy = sandboxPolicy;
     }
 
     boolean isInternal() {
@@ -214,6 +217,7 @@ final class InstrumentCache {
         }
         String version = reg.version();
         String website = reg.website();
+        SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>();
         for (String service : provider.getServicesClassNames()) {
@@ -222,7 +226,7 @@ final class InstrumentCache {
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website, sandboxPolicy));
         }
     }
 
@@ -265,5 +269,9 @@ final class InstrumentCache {
 
     String getWebsite() {
         return website;
+    }
+
+    SandboxPolicy getSandboxPolicy() {
+        return sandboxPolicy;
     }
 }

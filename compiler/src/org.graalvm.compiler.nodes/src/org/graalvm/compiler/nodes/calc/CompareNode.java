@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(cycles = CYCLES_1)
 public abstract class CompareNode extends BinaryOpLogicNode implements Canonicalizable.Binary<ValueNode> {
@@ -95,7 +96,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     public static LogicNode tryConstantFold(CanonicalCondition condition, ValueNode forX, ValueNode forY, ConstantReflectionProvider constantReflection, boolean unorderedIsTrue) {
         if (forX.isConstant() && forY.isConstant() && (constantReflection != null || forX.asConstant() instanceof PrimitiveConstant)) {
-            return LogicConstantNode.forBoolean(condition.foldCondition(forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue));
+            Stamp stamp = forX.stamp(NodeView.DEFAULT);
+            TriState result = condition.foldCondition(stamp, forX.asConstant(), forY.asConstant(), constantReflection, unorderedIsTrue);
+            if (result.isKnown()) {
+                return LogicConstantNode.forBoolean(result.toBoolean());
+            }
         }
         return null;
     }
@@ -289,17 +294,16 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             Constant falseConstant = conditionalNode.falseValue().asConstant();
 
             if (falseConstant != null && trueConstant != null && constantReflection != null) {
-                boolean trueResult = cond.foldCondition(trueConstant, constant, constantReflection, unorderedIsTrue);
-                boolean falseResult = cond.foldCondition(falseConstant, constant, constantReflection, unorderedIsTrue);
+                Stamp compareStamp = conditionalNode.trueValue().stamp(NodeView.DEFAULT);
+                TriState trueResult = cond.foldCondition(compareStamp, trueConstant, constant, constantReflection, unorderedIsTrue);
+                TriState falseResult = cond.foldCondition(compareStamp, falseConstant, constant, constantReflection, unorderedIsTrue);
 
-                if (trueResult == falseResult) {
-                    return LogicConstantNode.forBoolean(trueResult);
+                if (trueResult.isKnown() && trueResult.equals(falseResult)) {
+                    return LogicConstantNode.forBoolean(trueResult.toBoolean());
                 } else {
-                    if (trueResult) {
-                        assert falseResult == false;
+                    if (trueResult.isTrue() && falseResult.isFalse()) {
                         return conditionalNode.condition();
-                    } else {
-                        assert falseResult == true;
+                    } else if (trueResult.isFalse() && falseResult.isTrue()) {
                         return LogicNegationNode.create(conditionalNode.condition());
 
                     }
@@ -375,7 +379,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 canon = CanonicalCondition.BT;
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         LogicNode logic = createCompareNode(canon, xx, yy, constantReflection, NodeView.DEFAULT);
         if (negate) {

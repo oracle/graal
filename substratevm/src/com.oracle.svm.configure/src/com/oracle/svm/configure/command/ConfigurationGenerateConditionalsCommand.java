@@ -127,23 +127,25 @@ public final class ConfigurationGenerateConditionalsCommand extends Configuratio
 
     @Override
     protected String getDescription0() {
-        return "      generates conditional configuration from data\n" +
-                        "                          collected by previous agent runs.\n" +
-                        "    --input-dir=<path>\n" +
-                        "                          reads configuration and metadata from a directory that\n" +
-                        "                          was previously populated by a run with the agent in\n" +
-                        "                          the partial configuration mode.\n" +
-                        "    --output-dir=<path>\n" +
-                        "                          writes a set of conditional configuration files to\n" +
-                        "                          the given path.\n" +
-                        "    --user-code-filter=<path>\n" +
-                        "                          specifies a filter file used to classify classes as\n" +
-                        "                          user application classes. Generated conditions will\n" +
-                        "                          only reference these classes.\n" +
-                        "    --class-name-filter=<path>\n" +
-                        "                          specifies a filter file used to exclude classes from\n" +
-                        "                          the computed configuration. Both the configuration\n" +
-                        "                          and the conditions in the configuration will be\n" +
-                        "                          tested against this filter.\n";
+        return """
+                              generates conditional configuration from data
+                                                  collected by previous agent runs.
+                            --input-dir=<path>
+                                                  reads configuration and metadata from a directory that
+                                                  was previously populated by a run with the agent in
+                                                  the partial configuration mode.
+                            --output-dir=<path>
+                                                  writes a set of conditional configuration files to
+                                                  the given path.
+                            --user-code-filter=<path>
+                                                  specifies a filter file used to classify classes as
+                                                  user application classes. Generated conditions will
+                                                  only reference these classes.
+                            --class-name-filter=<path>
+                                                  specifies a filter file used to exclude classes from
+                                                  the computed configuration. Both the configuration
+                                                  and the conditions in the configuration will be
+                                                  tested against this filter.
+                        """.replaceAll("\n", System.lineSeparator());
     }
 }

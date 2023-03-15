@@ -62,7 +62,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
 import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
@@ -295,48 +294,43 @@ public final class RegexObject extends AbstractConstantKeysObject {
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS)
         Object execIdentity(String symbol, RegexObject receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecCallTarget(), expectStringNode.execute(input), fromIndex);
+            return execNode.execute(receiver.getExecCallTarget(), input, fromIndex);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "execIdentity")
         Object execEquals(String symbol, RegexObject receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecCallTarget(), expectStringNode.execute(input), fromIndex);
+            return execNode.execute(receiver.getExecCallTarget(), input, fromIndex);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC_BOOLEAN)"}, limit = N_METHODS)
         boolean execBooleanIdentity(String symbol, RegexObject receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecBooleanCallTarget(), expectStringNode.execute(input), fromIndex) != RegexResult.getNoMatchInstance();
+            return execNode.execute(receiver.getExecBooleanCallTarget(), input, fromIndex) != RegexResult.getNoMatchInstance();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BOOLEAN)"}, limit = N_METHODS, replaces = "execBooleanIdentity")
         boolean execBooleanEquals(String symbol, RegexObject receiver, Object input, int fromIndex,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecBooleanCallTarget(), expectStringNode.execute(input), fromIndex) != RegexResult.getNoMatchInstance();
+            return execNode.execute(receiver.getExecBooleanCallTarget(), input, fromIndex) != RegexResult.getNoMatchInstance();
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"execEquals", "execBooleanEquals"})
         static Object invokeGeneric(String symbol, RegexObject receiver, Object input, int fromIndex,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             switch (symbol) {
                 case PROP_EXEC:
-                    return execNode.execute(receiver.getExecCallTarget(), expectStringNode.execute(input), fromIndex);
+                    return execNode.execute(receiver.getExecCallTarget(), input, fromIndex);
                 case PROP_EXEC_BOOLEAN:
-                    return execNode.execute(receiver.getExecBooleanCallTarget(), expectStringNode.execute(input), fromIndex) != RegexResult.getNoMatchInstance();
+                    return execNode.execute(receiver.getExecBooleanCallTarget(), input, fromIndex) != RegexResult.getNoMatchInstance();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -365,14 +359,13 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         @ExportMessage
         Object execute(Object[] args,
-                        @Cached ExpectStringNode expectStringNode,
                         @Cached ToLongNode toLongNode,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw ArityException.create(2, 2, args.length);
             }
-            Object input = expectStringNode.execute(args[0]);
+            Object input = args[0];
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
                 return RegexResult.getNoMatchInstance();
@@ -408,14 +401,13 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         @ExportMessage
         boolean execute(Object[] args,
-                        @Cached ExpectStringNode expectStringOrTruffleObjectNode,
                         @Cached ToLongNode toLongNode,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw ArityException.create(2, 2, args.length);
             }
-            Object input = expectStringOrTruffleObjectNode.execute(args[0]);
+            Object input = args[0];
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
                 return false;

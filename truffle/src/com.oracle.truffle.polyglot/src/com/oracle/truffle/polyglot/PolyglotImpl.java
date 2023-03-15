@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.api.source.Source.CONTENT_NONE;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,6 +70,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -231,11 +233,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions,
+                    boolean useSystemProperties,
                     final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly,
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
+            validateSandbox(sandboxPolicy);
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -252,9 +256,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             LogConfig logConfig = new LogConfig();
-            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, useAllowExperimentalOptions);
+            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, sandboxPolicy, useAllowExperimentalOptions);
 
-            LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr);
+            LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr, sandboxPolicy);
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(useHandler, logConfig.logLevels);
 
             AbstractPolyglotHostService usePolyglotHostService;
@@ -271,7 +275,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             if (impl != null) {
                 assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
-                impl.patch(dispatchOut,
+                impl.patch(sandboxPolicy, dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
                                 engineOptions,
@@ -286,7 +290,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             }
             if (impl == null) {
-                impl = new PolyglotEngineImpl(this,
+                impl = new PolyglotEngineImpl(this, sandboxPolicy,
                                 permittedLanguages,
                                 dispatchOut,
                                 dispatchErr,
@@ -313,16 +317,28 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
+    private void validateSandbox(SandboxPolicy sandboxPolicy) {
+        // When The PolyglotImpl is used as a root polyglot it supports at most the CONSTRAINED
+        // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
+        // all sandboxing policies.
+        if (this == getRootImpl() && sandboxPolicy.isStricterThan(SandboxPolicy.CONSTRAINED)) {
+            throw PolyglotEngineException.illegalArgument(String.format(
+                            "The Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED." +
+                                            "In order to resolve this switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).",
+                            sandboxPolicy));
+        }
+    }
+
     @Override
     protected OptionDescriptors createEngineOptionDescriptors() {
         return PolyglotEngineImpl.createEngineOptionDescriptors();
     }
 
-    static OptionValuesImpl createEngineOptions(Map<String, String> options, LogConfig logOptions, boolean allowExperimentalOptions) {
+    static OptionValuesImpl createEngineOptions(Map<String, String> options, LogConfig logOptions, SandboxPolicy sandboxPolicy, boolean allowExperimentalOptions) {
         OptionDescriptors engineOptionDescriptors = PolyglotImpl.getInstance().createAllEngineOptionDescriptors();
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
-        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, true);
+        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true);
         values.putAll(null, engineOptions, allowExperimentalOptions);
         return values;
     }
@@ -355,12 +371,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
         Map<String, String> options = PolyglotEngineImpl.readOptionsFromSystemProperties(new HashMap<>());
         LogConfig logConfig = new LogConfig();
-        OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, true);
+        SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
+        OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, sandboxPolicy, true);
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
-        LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err);
+        LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err, sandboxPolicy);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, sandboxPolicy, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));
         getAPIAccess().newEngine(engineDispatch, engine, false);
         return engine;
@@ -500,6 +517,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public boolean isHostFileSystem(FileSystem fileSystem) {
+        return FileSystems.isHostFileSystem(fileSystem);
+    }
+
+    @Override
     public ThreadScope createThreadScope() {
         return null;
     }
@@ -507,6 +529,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public LogHandler newLogHandler(Object logHandlerOrStream) {
         return PolyglotLoggers.asLogHandler(this, logHandlerOrStream);
+    }
+
+    @Override
+    public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+        return LANGUAGE.createOptionDescriptorsUnion(optionDescriptors);
     }
 
     @Override
@@ -761,6 +788,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {
         return engine.polyglotHostService.hostToGuestException(engine.host, t);
+    }
+
+    static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+        Objects.requireNonNull(sandboxPolicy);
+        Objects.requireNonNull(reason);
+        Objects.requireNonNull(fix);
+        String spawnIsolateHelp;
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
+        } else {
+            spawnIsolateHelp = "";
+        }
+        String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                        "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s",
+                        sandboxPolicy, reason, fix, spawnIsolateHelp);
+        return new IllegalArgumentException(message);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

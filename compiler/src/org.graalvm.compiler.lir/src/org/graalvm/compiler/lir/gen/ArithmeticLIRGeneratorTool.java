@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,66 +112,101 @@ public interface ArithmeticLIRGeneratorTool {
 
     @SuppressWarnings("unused")
     default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathLog(Value input, boolean base10) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathCos(Value input) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathSin(Value input) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathTan(Value input) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathExp(Value input) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathPow(Value x, Value y) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathMax(Value x, Value y) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathMin(Value x, Value y) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathUnsignedMax(Value x, Value y) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitMathUnsignedMin(Value x, Value y) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitRound(Value operand, RoundingMode mode) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitRoundFloatToInteger(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitIntegerCompress(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitIntegerExpand(Value value, Value mask) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitFloatIsInfinite(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitReverseBits(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHalfFloatToFloat(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitFloatToHalfFloat(Value operand) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitNormalizedUnsignedCompare(Value x, Value y) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
@@ -190,12 +225,12 @@ public interface ArithmeticLIRGeneratorTool {
 
     @SuppressWarnings("unused")
     default Value emitCountLeadingZeros(Value value) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Value emitCountTrailingZeros(Value value) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
 }

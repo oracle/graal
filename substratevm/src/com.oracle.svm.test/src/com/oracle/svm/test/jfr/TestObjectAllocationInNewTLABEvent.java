@@ -28,6 +28,8 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
@@ -37,7 +39,7 @@ import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestObjectAllocationInNewTLABEvent extends JfrTest {
+public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
     private static final int K = 1024;
     private static final int DEFAULT_ALIGNED_HEAP_CHUNK_SIZE = 1024 * K;
 
@@ -47,13 +49,13 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         boolean foundBigByteArray = false;
         boolean foundSmallByteArray = false;
         boolean foundBigCharArray = false;
         boolean foundInstance = false;
 
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals("main")) {
                 continue;

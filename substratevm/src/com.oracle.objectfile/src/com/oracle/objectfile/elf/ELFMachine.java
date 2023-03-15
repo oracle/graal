@@ -207,13 +207,13 @@ public enum ELFMachine/* implements Integral */ {
     }
 
     public static ELFMachine getSystemNativeValue() {
-        if (System.getProperty("os.arch").equals("aarch64")) {
-            return AArch64;
-        } else if (System.getProperty("os.arch").equals("riscv64")) {
-            return RISCV64;
-        } else {
-            return X86_64;
-        }
+        String arch = System.getProperty("os.arch");
+        return switch (arch) {
+            case "aarch64", "arm64" -> AArch64;
+            case "amd64", "x86_64" -> X86_64;
+            case "riscv64" -> RISCV64;
+            default -> throw new IllegalArgumentException("Unsupported ELF machine type: " + arch);
+        };
     }
 }
 

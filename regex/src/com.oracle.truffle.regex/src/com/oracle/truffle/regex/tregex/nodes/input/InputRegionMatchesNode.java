@@ -42,8 +42,8 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -54,20 +54,10 @@ public abstract class InputRegionMatchesNode extends Node {
         return InputRegionMatchesNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, int fromIndex1, Object match, int fromIndex2, int length, Object mask, Encoding encoding);
+    public abstract boolean execute(TruffleString input, int fromIndex1, TruffleString match, int fromIndex2, int length, TruffleString.WithMask mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
-    public boolean doString(String input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
-        return input.regionMatches(fromIndex1, match, fromIndex2, length);
-    }
-
-    @Specialization(guards = "mask != null")
-    public boolean doJavaStringMask(String input, int fromIndex1, String match, int fromIndex2, int length, String mask, @SuppressWarnings("unused") Encoding encoding) {
-        return ArrayUtils.regionEqualsWithOrMask(input, fromIndex1, match, fromIndex2, length, mask);
-    }
-
-    @Specialization(guards = "mask == null")
-    public boolean doTString(TruffleString input, int fromIndex1, TruffleString match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask, Encoding encoding,
+    public boolean doTString(TruffleString input, int fromIndex1, TruffleString match, int fromIndex2, int length, @SuppressWarnings("unused") TruffleString.WithMask mask, Encoding encoding,
                     @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
         int fromByteIndexA = fromIndex1 << encoding.getStride();
         int fromByteIndexB = fromIndex2 << encoding.getStride();
@@ -76,7 +66,7 @@ public abstract class InputRegionMatchesNode extends Node {
                         regionEqualsNode.execute(input, fromByteIndexA, match, fromByteIndexB, byteLength, encoding.getTStringEncoding());
     }
 
-    @Specialization(guards = "mask != null")
+    @Fallback
     public boolean doTStringMask(TruffleString input, int fromIndex1, @SuppressWarnings("unused") TruffleString match, int fromIndex2, int length, TruffleString.WithMask mask, Encoding encoding,
                     @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
         int fromByteIndexA = fromIndex1 << encoding.getStride();

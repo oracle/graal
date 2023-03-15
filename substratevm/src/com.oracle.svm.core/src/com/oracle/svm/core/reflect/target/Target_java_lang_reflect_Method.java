@@ -32,13 +32,14 @@ import java.lang.reflect.Method;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 import sun.reflect.generics.repository.MethodRepository;
 
@@ -73,7 +74,7 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported for " + this);
+            throw MissingReflectionRegistrationUtils.forQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessor;
     }

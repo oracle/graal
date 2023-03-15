@@ -31,7 +31,12 @@ For more details, see [Reflection Support](../Reflection.md).
 
 The logger can be initialized at executable build time with a custom _logging.properties_ configuration file, as illustrated in following example.
 
-1. Save the following Java code into a file named _LoggerBuildTimeInit.java_, then compile it using `javac`:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk) 
+    ```
+
+2. Save the following Java code into a file named _LoggerBuildTimeInit.java_, then compile it using `javac`:
     ```java
     import java.io.IOException;
     import java.util.logging.Level;
@@ -54,10 +59,10 @@ The logger can be initialized at executable build time with a custom _logging.pr
         }
     } 
     ```
-2. Download the [_logging.properties_](../assets/logging.properties) resource file and save it in the same directory as _LoggerBuildTimeInit.java_.
 
-3. Build and run the native executable
+3. Download the [_logging.properties_](../assets/logging.properties) resource file and save it in the same directory as _LoggerBuildTimeInit.java_.
 
+4. Build and run the native executable:
     ```shell
     native-image LoggerBuildTimeInit --initialize-at-build-time=LoggerBuildTimeInit
     ```
@@ -99,7 +104,6 @@ The logger can also be initialized at run time, as shown in the following exampl
 2. Download the [_logging.properties_](../assets/logging.properties) resource file and save it in the same directory as _LoggerRunTimeInit.java_.
 
 3. Build and run the native executable
-
     ```shell
     native-image LoggerRunTimeInit -H:IncludeResources="logging.properties"
     ```

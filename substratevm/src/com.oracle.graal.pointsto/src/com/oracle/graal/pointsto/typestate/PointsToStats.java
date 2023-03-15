@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -145,16 +145,16 @@ public class PointsToStats {
 
     private static void reportPrunedTypeFlows(BufferedWriter out) {
 
-        doWrite(out, String.format("%-35s\n", "Summary"));
-        doWrite(out, String.format("%-35s\t%-10s\n", "Type Flow Class", "Removed Count"));
+        doWrite(out, String.format("%-35s%n", "Summary"));
+        doWrite(out, String.format("%-35s\t%-10s%n", "Type Flow Class", "Removed Count"));
 
         typeFlowBuilders.stream().filter(Objects::nonNull).filter(b -> !b.isMaterialized()).collect(Collectors.groupingBy(TypeFlowBuilder::getFlowClass)).forEach((flowClass, providers) -> {
-            doWrite(out, String.format("%-35s\t%-10d\n",
+            doWrite(out, String.format("%-35s\t%-10d%n",
                             ClassUtil.getUnqualifiedName(flowClass), providers.size()));
         });
 
-        doWrite(out, String.format("\n%-35s\n", "Removed flows"));
-        doWrite(out, String.format("%-35s\t%-10s\n", "Type Flow Class", "Location"));
+        doWrite(out, String.format("%n%-35s%n", "Removed flows"));
+        doWrite(out, String.format("%-35s\t%-10s%n", "Type Flow Class", "Location"));
 
         typeFlowBuilders.stream().filter(Objects::nonNull).filter(b -> !b.isMaterialized()).forEach((provider) -> {
             Object source = provider.getSource();
@@ -170,15 +170,13 @@ public class PointsToStats {
             } else {
                 sourceStr = source.toString();
             }
-            doWrite(out, String.format("%-35s\t%-10s\n",
+            doWrite(out, String.format("%-35s\t%-10s%n",
                             ClassUtil.getUnqualifiedName(provider.getFlowClass()), sourceStr));
         });
 
     }
 
     static class TypeFlowStats {
-        static final Comparator<TypeFlowStats> totalUpdatesCountComparator = Comparator.comparingInt(TypeFlowStats::allUpdatesCount);
-
         final TypeFlow<?> flow;
 
         final List<TypeState> allUpdates;
@@ -294,7 +292,7 @@ public class PointsToStats {
 
     private static void reportTypeFlowStats(BufferedWriter out) {
 
-        doWrite(out, String.format("%-35s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%10s\n",
+        doWrite(out, String.format("%-35s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\t%10s%n",
                         "TypeFlow", "TypeStateID", "StateObjects#", "CanBeNull", "IsClone", "Uses", "Observers", "Uses+Observers",
                         "RetainReason", "QueuedUpdates", "AllUpdates", "TypeStateAdds", "All Updates History (<update frequency>x<type state id>)"));
 
@@ -303,7 +301,7 @@ public class PointsToStats {
                             TypeFlow<?> flow = e.getKey();
                             TypeFlowStats stats = e.getValue();
 
-                            doWrite(out, String.format("%-35s\t%-10d\t%-10d\t%-10b\t%-10b\t%-10d\t%-10d\t%-10d\t%-10s\t%-10d\t%10d\t%10d\t%10s\n",
+                            doWrite(out, String.format("%-35s\t%-10d\t%-10d\t%-10b\t%-10b\t%-10d\t%-10d\t%-10d\t%-10s\t%-10d\t%10d\t%10d\t%10s%n",
                                             asString(flow), stateToId.get(flow.getState()), objectsCount(flow.getState()),
                                             flow.getState().canBeNull(), flow.isClone(),
                                             flow.getUses().size(), flow.getObservers().size(), flow.getUses().size() + flow.getObservers().size(),
@@ -344,7 +342,7 @@ public class PointsToStats {
 
     private static void reportTypeStateStats(BufferedWriter out) {
 
-        doWrite(out, String.format("%10s\t%10s\t%10s\t%10s\t%10s\n", "Id", "Frequency", "Types#", "Object#", "Types"));
+        doWrite(out, String.format("%10s\t%10s\t%10s\t%10s\t%10s%n", "Id", "Frequency", "Types#", "Object#", "Types"));
 
         typeStateStats.entrySet().stream()
                         .sorted(Entry.comparingByValue(atomicIntegerComparator.reversed()))
@@ -352,7 +350,7 @@ public class PointsToStats {
                             TypeState s = entry.getKey();
                             int frequency = entry.getValue().intValue();
 
-                            doWrite(out, String.format("%10d\t%10d\t%10d\t%10d\t%10s\n",
+                            doWrite(out, String.format("%10d\t%10d\t%10d\t%10d\t%10s%n",
                                             stateToId.get(s), frequency, typesCount(s), objectsCount(s), asString(s)));
                         });
     }
@@ -376,7 +374,7 @@ public class PointsToStats {
 
     private static void reportUnionOpertationsStats(BufferedWriter out) {
 
-        doWrite(out, String.format("%10s + %10s = %10s\t%10s\n", "State1ID", "State2ID", "ResultID", "Frequency"));
+        doWrite(out, String.format("%10s + %10s = %10s\t%10s%n", "State1ID", "State2ID", "ResultID", "Frequency"));
         unionStats.entrySet().stream()
                         .filter(e -> e.getValue().intValue() > 1)
                         .sorted(Entry.comparingByValue(atomicIntegerComparator.reversed()))
@@ -384,7 +382,7 @@ public class PointsToStats {
                             UnionOperation union = entry.getKey();
                             Integer frequency = entry.getValue().intValue();
 
-                            doWrite(out, String.format("%10d + %10d = %10d\t%10d\t%10s + %10s = %10s\n",
+                            doWrite(out, String.format("%10d + %10d = %10d\t%10d\t%10s + %10s = %10s%n",
                                             union.getState1Id(), union.getState2Id(), union.getResultId(),
                                             frequency, asString(union.getState1()), asString(union.getState2()), asString(union.getResult())));
                         });
@@ -600,7 +598,7 @@ public class PointsToStats {
     /**
      * Wrapper for BufferedWriter.out to deal with checked exception. Useful for avoiding catching
      * exceptions in lamdas.
-     * 
+     *
      * @param out the writer
      * @param str the string to write
      */

@@ -50,6 +50,7 @@ public final class GCAccounting {
     private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
+    private UnsignedWord edenChunkBytesBefore = WordFactory.zero();
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
     private UnsignedWord youngChunkBytesAfter = WordFactory.zero();
     private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
@@ -104,6 +105,10 @@ public final class GCAccounting {
         return oldChunkBytesAfter;
     }
 
+    UnsignedWord getEdenChunkBytesBefore() {
+        return edenChunkBytesBefore;
+    }
+
     UnsignedWord getYoungChunkBytesBefore() {
         return youngChunkBytesBefore;
     }
@@ -125,6 +130,7 @@ public final class GCAccounting {
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
+        edenChunkBytesBefore = youngGen.getEden().getChunkBytes();
         youngChunkBytesBefore = youngGen.getChunkBytes();
         /* This is called before the collection, so OldSpace is FromSpace. */
         Space oldSpace = heap.getOldGeneration().getFromSpace();
@@ -140,7 +146,8 @@ public final class GCAccounting {
         if (!completeCollection) {
             lastIncrementalCollectionOverflowedSurvivors = false;
         }
-        trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
+        trace.string("  edenChunkBytesBefore: ").unsigned(edenChunkBytesBefore)
+                        .string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
     }

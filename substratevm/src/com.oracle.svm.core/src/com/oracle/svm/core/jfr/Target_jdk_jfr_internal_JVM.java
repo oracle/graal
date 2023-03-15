@@ -82,7 +82,7 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
-        // Temporarily do nothing. This is used for JFR streaming.
+        SubstrateJVM.get().markChunkFinal();
     }
 
     /** See {@link JVM#beginRecording}. */
@@ -139,7 +139,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
     @Substitute
+    @Uninterruptible(reason = "Needed for SubstrateJVM.getClassId().")
     public static long getClassId(Class<?> clazz) {
+        /*
+         * The result is only valid until the epoch changes but this is fine because EventWriter
+         * instances are invalidated when the epoch changes.
+         */
         return SubstrateJVM.get().getClassId(clazz);
     }
 
@@ -159,7 +164,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getStackTraceId}. */
     @Substitute
+    @Uninterruptible(reason = "Needed for SubstrateJVM.getStackTraceId().")
     public long getStackTraceId(int skipCount) {
+        /*
+         * The result is only valid until the epoch changes but this is fine because EventWriter
+         * instances are invalidated when the epoch changes.
+         */
         return SubstrateJVM.get().getStackTraceId(skipCount);
     }
 
@@ -365,11 +375,10 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
-    /** See {@link JVM#flush}. */
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void flush() {
-        // Temporarily do nothing. This is used for JFR streaming.
+        SubstrateJVM.get().flush();
     }
 
     /** See {@link JVM#setRepositoryLocation}. */
@@ -446,21 +455,20 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
-    public void exclude(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
+    public void include(Thread thread) {
+        SubstrateJVM.get().setExcluded(thread, false);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
-    public void include(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
+    public void exclude(Thread thread) {
+        SubstrateJVM.get().setExcluded(thread, true);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public boolean isExcluded(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
-        return false;
+        return SubstrateJVM.get().isExcluded(thread);
     }
 
     @Substitute

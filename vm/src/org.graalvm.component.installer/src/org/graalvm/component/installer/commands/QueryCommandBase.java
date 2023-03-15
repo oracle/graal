@@ -57,6 +57,7 @@ import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_STABILITY;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_VERSION;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_FILES;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_LIC_IMPL_ACCEPT;
 
 /**
  * List command.
@@ -226,6 +227,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
         } else {
             org = u.getHost();
         }
+        boolean implicitlyAccepted = info.isImplicitlyAccepted();
         if (isJson) {
             jsonComponent.put(JSON_KEY_COMPONENT_ID, shortenComponentId(info));
             jsonComponent.put(JSON_KEY_COMPONENT_VERSION, info.getVersion().displayString());
@@ -233,16 +235,18 @@ public abstract class QueryCommandBase implements InstallerCommand {
             jsonComponent.put(JSON_KEY_COMPONENT_GRAALVM, findRequiredGraalVMVersion(info));
             jsonComponent.put(JSON_KEY_COMPONENT_STABILITY, info.getStability().displayName(feedback));
             jsonComponent.put(JSON_KEY_COMPONENT_ORIGIN, u == null ? "" : u);
+            jsonComponent.put(JSON_KEY_COMPONENT_LIC_IMPL_ACCEPT, implicitlyAccepted);
         } else if (printTable) {
             String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
             String line = String.format(feedback.l10n(fmt),
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback),
+                            implicitlyAccepted);
             feedback.verbatimOut(line, false);
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback), implicitlyAccepted);
         }
     }
 

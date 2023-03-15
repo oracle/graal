@@ -32,26 +32,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.util.VMError;
-import jdk.jfr.consumer.RecordedFrame;
 import org.junit.Test;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedFrame;
 import jdk.jfr.consumer.RecordedStackTrace;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJfrExecutionSampleEvent extends JfrTest {
+public class TestJfrExecutionSampleEvent extends JfrRecordingTest {
     @Override
     public String[] getTestedEvents() {
         return new String[]{JfrEvent.ExecutionSample.getName()};
     }
 
     @Override
-    public void validateEvents() throws Throwable {
-        List<RecordedEvent> events = getEvents();
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         assertTrue(events.size() > 0);
 
         Set<Long> seenThreadIds = new HashSet<>();

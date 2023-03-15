@@ -29,13 +29,14 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.junit.Test;
 
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestThreadSleepEvent extends JfrTest {
+public class TestThreadSleepEvent extends JfrRecordingTest {
     private static final int MILLIS = 50;
 
     private Thread sleepingThread;
@@ -46,9 +47,9 @@ public class TestThreadSleepEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws IOException {
+    protected void validateEvents(List<RecordedEvent> events) throws IOException {
         boolean foundSleepEvent = false;
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals(sleepingThread.getName())) {
                 continue;

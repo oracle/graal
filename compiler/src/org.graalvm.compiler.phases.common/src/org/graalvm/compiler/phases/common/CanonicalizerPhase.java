@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,7 +226,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            mark are processed
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-        new IncrementalCanonicalizerPhase(features, graph, context, newNodesMark).apply(graph, context);
+        new IncrementalCanonicalizerPhase(features, customSimplification, graph, context, newNodesMark).apply(graph, context);
     }
 
     /**
@@ -234,7 +234,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            be an auto-grow node bitmap
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        new IncrementalCanonicalizerPhase(features, graph, context, workingSet).apply(graph, context);
+        new IncrementalCanonicalizerPhase(features, customSimplification, graph, context, workingSet).apply(graph, context);
     }
 
     private static NodeView getNodeView() {

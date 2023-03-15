@@ -581,7 +581,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
                     if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                         if (parser.getInvokeReturnType() == null) {
-                            throw GraalError.shouldNotReachHere("unhandled intrinsic path");
+                            throw GraalError.shouldNotReachHere("unhandled intrinsic path"); // ExcludeFromJacocoGeneratedReport
                         } else {
                             JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
                             FrameStateBuilder frameStateBuilder = parser.frameState;
@@ -648,7 +648,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
                     } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
                         if (graph.getGuardsStage().allowsFloatingGuards()) {
-                            throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI");
+                            throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI"); // ExcludeFromJacocoGeneratedReport
                         }
                         // hope that by construction, there are no fixed guard after this unwind
                         // and before an other state split
@@ -662,7 +662,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         @SuppressWarnings("unused")
         protected void handleReturnMismatch(StructuredGraph g, FrameState fs) {
-            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + fs);
+            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + fs); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -2209,7 +2209,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
         InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
-        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, options);
+        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, !parsingIntrinsic(), options);
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
@@ -3771,7 +3771,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 assert a.getStackKind() != JavaKind.Object;
                 return genIntegerLessThan(a, b);
             default:
-                throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
+                throw GraalError.shouldNotReachHere("Unexpected condition: " + cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -4070,7 +4070,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genFloatRem(x, y);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4092,7 +4092,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genIntegerRem(x, y, zeroCheck);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4120,7 +4120,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genUnsignedRightShift(x, s);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4143,7 +4143,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genXor(x, y);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }

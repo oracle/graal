@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -65,14 +65,24 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (!field.getDeclaringClass().isInitialized()) {
-            return false;
-        }
-        if (hostVM.preventConstantFolding(field)) {
-            return false;
-        }
+        return super.isFinalField(field, tool) && allowConstantFolding(field);
+    }
 
-        return super.isFinalField(field, tool);
+    @Override
+    public boolean isStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
+        return super.isStableField(field, tool) && allowConstantFolding(field);
+    }
+
+    private boolean allowConstantFolding(ResolvedJavaField field) {
+        if (field.isStatic() && !field.getDeclaringClass().isInitialized() && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
+            /*
+             * The class is not initialized at image build time, so we do not have a static field
+             * value to constant fold. Note that a ReadableJavaField is able to provide a field
+             * value also for non-initialized classes.
+             */
+            return false;
+        }
+        return hostVM.allowConstantFolding(field);
     }
 
     @Override

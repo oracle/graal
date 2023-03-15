@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -80,6 +81,32 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return klassEncoding;
     }
 
+    public boolean useG1GC() {
+        return gc == HotSpotGraalRuntime.HotSpotGC.G1;
+    }
+
+    public final HotSpotGraalRuntime.HotSpotGC gc = getSelectedGC();
+
+    private HotSpotGraalRuntime.HotSpotGC getSelectedGC() throws GraalError {
+        HotSpotGraalRuntime.HotSpotGC selected = null;
+        for (HotSpotGraalRuntime.HotSpotGC value : HotSpotGraalRuntime.HotSpotGC.values()) {
+            if (value.isSelected(this)) {
+                if (!value.supported) {
+                    throw new GraalError(value.name() + " garbage collector is not supported by Graal");
+                }
+                if (selected != null) {
+                    throw new GraalError("Multiple garbage collectors selected: " + selected + " " + value);
+                }
+                selected = value;
+            }
+        }
+        if (selected == null) {
+            // Exactly one GC flag is guaranteed to be selected.
+            selected = HotSpotGraalRuntime.HotSpotGC.Serial;
+        }
+        return selected;
+    }
+
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
     public final int codeEntryAlignment = getFlag("CodeEntryAlignment", Integer.class);
@@ -101,19 +128,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class, false, JDK < 18);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
     public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
-    public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
-    public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
-    private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
-    private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
-    private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class);
-    private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
@@ -126,10 +147,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
      * been exported, so we have to check both if the flag is on and if we have the stub.
      */
-    public boolean useMultiplyToLenIntrinsic() {
-        return useMultiplyToLenIntrinsic && multiplyToLen != 0;
-    }
-
     public boolean useSHA1Intrinsics() {
         return useSHA1Intrinsics && sha1ImplCompress != 0 && sha1ImplCompressMultiBlock != 0;
     }
@@ -142,24 +159,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return useSHA512Intrinsics && sha512ImplCompress != 0 && sha512ImplCompressMultiBlock != 0;
     }
 
-    public boolean useGHASHIntrinsics() {
-        return useGHASHIntrinsics && ghashProcessBlocks != 0;
-    }
-
     public boolean useMontgomeryMultiplyIntrinsic() {
         return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
     }
 
     public boolean useMontgomerySquareIntrinsic() {
         return useMontgomerySquareIntrinsic && montgomerySquare != 0;
-    }
-
-    public boolean useMulAddIntrinsic() {
-        return useMulAddIntrinsic && mulAdd != 0;
-    }
-
-    public boolean useSquareToLenIntrinsic() {
-        return useSquareToLenIntrinsic && squareToLen != 0;
     }
 
     public boolean inlineNotify() {
@@ -177,16 +182,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean useCRC32CIntrinsics() {
         return useCRC32CIntrinsics && updateBytesCRC32C != 0;
     }
-
-    public boolean useAESCTRIntrinsics() {
-        return useAESCTRIntrinsics && counterModeAESCrypt != 0;
-    }
-
-    public boolean useVectorizedMismatchIntrinsic() {
-        return useVectorizedMismatchIntrinsic && vectorizedMismatch != 0;
-    }
-
-    public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
 
     public final int allocatePrefetchStyle = getFlag("AllocatePrefetchStyle", Integer.class);
     public final int allocatePrefetchInstr = getFlag("AllocatePrefetchInstr", Integer.class);
@@ -222,7 +217,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int logKlassAlignment = getConstant("LogKlassAlignmentInBytes", Integer.class);
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
-    public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, "int");
+    public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, JDK >= 21 ? "size_t" : "int");
 
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
@@ -311,6 +306,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_vthread", Integer.class, "OopHandle");
         }
     }
+    public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
+    public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle", -1, JDK >= 20 && (!JVMCI || jvmciGE(JVMCI_23_0_b06)));
+
+    public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+    public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+
+    public final int threadJFRThreadLocalOffset = getFieldOffset("Thread::_jfr_thread_local", Integer.class, "JfrThreadLocal", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+
+    public final int jfrThreadLocalVthreadIDOffset = getFieldOffset("JfrThreadLocal::_vthread_id", Integer.class, "traceid", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+    public final int jfrThreadLocalVthreadEpochOffset = getFieldOffset("JfrThreadLocal::_vthread_epoch", Integer.class, "u2", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+    public final int jfrThreadLocalVthreadExcludedOffset = getFieldOffset("JfrThreadLocal::_vthread_excluded", Integer.class, "bool", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+    public final int jfrThreadLocalVthreadOffset = getFieldOffset("JfrThreadLocal::_vthread", Integer.class, "bool", -1, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
 
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
@@ -496,9 +503,30 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
     public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
 
+    /**
+     * This indicates whether a JDK is expected to include the export necessary to support ZGC. It
+     * includes other things that are required for ZGC but that aren't actually directly related to
+     * ZGC like nmethod entry barriers and support for concurrent scanning of frames.
+     */
+    private final boolean zgcSupport;
+    {
+        boolean support = false;
+        if (JDK == 19) {
+            // There are still some gates using jdk 19 so we must handle the existence of the
+            // required entries but we don't permit ZGC to be used there.
+            support = JVMCI && jvmciGE(JVMCI_23_0_b05);
+        } else {
+            support = JVMCI ? jvmciGE(JVMCI_23_0_b07) : JDK >= 20;
+        }
+        zgcSupport = support;
+    }
+
     // JDK-8253180 & JDK-8265932
     public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
                     getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
+    public final int threadPollingWordOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
+                    getFieldOffset("SafepointMechanism::ThreadData::_polling_word", Integer.class, "volatile uintptr_t");
+    public final int savedExceptionPCOffset = getFieldOffset("JavaThread::_saved_exception_pc", Integer.class, "address", -1, zgcSupport);
 
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_top", Integer.class, "HeapWord*");
@@ -522,15 +550,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long deoptBlobUnpack = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_unpack", Long.class, "address");
     public final long deoptBlobUnpackWithExceptionInTLS = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_unpack_with_exception_in_tls", Long.class, "address");
+    public final long pollingPageReturnHandler = getFieldValue("CompilerToVM::Data::SharedRuntime_polling_page_return_handler", Long.class, "address", 0L,
+                    zgcSupport);
     public final long deoptBlobUncommonTrap = getFieldValue("CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap", Long.class, "address");
 
     public final long codeCacheLowBound = getFieldValue("CodeCache::_low_bound", Long.class, "address");
     public final long codeCacheHighBound = getFieldValue("CodeCache::_high_bound", Long.class, "address");
 
-    public final long aescryptEncryptBlockStub = getFieldValue("StubRoutines::_aescrypt_encryptBlock", Long.class, "address");
-    public final long aescryptDecryptBlockStub = getFieldValue("StubRoutines::_aescrypt_decryptBlock", Long.class, "address");
-    public final long cipherBlockChainingEncryptAESCryptStub = getFieldValue("StubRoutines::_cipherBlockChaining_encryptAESCrypt", Long.class, "address");
-    public final long cipherBlockChainingDecryptAESCryptStub = getFieldValue("StubRoutines::_cipherBlockChaining_decryptAESCrypt", Long.class, "address");
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
@@ -545,10 +571,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long sha3ImplCompress = getFieldValue("StubRoutines::_sha3_implCompress", Long.class, "address", 0L, JVMCI ? JDK >= 17 : JDK >= 19);
     public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address", 0L, JVMCI ? JDK >= 17 : JDK >= 19);
 
-    public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address");
-
-    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address");
-    public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address");
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
     public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address");
 
@@ -564,17 +586,19 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address");
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");
-    public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address");
-    public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address");
     public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address");
     public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address");
-    public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address");
 
     public final long bigIntegerLeftShiftWorker = getFieldValue("StubRoutines::_bigIntegerLeftShiftWorker", Long.class, "address");
     public final long bigIntegerRightShiftWorker = getFieldValue("StubRoutines::_bigIntegerRightShiftWorker", Long.class, "address");
 
     public final long electronicCodeBookEncrypt = getFieldValue("StubRoutines::_electronicCodeBook_encryptAESCrypt", Long.class, "address");
     public final long electronicCodeBookDecrypt = getFieldValue("StubRoutines::_electronicCodeBook_decryptAESCrypt", Long.class, "address");
+
+    public final long galoisCounterModeCrypt = getFieldValue("StubRoutines::_galoisCounterMode_AESCrypt", Long.class, "address", 0L, JDK >= 20 || (JDK >= 19 && jvmciGE(JVMCI_23_0_b05)));
+
+    public final long poly1305ProcessBlocks = getFieldValue("StubRoutines::_poly1305_processBlocks", Long.class, "address", 0L, JDK >= 21 || (JDK >= 20 && jvmciGE(JVMCI_23_0_b10)));
+    public final long chacha20Block = getFieldValue("StubRoutines::_chacha20Block", Long.class, "address", 0L, JVMCI ? JDK >= 20 && jvmciGE(JVMCI_23_0_b05) : JDK >= 21);
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
@@ -606,9 +630,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long checkcastArraycopyUninit = getFieldValue("StubRoutines::_checkcast_arraycopy_uninit", Long.class, "address");
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
-
-    // JDK19 Continuation stubs
-    public final long contDoYield = getFieldValue("StubRoutines::_cont_doYield", Long.class, "address", 0L, JDK == 19);
 
     // Allocation stubs that throw an exception when allocation fails
     public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
@@ -655,6 +676,60 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // This flag indicates that support for loom is enabled.
     public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool", JDK > 19, JDK >= 19 && jvmciGE(JVMCI_23_0_b04));
 
+    private long getZGCAddressField(String name) {
+        long address = getFieldValue(name, Long.class, "address", 0L, zgcSupport);
+        GraalError.guarantee(!(gc == HotSpotGraalRuntime.HotSpotGC.Z) || address != 0, "Unexpected null value for %s", name);
+        return address;
+    }
+
+    // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
+    public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_offset", Integer.class, "int", 0, zgcSupport);
+    public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address", 0L, zgcSupport);
+
+    // ZGC support
+    public final int threadAddressBadMaskOffset = getFieldValue("CompilerToVM::Data::thread_address_bad_mask_offset", Integer.class, "int", 0, zgcSupport);
+    public final long zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_field_preloaded");
+    public final long zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_weak_oop_field_preloaded");
+    public final long zBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_phantom_oop_field_preloaded");
+    public final long zBarrierSetRuntimeLoadBarrierOnOopArray = getZGCAddressField("CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_oop_array");
+    // There are 3 other entry points which we don't seem to need.
+    // CompilerToVM::Data::ZBarrierSetRuntime_load_barrier_on_phantom_oop_field_preloaded and
+    // CompilerToVM::Data::ZBarrierSetRuntime_weak_load_barrier_on_oop_field_preloaded don't seem
+    // to correspond to any pattern we actually emit. CompilerToVM::Data::ZBarrierSetRuntime_clone
+    // heals all fields of the passed in object. C2 uses this when cloning because it emit bulk copy
+    // of the object. We always represent cloning as a field by field copy because this is more PEA
+    // friendly.
+
+    {
+        // aarch64 code generation for the entry barrier is complicated and varies by release so
+        // check for the acceptable patterns here.
+        Boolean patchConcurrent = null;
+        if (osArch.equals("aarch64") && nmethodEntryBarrier != 0) {
+            if (JDK >= 20) {
+                Integer patchingType = getFieldValue("CompilerToVM::Data::BarrierSetAssembler_nmethod_patching_type", Integer.class, "int");
+                if (patchingType != null) {
+                    // There currently only 2 variants in use that differ only by the presence of a
+                    // dmb instruction
+                    int stw = getConstant("NMethodPatchingType::stw_instruction_and_data_patch", Integer.class);
+                    int conc = getConstant("NMethodPatchingType::conc_data_patch", Integer.class);
+                    if (patchingType == stw) {
+                        patchConcurrent = false;
+                    } else if (patchingType == conc) {
+                        patchConcurrent = true;
+                    } else {
+                        throw new IllegalArgumentException("unsupported barrier sequence " + patchingType);
+                    }
+                }
+            } else {
+                // The normal pattern is with a dmb
+                patchConcurrent = true;
+            }
+        }
+        nmethodEntryBarrierConcurrentPatch = patchConcurrent;
+    }
+    public final Boolean nmethodEntryBarrierConcurrentPatch;
+
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset;
@@ -663,10 +738,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         int offset = -1;
         boolean isWord = false;
-        if (JDK == 19) {
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int");
-            isWord = false;
-        } else if (JDK >= 20) {
+        if (JDK >= 20) {
             offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
             isWord = true;
         }
@@ -675,7 +747,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
-    public final boolean updateHeldMonitorCount = JDK >= 20;
+    public final boolean updateHeldMonitorCount = JDK >= 20 || continuationsEnabled;
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
@@ -732,6 +804,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             String key = "CodeInstaller::" + markId.name();
             Long result = constants.get(key);
             if (result == null) {
+                if (markId == HotSpotMarkId.ENTRY_BARRIER_PATCH) {
+                    continue;
+                }
                 GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
             }
             markId.setValue(result.intValue());
@@ -762,5 +837,4 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
     }
-
 }

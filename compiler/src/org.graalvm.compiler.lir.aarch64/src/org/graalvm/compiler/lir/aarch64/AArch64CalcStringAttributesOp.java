@@ -41,9 +41,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_FIXED_WIDTH;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_FIXED_WIDTH;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_16;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_32;
@@ -156,7 +156,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             case UTF_32:
                 return 11;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -189,7 +189,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                     emitUTF32(asm, arr, len, ret, end);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(end);
@@ -233,6 +233,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createPairBaseRegisterOnlyAddress(128, arr));
         vectorTest(asm, vecArray1, vecArray2, vecMask);
+        // use the fact that CR_7BIT is 0 and CR_8BIT is 1 for setting the return value via cset
         asm.cset(64, ret, ConditionFlag.NE);
         asm.jmp(end);
 
@@ -1597,7 +1598,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                         createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, arr, 64));
         asm.bind(astralFoundTail);
         utf32CheckInvalid(asm, vecArray1, vecArray2, vecArray3, vecArray4, vecTmp1, vecTmp2, vecTmp3, vecTmp4, vecMaskBroken, vecMaskOutOfRange, returnBroken);
-        asm.mov(ret, CR_VALID_FIXED_WIDTH);
+        asm.mov(ret, CR_VALID);
         asm.jmp(end);
 
         // tail for 32 - 63 bytes
@@ -1652,7 +1653,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(returnBroken);
-        asm.mov(ret, CR_BROKEN_FIXED_WIDTH);
+        asm.mov(ret, CR_BROKEN);
     }
 
     private static void utf32CheckInvalid(AArch64MacroAssembler asm,
@@ -1735,10 +1736,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         assert CR_7BIT == 0;
         assert CR_8BIT == 1;
         assert CR_16BIT == 2;
-        assert CR_VALID_FIXED_WIDTH == 3;
-        assert CR_BROKEN_FIXED_WIDTH == 4;
-        assert CR_VALID_MULTIBYTE == 5;
-        assert CR_BROKEN_MULTIBYTE == 6;
+        assert CR_VALID == 3;
+        assert CR_BROKEN == 4;
+        assert CR_BROKEN_MULTIBYTE == CR_VALID_MULTIBYTE + 1;
         return true;
     }
 }

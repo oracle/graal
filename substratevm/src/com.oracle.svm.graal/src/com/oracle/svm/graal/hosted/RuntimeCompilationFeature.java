@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
@@ -61,6 +62,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -100,7 +102,6 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -329,7 +330,6 @@ public abstract class RuntimeCompilationFeature {
     protected GraalGraphObjectReplacer objectReplacer;
     protected HostedProviders hostedProviders;
     protected GraphEncoder graphEncoder;
-    private SharedRuntimeConfigurationBuilder runtimeConfigBuilder;
 
     private boolean initialized;
     protected GraphBuilderConfiguration graphBuilderConfig;
@@ -375,14 +375,13 @@ public abstract class RuntimeCompilationFeature {
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
-        runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
-                        config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider(),
-                        platformConfig).build();
-        RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
+        RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
+                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
+                        .build();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
-        WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
+        WordTypes wordTypes = runtimeConfig.getWordTypes();
         hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider(),
@@ -390,11 +389,13 @@ public abstract class RuntimeCompilationFeature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
+
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
+
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
@@ -503,6 +504,8 @@ public abstract class RuntimeCompilationFeature {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
     }
 
+    public abstract void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator);
+
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 
     protected final void afterAnalysisHelper() {
@@ -607,7 +610,7 @@ public abstract class RuntimeCompilationFeature {
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) runtimeConfigBuilder.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {

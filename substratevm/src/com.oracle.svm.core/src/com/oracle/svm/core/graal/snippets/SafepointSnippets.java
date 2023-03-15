@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,7 +95,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
                 assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
                 if (Uninterruptible.Utils.isUninterruptible(node.graph().method())) {
                     /* Basic sanity check to catch errors during safepoint insertion. */
-                    throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger));
+                    throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger)); // ExcludeFromJacocoGeneratedReport
                 }
                 Arguments args = new Arguments(safepoint, node.graph().getGuardsStage(), tool.getLoweringStage());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);

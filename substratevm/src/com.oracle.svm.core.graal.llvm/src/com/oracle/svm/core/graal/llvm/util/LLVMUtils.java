@@ -197,7 +197,7 @@ public class LLVMUtils {
                 case 64:
                     return LIRKind.value(new LLVMKind(builder.doubleType()));
                 default:
-                    throw shouldNotReachHere("invalid float type");
+                    throw shouldNotReachHere("invalid float type"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -218,7 +218,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -254,7 +254,7 @@ public class LLVMUtils {
 
         @Override
         public Key getKey() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -268,7 +268,7 @@ public class LLVMUtils {
                 case LLVM.LLVMPointerTypeKind:
                     return 8;
                 default:
-                    throw shouldNotReachHere("invalid kind");
+                    throw shouldNotReachHere("invalid kind"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -279,7 +279,7 @@ public class LLVMUtils {
 
         @Override
         public char getTypeChar() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

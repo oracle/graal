@@ -48,7 +48,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
         Object obj = readObjectAt(p, compressed);
         return Word.objectToUntrackedPointer(obj);
@@ -56,7 +56,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object readObjectAt(Pointer p, boolean compressed) {
         Word w = (Word) p;
         if (compressed) {
@@ -68,7 +68,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeObjectAt(Pointer p, Object value, boolean compressed) {
         Word w = (Word) p;
         if (compressed) {
@@ -81,7 +81,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeObjectBarrieredAt(Object object, UnsignedWord offsetInObject, Object value, boolean compressed) {
         assert compressed : "Heap object must contain only compressed references";
         BarrieredAccess.writeObject(object, offsetInObject, value);
@@ -101,7 +101,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
 
     @Override
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
     }

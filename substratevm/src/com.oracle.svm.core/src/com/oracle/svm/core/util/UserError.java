@@ -65,7 +65,7 @@ public class UserError {
     /**
      * Stop compilation immediately and report the message to the user.
      *
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
@@ -77,7 +77,7 @@ public class UserError {
      * Stop compilation immediately and report the message to the user.
      *
      * @param cause the exception that caused the abort.
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
@@ -88,7 +88,7 @@ public class UserError {
     /**
      * Concisely reports user errors.
      *
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */

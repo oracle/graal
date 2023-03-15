@@ -38,7 +38,7 @@ public abstract class EnumRuntimeData {
         this.javaToC = javaToC;
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible entry point code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected long convertJavaToCLong(Enum<?> javaValue) {
         if (javaValue == null) {
             throw CACHED_NULL_EXCEPTION;
@@ -51,7 +51,7 @@ public abstract class EnumRuntimeData {
      * a call to the {@link CEnumValue} annotated method, we must match the slot-count of the
      * original method otherwise frame state handling gets confused.
      */
-    @Uninterruptible(reason = "Used in uninterruptible entry point code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected int convertJavaToCInt(Enum<?> javaValue) {
         return (int) convertJavaToCLong(javaValue);
     }

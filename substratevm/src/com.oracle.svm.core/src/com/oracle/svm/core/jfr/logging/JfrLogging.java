@@ -55,6 +55,11 @@ public class JfrLogging {
         configuration.parse(config);
     }
 
+    public void warnInternal(String message) {
+        int tagSetId = SubstrateUtil.cast(LogTag.JFR_SYSTEM, Target_jdk_jfr_internal_LogTag.class).id;
+        log(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
+    }
+
     public void log(int tagSetId, int level, String message) {
         if (message == null) {
             return;

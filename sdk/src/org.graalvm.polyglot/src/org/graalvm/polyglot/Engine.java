@@ -394,6 +394,24 @@ public final class Engine implements AutoCloseable {
         }
     }
 
+    static void validateSandboxPolicy(SandboxPolicy previous, SandboxPolicy policy) {
+        Objects.requireNonNull(policy, "The set policy must not be null.");
+        if (previous != null && previous.isStricterThan(policy)) {
+            throw new IllegalArgumentException(
+                            String.format("The sandbox policy %s was set for this builder and the newly set policy %s is less restrictive than the previous policy. " +
+                                            "Only equal or more strict policies are allowed. ",
+                                            previous, policy));
+        }
+    }
+
+    static boolean isSystemStream(InputStream in) {
+        return System.in == in;
+    }
+
+    static boolean isSystemStream(OutputStream out) {
+        return System.out == out || System.err == out;
+    }
+
     private static final Engine EMPTY = new Engine(null, null);
 
     /**
@@ -405,7 +423,7 @@ public final class Engine implements AutoCloseable {
 
         private OutputStream out = System.out;
         private OutputStream err = System.err;
-        private InputStream in = System.in;
+        private InputStream in = null;
         private Map<String, String> options = new HashMap<>();
         private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
@@ -413,8 +431,10 @@ public final class Engine implements AutoCloseable {
         private MessageTransport messageTransport;
         private Object customLogHandler;
         private String[] permittedLanguages;
+        private SandboxPolicy sandboxPolicy;
 
         Builder(String[] permittedLanguages) {
+            sandboxPolicy = SandboxPolicy.TRUSTED;
             Objects.requireNonNull(permittedLanguages);
             for (String language : permittedLanguages) {
                 Objects.requireNonNull(language);
@@ -523,6 +543,19 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Sets a code sandbox policy to an engine. By default, the engine's sandbox policy is
+         * {@link SandboxPolicy#TRUSTED}, there are no restrictions to the engine configuration.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
+         */
+        public Builder sandbox(SandboxPolicy policy) {
+            validateSandboxPolicy(this.sandboxPolicy, policy);
+            this.sandboxPolicy = policy;
+            return this;
+        }
+
+        /**
          * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
          * values of the provided map must be non-null.
          *
@@ -624,12 +657,68 @@ public final class Engine implements AutoCloseable {
             if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
+            validateSandbox();
+            InputStream useIn = in;
+            if (useIn == null) {
+                useIn = switch (sandboxPolicy) {
+                    case TRUSTED -> System.in;
+                    case CONSTRAINED, ISOLATED, UNTRUSTED -> InputStream.nullInputStream();
+                    default -> throw new IllegalArgumentException(String.valueOf(sandboxPolicy));
+                };
+            }
             LogHandler logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
-            Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
 
+        /**
+         * Validates configured sandbox policy constrains.
+         *
+         * @throws IllegalArgumentException if the engine configuration is not compatible with the
+         *             requested sandbox policy.
+         */
+        private void validateSandbox() {
+            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
+                return;
+            }
+            if (permittedLanguages.length == 0) {
+                throw throwSandboxException(sandboxPolicy, "Builder does not have a list of permitted languages.",
+                                String.format("create a Builder with a list of permitted languages, for example, %s.newBuilder(\"js\")", boundEngine ? "Context" : "Engine"));
+            }
+            if (isSystemStream(in)) {
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard input stream, but the input must be redirected.",
+                                "do not set Builder.in(InputStream) to use InputStream.nullInputStream() or redirect it to other stream than System.in");
+            }
+            if (isSystemStream(out)) {
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard output stream, but the output must be redirected.",
+                                "set Builder.out(OutputStream)");
+            }
+            if (isSystemStream(err)) {
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard error stream, but the error output must be redirected.",
+                                "set Builder.err(OutputStream)");
+            }
+            if (messageTransport != null) {
+                throw throwSandboxException(sandboxPolicy, "Builder.serverTransport(MessageTransport) is set, but must not be set.",
+                                "do not set Builder.serverTransport(MessageTransport)");
+            }
+        }
+
+        static IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+            Objects.requireNonNull(sandboxPolicy);
+            Objects.requireNonNull(reason);
+            Objects.requireNonNull(fix);
+            String spawnIsolateHelp;
+            if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+                spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
+            } else {
+                spawnIsolateHelp = "";
+            }
+            String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                            "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s",
+                            sandboxPolicy, reason, fix, spawnIsolateHelp);
+            throw new IllegalArgumentException(message);
+        }
     }
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
@@ -996,7 +1085,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties,
+        public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
+                        boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
             throw noPolyglotImplementationFound();
@@ -1083,6 +1173,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public ThreadScope createThreadScope() {
             return null;
+        }
+
+        @Override
+        public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+            return OptionDescriptors.createUnion(optionDescriptors);
         }
 
         @Override

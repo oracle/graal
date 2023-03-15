@@ -47,7 +47,7 @@ public class HotSpotObjectSizeTest extends HotSpotGraalCompilerTest {
     public void testNewInstance() throws InstantiationException, InvalidInstalledCodeException {
         List<Pair<Object, Long>> objects = new ArrayList<>();
         objects.add(Pair.create(new Object(), 16L));
-        objects.add(Pair.create(new String(), 24L));
+        objects.add(Pair.create(new String(), runtime().getVMConfig().useCompressedOops ? 24L : 32L));
         objects.add(Pair.create(new byte[1], 24L));
         objects.add(Pair.create(new boolean[1][1], 24L));
         objects.add(Pair.create(new long[64], 528L));
@@ -58,7 +58,8 @@ public class HotSpotObjectSizeTest extends HotSpotGraalCompilerTest {
         InstalledCode code = getCode(getResolvedJavaMethod("objectSize"));
 
         for (Pair<Object, Long> pair : objects) {
-            assertTrue(pair.getRight() == (long) code.executeVarargs(instance, pair.getLeft()));
+            long actual = (long) code.executeVarargs(instance, pair.getLeft());
+            assertTrue(pair.getRight() == actual, "%s expected size of %s but got %s", pair.getLeft().getClass(), pair.getRight(), actual);
         }
     }
 

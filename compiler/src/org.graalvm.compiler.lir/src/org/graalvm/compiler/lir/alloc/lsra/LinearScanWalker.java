@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -646,7 +646,7 @@ class LinearScanWalker extends IntervalWalker {
                 break;
 
             default:
-                throw GraalError.shouldNotReachHere("other states not allowed at this time");
+                throw GraalError.shouldNotReachHere("other states not allowed at this time"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -66,6 +67,6 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
      * an attached write barrier with pre-semantics can not also float.
      */
     public boolean canFloat() {
-        return !forceFixed && getLocationIdentity().isSingle() && getBarrierType() == BarrierType.NONE;
+        return !forceFixed && getLocationIdentity().isSingle() && (getBarrierType() == BarrierType.NONE || getBarrierType() == BarrierType.READ);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,11 +120,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        // Needed to match type flows to invokes so invoked methods can be inlined in runtime
-        // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
-        boolean trackNodeSourcePosition = (purpose == Purpose.ANALYSIS);
-
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, trackNodeSourcePosition);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         DeoptInfoProvider deoptInfo = null;
         if (MultiMethod.isDeoptTarget(method)) {
             deoptInfo = new DeoptInfoProvider((MultiMethod) method);
@@ -303,6 +299,6 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
                 return field;
             }
         }
-        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 }

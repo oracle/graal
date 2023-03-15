@@ -218,10 +218,10 @@ public class IntegerStampTest extends GraphTest {
 
         // This exercises a special case:
         // The new lowest bound is max(0b101, 0b011) = 0b101
-        // The new down mask is (0b100 | 0b010) = 0b110
-        // Now based on lowest bound and down mask, we know that the new lowest bound is 0b110
-        // Just making an or with the new down mask would give however (0b110 | 0b101) = 0b111 and
-        // would therefore be wrong.
+        // The new must be set mask is (0b100 | 0b010) = 0b110
+        // Based on the lowest bound and the must be set mask, the new lowest bound is 0b110
+        // Just or'ing with the new must be set mask would give however (0b110 | 0b101) = 0b111
+        // and would therefore be wrong.
         // New upper bound is 0b110.
 
         IntegerStamp result = IntegerStamp.create(32, 0b110, 0b110, 0b110, 0b110);
@@ -336,9 +336,9 @@ public class IntegerStampTest extends GraphTest {
     }
 
     private static void testSignExtendShort(long lower, long upper) {
-        Stamp shortStamp = StampFactory.forInteger(16, lower, upper);
+        Stamp shortStamp = IntegerStamp.create(16, lower, upper);
         Stamp intStamp = IntegerStamp.OPS.getSignExtend().foldStamp(16, 32, shortStamp);
-        assertEquals(StampFactory.forInteger(32, lower, upper), intStamp);
+        assertEquals(IntegerStamp.create(32, lower, upper), intStamp);
     }
 
     @Test
@@ -352,9 +352,9 @@ public class IntegerStampTest extends GraphTest {
     }
 
     private static void testZeroExtendShort(long lower, long upper, long newLower, long newUpper) {
-        Stamp shortStamp = StampFactory.forInteger(16, lower, upper);
+        Stamp shortStamp = IntegerStamp.create(16, lower, upper);
         Stamp intStamp = IntegerStamp.OPS.getZeroExtend().foldStamp(16, 32, shortStamp);
-        assertEquals(StampFactory.forInteger(32, newLower, newUpper), intStamp);
+        assertEquals(IntegerStamp.create(32, newLower, newUpper), intStamp);
     }
 
     @Test
@@ -582,8 +582,8 @@ public class IntegerStampTest extends GraphTest {
 
     @Test
     public void testEmpty() {
-        IntegerStamp intStamp = StampFactory.forInteger(32);
-        IntegerStamp longStamp = StampFactory.forInteger(64);
+        IntegerStamp intStamp = IntegerStamp.create(32);
+        IntegerStamp longStamp = IntegerStamp.create(64);
         Stamp intEmpty = StampFactory.empty(JavaKind.Int);
         Stamp longEmpty = StampFactory.empty(JavaKind.Long);
         assertEquals(intStamp.join(intEmpty), intEmpty);
@@ -595,7 +595,7 @@ public class IntegerStampTest extends GraphTest {
     @Test
     public void testUnaryOpFoldEmpty() {
         // boolean?, byte, short, int, long
-        Stream.of(1, 8, 16, 32, 64).map(bits -> StampFactory.forInteger(bits).empty()).forEach(empty -> {
+        Stream.of(1, 8, 16, 32, 64).map(bits -> IntegerStamp.create(bits).empty()).forEach(empty -> {
             for (ArithmeticOpTable.UnaryOp<?> op : IntegerStamp.OPS.getUnaryOps()) {
                 if (op != null) {
                     Assert.assertTrue(op.foldStamp(empty).isEmpty());
@@ -613,9 +613,9 @@ public class IntegerStampTest extends GraphTest {
                         IntegerStamp.OPS.getZeroExtend());
 
         for (int inputBits : bits) {
-            IntegerStamp emptyIn = StampFactory.forInteger(inputBits).empty();
+            IntegerStamp emptyIn = IntegerStamp.create(inputBits).empty();
             for (int outputBits : bits) {
-                IntegerStamp emptyOut = StampFactory.forInteger(outputBits).empty();
+                IntegerStamp emptyOut = IntegerStamp.create(outputBits).empty();
                 if (inputBits <= outputBits) {
                     for (IntegerConvertOp<?> stamp : extendOps) {
                         IntegerStamp folded = (IntegerStamp) stamp.foldStamp(inputBits, outputBits, emptyIn);
@@ -653,7 +653,7 @@ public class IntegerStampTest extends GraphTest {
             f.setAccessible(true);
             return (boolean) f.get(s);
         } catch (Throwable t) {
-            throw GraalError.shouldNotReachHere(t);
+            throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -669,21 +669,21 @@ public class IntegerStampTest extends GraphTest {
 
     @Test
     public void testCanBeZero01() {
-        IntegerStamp a = StampFactory.forInteger(32, 0, 0);
+        IntegerStamp a = IntegerStamp.create(32, 0, 0);
         Assert.assertTrue(a.contains(0));
         Assert.assertTrue(readStampCanBeZero(a));
     }
 
     @Test
     public void testCanBeZero02() {
-        IntegerStamp a = StampFactory.forInteger(32, 1, 1);
+        IntegerStamp a = IntegerStamp.create(32, 1, 1);
         assertNeverZero(a);
     }
 
     @Test
     public void testCanBeZero03() {
-        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
-        IntegerStamp b = StampFactory.forInteger(32, 2, 2);
+        IntegerStamp a = IntegerStamp.create(32, -2, -2);
+        IntegerStamp b = IntegerStamp.create(32, 2, 2);
         assertNeverZero(a);
         assertNeverZero(b);
         IntegerStamp union = (IntegerStamp) a.meet(b);
@@ -692,8 +692,8 @@ public class IntegerStampTest extends GraphTest {
 
     @Test
     public void testCanBeZero04() {
-        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
-        IntegerStamp b = StampFactory.forInteger(32, 0, 0);
+        IntegerStamp a = IntegerStamp.create(32, -2, -2);
+        IntegerStamp b = IntegerStamp.create(32, 0, 0);
         assertNeverZero(a);
         assertCanBeZero(b);
         IntegerStamp union = (IntegerStamp) a.meet(b);
@@ -702,18 +702,19 @@ public class IntegerStampTest extends GraphTest {
 
     @Test
     public void testCanBeZero05() {
-        IntegerStamp a = StampFactory.forInteger(32, -2, -2);
-        IntegerStamp b = StampFactory.forInteger(32, 2, 2);
+        IntegerStamp a = IntegerStamp.create(32, -2, -2);
+        IntegerStamp b = IntegerStamp.create(32, 2, 2);
         assertNeverZero(a);
         assertNeverZero(b);
         IntegerStamp joined = a.join(b);
+        Assert.assertTrue(joined.isEmpty());
         assertNeverZero(joined);
     }
 
     @Test
     public void testCanBeZero06() {
-        IntegerStamp a = StampFactory.forInteger(32, -2, 0);
-        IntegerStamp b = StampFactory.forInteger(32, 0, 2);
+        IntegerStamp a = IntegerStamp.create(32, -2, 0);
+        IntegerStamp b = IntegerStamp.create(32, 0, 2);
         assertCanBeZero(a);
         assertCanBeZero(b);
         IntegerStamp joined = a.join(b);

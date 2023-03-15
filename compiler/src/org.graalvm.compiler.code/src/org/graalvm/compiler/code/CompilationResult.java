@@ -734,13 +734,6 @@ public class CompilationResult {
         default Object getId() {
             return this;
         }
-
-        /**
-         * Indicates whether the mark is intended to identify the end of the last instruction or the
-         * beginning of the next instruction. This information is necessary if the backend needs to
-         * insert instructions after the normal assembly step.
-         */
-        boolean isMarkAfter();
     }
 
     /**

@@ -40,16 +40,16 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -139,7 +139,7 @@ public class RuntimeCodeCache {
     }
 
     /* Copied and adapted from Arrays.binarySearch. */
-    @Uninterruptible(reason = "called from uninterruptible code")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int binarySearch(NonmovableArray<UntetheredCodeInfo> a, int fromIndex, int toIndex, CodePointer key) {
         int low = fromIndex;
         int high = toIndex - 1;
@@ -260,7 +260,7 @@ public class RuntimeCodeCache {
         assert verifyTable();
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean verifyTable() {
         if (codeInfos.isNull()) {
             assert numCodeInfos == 0 : "a1";
@@ -322,6 +322,6 @@ public class RuntimeCodeCache {
          * continue, else false.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting code.")
-        <T extends CodeInfo> boolean visitCode(T codeInfo);
+        boolean visitCode(CodeInfo codeInfo);
     }
 }

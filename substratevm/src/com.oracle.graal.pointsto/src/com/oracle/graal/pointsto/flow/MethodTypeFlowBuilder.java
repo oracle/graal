@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
@@ -67,7 +68,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
@@ -131,6 +131,7 @@ import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
@@ -201,7 +202,7 @@ public class MethodTypeFlowBuilder {
                 registerUsedElements(bb, graph, false);
             }
             CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
-            canonicalizerPhase.apply(graph, bb.getProviders());
+            canonicalizerPhase.apply(graph, bb.getProviders(method));
             if (bb.strengthenGraalGraphs()) {
                 /*
                  * Removing unnecessary conditions before the static analysis runs reduces the size
@@ -210,15 +211,17 @@ public class MethodTypeFlowBuilder {
                  * access, array accesses; many of those dominate each other.
                  */
                 if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
-                    new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+                    new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders(method));
                 }
                 if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
-                    if (!method.isDeoptTarget()) {
+                    if (method.isOriginalMethod()) {
                         /*
-                         * Deoptimization Targets cannot have virtual objects in framestates.
+                         * Deoptimization Targets cannot have virtual objects in frame states.
+                         *
+                         * Also, more work is needed to enable PEA in Runtime Compiled Methods.
                          */
-                        new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-                        new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                        new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
+                        new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders(method));
                     }
                 }
             }
@@ -239,6 +242,7 @@ public class MethodTypeFlowBuilder {
 
     protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
+        HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
@@ -329,13 +333,13 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof ForeignCall) {
                 ForeignCall node = (ForeignCall) n;
-                registerForeignCall(bb, node.getDescriptor());
+                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
             }
         }
     }
@@ -358,7 +362,7 @@ public class MethodTypeFlowBuilder {
      * full java.lang.Class object in the image.
      */
     protected static boolean ignoreConstant(PointsToAnalysis bb, ConstantNode cn) {
-        if (!ignoreInstanceOfType(bb, (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(cn.asConstant()))) {
+        if (!ignoreInstanceOfType(bb, (AnalysisType) bb.getConstantReflectionProvider().asJavaType(cn.asConstant()))) {
             return false;
         }
         for (var usage : cn.usages()) {
@@ -405,8 +409,8 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallDescriptor foreignCallDescriptor) {
-        Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, bb.getProviders().getForeignCalls());
+    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor) {
+        Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, foreignCallsProvider);
         targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
@@ -558,21 +562,6 @@ public class MethodTypeFlowBuilder {
 
         /* Prune the method graph. Eliminate nodes with no uses. Collect flows that need init. */
         postInitFlows = typeFlowGraphBuilder.build();
-
-        /*
-         * Make sure that all existing InstanceOfNodes are registered even when only used as an
-         * input of a conditional.
-         */
-        for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode instanceOf = (InstanceOfNode) n;
-                markFieldsUsedInComparison(instanceOf.getValue());
-            } else if (n instanceof ObjectEqualsNode) {
-                ObjectEqualsNode compareNode = (ObjectEqualsNode) n;
-                markFieldsUsedInComparison(compareNode.getX());
-                markFieldsUsedInComparison(compareNode.getY());
-            }
-        }
     }
 
     protected void apply(boolean forceReparse, Object reason) {
@@ -612,22 +601,6 @@ public class MethodTypeFlowBuilder {
          */
         if (bb.strengthenGraalGraphs()) {
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, flowsGraph.getNodeFlows().getKeys()));
-        }
-    }
-
-    /**
-     * If the node corresponding to the compared value is an instance field load then mark that
-     * field as being used in a comparison.
-     *
-     * @param comparedValue the node corresponding to the compared value
-     */
-    private static void markFieldsUsedInComparison(ValueNode comparedValue) {
-        if (comparedValue instanceof LoadFieldNode) {
-            LoadFieldNode load = (LoadFieldNode) comparedValue;
-            AnalysisField field = (AnalysisField) load.field();
-            if (!field.isStatic()) {
-                field.markAsUsedInComparison();
-            }
         }
     }
 
@@ -1526,9 +1499,6 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
                 actualParametersBuilders[i] = paramBuilder;
                 paramBuilder.markAsBuildingAnActualParameter();
-                if (i == 0 && !targetIsStatic) {
-                    paramBuilder.markAsBuildingAnActualReceiver();
-                }
                 /*
                  * Actual parameters must not be removed. They are linked when the callee is
                  * analyzed, hence, although they might not have any uses, cannot be removed during

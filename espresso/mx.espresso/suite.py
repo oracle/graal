@@ -186,6 +186,9 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
+            "requires": [
+                "java.logging",
+            ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso.jdwp",
@@ -384,27 +387,10 @@ suite = {
             "platformDependent": True,
             "os_arch": {
                 "linux": {
-                    "amd64": {
+                    "<others>": {
                         "layout": {
                             "./": ["file:mx.espresso/reflectconfig.json"],
                             "./native-image.properties": ["file:mx.espresso/native-image-preinit.properties"],
-                            "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
-                            "lib/": [
-                                "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
-                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
-                                "dependency:espresso:POLYGLOT/*",
-                                "dependency:espresso:HOTSWAP/*",
-                            ],
-                        },
-                    },
-                    "<others>": {
-                        "layout": {
-                            "./": [
-                                "file:mx.espresso/reflectconfig.json",
-                                "file:mx.espresso/native-image.properties",
-                            ],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
@@ -439,8 +425,8 @@ suite = {
                     "<others>": {
                         "layout": {
                             "./": [
-                                "file:mx.espresso/reflectconfig.json",
                                 "file:mx.espresso/native-image.properties",
+                                "file:mx.espresso/reflectconfig.json",
                             ],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [

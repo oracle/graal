@@ -39,6 +39,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstructionVerifier;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
@@ -69,7 +70,8 @@ public interface CompilationResultBuilderFactory {
                     OptionValues options,
                     DebugContext debug,
                     CompilationResult compilationResult,
-                    Register nullRegister);
+                    Register nullRegister,
+                    LIR lir);
 
     /**
      * The default factory creates a standard {@link CompilationResultBuilder}.
@@ -89,7 +91,7 @@ public interface CompilationResultBuilderFactory {
                     }
                 }
             } catch (MalformedURLException e) {
-                throw GraalError.shouldNotReachHere(e, "Malformed URL encountered.");
+                throw GraalError.shouldNotReachHere(e, "Malformed URL encountered."); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -102,7 +104,8 @@ public interface CompilationResultBuilderFactory {
                         OptionValues options,
                         DebugContext debug,
                         CompilationResult compilationResult,
-                        Register uncompressedNullRegister) {
+                        Register uncompressedNullRegister,
+                        LIR lir) {
             if (!isVerifierInitialized) {
                 synchronized (lirInstructionVerifiers) {
                     if (!isVerifierInitialized) {
@@ -124,7 +127,8 @@ public interface CompilationResultBuilderFactory {
                             compilationResult,
                             uncompressedNullRegister,
                             EconomicMap.create(Equivalence.DEFAULT),
-                            lirInstructionVerifiers);
+                            lirInstructionVerifiers,
+                            lir);
         }
     };
 }

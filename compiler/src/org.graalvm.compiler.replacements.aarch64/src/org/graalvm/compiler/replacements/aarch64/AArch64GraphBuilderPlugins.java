@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -50,6 +51,7 @@ import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.RoundFloatToIntegerNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -59,7 +61,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyIn
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
@@ -77,17 +78,20 @@ import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
+import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
@@ -102,7 +106,9 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
+                registerFloatPlugins(invocationPlugins, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath);
+                registerStrictMathPlugins(invocationPlugins);
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
@@ -137,6 +143,34 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
+                return true;
+            }
+        });
+    }
+
+    private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Float.class, replacements);
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            r.register(new InvocationPlugin("float16ToFloat", short.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                    return true;
+                }
+            });
+            r.register(new InvocationPlugin("floatToFloat16", float.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath) {
@@ -170,6 +204,20 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
                 b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("round", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                b.addPush(JavaKind.Int, new RoundFloatToIntegerNode(input));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("round", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input) {
+                b.addPush(JavaKind.Long, new RoundFloatToIntegerNode(input));
                 return true;
             }
         });
@@ -221,6 +269,11 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
+    }
+
+    private static void registerStrictMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, StrictMath.class);
+        registerMinMax(r);
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
@@ -472,7 +525,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, MemoryOrderMode.PLAIN, false));
                 return true;
             }
         });
@@ -515,11 +568,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
                 return true;
-            }
-
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 18;
             }
         });
         r.register(new InvocationPlugin("hasNegatives", byte[].class, int.class, int.class) {

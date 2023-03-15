@@ -286,7 +286,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
                 } else if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
                     simpleSlot = ((SimpleVirtualStackSlotAlias) virtualSlot).getAliasedSlot();
                 } else {
-                    throw GraalError.shouldNotReachHere("Unexpected VirtualStackSlot type: " + virtualSlot);
+                    throw GraalError.shouldNotReachHere("Unexpected VirtualStackSlot type: " + virtualSlot); // ExcludeFromJacocoGeneratedReport
                 }
                 StackSlot slot = findFreeSlot(simpleSlot);
                 if (slot != null) {

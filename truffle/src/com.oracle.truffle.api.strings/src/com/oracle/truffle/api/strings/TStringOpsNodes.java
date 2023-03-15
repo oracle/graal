@@ -83,27 +83,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
         int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final char[] stride0Values;
-            if (n != values.length) {
-                stride0Values = new char[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xff) {
-                        stride0Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride0Values = values;
-            }
-            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
         @Specialization(guards = "isStride1(a)")
@@ -123,27 +103,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
         int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final int[] stride0Values;
-            if (n != values.length) {
-                stride0Values = new int[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xff) {
-                        stride0Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride0Values = values;
-            }
-            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xff));
         }
 
         @Specialization(guards = {"isStride1(a)", "values.length == 1"})
@@ -153,27 +113,7 @@ final class TStringOpsNodes {
 
         @Specialization(guards = {"isStride1(a)", "values.length > 1"})
         int stride1MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            int n = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] <= 0xffff) {
-                    n++;
-                }
-                TStringConstants.truffleSafePointPoll(this, i + 1);
-            }
-            final int[] stride1Values;
-            if (n != values.length) {
-                stride1Values = new int[n];
-                n = 0;
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] <= 0xffff) {
-                        stride1Values[n++] = values[i];
-                    }
-                    TStringConstants.truffleSafePointPoll(this, i + 1);
-                }
-            } else {
-                stride1Values = values;
-            }
-            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, stride1Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, removeValuesGreaterThan(this, values, 0xffff));
         }
 
         @Specialization(guards = "isStride2(a)")
@@ -279,6 +219,50 @@ final class TStringOpsNodes {
                         @Cached("compaction") CompactionLevel cachedCompaction) {
             return TStringOps.hashCodeWithStride(node, a, arrayA, cachedCompaction.getStride());
         }
+    }
+
+    private static char[] removeValuesGreaterThan(Node location, char[] values, int max) {
+        int n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                n++;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (n == values.length) {
+            return values;
+        }
+        final char[] clampedValues = new char[n];
+        n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                clampedValues[n++] = values[i];
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return clampedValues;
+    }
+
+    private static int[] removeValuesGreaterThan(Node location, int[] values, int max) {
+        int n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                n++;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (n == values.length) {
+            return values;
+        }
+        final int[] clampedValues = new int[n];
+        n = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= max) {
+                clampedValues[n++] = values[i];
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return clampedValues;
     }
 
 }

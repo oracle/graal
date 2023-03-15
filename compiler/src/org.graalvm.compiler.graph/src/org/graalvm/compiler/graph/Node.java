@@ -1315,6 +1315,9 @@ public abstract class Node implements Cloneable, Formattable {
         if (getNodeSourcePosition() != null && (into == null || into.trackNodeSourcePosition())) {
             newNode.setNodeSourcePosition(getNodeSourcePosition());
         }
+        if (getInsertionPosition() != null) {
+            newNode.setInsertionPosition(getInsertionPosition());
+        }
         if (into != null) {
             into.register(newNode);
         }
@@ -1621,7 +1624,7 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             return dynamicNodeSizeEstimate();
         } catch (Exception e) {
-            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

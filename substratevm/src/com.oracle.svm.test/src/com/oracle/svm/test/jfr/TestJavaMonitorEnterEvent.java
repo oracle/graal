@@ -28,14 +28,17 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.JfrEvent;
+import java.util.List;
+
 import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorEnterEvent extends JfrTest {
+public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
     private static final int MILLIS = 60;
 
     private final Helper helper = new Helper();
@@ -49,9 +52,9 @@ public class TestJavaMonitorEnterEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         boolean found = false;
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
                 // verify previous owner

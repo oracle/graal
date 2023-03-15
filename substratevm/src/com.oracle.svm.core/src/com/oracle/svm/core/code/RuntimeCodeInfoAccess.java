@@ -36,7 +36,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -237,7 +237,7 @@ public final class RuntimeCodeInfoAccess {
         return CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE, CommittedMemoryProvider.Access.EXECUTE));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
         InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
 
@@ -246,19 +246,19 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public interface NonmovableArrayAction {
-        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void apply(NonmovableArray<?> array);
     }
 
     private static final NonmovableArrayAction RELEASE_ACTION = new NonmovableArrayAction() {
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void apply(NonmovableArray<?> array) {
             NonmovableArrays.releaseUnmanagedArray(array);
         }
     };
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void free(CodeInfo info, boolean notifyGC) {
         CodeInfoImpl impl = cast(info);
         if (CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION) {
@@ -280,7 +280,7 @@ public final class RuntimeCodeInfoAccess {
 
     private static final NonmovableArrayAction GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION = new NonmovableArrayAction() {
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void apply(NonmovableArray<?> arg) {
             NonmovableObjectArray<?> array = (NonmovableObjectArray<?>) arg;
             if (array.isNonNull()) {
@@ -293,12 +293,12 @@ public final class RuntimeCodeInfoAccess {
         }
     };
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeAllObjectsInImageHeap(CodeInfo info) {
         forEachObjectArray(info, GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void forEachArray(CodeInfo info, NonmovableArrayAction action) {
         CodeInfoImpl impl = cast(info);
         action.apply(impl.getCodeInfoIndex());
@@ -312,7 +312,7 @@ public final class RuntimeCodeInfoAccess {
         forEachObjectArray(info, action);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void forEachObjectArray(CodeInfo info, NonmovableArrayAction action) {
         CodeInfoImpl impl = cast(info);
         action.apply(impl.getObjectFields());
@@ -322,7 +322,7 @@ public final class RuntimeCodeInfoAccess {
         action.apply(impl.getDeoptimizationObjectConstants());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static CodeInfoImpl cast(CodeInfo info) {
         assert CodeInfoAccess.isValid(info);
         return (CodeInfoImpl) info;

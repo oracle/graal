@@ -76,7 +76,7 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
                 slot = builder.getFrameMap().allocateStackMemory(slotRange.getSizeInBytes(), slotRange.getAlignmentInBytes());
                 virtualFramesize.add(debug, slotRange.getSizeInBytes());
             } else {
-                throw GraalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot);
+                throw GraalError.shouldNotReachHere("Unknown VirtualStackSlot: " + virtualSlot); // ExcludeFromJacocoGeneratedReport
             }
             allocatedSlots.increment(debug);
             mapping[virtualSlot.getId()] = slot;

@@ -78,7 +78,7 @@ public abstract class LLVMUnaryIntrinsicNode extends LLVMIntrinsicNode {
             case CTTZ:
                 return new LLVMCountTrailingZerosNode(kind, arg);
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -48,7 +48,8 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final ReflectionConfigurationParserDelegate<T> delegate;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
+                    "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
+                    "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
@@ -132,9 +133,24 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                             delegate.registerDeclaredClasses(clazz);
                         }
                         break;
+                    case "allRecordComponents":
+                        if (asBoolean(value, "allRecordComponents")) {
+                            delegate.registerRecordComponents(clazz);
+                        }
+                        break;
                     case "allPermittedSubclasses":
                         if (asBoolean(value, "allPermittedSubclasses")) {
                             delegate.registerPermittedSubclasses(clazz);
+                        }
+                        break;
+                    case "allNestMembers":
+                        if (asBoolean(value, "allNestMembers")) {
+                            delegate.registerNestMembers(clazz);
+                        }
+                        break;
+                    case "allSigners":
+                        if (asBoolean(value, "allSigners")) {
+                            delegate.registerSigners(clazz);
                         }
                         break;
                     case "allPublicClasses":

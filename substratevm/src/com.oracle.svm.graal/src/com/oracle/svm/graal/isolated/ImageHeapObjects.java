@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.VMError;
  * Functionality for referring to an image heap object using its isolate-independent location.
  */
 public final class ImageHeapObjects {
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInImageHeap(Object obj) {
         return obj == null || Heap.getHeap().isInImageHeap(obj);
     }

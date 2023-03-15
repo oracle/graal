@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -496,7 +496,14 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExportedAsWarning = "isNumber")
     public boolean fitsInBigInteger(Object receiver) {
         try {
-            return fitsInLong(receiver) || (fitsInDouble(receiver) && asDouble(receiver) % 1 == 0);
+            if (fitsInLong(receiver)) {
+                return true;
+            } else if (fitsInDouble(receiver)) {
+                double doubleValue = asDouble(receiver);
+                return doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue);
+            } else {
+                return false;
+            }
         } catch (UnsupportedMessageException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
@@ -607,7 +614,7 @@ public abstract class InteropLibrary extends Library {
             return toBigInteger(longValue);
         } else if (fitsInDouble(receiver)) {
             double doubleValue = asDouble(receiver);
-            if (doubleValue % 1 == 0) {
+            if (doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue)) {
                 return toBigInteger(doubleValue);
             }
         }
@@ -2155,7 +2162,7 @@ public abstract class InteropLibrary extends Library {
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
+            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver, null);
         } else {
             throw UnsupportedMessageException.create();
         }

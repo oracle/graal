@@ -27,20 +27,30 @@
 package com.oracle.svm.test.jfr;
 
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.List;
+
+import jdk.jfr.consumer.RecordedEvent;
 
 /**
  * Test if event ThreadCPULoad is generated after a thread exit.
  */
-public class TestThreadCPULoadEvent extends JfrTest {
+public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
     private static final int MILLIS = 50;
 
     @Override
     public String[] getTestedEvents() {
         return new String[]{"jdk.ThreadCPULoad"};
+    }
+
+    @Override
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+        assertEquals(1, events.size());
     }
 
     @Test

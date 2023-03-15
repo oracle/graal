@@ -54,7 +54,7 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
 
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

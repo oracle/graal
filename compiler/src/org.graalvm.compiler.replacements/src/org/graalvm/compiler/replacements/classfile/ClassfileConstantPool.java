@@ -209,7 +209,7 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
                 ExecutableRef e = get(ExecutableRef.class, index);
                 return get(ClassRef.class, e.classIndex).resolve(this);
             default:
-                throw GraalError.shouldNotReachHere("Unexpected opcode: " + opcode);
+                throw GraalError.shouldNotReachHere("Unexpected opcode: " + opcode); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -220,7 +220,7 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Signature lookupSignature(int index) {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -246,6 +246,6 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
         if (opcode == Bytecodes.INVOKEVIRTUAL) {
             return null;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 }

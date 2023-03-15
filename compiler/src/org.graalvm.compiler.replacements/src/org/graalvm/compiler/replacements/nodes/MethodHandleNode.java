@@ -110,7 +110,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
             case LINK_TO_INTERFACE:
                 return getLinkToTarget(adder, intrinsicMethod, methodHandleAccess, original, bci, returnStamp, arguments);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -375,7 +375,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                 targetArguments = Arrays.copyOfRange(arguments, 0, arguments.length - 1);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         StampPair targetReturnStamp = StampFactory.forDeclaredType(assumptions, targetReturnType, false);
 

@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypedef;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.polyglot.nativeapi.PolyglotNativeAPICContext;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -230,6 +231,6 @@ public class PolyglotNativeAPITypes {
     @CTypedef(name = "poly_output_handler")
     public interface PolyglotOutputHandler extends CFunctionPointer {
         @InvokeCFunctionPointer
-        void invoke(CCharPointer bytes, UnsignedWord length);
+        void invoke(CCharPointer bytes, UnsignedWord length, VoidPointer data);
     }
 }

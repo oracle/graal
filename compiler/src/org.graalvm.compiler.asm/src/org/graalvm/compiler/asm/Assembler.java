@@ -226,6 +226,11 @@ public abstract class Assembler<T extends Enum<T>> {
 
     public abstract void align(int modulus);
 
+    /**
+     * Emit an instruction that will fail in some way if it is reached.
+     */
+    public abstract void halt();
+
     public abstract void jmp(Label l);
 
     protected abstract void patchJumpTarget(int branch, int jumpTarget);
@@ -263,20 +268,6 @@ public abstract class Assembler<T extends Enum<T>> {
     public void reset() {
         labelsWithPatches = null;
         codeBuffer.reset();
-    }
-
-    public InstructionCounter getInstructionCounter() {
-        throw new UnsupportedOperationException("Instruction counter is not implemented for " + this);
-    }
-
-    /**
-     * Instruction counter class which gives the user of the assembler to count different kinds of
-     * instructions in the generated assembler code.
-     */
-    public interface InstructionCounter {
-        String[] getSupportedInstructionTypes();
-
-        int[] countInstructions(String[] instructionTypes, int beginPc, int endPc);
     }
 
     public boolean isTargetMP() {

@@ -30,14 +30,14 @@ import org.graalvm.nativeimage.Platforms;
 /**
  * Used to serialize all possible thread states into the chunk.
  */
-public class JfrThreadStateSerializer implements JfrConstantPool {
+public class JfrThreadStateSerializer implements JfrSerializer {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrThreadStateSerializer() {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public void write(JfrChunkWriter writer) {
         writer.writeCompressedLong(JfrType.ThreadState.getId());
 
         JfrThreadState[] threadStates = JfrThreadState.values();
@@ -46,7 +46,5 @@ public class JfrThreadStateSerializer implements JfrConstantPool {
             writer.writeCompressedInt(i);
             writer.writeString(threadStates[i].getText());
         }
-
-        return NON_EMPTY;
     }
 }

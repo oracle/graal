@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -43,7 +44,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -72,7 +73,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
 
     @Override
     public BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache) {
-        return new AddressLoweringPhase(new LLVMAddressLowering());
+        return new AddressLoweringByNodePhase(new LLVMAddressLowering());
     }
 
     @Override
@@ -98,7 +99,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     @Override
     @SuppressWarnings("try")
     public void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, CompilationResult result, CompilationResultBuilderFactory factory,
-                    RegisterConfig config, LIRSuites lirSuites) {
+                    EntryPointDecorator entryPointDecorator, RegisterConfig config, LIRSuites lirSuites) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start(debug)) {
             emitLLVM(graph, result);

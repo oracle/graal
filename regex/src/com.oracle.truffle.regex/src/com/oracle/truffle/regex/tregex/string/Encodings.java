@@ -46,11 +46,6 @@ import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyByteCall;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyCharCall;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfAnyIntCall;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfCall;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.IndexOfStringCall;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.Builder;
 
@@ -114,8 +109,6 @@ public final class Encodings {
 
         public abstract AbstractStringBuffer createStringBuffer(int capacity);
 
-        public abstract IndexOfCall extractIndexOfCall(CodePointSet loopCPS);
-
         public abstract int getNumberOfCodeRanges();
 
         public SequentialMatchers.Builder createMatchersBuilder() {
@@ -174,11 +167,6 @@ public final class Encodings {
             @Override
             public StringBufferUTF32 createStringBuffer(int capacity) {
                 return new StringBufferUTF32(capacity);
-            }
-
-            @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                return new IndexOfAnyIntCall(cps.inverseToIntArray(this));
             }
 
             @Override
@@ -260,25 +248,6 @@ public final class Encodings {
             @Override
             public boolean isUnicode() {
                 return true;
-            }
-
-            @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                if (cps.inverseGetMax(this) <= 0xffff) {
-                    char[] indexOfChars = cps.inverseToCharArray(this);
-                    for (char c : indexOfChars) {
-                        if (Constants.SURROGATES.contains(c)) {
-                            return null;
-                        }
-                    }
-                    return new IndexOfAnyCharCall(indexOfChars);
-                } else if (cps.inverseValueCount(this) == 1) {
-                    StringBufferUTF16 sb = createStringBuffer(2);
-                    sb.append(cps.inverseGetMin(this));
-                    return new IndexOfStringCall(sb.materialize(), null);
-                } else {
-                    return null;
-                }
             }
 
             public static boolean isHighSurrogate(int c, boolean forward) {
@@ -375,11 +344,6 @@ public final class Encodings {
             }
 
             @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                return new IndexOfAnyCharCall(cps.inverseToCharArray(this));
-            }
-
-            @Override
             public int getNumberOfCodeRanges() {
                 return 3;
             }
@@ -465,20 +429,6 @@ public final class Encodings {
             }
 
             @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                if (cps.inverseGetMax(this) <= 0x7f) {
-                    byte[] indexOfChars = cps.inverseToByteArray(this);
-                    return new IndexOfAnyByteCall(indexOfChars);
-                } else if (cps.inverseValueCount(this) == 1) {
-                    StringBufferUTF8 sb = createStringBuffer(4);
-                    sb.append(cps.inverseGetMin(this));
-                    return new IndexOfStringCall(sb.materialize(), new StringUTF8(new byte[sb.length()]));
-                } else {
-                    return null;
-                }
-            }
-
-            @Override
             public int getNumberOfCodeRanges() {
                 return 4;
             }
@@ -498,7 +448,7 @@ public final class Encodings {
 
         public static final class Latin1 extends Encoding {
 
-            private TruffleString.Encoding tsEncoding;
+            private final TruffleString.Encoding tsEncoding;
 
             private Latin1(TruffleString.Encoding tsEncoding) {
                 this.tsEncoding = tsEncoding;
@@ -542,11 +492,6 @@ public final class Encodings {
             @Override
             public StringBufferLATIN1 createStringBuffer(int capacity) {
                 return new StringBufferLATIN1(capacity, this);
-            }
-
-            @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                return new IndexOfAnyByteCall(cps.inverseToByteArray(this));
             }
 
             @Override
@@ -605,11 +550,6 @@ public final class Encodings {
             @Override
             public AbstractStringBuffer createStringBuffer(int capacity) {
                 return new StringBufferASCII(capacity);
-            }
-
-            @Override
-            public IndexOfCall extractIndexOfCall(CodePointSet cps) {
-                return new IndexOfAnyByteCall(cps.inverseToByteArray(this));
             }
 
             @Override

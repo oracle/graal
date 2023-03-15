@@ -77,7 +77,7 @@ public abstract class LLVMBinaryIntrinsicNode extends LLVMIntrinsicNode {
             case COPYSIGN:
                 return new LLVMCopySignNode(kind, arg1, arg2);
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

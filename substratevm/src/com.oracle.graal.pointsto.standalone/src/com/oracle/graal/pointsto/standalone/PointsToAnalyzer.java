@@ -140,8 +140,8 @@ public final class PointsToAnalyzer {
 
         JavaKind wordKind = JavaKind.fromWordSize(wordSize);
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
-                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), null);
-        AnalysisMetaAccess aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
+                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
+        AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
@@ -149,8 +149,9 @@ public final class PointsToAnalyzer {
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
+        standaloneHost.initializeProviders(aProviders);
         analysisName = getAnalysisName(mainEntryClass, options);
-        bigbang = new StandalonePointsToAnalysis(options, aUniverse, aProviders, standaloneHost, executor, () -> {
+        bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(), executor, () -> {
             /* do nothing */
         }, new TimerCollection());
         standaloneHost.setImageName(analysisName);

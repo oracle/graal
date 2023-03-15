@@ -28,6 +28,7 @@ import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
@@ -71,7 +72,7 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testGroupAllocation() throws Exception {
-        testHelper("testCrossReferences", 1, getInitialOptions());
+        testHelper("testCrossReferences", config.gc == HotSpotGraalRuntime.HotSpotGC.Z ? 0 : 1, getInitialOptions());
     }
 
     @SuppressWarnings("try")
@@ -95,7 +96,7 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
             checkAssumptions(graph);
 
             int barriers = 0;
-            if (config.useG1GC) {
+            if (config.useG1GC()) {
                 barriers = graph.getNodes().filter(G1ReferentFieldReadBarrier.class).count() + graph.getNodes().filter(G1PreWriteBarrier.class).count() +
                                 graph.getNodes().filter(G1PostWriteBarrier.class).count();
             } else {

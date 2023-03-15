@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -100,6 +101,9 @@ public class Time {
         @CEnumValue
         public native int getCValue();
     }
+
+    @CConstant
+    public static native int CLOCK_REALTIME();
 
     public static class NoTransitions {
         /**

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.AccessibleObject;
@@ -61,6 +62,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -268,91 +270,114 @@ public abstract class NativeImageCodeCache {
             }
         }
 
-        Set<HostedField> includedFields = new HashSet<>();
-        Set<HostedMethod> includedMethods = new HashSet<>();
+        Set<AnalysisField> includedFields = new HashSet<>();
+        Set<AnalysisMethod> includedMethods = new HashSet<>();
         Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
         Map<AnalysisMethod, Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
         reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
-            HostedField hostedField = hUniverse.lookup(analysisField);
-            if (!includedFields.contains(hostedField)) {
+            if (includedFields.add(analysisField)) {
+                HostedField hostedField = hUniverse.lookup(analysisField);
                 reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField, configurationFields.containsKey(analysisField));
-                includedFields.add(hostedField);
             }
         }));
 
         reflectionSupport.getHeapReflectionExecutables().forEach(((analysisMethod, reflectMethod) -> {
-            HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
-            if (!includedMethods.contains(hostedMethod)) {
+            if (includedMethods.add(analysisMethod)) {
+                HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
                 reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod, configurationExecutables.containsKey(analysisMethod));
-                includedMethods.add(hostedMethod);
             }
         }));
 
         configurationFields.forEach(((analysisField, reflectField) -> {
-            HostedField hostedField = hUniverse.lookup(analysisField);
-            if (!includedFields.contains(hostedField)) {
+            if (includedFields.add(analysisField)) {
+                HostedField hostedField = hUniverse.lookup(analysisField);
                 reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
-                includedFields.add(hostedField);
             }
         }));
 
         configurationExecutables.forEach(((analysisMethod, reflectMethod) -> {
-            HostedMethod method = hUniverse.lookup(analysisMethod);
-            if (!includedMethods.contains(method)) {
+            if (includedMethods.add(analysisMethod)) {
+                HostedMethod method = hUniverse.lookup(analysisMethod);
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 reflectionMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
-                includedMethods.add(method);
             }
         }));
 
         for (Object field : reflectionSupport.getHidingReflectionFields()) {
-            AnalysisField hidingField = (AnalysisField) field;
-            HostedField hostedField = hUniverse.optionalLookup(hidingField);
-            if (hostedField == null || !includedFields.contains(hostedField)) {
-                HostedType declaringType = hUniverse.lookup(hidingField.getDeclaringClass());
-                String name = hidingField.getName();
-                HostedType type = hUniverse.lookup(hidingField.getType());
-                int modifiers = hidingField.getModifiers();
-                reflectionMetadataEncoder.addHidingFieldMetadata(hidingField, declaringType, name, type, modifiers);
-                if (hostedField != null) {
-                    includedFields.add(hostedField);
-                }
+            AnalysisField analysisField = (AnalysisField) field;
+            if (includedFields.add(analysisField)) {
+                HostedType declaringType = hUniverse.lookup(analysisField.getDeclaringClass());
+                String name = analysisField.getName();
+                HostedType type = hUniverse.lookup(analysisField.getType());
+                int modifiers = analysisField.getModifiers();
+                reflectionMetadataEncoder.addHidingFieldMetadata(analysisField, declaringType, name, type, modifiers);
             }
         }
 
         for (Object method : reflectionSupport.getHidingReflectionMethods()) {
-            AnalysisMethod hidingMethod = (AnalysisMethod) method;
-            HostedMethod hostedMethod = hUniverse.optionalLookup(hidingMethod);
-            if (hostedMethod == null || !includedMethods.contains(hostedMethod)) {
-                HostedType declaringType = hUniverse.lookup(hidingMethod.getDeclaringClass());
-                String name = hidingMethod.getName();
-                JavaType[] analysisParameterTypes = hidingMethod.getSignature().toParameterTypes(null);
+            AnalysisMethod analysisMethod = (AnalysisMethod) method;
+            if (includedMethods.add(analysisMethod)) {
+                HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
+                String name = analysisMethod.getName();
+                JavaType[] analysisParameterTypes = analysisMethod.getSignature().toParameterTypes(null);
                 HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
                 for (int i = 0; i < analysisParameterTypes.length; ++i) {
                     parameterTypes[i] = hUniverse.lookup(analysisParameterTypes[i]);
                 }
-                int modifiers = hidingMethod.getModifiers();
-                HostedType returnType = hUniverse.lookup(hidingMethod.getSignature().getReturnType(null));
-                reflectionMetadataEncoder.addHidingMethodMetadata(hidingMethod, declaringType, name, parameterTypes, modifiers, returnType);
-                if (hostedMethod != null) {
-                    includedMethods.add(hostedMethod);
-                }
+                int modifiers = analysisMethod.getModifiers();
+                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType(null));
+                reflectionMetadataEncoder.addHidingMethodMetadata(analysisMethod, declaringType, name, parameterTypes, modifiers, returnType);
             }
         }
 
         if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedField field : hUniverse.getFields()) {
-                if (field.isAccessed() && !includedFields.contains(field)) {
+                if (field.isAccessed() && !includedFields.contains(field.getWrapped())) {
                     reflectionMetadataEncoder.addReachableFieldMetadata(field);
                 }
             }
 
             for (HostedMethod method : hUniverse.getMethods()) {
-                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method)) {
+                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod() && !includedMethods.contains(method.getWrapped())) {
                     reflectionMetadataEncoder.addReachableExecutableMetadata(method);
                 }
             }
+        }
+
+        if (throwMissingRegistrationErrors()) {
+            reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fieldNames) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (String fieldName : fieldNames) {
+                        reflectionMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, fieldName);
+                    }
+                }
+            });
+
+            reflectionSupport.getNegativeMethodQueries().forEach((analysisType, methodSignatures) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (AnalysisMethod.Signature methodSignature : methodSignatures) {
+                        HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
+                        if (parameterTypes != null) {
+                            reflectionMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
+                        }
+                    }
+                }
+            });
+
+            reflectionSupport.getNegativeConstructorQueries().forEach((analysisType, constructorSignatures) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (AnalysisType[] analysisParameterTypes : constructorSignatures) {
+                        HostedType[] parameterTypes = hUniverse.optionalLookup(analysisParameterTypes);
+                        if (parameterTypes != null) {
+                            reflectionMetadataEncoder.addNegativeConstructorQueryMetadata(hostedType, parameterTypes);
+                        }
+                    }
+                }
+            });
         }
 
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {
@@ -475,10 +500,10 @@ public abstract class NativeImageCodeCache {
         List<JavaKind> sourceKinds = Arrays.asList(sourceFrame.expectedKinds);
         if (targetFrame.getNumLocals() != sourceFrame.numLocals || targetFrame.getNumStack() != sourceFrame.numStack || targetFrame.getNumLocks() != sourceFrame.numLocks) {
             StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Mismatch between number of expected values in target and source.\n");
-            errorMessage.append(String.format("Target: locals-%d, stack-%d, locks-%d.\n", targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks()));
+            errorMessage.append("Mismatch between number of expected values in target and source.%n");
+            errorMessage.append(String.format("Target: locals-%d, stack-%d, locks-%d.%n", targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks()));
             appendFrameInfo(errorMessage, true, Arrays.stream(targetValues).map(FrameInfoQueryResult.ValueInfo::getKind).collect(Collectors.toList()));
-            errorMessage.append(String.format("Source: locals-%d, stack-%d, locks-%d.\n", sourceFrame.numLocals, sourceFrame.numStack, sourceFrame.numLocks));
+            errorMessage.append(String.format("Source: locals-%d, stack-%d, locks-%d.%n", sourceFrame.numLocals, sourceFrame.numStack, sourceFrame.numLocks));
             appendFrameInfo(errorMessage, false, sourceKinds);
             return error(method, encodedBci, errorMessage.toString());
         }
@@ -500,7 +525,7 @@ public abstract class NativeImageCodeCache {
 
         if (!validTarget) {
             StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Deoptimization source frame is not a superset of the target frame.\n");
+            errorMessage.append(String.format("Deoptimization source frame is not a superset of the target frame.%n"));
             appendFrameInfo(errorMessage, true, Arrays.stream(targetValues).map(FrameInfoQueryResult.ValueInfo::getKind).collect(Collectors.toList()));
             appendFrameInfo(errorMessage, false, sourceKinds);
             return error(method, encodedBci, errorMessage.toString());
@@ -509,9 +534,9 @@ public abstract class NativeImageCodeCache {
     }
 
     private static void appendFrameInfo(StringBuilder builder, boolean isTarget, List<JavaKind> javaKinds) {
-        builder.append(String.format("***%s Frame***\n", isTarget ? "Target" : "Source"));
+        builder.append(String.format("***%s Frame***%n", isTarget ? "Target" : "Source"));
         for (int i = 0; i < javaKinds.size(); i++) {
-            builder.append(String.format("index %d: %s\n", i, javaKinds.get(i)));
+            builder.append(String.format("index %d: %s%n", i, javaKinds.get(i)));
         }
     }
 
@@ -559,7 +584,7 @@ public abstract class NativeImageCodeCache {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             HostedMethod method = pair.getLeft();
             CompilationResult result = pair.getRight();
-            System.out.format("%8d %5d %s: frame %d\n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
+            System.out.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
         System.out.println("--- vtables:");
         for (HostedType type : imageHeap.getUniverse().getTypes()) {
@@ -568,7 +593,7 @@ public abstract class NativeImageCodeCache {
                 if (method != null) {
                     CompilationResult comp = compilationResultFor(type.getVTable()[i]);
                     if (comp != null) {
-                        System.out.format("%d %s @ %d: %s = 0x%x\n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
+                        System.out.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }
                 }
             }
@@ -660,6 +685,12 @@ public abstract class NativeImageCodeCache {
         void addReachableFieldMetadata(HostedField field);
 
         void addReachableExecutableMetadata(HostedMethod method);
+
+        void addNegativeFieldQueryMetadata(HostedType declaringClass, String fieldName);
+
+        void addNegativeMethodQueryMetadata(HostedType declaringClass, String methodName, HostedType[] parameterTypes);
+
+        void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes);
 
         void encodeAllAndInstall();
 

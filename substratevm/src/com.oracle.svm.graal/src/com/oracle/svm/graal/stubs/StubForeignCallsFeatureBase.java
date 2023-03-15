@@ -27,6 +27,7 @@ package com.oracle.svm.graal.stubs;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
@@ -57,6 +58,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
         private final Set<?> minimumRequiredFeatures;
+        private final Function<ForeignCallDescriptor, EnumSet<?>> minimumRequiredFeaturesGetter;
         private final Set<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
@@ -67,6 +69,14 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         public StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
+            this.minimumRequiredFeaturesGetter = null;
+            this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
+        }
+
+        public StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, Function<ForeignCallDescriptor, EnumSet<?>> minimumRequiredFeaturesGetter, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this.foreignCallDescriptors = foreignCallDescriptors;
+            this.minimumRequiredFeatures = null;
+            this.minimumRequiredFeaturesGetter = minimumRequiredFeaturesGetter;
             this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
@@ -85,10 +95,11 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
             // variants are not supported by the build time feature set. This way, intrinsics
             // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfills the
             // minimum requirements and doesn't have the preferred AVX2 flag.
-            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
             boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
+                Set<?> minimumFeatures = getMinimumRequiredFeatures(call);
+                boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumFeatures) || isJITCompilationEnabled && !minimumFeatures.equals(runtimeCheckedCPUFeatures);
                 if (generateBaseline) {
                     ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.isReexecutable()));
                 }
@@ -97,6 +108,15 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);
+        }
+
+        private Set<?> getMinimumRequiredFeatures(ForeignCallDescriptor call) {
+            if (minimumRequiredFeatures == null) {
+                assert minimumRequiredFeaturesGetter != null;
+                return minimumRequiredFeaturesGetter.apply(call);
+            }
+            assert minimumRequiredFeaturesGetter == null;
+            return minimumRequiredFeatures;
         }
 
     }
@@ -158,6 +178,6 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         if (arch instanceof AArch64) {
             return ((AArch64) arch).getFeatures();
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1972,6 +1972,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        boolean[] conditions = new boolean[xs.length];
+        Stamp compareStamp = compare.getX().stamp(NodeView.DEFAULT);
+        for (int i = 0; i < xs.length; i++) {
+            TriState foldedCondition = compare.condition().foldCondition(compareStamp, xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue());
+            if (foldedCondition.isUnknown()) {
+                return false;
+            } else {
+                conditions[i] = foldedCondition.toBoolean();
+            }
+        }
+
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         EconomicMap<AbstractEndNode, ValueNode> phiValues = EconomicMap.create(Equivalence.IDENTITY, mergePredecessors.size());
@@ -1986,7 +1997,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         for (int i = 0; i < xs.length; i++) {
             EndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
-            if (compare.condition().foldCondition(xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue())) {
+            if (conditions[i]) {
                 trueEnds.add(end);
             } else {
                 falseEnds.add(end);

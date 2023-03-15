@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -848,7 +848,9 @@ public final class SuspendedEvent {
         public Iterator<DebugStackFrame> iterator() {
             if (hostStack != null) {
                 AtomicInteger frameDepth = new AtomicInteger(0);
-                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), hostStack, new GuestIterator(true) {
+                Object polyglotInstrument = Debugger.ACCESSOR.instrumentSupport().getPolyglotInstrument(session.getDebugger().getEnv());
+                Object polyglotEngine = Debugger.ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotInstrument);
+                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, new GuestIterator(true) {
                     @Override
                     public DebugStackFrame next() {
                         DebugStackFrame frame = super.next();
@@ -857,7 +859,7 @@ public final class SuspendedEvent {
                         }
                         return frame;
                     }
-                }, false, new Function<StackTraceElement, DebugStackFrame>() {
+                }, false, true, new Function<StackTraceElement, DebugStackFrame>() {
                     @Override
                     public DebugStackFrame apply(StackTraceElement element) {
                         return new DebugStackFrame(SuspendedEvent.this, element, frameDepth.get());

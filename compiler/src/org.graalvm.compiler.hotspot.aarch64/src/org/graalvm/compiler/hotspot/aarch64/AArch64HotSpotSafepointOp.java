@@ -25,17 +25,22 @@
 package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -67,13 +72,32 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         emitCode(crb, masm, config, false, thread, scratch, state);
     }
 
-    public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean onReturn, Register thread, Register scratch, LIRFrameState state) {
+    public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean atReturn, Register thread, Register scratch, LIRFrameState state) {
         assert config.threadPollingPageOffset >= 0;
-        masm.ldr(64, scratch, masm.makeAddress(64, thread, config.threadPollingPageOffset));
-        crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-        if (state != null) {
-            crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
+        if (config.threadPollingWordOffset != -1 && atReturn && config.pollingPageReturnHandler != 0) {
+            // HotSpot uses this strategy even if the selected GC doesn't require any concurrent
+            // stack cleaning.
+            Label entryPoint = new Label();
+            Label poll = new Label();
+            masm.bind(poll);
+            crb.recordMark(HotSpotMarkId.POLL_RETURN_FAR);
+            masm.ldr(64, scratch, masm.makeAddress(64, thread, config.threadPollingWordOffset, scratch));
+            masm.cmp(64, AArch64.sp, scratch);
+            masm.branchConditionally(AArch64Assembler.ConditionFlag.HI, entryPoint);
+            crb.getLIR().addSlowPath(null, () -> {
+                masm.bind(entryPoint);
+                // store mark pc in scratch
+                masm.adr(scratch, poll);
+                masm.str(64, scratch, masm.makeAddress(64, thread, config.savedExceptionPCOffset));
+                AArch64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(POLLING_PAGE_RETURN_HANDLER));
+            });
+        } else {
+            masm.ldr(64, scratch, masm.makeAddress(64, thread, config.threadPollingPageOffset, scratch));
+            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
+            if (state != null) {
+                crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
+            }
+            masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
         }
-        masm.deadLoad(32, AArch64Address.createBaseRegisterOnlyAddress(32, scratch), false);
     }
 }

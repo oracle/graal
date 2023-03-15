@@ -377,7 +377,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             case Auxiliary:
                 return null;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -392,7 +392,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             case Auxiliary:
                 return virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -407,7 +407,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             case Auxiliary:
                 return null;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

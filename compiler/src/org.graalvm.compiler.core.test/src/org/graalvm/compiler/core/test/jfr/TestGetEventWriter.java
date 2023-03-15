@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.test.jfr;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.test.SubprocessTest;
@@ -97,12 +96,7 @@ public class TestGetEventWriter extends SubprocessTest {
             } catch (Throwable t) {
                 throw rethrowSilently(RuntimeException.class, t);
             }
-        });
-    }
-
-    @Override
-    public void configSubprocess(List<String> vmArgs) {
-        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+        }, SubprocessUtil.PACKAGE_OPENING_OPTIONS);
     }
 
     @SuppressWarnings({"unused", "unchecked"})

@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.amd64;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
@@ -95,6 +94,7 @@ import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -121,7 +121,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -560,7 +560,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     protected class SubstrateAMD64LIRGenerator extends AMD64LIRGenerator implements SubstrateLIRGenerator {
 
         public SubstrateAMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
-            super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+            super(lirKindTool, arithmeticLIRGen, null, moveFactory, providers, lirGenRes);
         }
 
         @Override
@@ -651,11 +651,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
             throw shouldNotReachHere("Substrate VM does not use deoptimization");
-        }
-
-        @Override
-        public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args, int numberOfFloatingPointArguments) {
-            throw unimplemented();
         }
 
         @Override
@@ -1410,7 +1405,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
         CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
-                        uncompressedNullRegister);
+                        uncompressedNullRegister, lir);
         tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         return tasm;
     }
@@ -1422,7 +1417,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache) {
         CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        return new AddressLoweringPhase(new SubstrateAMD64AddressLowering(compressEncoding));
+        return new AddressLoweringByNodePhase(new SubstrateAMD64AddressLowering(compressEncoding));
     }
 
     @Override
@@ -1431,8 +1426,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
-        crb.emit(lir);
+    public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        crb.emitLIR();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -72,6 +73,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     ArithmeticLIRGeneratorTool getArithmetic();
+
+    BarrierSetLIRGeneratorTool getBarrierSet();
 
     CodeGenProviders getProviders();
 
@@ -119,9 +122,9 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitNullCheck(Value address, LIRFrameState state);
 
-    Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder);
+    Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder, BarrierType barrierType);
 
-    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder);
+    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder, BarrierType barrierType);
 
     /**
      * Emit an atomic read-and-add instruction.
@@ -130,9 +133,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * @param address address of the value to be read and written
      * @param delta the value to be added
      */
-    default Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta) {
-        throw GraalError.unimplemented();
-    }
+    Value emitAtomicReadAndAdd(LIRKind accessKind, Value address, Value delta);
 
     /**
      * Emit an atomic read-and-write instruction.
@@ -141,9 +142,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * @param address address of the value to be read and written
      * @param newValue the new value to be written
      */
-    default Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue) {
-        throw GraalError.unimplemented();
-    }
+    Value emitAtomicReadAndWrite(LIRKind accessKind, Value address, Value newValue, BarrierType barrierType);
 
     void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state);
 
@@ -203,70 +202,70 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
-    Variable emitByteSwap(Value operand);
+    Variable emitReverseBytes(Value operand);
 
     @SuppressWarnings("unused")
     default Variable emitArrayCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayRegionCompareTo(EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayRegionCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
-        throw GraalError.unimplemented("vectorizedMismatch substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("vectorizedMismatch substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
-        throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayEquals(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
-        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayEqualsDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
-        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayEqualsWithMask(Stride strideA, Stride strideB, Stride strideMask, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length) {
-        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitArrayEqualsWithMaskDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value dynamicStrides) {
-        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
-        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
-        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     enum CalcStringAttributesEncoding {
@@ -316,6 +315,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /*
          * RETURN VALUES
          */
+        private static final int FLAG_MULTIBYTE = 1 << 3;
 
         // NOTE:
         // The following fields must be kept in sync with
@@ -336,31 +336,89 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /**
          * The string is encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_VALID_FIXED_WIDTH = 3;
+        public static final int CR_VALID = 3;
         /**
          * The string is not encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_BROKEN_FIXED_WIDTH = 4;
+        public static final int CR_BROKEN = 4;
         /**
          * The string is encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_VALID_MULTIBYTE = 5;
+        public static final int CR_VALID_MULTIBYTE = CR_VALID | FLAG_MULTIBYTE;
         /**
          * The string is not encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_BROKEN_MULTIBYTE = 6;
+        public static final int CR_BROKEN_MULTIBYTE = CR_BROKEN | FLAG_MULTIBYTE;
     }
 
     @SuppressWarnings("unused")
     default Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, boolean assumeValid) {
-        throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
+     * Supported variants of
+     * {@link #emitArrayIndexOf(Stride, ArrayIndexOfVariant, EnumSet, Value, Value, Value, Value, Value...)}.
+     */
+    enum ArrayIndexOfVariant {
+        /**
+         * Find index {@code i} where for any index {@code j} {@code array[i] == searchValues[j]}.
+         * Supports up to four search values.
+         */
+        MatchAny,
+        /**
+         * Find index {@code i} where for any index {@code j}
+         * {@code searchValues[j * 2] <= array[i] && array[i] <= searchValues[j * 2 + 1]}. Supports
+         * up to two ranges.
+         */
+        MatchRange,
+        /**
+         * Find index {@code i} where {@code (array[i] | searchValues[1]) == searchValues[0]}.
+         */
+        WithMask,
+        /**
+         * Find index {@code i} where
+         * {@code array[i] == searchValues[0] && array[i + 1] == searchValues[1]}.
+         */
+        FindTwoConsecutive,
+        /**
+         * Find index {@code i} where
+         * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.
+         */
+        FindTwoConsecutiveWithMask,
+        /**
+         * Find index {@code i} where
+         *
+         * <pre>
+         * {@code
+         * RawBytePointer lut = searchValues[0];
+         * int v = array[i] & 0xff;
+         * array[i] == v && (lut[v >> 4] & lut[16 + (v & 0xf)]) != 0
+         * }
+         * </pre>
+         *
+         * This variant can match a larger set of byte values simultaneously, e.g. to match the set
+         * {@code {0x01, 0x03, 0x11, 0x12, 0x14}}, the following lookup table would suffice:
+         *
+         * <pre>
+         * {@code
+         * index:    0x0  0x1  0x2  0x3  0x4  0x5  0x6  0x7  0x8  0x9  0xa  0xb  0xc  0xd  0xe  0xf
+         * tableHi: 0x01 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+         * tableLo: 0x00 0x03 0x02 0x01 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+         * }
+         * </pre>
+         *
+         * Note that this variant expects {@code searchValue[0]} to be a <b>direct pointer</b> into
+         * a 32-byte memory region.
+         */
+        Table
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+    default Variable emitArrayIndexOf(Stride stride, ArrayIndexOfVariant variant, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value array, Value offset, Value length, Value fromIndex, Value... searchValues) {
-        throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     /*
@@ -375,12 +433,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     @SuppressWarnings("unused")
     default void emitStringLatin1Inflate(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
-        throw GraalError.unimplemented("StringLatin1.inflate substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("StringLatin1.inflate substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
-        throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
+        throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     enum CharsetName {
@@ -390,46 +448,56 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitAESEncrypt(Value from, Value to, Value key) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitAESDecrypt(Value from, Value to, Value key) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
-        throw GraalError.unimplemented("No specialized implementation available");
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitBigIntegerMulAdd(Value out, Value in, Value offset, Value len, Value k) {
+        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
+    default void emitBigIntegerSquareToLen(Value x, Value len, Value z, Value zlen) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
@@ -494,7 +562,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default void emitZeroMemory(Value address, Value length, boolean isAligned) {
-        throw GraalError.unimplemented("Bulk zeroing is not implemented on this architecture");
+        throw GraalError.unimplemented("Bulk zeroing is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -513,6 +581,6 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     @SuppressWarnings("unused")
     default VectorSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
-        throw GraalError.unimplemented("Max vector size is not specified on this architecture");
+        throw GraalError.unimplemented("Max vector size is not specified on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 }

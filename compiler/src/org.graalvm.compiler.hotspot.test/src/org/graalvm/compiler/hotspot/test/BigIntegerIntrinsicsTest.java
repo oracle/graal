@@ -29,8 +29,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.Random;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
@@ -54,67 +55,82 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * is not tested per se (only execution based on admissible intrinsics).
  *
  */
-public final class BigIntegerIntrinsicsTest extends GraalCompilerTest {
+public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
 
     static final int N = 100;
 
     @Test
-    public void testMultiplyToLen() throws ClassNotFoundException {
-        // Intrinsic must be available.
-        Assume.assumeTrue(config.useMultiplyToLenIntrinsic());
+    public void testMultiplyToLen() {
+        EconomicMap<Pair<BigInteger, BigInteger>, BigInteger> expectedResults = EconomicMap.create();
 
-        Class<?> javaclass = Class.forName("java.math.BigInteger");
-
-        TestIntrinsic tin = new TestIntrinsic("testMultiplyAux", javaclass,
-                        "multiply", BigInteger.class);
-
+        // interpreter
         for (int i = 0; i < N; i++) {
-
             BigInteger big1 = randomBig(i);
             BigInteger big2 = randomBig(i);
 
-            // Invoke BigInteger BigInteger.multiply(BigInteger)
-            BigInteger res1 = (BigInteger) tin.invokeJava(big1, big2);
-
-            // Invoke BigInteger testMultiplyAux(BigInteger)
-            BigInteger res2 = (BigInteger) tin.invokeTest(big1, big2);
-
-            assertDeepEquals(res1, res2);
-
-            // Invoke BigInteger testMultiplyAux(BigInteger) through code handle.
-            BigInteger res3 = (BigInteger) tin.invokeCode(big1, big2);
-
-            assertDeepEquals(res1, res3);
+            expectedResults.put(Pair.create(big1, big2), big1.multiply(big2));
         }
+
+        InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "multiplyToLen"), null, true, true, getInitialOptions());
+
+        for (Pair<BigInteger, BigInteger> key : expectedResults.getKeys()) {
+            BigInteger big1 = key.getLeft();
+            BigInteger big2 = key.getRight();
+
+            assertDeepEquals(big1.multiply(big2), expectedResults.get(key));
+        }
+
+        intrinsic.invalidate();
     }
 
     @Test
-    public void testMulAdd() throws ClassNotFoundException {
-        // Intrinsic must be available.
-        Assume.assumeTrue(config.useMulAddIntrinsic() || config.useSquareToLenIntrinsic());
+    public void testMulAdd() {
+        EconomicMap<Pair<BigInteger, BigInteger>, BigInteger> expectedResults = EconomicMap.create();
 
-        Class<?> javaclass = Class.forName("java.math.BigInteger");
-
-        TestIntrinsic tin = new TestIntrinsic("testMultiplyAux", javaclass,
-                        "multiply", BigInteger.class);
-
+        // interpreter
         for (int i = 0; i < N; i++) {
-
             BigInteger big1 = randomBig(i);
+            BigInteger big2 = randomBig(i);
 
-            // Invoke BigInteger BigInteger.multiply(BigInteger)
-            BigInteger res1 = (BigInteger) tin.invokeJava(big1, big1);
-
-            // Invoke BigInteger testMultiplyAux(BigInteger)
-            BigInteger res2 = (BigInteger) tin.invokeTest(big1, big1);
-
-            assertDeepEquals(res1, res2);
-
-            // Invoke BigInteger testMultiplyAux(BigInteger) through code handle.
-            BigInteger res3 = (BigInteger) tin.invokeCode(big1, big1);
-
-            assertDeepEquals(res1, res3);
+            // mulAdd is exercised via the call path modPow -> oddModPow -> montReduce
+            expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
         }
+
+        InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "mulAdd"), null, true, true, getInitialOptions());
+
+        for (Pair<BigInteger, BigInteger> key : expectedResults.getKeys()) {
+            BigInteger big1 = key.getLeft();
+            BigInteger big2 = key.getRight();
+
+            assertDeepEquals(big1.modPow(bigTwo, big2), expectedResults.get(key));
+        }
+
+        intrinsic.invalidate();
+    }
+
+    @Test
+    public void testSquareToLen() {
+        EconomicMap<Pair<BigInteger, BigInteger>, BigInteger> expectedResults = EconomicMap.create();
+
+        // interpreter
+        for (int i = 0; i < N; i++) {
+            BigInteger big1 = randomBig(i);
+            BigInteger big2 = randomBig(i);
+
+            // squareToLen is exercised via the call path modPow -> oddModPow -> montgomerySquare
+            expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+        }
+
+        InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "squareToLen"), null, true, true, getInitialOptions());
+
+        for (Pair<BigInteger, BigInteger> key : expectedResults.getKeys()) {
+            BigInteger big1 = key.getLeft();
+            BigInteger big2 = key.getRight();
+
+            assertDeepEquals(big1.modPow(bigTwo, big2), expectedResults.get(key));
+        }
+
+        intrinsic.invalidate();
     }
 
     @Test

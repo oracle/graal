@@ -42,34 +42,34 @@ For the demo, you will use a simple HelloWorld Java module gathered with Maven:
     >     exports hello;
     > }
 ```    
- 
-1. Download or clone the demos repository and navigate to the directory `native-hello-module`:
-  
+
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Download or clone the demos repository and navigate to the directory `native-hello-module`:
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
     cd graalvm-demos/native-hello-module
     ```
 
-2. Compile and package the project with Maven:
-
+3. Compile and package the project with Maven:
     ```bash
     mvn package
     ```
 
-3. Test running it on GraalVM's JDK:
-
+4. Test running it on GraalVM's JDK:
     ```bash
     $JAVA_HOME/bin/java --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
     ```
 
-3. Now build this module into a native executable:
-
+5. Now build this module into a native executable:
     ```bash
     $JAVA_HOME/bin/native-image --module-path target/HelloModule-1.0-SNAPSHOT.jar --module HelloModule
     ```
 
     It builds the modular Java application into a native executable called `hellomodule` in the project root directory that you can execute:
-
     ```bash
     ./hellomodule
     ```

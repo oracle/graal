@@ -118,7 +118,7 @@ final class AssertUtils {
 
     private static String violationArgument(Object receiver, Object arg) {
         return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
-                        "Valid arguments must be of type Boolean, Byte, Short, Integer, Long, Float, Double, Character, String or implement TruffleObject.",
+                        "Valid arguments must be of type Boolean, Byte, Short, Integer, Long, Float, Double, Character, String, TruffleString, or implement TruffleObject.",
                         formatValue(receiver), formatValue(arg));
     }
 

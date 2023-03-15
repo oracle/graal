@@ -41,6 +41,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType truffleStringType = lookupType("com.oracle.truffle.api.strings.TruffleString");
     public final ResolvedJavaField truffleStringDataField = findField(abstractTruffleStringType, "data");
     public final ResolvedJavaField truffleStringHashCodeField = findField(abstractTruffleStringType, "hashCode");
+    public final ResolvedJavaField truffleStringCodeRangeField = findField(abstractTruffleStringType, "codeRange");
+    public final ResolvedJavaField truffleStringCodePointLengthField = findField(abstractTruffleStringType, "codePointLength");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
 
     public final ResolvedJavaField fieldDescriptor = findField(classFrameClass, "descriptor");

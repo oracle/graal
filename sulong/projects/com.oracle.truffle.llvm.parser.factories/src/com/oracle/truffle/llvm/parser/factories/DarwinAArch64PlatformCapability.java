@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -100,4 +100,10 @@ final class DarwinAArch64PlatformCapability extends BasicAarch64PlatformCapabili
     public OS getOS() {
         return OS.Darwin;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 128;
+    }
+
 }

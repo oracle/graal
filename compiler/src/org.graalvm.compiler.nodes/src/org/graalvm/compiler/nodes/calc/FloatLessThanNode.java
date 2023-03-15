@@ -106,7 +106,7 @@ public final class FloatLessThanNode extends CompareNode {
             } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 return new IntegerLessThanNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

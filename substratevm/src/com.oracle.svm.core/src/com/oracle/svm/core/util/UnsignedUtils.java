@@ -48,7 +48,7 @@ public final class UnsignedUtils {
      * @param multiple The multiple to which that Unsigned should be decreased.
      * @return That Unsigned, but rounded down.
      */
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord roundDown(UnsignedWord that, UnsignedWord multiple) {
         return that.unsignedDivide(multiple).multiply(multiple);
     }
@@ -60,7 +60,7 @@ public final class UnsignedUtils {
      * @param multiple The multiple to which that Unsigned should be increased.
      * @return That Unsigned, but rounded up.
      */
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord roundUp(UnsignedWord that, UnsignedWord multiple) {
         return UnsignedUtils.roundDown(that.add(multiple.subtract(1)), multiple);
     }
@@ -72,7 +72,7 @@ public final class UnsignedUtils {
      * @param multiple The multiple against which the Unsigned should be verified.
      * @return true if that Unsigned is a multiple, false otherwise.
      */
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAMultiple(UnsignedWord that, UnsignedWord multiple) {
         return that.unsignedRemainder(multiple).equal(0);
     }
@@ -84,7 +84,7 @@ public final class UnsignedUtils {
      * @param y Another Unsigned.
      * @return The whichever Unsigned is smaller.
      */
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord min(UnsignedWord x, UnsignedWord y) {
         return (x.belowOrEqual(y)) ? x : y;
     }
@@ -96,7 +96,7 @@ public final class UnsignedUtils {
      * @param y Another Unsigned.
      * @return The whichever Unsigned is larger.
      */
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord max(UnsignedWord x, UnsignedWord y) {
         return (x.aboveOrEqual(y)) ? x : y;
     }
@@ -112,7 +112,7 @@ public final class UnsignedUtils {
         return (int) l;
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord clamp(UnsignedWord value, UnsignedWord min, UnsignedWord max) {
         assert min.belowOrEqual(max);
         return min(max(value, min), max);

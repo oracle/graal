@@ -53,7 +53,7 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
         AnalysisField analysisField = (AnalysisField) field;
         JavaConstant ret = universe.lookup(super.readFieldValue(analysisField.wrapped, universe.toHosted(receiver)));
         if (ret == null) {
-            ret = UninitializedStaticFieldValueReader.readUninitializedStaticValue(analysisField, value -> universe.getSnippetReflection().forObject(value));
+            ret = UninitializedStaticFieldValueReader.readUninitializedStaticValue(analysisField.wrapped, value -> universe.getSnippetReflection().forObject(value));
         }
         return ret;
     }

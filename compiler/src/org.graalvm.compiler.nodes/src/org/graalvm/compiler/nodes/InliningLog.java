@@ -545,7 +545,7 @@ public class InliningLog {
 
         public void activate() {
             if (currentUpdateScope != null) {
-                throw GraalError.shouldNotReachHere("InliningLog updating already set.");
+                throw GraalError.shouldNotReachHere("InliningLog updating already set."); // ExcludeFromJacocoGeneratedReport
             }
             currentUpdateScope = this;
         }
@@ -682,7 +682,7 @@ public class InliningLog {
         @Override
         public void close() {
             assert currentRootScope != null;
-            removeLeafCallsite(replacementRoot.invoke);
+            unregisterLeafCallsite(replacementRoot.invoke);
             currentRootScope = parent;
         }
     }
@@ -710,7 +710,7 @@ public class InliningLog {
 
         @Override
         public void setBci(int bci) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -761,15 +761,39 @@ public class InliningLog {
         return leaves.containsKey(invokable);
     }
 
-    public Callsite removeLeafCallsite(Invokable invokable) {
+    /**
+     * Removes a callsite from the set of leaf callsites. The callsite is not removed from the call
+     * tree. The callsite can be {@link #registerLeafCallsite re-registered} later.
+     *
+     * @param invokable the invoke representing the callsite
+     * @return the unregistered callsite
+     */
+    public Callsite unregisterLeafCallsite(Invokable invokable) {
         return leaves.removeKey(invokable);
     }
 
     /**
-     * This method must be called during graph compression, or other node-id changes.
+     * Registers a callsite as a leaf callsite. This method must be called during graph compression,
+     * or other node-id changes.
+     *
+     * @param invokable the invoke representing the callsite
+     * @param callsite the callsite to be registered
      */
-    public void addLeafCallsite(Invokable invokable, Callsite callsite) {
+    public void registerLeafCallsite(Invokable invokable, Callsite callsite) {
         leaves.put(invokable, callsite);
+    }
+
+    /**
+     * Removes a leaf callsite from the call tree. This implies {@link #unregisterLeafCallsite
+     * unregistering} it from the set of leaves.
+     *
+     * @param invokable the invoke representing the callsite
+     */
+    public void removeLeafCallsite(Invokable invokable) {
+        Callsite callsite = unregisterLeafCallsite(invokable);
+        assert callsite != null : "it must be a leaf callsite";
+        assert callsite.parent != null : "a leaf callsite must have a parent";
+        callsite.parent.children.remove(callsite);
     }
 
     public void trackNewCallsite(Invokable invoke) {

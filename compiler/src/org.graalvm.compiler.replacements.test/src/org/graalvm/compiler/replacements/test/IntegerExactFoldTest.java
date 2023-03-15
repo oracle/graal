@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.NodeView;
@@ -85,8 +84,8 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
     @Test
     public void testFolding() {
         StructuredGraph graph = prepareGraph();
-        IntegerStamp a = StampFactory.forInteger(bits, lowerBoundA, upperBoundA);
-        IntegerStamp b = StampFactory.forInteger(bits, lowerBoundB, upperBoundB);
+        IntegerStamp a = IntegerStamp.create(bits, lowerBoundA, upperBoundA);
+        IntegerStamp b = IntegerStamp.create(bits, lowerBoundB, upperBoundB);
 
         List<ParameterNode> params = graph.getNodes(ParameterNode.TYPE).snapshot();
         params.get(0).replaceAtMatchingUsages(graph.addOrUnique(new PiNode(params.get(0), a)), x -> x instanceof IntegerExactArithmeticNode);
@@ -124,11 +123,11 @@ public class IntegerExactFoldTest extends GraalCompilerTest {
 
         if (loweredNode instanceof BinaryIntegerExactArithmeticSplitNode) {
             BinaryIntegerExactArithmeticSplitNode binaryLoweredNode = (BinaryIntegerExactArithmeticSplitNode) loweredNode;
-            binaryLoweredNode.getX().setStamp(StampFactory.forInteger(bits, lowerBoundA, upperBoundA));
-            binaryLoweredNode.getY().setStamp(StampFactory.forInteger(bits, lowerBoundB, upperBoundB));
+            binaryLoweredNode.getX().setStamp(IntegerStamp.create(bits, lowerBoundA, upperBoundA));
+            binaryLoweredNode.getY().setStamp(IntegerStamp.create(bits, lowerBoundB, upperBoundB));
         } else if (loweredNode instanceof IntegerNegExactSplitNode) {
             IntegerNegExactSplitNode negExactSplitNode = (IntegerNegExactSplitNode) loweredNode;
-            negExactSplitNode.getValue().setStamp(StampFactory.forInteger(bits, lowerBoundA, upperBoundA));
+            negExactSplitNode.getValue().setStamp(IntegerStamp.create(bits, lowerBoundA, upperBoundA));
         } else {
             fail("Unknown integer exact split node type: %s", loweredNode.getClass());
         }

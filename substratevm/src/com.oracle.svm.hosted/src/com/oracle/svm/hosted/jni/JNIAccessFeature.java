@@ -376,7 +376,7 @@ public class JNIAccessFeature implements Feature {
 
             SimpleSignature compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
             JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(compatibleSignature,
-                            signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getProviders().getWordTypes()));
+                            signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getWordTypes()));
             access.registerAsRoot(universe.lookup(callWrapperMethod), true);
 
             JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false);
@@ -394,7 +394,7 @@ public class JNIAccessFeature implements Feature {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
         return map.computeIfAbsent(wrapperSignature, signature -> {
             MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
-            WordTypes wordTypes = access.getBigBang().getProviders().getWordTypes();
+            WordTypes wordTypes = access.getBigBang().getWordTypes();
             var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
             var array = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
             var valist = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);

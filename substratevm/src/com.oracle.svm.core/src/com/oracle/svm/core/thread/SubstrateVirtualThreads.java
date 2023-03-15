@@ -152,7 +152,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return thread instanceof SubstrateVirtualThread;
     }
