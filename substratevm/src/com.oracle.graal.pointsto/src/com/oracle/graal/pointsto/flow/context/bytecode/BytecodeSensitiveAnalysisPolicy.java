@@ -649,10 +649,10 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
      * Optimization that gives 1.5-3x in performance for the (typeflow) phase.
      */
     private TypeState allocationInsensitiveSpeculativeUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
-        if (s1.typesBitSet().length() >= s2.typesBitSet().length()) {
+        if (s1.length() >= s2.length()) {
             long[] bits1 = TypeStateUtils.extractBitSetField(s1.typesBitSet());
             long[] bits2 = TypeStateUtils.extractBitSetField(s2.typesBitSet());
-            assert s2.typesBitSet().cardinality() == s2.objects.length : "Cardinality and length of objects must match.";
+            assert s2.typesCount() == s2.objects.length : "Cardinality and length of objects must match.";
 
             boolean speculate = true;
             int numberOfWords = Math.min(bits1.length, bits2.length);
@@ -885,7 +885,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     private static TypeState doIntersection0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
@@ -1082,7 +1082,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     private static TypeState doSubtraction0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is empty set. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }

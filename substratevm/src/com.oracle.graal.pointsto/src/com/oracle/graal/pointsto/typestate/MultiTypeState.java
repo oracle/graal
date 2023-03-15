@@ -169,11 +169,18 @@ public class MultiTypeState extends TypeState {
         return this.typesBitSet.get(exactType.getId());
     }
 
-    protected boolean bitSetEquals(MultiTypeState that) {
+    public boolean bitSetEquals(MultiTypeState that) {
         if (isSmall()) {
             return this.smallTypesBitSet.equals(that.smallTypesBitSet);
         }
         return this.typesBitSet.equals(that.typesBitSet);
+    }
+
+    public int length() {
+        if (isSmall()) {
+            return this.smallTypesBitSet.length();
+        }
+        return this.typesBitSet.length();
     }
 
     @Override
@@ -255,8 +262,14 @@ public class MultiTypeState extends TypeState {
             return false;
         }
 
+        // Returns the "logical size" of this BitSet: the index of the highest
+        // set bit in the BitSet plus one.
+        public int length() {
+            return set[cardinality-1]+1;
+        }
+
         public BitSet asBitSet() {
-            BitSet result = new BitSet(set[cardinality-1]+1);
+            BitSet result = new BitSet(length());
             for (int i = 0; i < cardinality; i++) {
                 result.set(set[i]);
             }
