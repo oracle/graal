@@ -60,6 +60,7 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -72,6 +73,7 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
+    final SandboxPolicy sandboxPolicy;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
@@ -222,7 +224,7 @@ final class PolyglotContextConfig {
     }
 
     PolyglotContextConfig(PolyglotEngineImpl engine, FileSystemConfig fileSystemConfig, PreinitConfig sharableConfig) {
-        this(engine, null,
+        this(engine, SandboxPolicy.TRUSTED, null,
                         System.out,
                         System.err,
                         System.in,
@@ -253,7 +255,7 @@ final class PolyglotContextConfig {
                         null, null, null, null);
     }
 
-    PolyglotContextConfig(PolyglotEngineImpl engine, Boolean forceSharing,
+    PolyglotContextConfig(PolyglotEngineImpl engine, SandboxPolicy sandboxPolicy, Boolean forceSharing,
                     OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed,
                     boolean createThreadAllowed, boolean hostClassLoadingAllowed,
@@ -267,6 +269,8 @@ final class PolyglotContextConfig {
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
+        assert sandboxPolicy != null;
+        this.sandboxPolicy = sandboxPolicy;
         this.forceCodeSharing = forceSharing;
         this.out = out;
         this.err = err;
@@ -329,6 +333,11 @@ final class PolyglotContextConfig {
                 optionsById.put(id, targetOptions);
             }
             targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+        }
+        if (sandboxPolicy != SandboxPolicy.TRUSTED) {
+            for (String language : allowedPublicLanguages) {
+                engine.idToLanguage.get(language).validateSandbox(sandboxPolicy);
+            }
         }
         this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;
         this.configuredLanguages = languages == null ? Collections.emptySet() : languages;

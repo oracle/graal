@@ -91,6 +91,7 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -189,7 +190,6 @@ public final class GCImpl implements GC {
         int size = SizeOf.get(CollectionVMOperationData.class);
         CollectionVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
-        data.setNativeVMOperation(collectOperation);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
         data.setRequestingNanoTime(System.nanoTime());
@@ -957,7 +957,9 @@ public final class GCImpl implements GC {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
             try {
-                ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);
+                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                    VMThreadLocalMTSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
+                }
             } finally {
                 walkThreadLocalsTimer.close();
             }

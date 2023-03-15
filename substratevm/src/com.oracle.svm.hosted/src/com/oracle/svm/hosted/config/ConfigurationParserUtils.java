@@ -55,7 +55,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader),
+        return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue());
     }
 

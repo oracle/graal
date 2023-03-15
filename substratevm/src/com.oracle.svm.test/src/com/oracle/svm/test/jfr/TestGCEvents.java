@@ -26,11 +26,17 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
-public class TestGCEvents extends JfrTest {
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestGCEvents extends JfrRecordingTest {
     @Override
     public String[] getTestedEvents() {
         return new String[]{
@@ -40,6 +46,11 @@ public class TestGCEvents extends JfrTest {
                         JfrEvent.GCPhasePauseLevel2Event.getName(),
                         JfrEvent.ExecuteVMOperation.getName()
         };
+    }
+
+    @Override
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+        assertTrue(events.size() > 0);
     }
 
     @Test

@@ -149,8 +149,20 @@ class ReflectionProcessor extends AbstractProcessor {
                 configuration.getOrCreateType(condition, clazz).setAllDeclaredClasses();
                 break;
             }
+            case "getRecordComponents": {
+                configuration.getOrCreateType(condition, clazz).setAllRecordComponents();
+                break;
+            }
             case "getPermittedSubclasses": {
                 configuration.getOrCreateType(condition, clazz).setAllPermittedSubclasses();
+                break;
+            }
+            case "getNestMembers": {
+                configuration.getOrCreateType(condition, clazz).setAllNestMembers();
+                break;
+            }
+            case "getSigners": {
+                configuration.getOrCreateType(condition, clazz).setAllSigners();
                 break;
             }
             case "getClasses": {

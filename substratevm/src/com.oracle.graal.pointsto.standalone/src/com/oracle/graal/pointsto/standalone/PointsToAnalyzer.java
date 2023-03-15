@@ -149,8 +149,9 @@ public final class PointsToAnalyzer {
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
+        standaloneHost.initializeProviders(aProviders);
         analysisName = getAnalysisName(mainEntryClass, options);
-        bigbang = new StandalonePointsToAnalysis(options, aUniverse, aProviders, standaloneHost, executor, () -> {
+        bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(), executor, () -> {
             /* do nothing */
         }, new TimerCollection());
         standaloneHost.setImageName(analysisName);

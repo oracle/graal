@@ -57,7 +57,11 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
-/** A collection of utilities that might assist heap dumps. */
+/**
+ * Legacy implementation, only used by other legacy code (see GR-44538).
+ *
+ * A collection of utilities that might assist heap dumps.
+ */
 public class HeapDumpUtils {
 
     @UnknownObjectField(types = {byte[].class}) private byte[] fieldsMap;
@@ -66,7 +70,7 @@ public class HeapDumpUtils {
     private final TestingBackDoor testingBackDoor;
 
     /** Constructor. */
-    HeapDumpUtils() {
+    public HeapDumpUtils() {
         this.testingBackDoor = new TestingBackDoor(this);
     }
 

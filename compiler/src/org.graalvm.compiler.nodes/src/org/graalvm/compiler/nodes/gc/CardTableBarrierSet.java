@@ -25,25 +25,26 @@
  */
 package org.graalvm.compiler.nodes.gc;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -57,32 +58,32 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType readBarrierType(RawLoadNode load) {
+    public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
         return BarrierType.NONE;
     }
 
     @Override
-    public BarrierType storeBarrierType(RawStoreNode store) {
-        return store.needsBarrier() ? guessStoreBarrierType(store.object(), store.value()) : BarrierType.NONE;
+    public BarrierType writeBarrierType(RawStoreNode store) {
+        return store.needsBarrier() ? guessReadWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+    public BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
         return BarrierType.NONE;
     }
 
     @Override
-    public BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
         return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType arrayStoreBarrierType(JavaKind storageKind) {
+    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
         return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
+    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && type.isArray()) {
@@ -94,6 +95,16 @@ public class CardTableBarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
+    }
+
+    @Override
+    public boolean hasWriteBarrier() {
+        return true;
+    }
+
+    @Override
+    public boolean hasReadBarrier() {
+        return false;
     }
 
     @Override
@@ -164,7 +175,7 @@ public class CardTableBarrierSet implements BarrierSet {
         } else if (n instanceof ArrayRangeWrite) {
             return barrier instanceof SerialArrayRangeWriteBarrier && matches((ArrayRangeWrite) n, (SerialArrayRangeWriteBarrier) barrier);
         } else {
-            throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass());
+            throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

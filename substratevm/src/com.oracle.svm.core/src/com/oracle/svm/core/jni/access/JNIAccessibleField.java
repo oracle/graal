@@ -57,7 +57,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * {@link StaticFieldsSupport#getStaticPrimitiveFields()} or
      * {@link StaticFieldsSupport#getStaticObjectFields()}.
      */
-    @Uninterruptible(reason = "Allow inlining from field accessor methods, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static WordBase getOffsetFromId(JNIFieldId id) {
         UnsignedWord result = ((UnsignedWord) id).and(ID_OFFSET_MASK);
         assert result.notEqual(0);

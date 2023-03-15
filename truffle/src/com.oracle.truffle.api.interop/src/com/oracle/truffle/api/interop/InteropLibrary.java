@@ -496,7 +496,14 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExportedAsWarning = "isNumber")
     public boolean fitsInBigInteger(Object receiver) {
         try {
-            return fitsInLong(receiver) || (fitsInDouble(receiver) && asDouble(receiver) % 1 == 0);
+            if (fitsInLong(receiver)) {
+                return true;
+            } else if (fitsInDouble(receiver)) {
+                double doubleValue = asDouble(receiver);
+                return doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue);
+            } else {
+                return false;
+            }
         } catch (UnsupportedMessageException e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
@@ -607,7 +614,7 @@ public abstract class InteropLibrary extends Library {
             return toBigInteger(longValue);
         } else if (fitsInDouble(receiver)) {
             double doubleValue = asDouble(receiver);
-            if (doubleValue % 1 == 0) {
+            if (doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue)) {
                 return toBigInteger(doubleValue);
             }
         }

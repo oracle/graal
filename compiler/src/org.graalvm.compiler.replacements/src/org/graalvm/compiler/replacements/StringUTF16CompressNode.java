@@ -32,7 +32,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.GenerateStub;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -89,7 +89,7 @@ public final class StringUTF16CompressNode extends MemoryKillStubIntrinsicNode {
     }
 
     private StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, EnumSet<?> runtimeCheckedCPUFeatures, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forInteger(32), runtimeCheckedCPUFeatures, locationIdentity);
+        super(TYPE, IntegerStamp.create(32), runtimeCheckedCPUFeatures, locationIdentity);
         this.src = src;
         this.dst = dst;
         this.len = len;

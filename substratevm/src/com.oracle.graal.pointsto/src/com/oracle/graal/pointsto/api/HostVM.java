@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -70,6 +71,7 @@ public abstract class HostVM {
     protected final ClassLoader classLoader;
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
+    private HostedProviders providers;
 
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
@@ -153,6 +155,13 @@ public abstract class HostVM {
     public abstract void onTypeReachable(AnalysisType newValue);
 
     /**
+     * Run initialization tasks for a newly instantiated {@link AnalysisType}.
+     *
+     * @param newValue the type to initialize
+     */
+    public abstract void onTypeInstantiated(AnalysisType newValue);
+
+    /**
      * Check if an {@link AnalysisType} is initialized.
      */
     public abstract boolean isInitialized(AnalysisType type);
@@ -169,7 +178,7 @@ public abstract class HostVM {
         return config;
     }
 
-    public abstract Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+    public abstract Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext);
 
     /**
@@ -285,6 +294,16 @@ public abstract class HostVM {
     @SuppressWarnings("unused")
     public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
         return StructuredGraph.AllowAssumptions.NO;
+    }
+
+    public void initializeProviders(HostedProviders newProviders) {
+        AnalysisError.guarantee(providers == null, "can only initialize providers once");
+        providers = newProviders;
+    }
+
+    @SuppressWarnings("unused")
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        return providers;
     }
 
     /**

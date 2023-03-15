@@ -140,7 +140,7 @@ public class StaticAnalysis {
     }
 
     protected static RuntimeException error(String msg) {
-        throw GraalError.shouldNotReachHere(msg);
+        throw GraalError.shouldNotReachHere(msg); // ExcludeFromJacocoGeneratedReport
     }
 
     /**

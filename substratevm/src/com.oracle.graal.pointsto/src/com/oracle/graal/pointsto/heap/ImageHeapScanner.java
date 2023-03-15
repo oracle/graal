@@ -400,9 +400,9 @@ public abstract class ImageHeapScanner {
     private Optional<JavaConstant> maybeReplace(JavaConstant constant, ScanReason reason) {
         Object unwrapped = unwrapObject(constant);
         if (unwrapped == null) {
-            throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason));
+            throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason)); // ExcludeFromJacocoGeneratedReport
         } else if (unwrapped instanceof ImageHeapConstant) {
-            throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason));
+            throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
         }
 
         /* Run all registered object replacers. */

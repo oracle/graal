@@ -544,11 +544,11 @@ public class GraphDecoder {
             if (nodeReferences != null) {
                 for (var nodeReference : nodeReferences) {
                     if (nodeReference.orderId < 0) {
-                        throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state");
+                        throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state"); // ExcludeFromJacocoGeneratedReport
                     }
                     nodeReference.node = loopScope.createdNodes[nodeReference.orderId];
                     if (nodeReference.node == null || !nodeReference.node.isAlive()) {
-                        throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference");
+                        throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference"); // ExcludeFromJacocoGeneratedReport
                     }
                     nodeReference.orderId = EncodedNodeReference.DECODED;
                 }
@@ -1060,7 +1060,7 @@ public class GraphDecoder {
      * @param loopScope The current loop.
      */
     protected void checkLoopExplosionIteration(MethodScope methodScope, LoopScope loopScope) {
-        throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method");
+        throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method"); // ExcludeFromJacocoGeneratedReport
     }
 
     protected LoopScopeTrigger handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope) {
@@ -1529,7 +1529,7 @@ public class GraphDecoder {
              * This is a severe error that will lead to a corrupted graph, so it is better not to
              * continue decoding at all.
              */
-            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName());
+            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName()); // ExcludeFromJacocoGeneratedReport
         }
 
         /* Read the inputs of the node, possibly creating them recursively. */
@@ -1717,7 +1717,7 @@ public class GraphDecoder {
             case 4:
                 return methodScope.reader.getS4();
         }
-        throw GraalError.shouldNotReachHere("Invalid orderIdWidth: " + methodScope.orderIdWidth);
+        throw GraalError.shouldNotReachHere("Invalid orderIdWidth: " + methodScope.orderIdWidth); // ExcludeFromJacocoGeneratedReport
     }
 
     protected Object readObject(MethodScope methodScope) {

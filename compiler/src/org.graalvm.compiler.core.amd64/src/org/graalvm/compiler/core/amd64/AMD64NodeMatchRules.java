@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case DOUBLE:
                 return OperandSize.SD;
             default:
-                throw GraalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access));
+                throw GraalError.shouldNotReachHere("unsupported memory access type " + getMemoryKind(access)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -264,7 +264,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                     op = MOVSXD;
                     break;
                 default:
-                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)"); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             kind = AMD64Kind.DWORD;
@@ -280,7 +280,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 case 32:
                     return null;
                 default:
-                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)");
+                    throw GraalError.unimplemented("unsupported sign extension (" + fromBits + " bit -> " + toBits + " bit)"); // ExcludeFromJacocoGeneratedReport
             }
         }
         if (kind != null && op != null) {
@@ -409,7 +409,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value expectedValue = operand(cas.getExpectedValue());
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability);
+                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -442,7 +442,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability);
+                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -699,7 +699,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             case L2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSI2SS, QWORD, access);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -723,6 +723,15 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             getArithmeticLIRGenerator().emitStore(kind, address, value, getState(root), root.getMemoryOrder());
             return null;
         };
+    }
+
+    @MatchRule("(Conditional (IntegerBelow x y) Constant=cm1 (Conditional (IntegerEquals x y) Constant=c0 Constant=c1))")
+    public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
+        if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
+                        c1.asJavaConstant().asInt() == 1) {
+            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(operand(x), operand(y));
+        }
+        return null;
     }
 
     @Override

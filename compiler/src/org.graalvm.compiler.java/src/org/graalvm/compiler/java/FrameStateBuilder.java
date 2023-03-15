@@ -336,7 +336,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return outerFrameState.duplicateModified(graph, outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]}, null);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw shouldNotReachHere();
+            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
@@ -360,7 +360,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return FrameState.toSourcePosition(outerFrameState);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw shouldNotReachHere();
+            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         if (parser.intrinsicContext != null && (parent == null || parent.intrinsicContext != parser.intrinsicContext)) {
             // When parsing an intrinsic put in a substitution marker showing the original method as
@@ -961,7 +961,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 break;
             }
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,7 +180,7 @@ public class BoxingSnippets implements Snippets {
                         accessedLocation = new FieldLocationIdentity(AbstractBoxingNode.getValueField(providers.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass())));
                         break;
                     default:
-                        throw GraalError.unimplemented();
+                        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
                 }
                 assert accessedLocation != null;
                 // Boxing may write to cache or init location
@@ -235,16 +235,16 @@ public class BoxingSnippets implements Snippets {
             try {
                 innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
                 if (innerClasses == null || innerClasses.length == 0) {
-                    throw GraalError.shouldNotReachHere("Inner classes must exist");
+                    throw GraalError.shouldNotReachHere("Inner classes must exist"); // ExcludeFromJacocoGeneratedReport
                 }
                 for (Class<?> innerClass : innerClasses) {
                     if (innerClass.getName().endsWith("Cache")) {
                         return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClass.getDeclaredField("cache")));
                     }
                 }
-                throw GraalError.shouldNotReachHere("No cache inner class found");
+                throw GraalError.shouldNotReachHere("No cache inner class found"); // ExcludeFromJacocoGeneratedReport
             } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
+                throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
             }
         }
 

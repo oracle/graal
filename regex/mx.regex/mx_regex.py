@@ -63,7 +63,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle', 'ICU4J'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
-    installable=False,
+    installable=True,
+    standalone=False,
     stability="supported",
 ))
 

@@ -212,7 +212,7 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         @Override
         protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
             // leading zeros, adjusted to stamp bits
-            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.mayBeSet()) - (Long.SIZE - a.getBits());
             return leadingZeroForBits < shift;
         }
 

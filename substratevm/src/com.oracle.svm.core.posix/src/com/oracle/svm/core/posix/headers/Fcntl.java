@@ -50,6 +50,12 @@ public class Fcntl {
     @CConstant
     public static native int O_CREAT();
 
+    @CConstant
+    public static native int O_TRUNC();
+
+    @CConstant
+    public static native int O_EXCL();
+
     public static class NoTransitions {
         @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
         public static native int open(CCharPointer pathname, int flags, int mode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,8 +47,10 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
+import com.oracle.svm.hosted.util.CPUType;
 
 public class NativeImageOptions {
 
@@ -58,7 +60,8 @@ public class NativeImageOptions {
                     "target executable, irrespective of whether they are supported by the hosted " +
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
-                    "platform dependent. See --list-cpu-features for feature list.", type = User)//
+                    "platform dependent. See --list-cpu-features for feature list. These features " +
+                    "are in addition to -march.", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
@@ -76,8 +79,32 @@ public class NativeImageOptions {
                     "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
-    public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
+    public static final String MICRO_ARCHITECTURE_NATIVE = "native";
+    public static final String MICRO_ARCHITECTURE_COMPATIBILITY = "compatibility";
+    public static final String MICRO_ARCHITECTURE_LIST = "list";
+
+    @APIOption(name = "-march")//
+    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8-a' on AArch64. " +
+                    "Use -march=" + MICRO_ARCHITECTURE_COMPATIBILITY + " for best compatibility, or -march=" + MICRO_ARCHITECTURE_NATIVE +
+                    " for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. " +
+                    "To list all available machine types, use -march=" + MICRO_ARCHITECTURE_LIST + ".", type = User)//
+    public static final HostedOptionKey<String> MicroArchitecture = new HostedOptionKey<>(null) {
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            if (MICRO_ARCHITECTURE_LIST.equals(newValue)) {
+                CPUType.printList();
+                throw new InterruptImageBuilding("");
+            }
+        }
+    };
+
+    @Option(help = "Uses the native architecture, i.e., the architecture of a machine that builds an image.", type = User, //
+                    deprecated = true, deprecationMessage = "Please use -march=native instead. See --help for details.") //
+    public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            MicroArchitecture.update(values, newValue ? MICRO_ARCHITECTURE_NATIVE : null);
+        }
+    };
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);

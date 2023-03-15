@@ -105,17 +105,17 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         return HeapParameters.getAlignedHeapChunkSize();
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord alignUp(UnsignedWord size) {
         return UnsignedUtils.roundUp(size, getAlignment());
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord alignDown(UnsignedWord size) {
         return UnsignedUtils.roundDown(size, getAlignment());
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isAligned(UnsignedWord size) {
         return UnsignedUtils.isAMultiple(size, getAlignment());
     }
@@ -125,7 +125,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         return getAlignment().multiply(MIN_SPACE_SIZE_IN_ALIGNED_CHUNKS);
     }
 
-    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnsignedWord minSpaceSize(UnsignedWord size) {
         return UnsignedUtils.max(size, minSpaceSize());
     }

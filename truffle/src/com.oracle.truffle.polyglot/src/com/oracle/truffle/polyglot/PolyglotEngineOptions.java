@@ -48,6 +48,7 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
+import org.graalvm.polyglot.SandboxPolicy;
 
 @Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
@@ -97,7 +98,7 @@ final class PolyglotEngineOptions {
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
 
     @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
-                    "Print warning when the engine is using a default Truffle runtime (default: true).", usageSyntax = "true|false")//
+                    "Print warning when the engine is using a default Truffle runtime (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +

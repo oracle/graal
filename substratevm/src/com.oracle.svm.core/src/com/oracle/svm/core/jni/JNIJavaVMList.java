@@ -118,7 +118,7 @@ public final class JNIJavaVMList {
     }
 
     /** Gather non-null entries in a buffer and provide the total number of non-null entries. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void gather(JNIJavaVMPointer buffer, int bufferLength, CIntPointer totalCountPointer) {
         int totalCount = 0;
         WordPointer p = HEAD.get().readWord(0);

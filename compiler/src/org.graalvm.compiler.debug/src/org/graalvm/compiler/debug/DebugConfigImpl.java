@@ -146,11 +146,6 @@ final class DebugConfigImpl implements DebugConfig {
     }
 
     @Override
-    public boolean isVerifyEnabledForMethod(DebugContext.Scope scope) {
-        return isEnabledForMethod(scope, verifyFilter);
-    }
-
-    @Override
     public boolean isTimeEnabled(DebugContext.Scope scope) {
         return isEnabled(scope, timerFilter);
     }

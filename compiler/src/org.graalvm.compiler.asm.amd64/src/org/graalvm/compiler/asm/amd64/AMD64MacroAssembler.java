@@ -660,6 +660,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp, null);
     }
 
+    public final int cmpqAndJcc(Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
+        return applyRMOpAndJcc(CMP.getRMOpcode(QWORD), QWORD, src1, src2, cc, branchTarget, isShortJmp, applyBeforeFusedPair);
+    }
+
     public final void cmpAndJcc(OperandSize size, Register src1, Supplier<AMD64Address> src2, ConditionFlag cc, Label branchTarget) {
         AMD64Address placeHolder = getPlaceholder(position());
         final AMD64RMOp op = CMP.getRMOpcode(size);
@@ -1041,7 +1045,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             if (isCommutative) {
                 op.emit(this, PD, dst, src1);
             } else {
-                throw GraalError.shouldNotReachHere("can't simulate non-commutative 3-vector AVX op on SSE when dst == src2!");
+                throw GraalError.shouldNotReachHere("can't simulate non-commutative 3-vector AVX op on SSE when dst == src2!"); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             movdqu(dst, src1);
@@ -1077,7 +1081,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     case S8:
                         return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXBQ : VexRMOp.VPMOVZXBQ;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1085,11 +1089,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     case S8:
                         return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXWQ : VexRMOp.VPMOVZXWQ;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S4:
                 return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXDQ : VexRMOp.VPMOVZXDQ;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void loadAndExtendSSE(ExtendMode extendMode, Register dst, Stride strideDst, AMD64Address src, Stride strideSrc) {
@@ -1119,7 +1123,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1137,7 +1141,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S4:
                 if (signExtend) {
                     pmovsxdq(dst, src);
@@ -1146,7 +1150,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                 }
                 return;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void loadAndExtendSSE(ExtendMode extendMode, Register dst, Stride strideDst, Register src, Stride strideSrc) {
@@ -1176,7 +1180,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1194,7 +1198,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             case S4:
                 if (signExtend) {
                     pmovsxdq(dst, src);
@@ -1203,7 +1207,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                 }
                 return;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void packuswb(AVXSize size, Register dst, Register src) {

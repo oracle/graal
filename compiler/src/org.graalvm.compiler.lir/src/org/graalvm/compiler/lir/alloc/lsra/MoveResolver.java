@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ public class MoveResolver {
         if (isRegister(location)) {
             registerBlocked[asRegister(location).number] += direction;
         } else {
-            throw GraalError.shouldNotReachHere("unhandled value " + location);
+            throw GraalError.shouldNotReachHere("unhandled value " + location); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -95,7 +95,7 @@ public class MoveResolver {
         if (isRegister(location)) {
             return registerBlocked[asRegister(location).number];
         }
-        throw GraalError.shouldNotReachHere("unhandled value " + location);
+        throw GraalError.shouldNotReachHere("unhandled value " + location); // ExcludeFromJacocoGeneratedReport
     }
 
     protected boolean areMultipleReadsAllowed() {

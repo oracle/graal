@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -35,8 +36,14 @@ import jdk.internal.module.Modules;
 
 public final class ModuleSupport {
 
+    public static final String MODULE_SET_ALL_DEFAULT = "ALL-DEFAULT";
+    public static final String MODULE_SET_ALL_SYSTEM = "ALL-SYSTEM";
+    public static final String MODULE_SET_ALL_MODULE_PATH = "ALL-MODULE-PATH";
+    public static final List<String> nonExplicitModules = List.of(MODULE_SET_ALL_DEFAULT, MODULE_SET_ALL_SYSTEM, MODULE_SET_ALL_MODULE_PATH);
+
     public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
     public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES = "org.graalvm.nativeimage.module.limitmods";
     public static final boolean modulePathBuild = isModulePathBuild();
 
     private ModuleSupport() {

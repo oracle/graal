@@ -190,7 +190,7 @@ public enum AArch64ArithmeticOp {
                     masm.fsqrt(size, dst, src);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + opcode.name());
+                    throw GraalError.shouldNotReachHere("op=" + opcode.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -304,7 +304,7 @@ public enum AArch64ArithmeticOp {
                     masm.ror(size, dst, src, immediate);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -471,7 +471,7 @@ public enum AArch64ArithmeticOp {
                     emitMulvs(masm, dstSize, dst, src1, src2);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -610,7 +610,7 @@ public enum AArch64ArithmeticOp {
                     masm.eon(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -682,7 +682,7 @@ public enum AArch64ArithmeticOp {
                     masm.sub(size, asRegister(result), asRegister(src1), asRegister(src2), extendType, shiftAmt);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -730,7 +730,7 @@ public enum AArch64ArithmeticOp {
                     assert dstSize == src1Size && dstSize == src2Size && dstSize == src3Size;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
             return true;
         }
@@ -763,7 +763,7 @@ public enum AArch64ArithmeticOp {
                     masm.smsubl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -810,7 +810,7 @@ public enum AArch64ArithmeticOp {
                     masm.neon.fsqrtVV(size, eSize, dst, src);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + opcode.name());
+                    throw GraalError.shouldNotReachHere("op=" + opcode.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -874,7 +874,7 @@ public enum AArch64ArithmeticOp {
                     masm.neon.sshlVVV(size, eSize, dst, src1, dst);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
 
             }
         }
@@ -972,7 +972,7 @@ public enum AArch64ArithmeticOp {
                     masm.neon.fminVVV(size, eSize, dst, src1, src2);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1023,7 +1023,7 @@ public enum AArch64ArithmeticOp {
                     break;
 
                 default:
-                    throw GraalError.shouldNotReachHere("op=" + op.name());
+                    throw GraalError.shouldNotReachHere("op=" + op.name()); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1088,7 +1088,7 @@ public enum AArch64ArithmeticOp {
                     masm.neon.smlslVVV(eSize, dst, src1, src2);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

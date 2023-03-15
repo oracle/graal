@@ -29,7 +29,9 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -56,7 +58,6 @@ import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.WordTypes;
@@ -197,7 +198,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 } else if (readKind == JavaKind.Float || readKind == JavaKind.Double) {
                     stamp = StampFactory.forKind(readKind);
                 } else {
-                    stamp = StampFactory.forInteger(readKind.getBitCount());
+                    stamp = IntegerStamp.create(readKind.getBitCount());
                 }
                 final ValueNode node;
                 if (isPinnedObject) {
@@ -290,7 +291,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          */
         AddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
         LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
-        Stamp stamp = StampFactory.forInteger(memoryKind.getBitCount());
+        Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
         ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo);
         cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
 

@@ -25,11 +25,8 @@
 package com.oracle.svm.hosted.analysis;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * Extension of StaticAnalysisEngine providing access to more svm specific methods.
@@ -39,14 +36,5 @@ public interface Inflation extends BigBang {
     @Override
     SVMHost getHostVM();
 
-    @Override
-    HostedProviders getProviders();
-
     AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
-
-    @Override
-    SubstrateReplacements getReplacements();
-
-    @Override
-    ConstantReflectionProvider getConstantReflectionProvider();
 }

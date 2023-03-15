@@ -97,7 +97,7 @@ public class VMMutex {
      * in native code.</li>
      * </ul>
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransition() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
@@ -107,7 +107,7 @@ public class VMMutex {
      * thread. Only use this method in places where {@linkplain CurrentIsolate#getCurrentThread()}
      * can return null.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransitionUnspecifiedOwner() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
@@ -115,7 +115,7 @@ public class VMMutex {
     /**
      * Releases the lock.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void unlock() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
@@ -124,14 +124,17 @@ public class VMMutex {
      * Like {@linkplain #unlock()}. Only use this method if the lock was acquired via
      * {@linkplain #lockNoTransitionUnspecifiedOwner()}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
+        /*
+         * Ideally, this method would be annotated with @Uninterruptible(callerMustBe = true) but
+         * this isn't possible because of legacy code, see GR-44619.
+         */
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
-    /**
-     * Releases the lock, without checking the result.
-     */
+    /* Legacy code, see GR-44619. */
+    @Deprecated(forRemoval = true)
     public void unlockWithoutChecks() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
@@ -171,28 +174,33 @@ public class VMMutex {
         return owner == CurrentIsolate.getCurrentThread();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setOwnerToCurrentThread() {
         assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
         assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise use an unspecified owner";
         owner = CurrentIsolate.getCurrentThread();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setOwnerToUnspecified() {
         assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
         owner = (IsolateThread) UNSPECIFIED_OWNER;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearCurrentThreadOwner() {
         assertIsOwner("Only the thread that holds the mutex can clear the owner.");
         owner = WordFactory.nullPointer();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearUnspecifiedOwner() {
         assert owner == (IsolateThread) UNSPECIFIED_OWNER;
         owner = WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean hasOwner() {
+        return owner.isNonNull();
     }
 }

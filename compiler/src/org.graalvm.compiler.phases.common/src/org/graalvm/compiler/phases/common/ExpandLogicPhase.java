@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -66,10 +67,14 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @Override
-    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        expandLogic(graph);
+    }
+
+    @SuppressWarnings("try")
+    public static void expandLogic(StructuredGraph graph) {
         for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
-            processBinary(logic);
+            expandBinary(logic);
         }
         assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
 
@@ -97,18 +102,18 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @SuppressWarnings("try")
-    private static void processBinary(ShortCircuitOrNode binary) {
+    private static void expandBinary(ShortCircuitOrNode binary) {
         while (binary.usages().isNotEmpty()) {
             Node usage = binary.usages().first();
             try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
                 if (usage instanceof ShortCircuitOrNode) {
-                    processBinary((ShortCircuitOrNode) usage);
+                    expandBinary((ShortCircuitOrNode) usage);
                 } else if (usage instanceof IfNode) {
                     processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability().getDesignatedSuccessorProbability());
                 } else if (usage instanceof ConditionalNode) {
                     processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
                 } else {
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere("Usage = " + usage); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }
@@ -116,6 +121,45 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability) {
+        processIf(x, xNegated, y, yNegated, ifNode, shortCircuitProbability, false);
+    }
+
+    /**
+     * Expand the given logic {@code or} node represented by {@code x} and {@code y} to actual
+     * control flow at the given {@code ifNode} original usage.
+     *
+     * For example the code shape
+     *
+     * <pre>
+     * if (x || y) {
+     *     a();
+     * } else {
+     *     b();
+     * }
+     * </pre>
+     *
+     * will be expanded to
+     *
+     * <pre>
+     * if(x){
+     *  goto trueMerge;
+     * } else {
+     *  if(y) {
+     *      goto trueMerge;
+     *  }else {
+     *      goto falseMerge;
+     *  }
+     * }
+     * trueMerge:
+     *     a();
+     * falseMerge:
+     *     b();
+     * </pre>
+     *
+     * If {@code createGuardPhi == true} this method will return a {@code GuardPhiNode} on the
+     * {@code trueMerge} with the two true successor branches as guard inputs.
+     */
+    public static GuardPhiNode processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability, boolean createGuardPhi) {
         /*
          * this method splits an IfNode, which has a ShortCircuitOrNode as its condition, into two
          * separate IfNodes: if(X) and if(Y)
@@ -127,6 +171,8 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
          */
         AbstractBeginNode trueTarget = ifNode.trueSuccessor();
         AbstractBeginNode falseTarget = ifNode.falseSuccessor();
+
+        GuardPhiNode guardPhi = null;
 
         // 1st approach
         // assumption: P(originalIf.trueSuccessor) == P(X) + ((1 - P(X)) * P(Y))
@@ -160,6 +206,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         AbstractBeginNode firstTrueTarget = BeginNode.begin(firstTrueEnd);
         firstTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         AbstractBeginNode secondTrueTarget = BeginNode.begin(secondTrueEnd);
+
         secondTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         if (yNegated) {
             secondIfTrueProbability = 1.0 - secondIfTrueProbability;
@@ -176,6 +223,14 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing if %s", ifNode);
+
+        if (createGuardPhi) {
+            guardPhi = graph.addWithoutUnique(new GuardPhiNode(trueTargetMerge));
+            guardPhi.addInput(firstIf.trueSuccessor());
+            guardPhi.addInput(secondIf.trueSuccessor());
+        }
+
+        return guardPhi;
     }
 
     private static boolean doubleEquals(double a, double b) {

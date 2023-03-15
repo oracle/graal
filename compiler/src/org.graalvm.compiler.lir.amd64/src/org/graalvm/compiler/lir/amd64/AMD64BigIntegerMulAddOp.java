@@ -58,19 +58,19 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3186,
-          lineEnd   = 3238,
-          commit    = "fbc036e7454720b589d99a8cae30369a10471528",
+          lineStart = 3195,
+          lineEnd   = 3247,
+          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
           sha1      = "f8e50fddbd2c5ccdf258bd713c14e857c5f2926d")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
           lineStart = 6888,
           lineEnd   = 6922,
-          commit    = "fbc036e7454720b589d99a8cae30369a10471528",
+          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
           sha1      = "9925ac20c28f0aec605c339c58617196097ab840")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
           lineStart = 7140,
           lineEnd   = 7317,
-          commit    = "fbc036e7454720b589d99a8cae30369a10471528",
+          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
           sha1      = "90e45105ef8d2750bfd97f0087c446870327c8e2")
 // @formatter:on
 public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
@@ -149,7 +149,7 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         mulAdd(masm, out, in, offset, len, k, tmp1, tmp2, tmp3, tmp4, tmp5, rdx, rax);
     }
 
-    private static boolean useBMI2Instructions(AMD64MacroAssembler masm) {
+    static boolean useBMI2Instructions(AMD64MacroAssembler masm) {
         return masm.supports(BMI2) && masm.supports(AVX);
     }
 

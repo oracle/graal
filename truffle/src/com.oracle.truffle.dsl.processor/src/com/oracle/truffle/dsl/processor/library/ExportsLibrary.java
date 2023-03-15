@@ -221,6 +221,24 @@ public final class ExportsLibrary extends Template {
         return library;
     }
 
+    public boolean isExported(LibraryMessage message) {
+        ExportMessageData exportMessage = getExportedMessages().get(message.getName());
+        if (exportMessage == null) {
+            return false;
+        }
+        if (exportMessage.getResolvedMessage() == message) {
+            // direct match
+            return true;
+        }
+
+        for (LibraryMessage overload : message.getDeprecatedOverloads()) {
+            if (isExported(overload)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Map<String, ExportMessageData> getExportedMessages() {
         return exportedMessages;
     }

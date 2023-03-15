@@ -159,7 +159,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -178,7 +178,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return NumUtil.isSignedNbit(7, immediate);
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -366,7 +366,7 @@ public final class AArch64Address extends AbstractAddress {
             case LD4_MULTIPLE_4R:
                 return regByteSize * 4;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -470,7 +470,7 @@ public final class AArch64Address extends AbstractAddress {
                 assert extendType == null;
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         return true;
@@ -516,7 +516,7 @@ public final class AArch64Address extends AbstractAddress {
                 assert NumUtil.isSignedNbit(19, immediate >> 2);
                 return (immediate >> 2) & NumUtil.getNbitNumberInt(19);
             default:
-                throw GraalError.shouldNotReachHere("Should only be called for addressing modes that use immediate values.");
+                throw GraalError.shouldNotReachHere("Should only be called for addressing modes that use immediate values."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -536,7 +536,7 @@ public final class AArch64Address extends AbstractAddress {
             case PC_LITERAL:
                 return immediate;
             default:
-                throw GraalError.shouldNotReachHere("Should only be called for addressing modes that use immediate values.");
+                throw GraalError.shouldNotReachHere("Should only be called for addressing modes that use immediate values."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -550,6 +550,18 @@ public final class AArch64Address extends AbstractAddress {
 
     public AddressingMode getAddressingMode() {
         return addressingMode;
+    }
+
+    public boolean isBaseRegisterOnly() {
+        switch (getAddressingMode()) {
+            case IMMEDIATE_UNSIGNED_SCALED:
+            case IMMEDIATE_SIGNED_UNSCALED:
+                return immediate == 0;
+            case BASE_REGISTER_ONLY:
+                return true;
+            default:
+                return false;
+        }
     }
 
     @Override
@@ -605,7 +617,7 @@ public final class AArch64Address extends AbstractAddress {
                 addressEncoding = String.format("[X%d], X%d", base.encoding, offset.encoding);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         return String.format("%s: %s", addressingMode.toString(), addressEncoding);
     }

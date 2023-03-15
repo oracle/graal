@@ -37,8 +37,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -289,7 +289,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return encodeAsObjectHeader(hub, false, false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
         /*
          * All DynamicHub instances are in the native image heap and therefore do not move, so we

@@ -59,6 +59,12 @@ public class JfrTraceId {
         return predicate(clazz, predicate);
     }
 
+    @Uninterruptible(reason = "Epoch must not change.")
+    public static boolean isUsedCurrentEpoch(Class<?> clazz) {
+        long predicate = JfrTraceIdEpoch.getInstance().thisEpochBit();
+        return predicate(clazz, predicate);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getTraceIdRaw(Class<?> clazz) {
         return JfrTraceIdMap.singleton().getId(clazz);
@@ -101,8 +107,7 @@ public class JfrTraceId {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void tag(int index, long value) {
         JfrTraceIdMap map = JfrTraceIdMap.singleton();
-        long id = map.getId(index);
-        map.setId(index, id | value);
+        map.tag(index, value);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

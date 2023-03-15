@@ -51,11 +51,11 @@ public abstract class ClassLoaderSupport {
 
     public interface ResourceCollector {
 
-        boolean isIncluded(String moduleName, String resourceName, URI resourceURI);
+        boolean isIncluded(Module module, String resourceName, URI resourceURI);
 
-        void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar);
+        void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar);
 
-        void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar);
+        void addDirectoryResource(Module module, String dir, String content, boolean fromJar);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);

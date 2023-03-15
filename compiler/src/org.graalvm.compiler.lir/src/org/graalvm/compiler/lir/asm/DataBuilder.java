@@ -46,6 +46,25 @@ public abstract class DataBuilder {
         return createSerializableData(constant, 1);
     }
 
+    /**
+     * Create a data object which isn't shared with other entries. This is suitable for creating
+     * variable slots in the data section.
+     */
+    public Data createMutableData(int alignment, int size) {
+        assert canForceAlignmentOf(alignment);
+        return new ZeroData(alignment, size) {
+            @Override
+            public boolean equals(Object obj) {
+                return obj == this;
+            }
+
+            @Override
+            public boolean isMutable() {
+                return true;
+            }
+        };
+    }
+
     public Data createZeroData(int alignment, int size) {
         assert canForceAlignmentOf(alignment);
         switch (size) {

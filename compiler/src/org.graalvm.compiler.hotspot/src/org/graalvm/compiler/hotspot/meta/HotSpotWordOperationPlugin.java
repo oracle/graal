@@ -31,6 +31,7 @@ import static org.graalvm.word.LocationIdentity.any;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -49,9 +50,9 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -68,8 +69,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * operations}.
  */
 public class HotSpotWordOperationPlugin extends WordOperationPlugin {
-    HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
-        super(snippetReflection, wordTypes);
+    HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        super(snippetReflection, wordTypes, barrierSet);
     }
 
     @Override
@@ -157,7 +158,7 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 break;
 
             default:
-                throw GraalError.shouldNotReachHere("unknown operation: " + operation.opcode());
+                throw GraalError.shouldNotReachHere("unknown operation: " + operation.opcode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

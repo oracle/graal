@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -46,7 +47,6 @@ import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.ComparableWord;
@@ -1212,17 +1212,17 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Deprecated
     @Override
     public final boolean equals(Object obj) {
-        throw GraalError.shouldNotReachHere("equals must not be called on words");
+        throw GraalError.shouldNotReachHere("equals must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public final int hashCode() {
-        throw GraalError.shouldNotReachHere("hashCode must not be called on words");
+        throw GraalError.shouldNotReachHere("hashCode must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public String toString() {
-        throw GraalError.shouldNotReachHere("toString must not be called on words");
+        throw GraalError.shouldNotReachHere("toString must not be called on words"); // ExcludeFromJacocoGeneratedReport
     }
 }
 

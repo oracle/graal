@@ -30,6 +30,8 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
@@ -40,9 +42,18 @@ import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotStampProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.gc.G1BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.loop.LoopsDataProviderImpl;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
@@ -56,6 +67,8 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
@@ -73,8 +86,8 @@ public abstract class HotSpotBackendFactory {
         return new HotSpotStampProvider();
     }
 
-    protected HotSpotPlatformConfigurationProvider createConfigInfoProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        return new HotSpotPlatformConfigurationProvider(config, metaAccess);
+    protected HotSpotPlatformConfigurationProvider createConfigInfoProvider(GraalHotSpotVMConfig config, BarrierSet barrierSet) {
+        return new HotSpotPlatformConfigurationProvider(config, barrierSet);
     }
 
     protected HotSpotMetaAccessExtensionProvider createMetaAccessExtensionProvider() {
@@ -143,9 +156,10 @@ public abstract class HotSpotBackendFactory {
             try (InitTimer rt = timer("create ForeignCalls provider")) {
                 foreignCalls = createForeignCalls(jvmciRuntime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
             }
+            BarrierSet barrierSet = createBarrierSet(config, metaAccess);
             HotSpotPlatformConfigurationProvider platformConfigurationProvider;
             try (InitTimer rt = timer("create platform configuration provider")) {
-                platformConfigurationProvider = createConfigInfoProvider(config, metaAccess);
+                platformConfigurationProvider = createConfigInfoProvider(config, barrierSet);
             }
             HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
             try (InitTimer rt = timer("create MetaAccessExtensionProvider")) {
@@ -184,7 +198,7 @@ public abstract class HotSpotBackendFactory {
             GraphBuilderConfiguration.Plugins plugins;
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(graalRuntime, compilerConfiguration, config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes,
-                                options);
+                                options, barrierSet);
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
@@ -205,7 +219,7 @@ public abstract class HotSpotBackendFactory {
 
     protected abstract GraphBuilderConfiguration.Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config,
                     TargetDescription target, HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls, MetaAccessProvider metaAccess,
-                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options);
+                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options, BarrierSet barrierSet);
 
     protected abstract HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration,
                     GraphBuilderConfiguration.Plugins plugins,
@@ -220,4 +234,80 @@ public abstract class HotSpotBackendFactory {
     protected abstract HotSpotHostForeignCallsProvider createForeignCalls(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime, MetaAccessProvider metaAccess,
                     HotSpotCodeCacheProvider codeCache, HotSpotWordTypes wordTypes, Value[] nativeABICallerSaveRegisters);
 
+    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
+        boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
+        ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
+            return new HotSpotZBarrierSet(referentField);
+        } else if (config.useG1GC()) {
+            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
+            return new G1BarrierSet(objectArrayType, referentField) {
+                @Override
+                protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
+                    if (!super.writeRequiresPostBarrier(node, writtenValue)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(node);
+                }
+
+                @Override
+                protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
+                    if (!super.arrayRangeWriteRequiresPostBarrier(write)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+                }
+            };
+        } else {
+            return new CardTableBarrierSet(objectArrayType) {
+                @Override
+                protected boolean writeRequiresBarrier(FixedAccessNode node, ValueNode writtenValue) {
+                    if (!super.writeRequiresBarrier(node, writtenValue)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(node);
+                }
+
+                @Override
+                protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
+                    if (!super.arrayRangeWriteRequiresBarrier(write)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+                }
+            };
+        }
+    }
+
+    /**
+     * For initializing writes, the last allocation executed by the JVM is guaranteed to be
+     * automatically card marked so it's safe to skip the card mark in the emitted code.
+     */
+    protected boolean isWriteToNewObject(FixedAccessNode node) {
+        if (!node.getLocationIdentity().isInit()) {
+            return false;
+        }
+        // This is only allowed for the last allocation in sequence
+        return isWriteToNewObject(node, node.getAddress().getBase());
+    }
+
+    protected boolean isWriteToNewObject(FixedWithNextNode node, ValueNode base) {
+        if (base instanceof AbstractNewObjectNode) {
+            Node pred = node.predecessor();
+            while (pred != null) {
+                if (pred == base) {
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Deferred barrier for %s with base %s", node, base);
+                    return true;
+                }
+                if (pred instanceof AbstractNewObjectNode) {
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Disallowed deferred barrier for %s because %s was last allocation instead of %s", node, pred, base);
+                    return false;
+                }
+                pred = pred.predecessor();
+            }
+        }
+        node.getDebug().log(DebugContext.INFO_LEVEL, "Unable to find allocation for deferred barrier for %s with base %s", node, base);
+        return false;
+    }
 }

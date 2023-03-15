@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -109,12 +110,19 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         this.accessStamp = accessStamp;
         this.extendKind = extendKind;
         this.memoryOrder = memoryOrder;
+        assert barrierType == BarrierType.NONE || stamp.isObjectStamp() : "incorrect barrier on non-object type: " + location;
+        assert barrierType == BarrierType.NONE || extendKind == MemoryExtendKind.DEFAULT : "incorrect extension on barriered access: " + location;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
+        if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() != null) {
+            assert extendKind == MemoryExtendKind.DEFAULT;
+            gen.setResult(this, gen.getLIRGeneratorTool().getBarrierSet().emitBarrieredLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, getBarrierType()));
+        } else {
+            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this), memoryOrder, extendKind));
+        }
     }
 
     @Override
@@ -144,7 +152,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     @Override
     public FloatingAccessNode asFloatingNode() {
         if (ordersMemoryAccesses() || !canFloat()) {
-            throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node.");
+            throw GraalError.shouldNotReachHere("Illegal attempt to convert read to floating node."); // ExcludeFromJacocoGeneratedReport
         }
         try (DebugCloseable position = withNodeSourcePosition()) {
             return graph().unique(new FloatingReadNode(getAddress(), getLocationIdentity(), lastLocationAccess, stamp(NodeView.DEFAULT), getGuard(), getBarrierType()));
@@ -263,7 +271,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        throw GraalError.shouldNotReachHere("unexpected ReadNode before PEA");
+        throw GraalError.shouldNotReachHere("unexpected ReadNode before PEA"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

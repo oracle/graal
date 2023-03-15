@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
@@ -134,7 +133,7 @@ public class InsertGuardFencesPhase extends Phase {
         return deopt.getAction().doesInvalidateCompilation();
     }
 
-    public static final IntegerStamp POSITIVE_ARRAY_INDEX_STAMP = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
+    public static final IntegerStamp POSITIVE_ARRAY_INDEX_STAMP = IntegerStamp.create(32, 0, Integer.MAX_VALUE - 1);
 
     private static boolean isBoundsCheckGuard(AbstractBeginNode beginNode) {
         if (!(beginNode.predecessor() instanceof IfNode)) {

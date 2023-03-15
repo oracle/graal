@@ -56,6 +56,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -215,14 +216,14 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         });
     }
 
-    private CompilationResultBuilderFactory getTruffleCallBoundaryInstrumentationFactory(String arch) {
+    private EntryPointDecorator getTruffleCallBoundaryInstrumentationFactory(String arch) {
         for (TruffleCallBoundaryInstrumentationFactory factory : GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
                 return factory.create(config.lastTier().providers().getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
             }
         }
         // No specialization of OptimizedCallTarget on this platform.
-        return CompilationResultBuilderFactory.Default;
+        return null;
     }
 
     /**
@@ -233,12 +234,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
         int jvmciReservedReference0Offset = hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset;
         if (jvmciReservedReference0Offset == -1) {
-            throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available.");
+            throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available."); // ExcludeFromJacocoGeneratedReport
         }
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
             InvocationPlugins p = new InvocationPlugins();
             HotSpotTruffleGraphBuilderPlugins.registerHotspotThreadLocalStubPlugins(p, config.lastTier().providers().getWordTypes(), hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset);
-            return compileTruffleStub(debug, javaMethod, compilationId, CompilationResultBuilderFactory.Default, p);
+            return compileTruffleStub(debug, javaMethod, compilationId, null, p);
         });
     }
 
@@ -274,8 +275,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * stubs do not perform any inlining and resolve classes eagerly.
      */
     private CompilationResult compileTruffleStub(DebugContext debug, ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId,
-                    CompilationResultBuilderFactory resultFactory,
-                    InvocationPlugins plugins) {
+                    EntryPointDecorator resultFactory, InvocationPlugins plugins) {
         TruffleTierConfiguration tier = config.lastTier();
         Suites newSuites = config.hostSuite().copy();
         removeInliningPhases(newSuites);
@@ -301,7 +301,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
         return compileGraph(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, tier.lirSuites(),
-                        new CompilationResult(compilationId), resultFactory, false);
+                        new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, resultFactory, false);
     }
 
     @Override

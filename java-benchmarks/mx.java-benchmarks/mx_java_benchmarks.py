@@ -172,15 +172,12 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class BaseMicroserviceBenchmarkSuite(object):
+class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
     def group(self):
         return "Graal"
 
     def subgroup(self):
         return "graal-compiler"
-
-    def version(self):
-        raise NotImplementedError()
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -238,6 +235,7 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         lib = self.applicationDist()
         classpath = os.path.join(lib, "BOOT-INF/classes")
+        classpath += ':' + os.path.join(lib, "classes")
         for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
             if filename.endswith(".jar"):
                 classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
@@ -258,8 +256,16 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def version(self):
-        return "0.1.6"
+    """
+    Version 0.1.7 MIGHT NOT be fully functional. So far, it was used only to collect image build time metrics.
+    """
+    def availableSuiteVersions(self):
+        # 0.1.6 is still based on org.springframework.experimental
+        # 0.1.7 is based on Spring 3, hence with official GraalVM NI support, requires Java 17 or newer
+        return ["0.1.6", "0.1.7"]
+
+    def defaultSuiteVersion(self):
+        return self.availableSuiteVersions()[0]
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
@@ -477,6 +483,111 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
+    """
+    This benchmark is NOT yet fully functional - there is not load for measuring its runtime performance.
+    It is only useful to collect image build time metrics.
+    """
+
+    def version(self):
+        return "0.0.1"
+
+    def name(self):
+        return "quarkus"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["registry"]
+
+    def default_stages(self):
+        return ['image']
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            benchmark = benchmarks[0]
+        return self.vmArgs(bmSuiteArgs) + ["-jar",  os.path.join(self.applicationDist(), benchmark + ".jar")]
+
+    def applicationDist(self):
+        return mx.library("QUARKUS_REGISTRY_" + self.version(), True).get_path(True)
+
+    def extra_image_build_argument(self, benchmark, args):
+        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
+                '-J-DCoordinatorEnvironmentBean.transactionStatusManagerEnable=false',
+                '-J-Dio.quarkus.caffeine.graalvm.recordStats=true',
+                '-J-Dlogging.initial-configurator.min-level=500',
+                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
+                '-J-Dvertx.disableDnsResolver=true',
+                '-J-Dio.netty.noUnsafe=true',
+                '-J-Dio.netty.leakDetection.level=DISABLED' ,
+                '-J-Dio.netty.allocator.maxOrder=3',
+                '-J-Duser.language=en',
+                '-J-Duser.country=GB',
+                '-J-Dfile.encoding=UTF-8',
+                '--features=org.hibernate.graalvm.internal.GraalVMStaticFeature,io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature,io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature,org.hibernate.graalvm.internal.QueryParsingSupport,io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature,io.quarkus.runner.Feature,io.quarkus.runtime.graal.ResourcesFeature,io.quarkus.runtime.graal.DisableLoggingFeature,io.quarkus.hibernate.validator.runtime.DisableLoggingFeature',
+                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.io=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.util=ALL-UNNAMED',
+                '-H:+AllowFoldMethods',
+                '-J-Djava.awt.headless=true',
+                '--no-fallback',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-AddAllCharsets',
+                '--enable-url-protocols=http,https',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+StackTrace',
+                '-J--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+                '--exclude-config' ,
+                'io\.netty\.netty-codec',
+                '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
+                '--exclude-config',
+                'io\.netty\.netty-handler',
+                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json'
+                ] + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+
+mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
+
+class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
+    """
+    This benchmark suite is NOT yet fully functional - there is not load for measuring its runtime performance.
+    It is only useful to collect image build time metrics.
+    """
+
+    def version(self):
+        return "0.0.1"
+
+    def name(self):
+        return "mushop"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["user", "order", "payment"]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            benchmark = benchmarks[0]
+        return self.vmArgs(bmSuiteArgs) + ["-jar",  os.path.join(self.applicationDist(), benchmark + ".jar")]
+
+    def applicationDist(self):
+        return mx.library("MICRONAUT_MUSHOP_" + self.version(), True).get_path(True)
+
+    def extra_image_build_argument(self, benchmark, args):
+        return [
+            '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+            '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
+            '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED'
+        ] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+
+mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
@@ -616,6 +727,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", "--iterations", default=None)
+        parser.add_argument("-sf", default=1, type=float, help="The total number of iterations is equivalent to the value selected by the '-n' flag scaled by this factor.")
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -632,7 +744,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         if args.iterations:
             if args.iterations.isdigit():
-                return ["-n", args.iterations] + otherArgs
+                return ["-n", str(int(args.sf * int(args.iterations)))] + otherArgs
             if args.iterations == "-1":
                 return None
         else:
@@ -640,7 +752,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
             if iterations == -1:
                 return None
             else:
-                iterations = iterations + self.getExtraIterationCount(iterations)
+                iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
                 return ["-n", str(iterations)] + otherArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -1922,10 +2034,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-r", default=None)
+        parser.add_argument("-sf", default=1, type=float, help="The total number of iterations is equivalent to the value selected by the '-r' flag scaled by this factor.")
         args, remaining = parser.parse_known_args(runArgs)
         if args.r:
             if args.r.isdigit():
-                return ["-r", args.r] + remaining
+                return ["-r", str(int(args.sf * int(args.r)))] + remaining
             if args.r == "-1":
                 return remaining
         else:
@@ -1933,7 +2046,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             if iterations == -1:
                 return remaining
             else:
-                return ["-r", str(iterations)] + remaining
+                return ["-r", str(int(args.sf * iterations))] + remaining
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)

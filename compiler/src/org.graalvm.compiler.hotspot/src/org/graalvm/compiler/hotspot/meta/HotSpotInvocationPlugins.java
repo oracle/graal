@@ -122,7 +122,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         }
         if (!ok) {
             if (graalRuntime.isBootstrapping()) {
-                throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName());
+                throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName()); // ExcludeFromJacocoGeneratedReport
             }
             return false;
         }

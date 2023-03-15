@@ -112,7 +112,7 @@ public class AMD64MathSignumOp extends AMD64LIRInstruction {
             masm.xorpd(resultReg, recordExternalAddress(crb, doubleSignMask));
             masm.bind(done);
         } else {
-            throw GraalError.shouldNotReachHere("unsupported kind for Math.signum");
+            throw GraalError.shouldNotReachHere("unsupported kind for Math.signum"); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

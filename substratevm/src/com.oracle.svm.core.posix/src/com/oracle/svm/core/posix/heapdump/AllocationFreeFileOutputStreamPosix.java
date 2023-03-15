@@ -41,6 +41,8 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
 /**
+ * Legacy implementation, only used by other legacy code (see GR-44538).
+ *
  * Posix implementation of allocation-free output stream created from FileOutputStream.
  *
  * The limitation to Linux and Darwin is necessary because the implementation currently uses

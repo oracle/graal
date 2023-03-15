@@ -90,6 +90,12 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
     public static final HotSpotForeignCallDescriptor THROW_DELAYED_STACKOVERFLOW_ERROR = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "throwDelayedStackoverflowError",
                     void.class);
 
+    /**
+     * Descriptor for {@code SharedRuntime::polling_page_return_handler_blob()->entry_point()}.
+     */
+    public static final HotSpotForeignCallDescriptor POLLING_PAGE_RETURN_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS,
+                    "polling_page_return_handler_blob()", void.class);
+
     protected final GraalHotSpotVMConfig config;
 
     public HotSpotHostBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

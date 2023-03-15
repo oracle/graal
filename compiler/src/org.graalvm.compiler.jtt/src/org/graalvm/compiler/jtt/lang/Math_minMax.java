@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -71,24 +71,60 @@ public class Math_minMax extends JTTTest {
         return Math.min(x, y);
     }
 
+    public static double strictMaxDouble(double x, double y) {
+        return StrictMath.max(x, y);
+    }
+
+    public static double strictMinDouble(double x, double y) {
+        return StrictMath.min(x, y);
+    }
+
+    public static float strictMaxFloat(float x, float y) {
+        return StrictMath.max(x, y);
+    }
+
+    public static float strictMinFloat(float x, float y) {
+        return StrictMath.min(x, y);
+    }
+
     @Test
-    public void testMaxDouble() throws Throwable {
+    public void testMaxDouble() {
         runTest("maxDouble", input0, input1);
     }
 
     @Test
-    public void testMinDouble() throws Throwable {
+    public void testMinDouble() {
         runTest("minDouble", input0, input1);
     }
 
     @Test
-    public void testMaxFloat() throws Throwable {
+    public void testMaxFloat() {
         runTest("maxFloat", (float) input0, (float) input1);
     }
 
     @Test
-    public void testMinFloat() throws Throwable {
+    public void testMinFloat() {
         runTest("minFloat", (float) input0, (float) input1);
+    }
+
+    @Test
+    public void testStrictMaxDouble() {
+        runTest("strictMaxDouble", input0, input1);
+    }
+
+    @Test
+    public void testStrictMinDouble() {
+        runTest("strictMinDouble", input0, input1);
+    }
+
+    @Test
+    public void testStrictMaxFloat() {
+        runTest("strictMaxFloat", (float) input0, (float) input1);
+    }
+
+    @Test
+    public void testStrictMinFloat() {
+        runTest("strictMinFloat", (float) input0, (float) input1);
     }
 
     public static double maxDoubleConst0(double x) {

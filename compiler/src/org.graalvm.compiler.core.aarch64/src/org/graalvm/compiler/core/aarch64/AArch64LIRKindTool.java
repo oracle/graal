@@ -54,7 +54,7 @@ public class AArch64LIRKindTool implements LIRKindTool {
             case 64:
                 return LIRKind.value(AArch64Kind.DOUBLE);
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

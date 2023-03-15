@@ -118,7 +118,7 @@ public final class ResourcesFeature implements InternalFeature {
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
-    public final Set<String> includedResourcesModules = new HashSet<>();
+    public final Set<Module> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -140,8 +140,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            var moduleName = module.isNamed() ? module.getName() : null;
-            Resources.registerResource(moduleName, resourcePath, resourceContent);
+            Resources.registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
@@ -210,7 +209,7 @@ public final class ResourcesFeature implements InternalFeature {
         private final DebugContext debugContext;
         private final ResourcePattern[] includePatterns;
         private final ResourcePattern[] excludePatterns;
-        private final Set<String> includedResourcesModules;
+        private final Set<Module> includedResourcesModules;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
@@ -221,7 +220,7 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules,
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<Module> includedResourcesModules,
                         Runnable heartbeatCallback) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
@@ -255,7 +254,7 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public boolean isIncluded(String moduleName, String resourceName, URI resource) {
+        public boolean isIncluded(Module module, String resourceName, URI resource) {
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -264,6 +263,7 @@ public final class ResourcesFeature implements InternalFeature {
             }
 
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
+            String moduleName = module == null ? null : module.getName();
 
             for (ResourcePattern rp : excludePatterns) {
                 if (!rp.moduleNameMatches(moduleName)) {
@@ -287,20 +287,20 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
-            collectModuleName(moduleName);
-            registerResource(debugContext, moduleName, resourceName, resourceStream, fromJar);
+        public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
+            collectModule(module);
+            registerResource(debugContext, module, resourceName, resourceStream, fromJar);
         }
 
         @Override
-        public void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar) {
-            collectModuleName(moduleName);
-            registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
+        public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
+            collectModule(module);
+            registerDirectoryResource(debugContext, module, dir, content, fromJar);
         }
 
-        private void collectModuleName(String moduleName) {
-            if (moduleName != null) {
-                includedResourcesModules.add(moduleName);
+        private void collectModule(Module module) {
+            if (module != null && module.isNamed()) {
+                includedResourcesModules.add(module);
             }
         }
     }
@@ -390,20 +390,20 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
+    private static void registerResource(DebugContext debugContext, Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
+            Resources.registerResource(module, resourceName, resourceStream, fromJar);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content, boolean fromJar) {
+    private static void registerDirectoryResource(DebugContext debugContext, Module module, String dir, String content, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
-            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
+            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, dir);
+            Resources.registerDirectoryResource(module, dir, content, fromJar);
         }
     }
 }

@@ -165,7 +165,7 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         return this;
     }

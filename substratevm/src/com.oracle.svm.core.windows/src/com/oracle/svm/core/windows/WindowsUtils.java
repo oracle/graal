@@ -202,7 +202,7 @@ public class WindowsUtils {
      * cached function pointer is {@linkplain #UNINITIALIZED_POINTER uninitialized}, otherwise it
      * returns the cached value.
      */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T extends CFunctionPointer> T getAndCacheFunctionPointer(CFunctionPointerPointer<T> cachedFunctionPointer,
                     CCharPointer dllName, CCharPointer functionName) {
         T functionPointer = cachedFunctionPointer.read();
@@ -215,7 +215,7 @@ public class WindowsUtils {
 
     /** Retrieves the address of an exported function from an already loaded DLL. */
     @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T extends CFunctionPointer> T getFunctionPointer(CCharPointer dllName, CCharPointer functionName, boolean failOnError) {
         PointerBase functionPointer = LibLoaderAPI.GetProcAddress(getDLLHandle(dllName), functionName);
         if (functionPointer.isNull() && failOnError) {
@@ -224,7 +224,7 @@ public class WindowsUtils {
         return (T) functionPointer;
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static HMODULE getDLLHandle(CCharPointer dllName) {
         HMODULE dllHandle = LibLoaderAPI.GetModuleHandleA(dllName);
         if (dllHandle.isNull()) {

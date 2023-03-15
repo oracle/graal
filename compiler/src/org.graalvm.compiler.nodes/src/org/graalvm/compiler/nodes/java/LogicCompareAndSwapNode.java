@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -65,7 +66,7 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
         Value trueResult = tool.emitConstant(resultKind, JavaConstant.TRUE);
         Value falseResult = tool.emitConstant(resultKind, JavaConstant.FALSE);
         Value result = tool.emitLogicCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)), gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()),
-                        trueResult, falseResult, memoryOrder);
+                        trueResult, falseResult, memoryOrder, getBarrierType());
 
         gen.setResult(this, result);
     }

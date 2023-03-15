@@ -238,20 +238,23 @@ public final class RegexResult extends AbstractConstantKeysObject {
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2")
         static int lastGroupIdentity(RegexResult receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
-            return receiver.getLastGroup();
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+            return getLastGroupNode.execute(receiver);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2", replaces = "lastGroupIdentity")
         static int lastGroupEquals(RegexResult receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
-            return receiver.getLastGroup();
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+            return getLastGroupNode.execute(receiver);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
-        static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
+        static Object readGeneric(RegexResult receiver, String symbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_IS_MATCH:
                     return receiver != getNoMatchInstance();
@@ -260,7 +263,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 case PROP_GET_END:
                     return new RegexResultGetEndMethod(receiver);
                 case PROP_LAST_GROUP:
-                    return receiver.getLastGroup();
+                    return getLastGroupNode.execute(receiver);
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -313,20 +316,9 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     @Override
-    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
-        switch (symbol) {
-            case PROP_IS_MATCH:
-                return this != getNoMatchInstance();
-            case PROP_GET_START:
-                return new RegexResultGetStartMethod(this);
-            case PROP_GET_END:
-                return new RegexResultGetEndMethod(this);
-            case PROP_LAST_GROUP:
-                return getLastGroup();
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw UnknownIdentifierException.create(symbol);
-        }
+    public Object readMemberImpl(String symbol) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -523,10 +515,6 @@ public final class RegexResult extends AbstractConstantKeysObject {
     @GenerateUncached
     public abstract static class RegexResultGetStartNode extends Node {
 
-        public static RegexResultGetStartNode create() {
-            return RegexResultFactory.RegexResultGetStartNodeGen.create();
-        }
-
         public abstract int execute(Object receiver, int groupNumber);
 
         @Specialization
@@ -542,8 +530,30 @@ public final class RegexResult extends AbstractConstantKeysObject {
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
 
+        public static RegexResultGetStartNode create() {
+            return RegexResultFactory.RegexResultGetStartNodeGen.create();
+        }
+
         public static RegexResultGetStartNode getUncached() {
             return RegexResultFactory.RegexResultGetStartNodeGen.getUncached();
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class RegexResultGetLastGroupNode extends Node {
+
+        public abstract int execute(Object receiver);
+
+        @Specialization
+        static int doResult(RegexResult receiver,
+                        @Cached BranchProfile lazyProfile,
+                        @Cached DispatchNode getIndicesCall) {
+            if (receiver.result == null) {
+                assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
+                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+            }
+            return receiver.getLastGroup();
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -308,7 +308,7 @@ public class SymbolicSnippetEncoder {
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (!delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
-                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)");
+                        throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
                 debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");

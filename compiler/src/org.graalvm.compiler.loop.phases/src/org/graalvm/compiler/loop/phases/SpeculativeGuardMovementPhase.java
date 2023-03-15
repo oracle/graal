@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -391,7 +391,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardingNode overflowGuard, ValueNode maxTripCountNode) {
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
+            final boolean zeroExtendBound = compare.condition().isUnsigned();
+            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), zeroExtendBound, graph, NodeView.DEFAULT);
             ValueNode extremum = maxTripCountNode == null ? iv.extremumNode(true, StampFactory.forKind(JavaKind.Long)) : iv.extremumNode(true, StampFactory.forKind(JavaKind.Long), maxTripCountNode);
             ValueNode guardedExtremum = graph.addOrUniqueWithInputs(GuardedValueNode.create(extremum, overflowGuard));
             // guardedExtremum |<| longBound && iv.initNode() |<| bound
@@ -681,7 +682,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         } else if (initIsParentPhi) {
                             currentIv = currentIv.duplicateWithNewInit(((PhiNode) currentRootInit).valueAt(0));
                         } else {
-                            throw GraalError.shouldNotReachHere("Must have never entered loop");
+                            throw GraalError.shouldNotReachHere("Must have never entered loop"); // ExcludeFromJacocoGeneratedReport
                         }
                         if (currentLoop.parent().getInductionVariables().containsKey(countedLoopInitModifiedIV.getRootIV().initNode())) {
                             InductionVariable parentIVBodyRef = currentLoop.parent().getInductionVariables().get(countedLoopInitModifiedIV.getRootIV().initNode());
@@ -731,7 +732,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private static boolean fitsIn32Bit(IntegerStamp stamp) {
-            return NumUtil.isUInt(stamp.upMask());
+            return NumUtil.isUInt(stamp.mayBeSet());
         }
 
         private Loop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {

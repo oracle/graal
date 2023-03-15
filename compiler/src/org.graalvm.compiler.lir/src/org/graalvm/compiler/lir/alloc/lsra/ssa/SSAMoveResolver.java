@@ -100,7 +100,7 @@ public final class SSAMoveResolver extends MoveResolver {
         if (isVirtualStackSlot(stackSlotValue)) {
             return getStackArrayIndex(asVirtualStackSlot(stackSlotValue));
         }
-        throw GraalError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue);
+        throw GraalError.shouldNotReachHere("value is not a stack slot: " + stackSlotValue); // ExcludeFromJacocoGeneratedReport
     }
 
     private int getStackArrayIndex(StackSlot stackSlot) {

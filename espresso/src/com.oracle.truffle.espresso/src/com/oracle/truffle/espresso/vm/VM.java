@@ -1679,6 +1679,10 @@ public final class VM extends NativeEnv {
 
         String getDeclaringClassName();
 
+        default StaticObject getGuestDeclaringClassName(Meta meta) {
+            return meta.toGuestString(getDeclaringClassName());
+        }
+
         String getMethodName();
 
         int getLineNumber();
@@ -1716,7 +1720,18 @@ public final class VM extends NativeEnv {
 
         @Override
         public String getDeclaringClassName() {
-            return MetaUtil.internalNameToJava(m.getDeclaringKlass().getTypeAsString(), true, true);
+            return m.getDeclaringKlass().getExternalName();
+        }
+
+        @Override
+        public StaticObject getGuestDeclaringClassName(Meta meta) {
+            ObjectKlass declaringKlass = m.getDeclaringKlass();
+            StaticObject mirror = declaringKlass.mirror();
+            StaticObject name = (StaticObject) meta.java_lang_Class_name.get(mirror);
+            if (StaticObject.notNull(name)) {
+                return name;
+            }
+            return StackElement.super.getGuestDeclaringClassName(meta);
         }
 
         @Override
@@ -1815,7 +1830,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(Throwable.class) StaticObject JVM_FillInStackTrace(@JavaType(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        return InterpreterToVM.fillInStackTrace(self, false, getMeta());
+        return InterpreterToVM.fillInStackTrace(self, getMeta());
     }
 
     @VmImpl(isJni = true)
@@ -1846,19 +1861,7 @@ public final class VM extends NativeEnv {
         if (!stackElement.hasInfo()) {
             return StaticObject.NULL;
         }
-
-        String result = "unknown source";
-        String source = stackElement.getFileName();
-        if (source != null) {
-            result = source;
-        }
-        getMeta().java_lang_StackTraceElement_init.invokeDirect(
-                        /* this */ ste,
-                        /* declaringClass */ meta.toGuestString(stackElement.getDeclaringClassName()),
-                        /* methodName */ meta.toGuestString(stackElement.getMethodName()),
-                        /* fileName */ meta.toGuestString(result),
-                        /* lineNumber */ stackElement.getLineNumber());
-
+        fillInElement(ste, stackElement, meta);
         return ste;
     }
 
@@ -3779,7 +3782,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
-    public void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element, @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
+    public static void JVM_InitStackTraceElement(@JavaType(StackTraceElement.class) StaticObject element, @JavaType(internalName = "Ljava/lang/StackFrameInfo;") StaticObject info,
                     @Inject Meta meta) {
         if (StaticObject.isNull(element) || StaticObject.isNull(info)) {
             throw meta.throwNullPointerException();
@@ -3794,7 +3797,7 @@ public final class VM extends NativeEnv {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
         int bci = meta.java_lang_StackFrameInfo_bci.getInt(info);
-        fillInElement(element, new VM.EspressoStackElement(m, bci), getMeta().java_lang_Class_getName);
+        fillInElement(element, new VM.EspressoStackElement(m, bci), meta);
     }
 
     @VmImpl(isJni = true)
@@ -3849,7 +3852,7 @@ public final class VM extends NativeEnv {
                     profiler.profile(2);
                     throw meta.throwNullPointerException();
                 }
-                fillInElement(elements.get(language, i), stackTrace.trace[i], getMeta().java_lang_Class_getName);
+                fillInElement(elements.get(language, i), stackTrace.trace[i], meta);
             }
         }
     }
@@ -3883,13 +3886,11 @@ public final class VM extends NativeEnv {
         }
 
         ForeignStackElement foreignStackElement = new ForeignStackElement(declaringClassName, methodName, fileName, lineNumber);
-        fillInElement(elements.get(language, i), foreignStackElement, getMeta().java_lang_Class_getName);
+        fillInElement(elements.get(language, i), foreignStackElement, getMeta());
     }
 
-    private void fillInElement(@JavaType(StackTraceElement.class) StaticObject ste, VM.StackElement element,
-                    Method classGetName) {
+    public static void fillInElement(@JavaType(StackTraceElement.class) StaticObject ste, VM.StackElement element, Meta meta) {
         Method m = element.getMethod();
-
         if (m != null) {
             // espresso frame
             ObjectKlass k = m.getDeclaringKlass();
@@ -3897,34 +3898,34 @@ public final class VM extends NativeEnv {
             StaticObject loader = k.getDefiningClassLoader();
             ModuleEntry module = k.module();
 
-            // Fill in class name
-            getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(guestClass));
-            getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
-
-            // Fill in loader name
-            if (!StaticObject.isNull(loader)) {
-                StaticObject loaderName = getMeta().java_lang_ClassLoader_name.getObject(loader);
+            if (meta.getJavaVersion().java9OrLater()) {
+                meta.java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
+                // Fill in loader name
                 if (!StaticObject.isNull(loader)) {
-                    getMeta().java_lang_StackTraceElement_classLoaderName.setObject(ste, loaderName);
+                    StaticObject loaderName = meta.java_lang_ClassLoader_name.getObject(loader);
+                    if (!StaticObject.isNull(loader)) {
+                        meta.java_lang_StackTraceElement_classLoaderName.setObject(ste, loaderName);
+                    }
+                }
+                // Fill in module
+                if (module.isNamed()) {
+                    meta.java_lang_StackTraceElement_moduleName.setObject(ste, meta.toGuestString(module.getName()));
+                    // TODO: module version
                 }
             }
-
-            // Fill in module
-            if (module.isNamed()) {
-                getMeta().java_lang_StackTraceElement_moduleName.setObject(ste, getMeta().toGuestString(module.getName()));
-                // TODO: module version
-            }
         } else { // foreign frame
-            // Fill in class name
-            getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, getMeta().toGuestString(element.getDeclaringClassName()));
-            getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, getMeta().java_lang_Object.mirror());
+            if (meta.getJavaVersion().java9OrLater()) {
+                meta.java_lang_StackTraceElement_declaringClassObject.setObject(ste, meta.java_lang_Object.mirror());
+            }
         }
+        // Fill in class name
+        meta.java_lang_StackTraceElement_declaringClass.setObject(ste, element.getGuestDeclaringClassName(meta));
         // Fill in method name
-        getMeta().java_lang_StackTraceElement_methodName.setObject(ste, getMeta().toGuestString(element.getMethodName()));
+        meta.java_lang_StackTraceElement_methodName.setObject(ste, meta.toGuestString(element.getMethodName()));
 
         // Fill in source information
-        getMeta().java_lang_StackTraceElement_fileName.setObject(ste, getMeta().toGuestString(element.getFileName()));
-        getMeta().java_lang_StackTraceElement_lineNumber.setInt(ste, element.getLineNumber());
+        meta.java_lang_StackTraceElement_fileName.setObject(ste, meta.toGuestString(element.getFileName()));
+        meta.java_lang_StackTraceElement_lineNumber.setInt(ste, element.getLineNumber());
     }
 
     private static void checkStackWalkArguments(EspressoLanguage language, int batchSize, int startIndex, @JavaType(Object[].class) StaticObject frames, Meta meta) {

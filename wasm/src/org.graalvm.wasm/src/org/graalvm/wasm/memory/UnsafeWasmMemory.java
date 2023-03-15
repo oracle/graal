@@ -45,6 +45,9 @@ import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -356,6 +359,39 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @Override
     public ByteBuffer asByteBuffer() {
         return buffer.duplicate();
+    }
+
+    @Override
+    @TruffleBoundary
+    public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
+        if (outOfBounds(offset, length)) {
+            throw trapOutOfBounds(node, offset, length);
+        }
+        int totalBytesRead = 0;
+        for (int i = 0; i < length; i++) {
+            int byteRead = stream.read();
+            if (byteRead == -1) {
+                if (totalBytesRead == 0) {
+                    return -1;
+                }
+                break;
+            }
+            unsafe.putByte(startAddress + offset + i, (byte) byteRead);
+            totalBytesRead++;
+        }
+        return totalBytesRead;
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
+        if (outOfBounds(offset, length)) {
+            throw trapOutOfBounds(node, offset, length);
+        }
+        for (int i = 0; i < length; i++) {
+            byte b = unsafe.getByte(startAddress + offset + i);
+            stream.write(b & 0x0000_00ff);
+        }
     }
 
     @SuppressWarnings("deprecation"/* JDK-8277863 */)

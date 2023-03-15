@@ -68,6 +68,6 @@ typedef graal_isolatethread_t* poly_thread;
 
 typedef poly_value (*poly_callback)(poly_thread thread, poly_callback_info info);
 
-typedef void (*poly_output_handler)(const char* bytes, size_t length);
+typedef void (*poly_output_handler)(const char* bytes, size_t length, void* data);
 
 #endif

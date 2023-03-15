@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,9 @@ import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -349,6 +352,24 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public ByteBuffer asByteBuffer() {
         return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
+        if (outOfBounds(offset, length)) {
+            throw trapOutOfBounds(node, offset, length);
+        }
+        return stream.read(byteArrayBuffer.buffer(), offset, length);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
+        if (outOfBounds(offset, length)) {
+            throw trapOutOfBounds(node, offset, length);
+        }
+        stream.write(byteArrayBuffer.buffer(), offset, length);
     }
 
     private static final class WasmByteArrayBuffer {

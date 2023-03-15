@@ -62,6 +62,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -88,6 +89,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -745,6 +747,27 @@ public class CompileQueue {
         }
     }
 
+    // Wrapper to clearly identify phase
+    class TrivialInlinePhase extends Phase {
+        final InliningGraphDecoder decoder;
+        final HostedMethod method;
+
+        TrivialInlinePhase(InliningGraphDecoder decoder, HostedMethod method) {
+            this.decoder = decoder;
+            this.method = method;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            decoder.decode(method);
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "TrivialInline";
+        }
+    }
+
     @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
@@ -769,7 +792,7 @@ public class CompileQueue {
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
-            decoder.decode(method);
+            new TrivialInlinePhase(decoder, method).apply(graph);
 
             if (inliningPlugin.inlinedDuringDecoding) {
                 CanonicalizerPhase.create().apply(graph, providers);
@@ -1162,7 +1185,8 @@ public class CompileQueue {
                         OptionValues options,
                         DebugContext debug,
                         CompilationResult compilationResult,
-                        Register uncompressedNullRegister) {
+                        Register uncompressedNullRegister,
+                        LIR lir) {
             return new CompilationResultBuilder(providers,
                             frameMap,
                             asm,
@@ -1173,7 +1197,8 @@ public class CompileQueue {
                             compilationResult,
                             uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache),
-                            CompilationResultBuilder.NO_VERIFIERS);
+                            CompilationResultBuilder.NO_VERIFIERS,
+                            lir);
         }
     }
 

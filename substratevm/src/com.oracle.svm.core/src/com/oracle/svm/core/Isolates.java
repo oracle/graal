@@ -101,7 +101,7 @@ public class Isolates {
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Uninterruptible(reason = "Thread state not yet set up.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static PointerBase getHeapBase(Isolate isolate) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             return IMAGE_HEAP_BEGIN.get();

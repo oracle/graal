@@ -52,12 +52,14 @@ import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -107,6 +109,11 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                         newTask(),
                         null);
         this.lastCompiledGraph = graph;
+
+        // Ensure the invoke stub is installed
+        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        runtime.bypassedInstalledCode(compilable);
+
         return compilable;
     }
 

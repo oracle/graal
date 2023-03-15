@@ -74,7 +74,7 @@ public class FrameStateAssignmentPhase extends Phase {
                     deopt.setStateBefore(currentState);
                 }
                 if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateBefore().isValidForDeoptimization()) {
-                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateBefore()));
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateBefore())); // ExcludeFromJacocoGeneratedReport
                 }
             }
 

@@ -453,6 +453,12 @@ public final class HeapImpl extends Heap {
         return 0;
     }
 
+    @Fold
+    @Override
+    public boolean allowPageSizeMismatch() {
+        return true;
+    }
+
     @Override
     public boolean walkImageHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
@@ -466,6 +472,7 @@ public final class HeapImpl extends Heap {
     @Override
     public boolean walkCollectedHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 

@@ -725,7 +725,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
-    private static final class StaticObjectSupport {
+    static final class StaticObjectSupport {
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 
         static void duringSetup(DuringSetupAccess access) {
@@ -777,22 +777,25 @@ public final class TruffleBaseFeature implements InternalFeature {
             }
         }
 
-        private static final class StaticObjectArrayBasedSupport {
+        static final class StaticObjectArrayBasedSupport {
             private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
 
-            private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
-            private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
+            private static final Class<?> GENERATOR_CLASS_LOADERS_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoaders");
+            private static final Constructor<?> GENERATOR_CLASS_LOADERS_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADERS_CLASS, Class.class);
 
-            private static final Class<?> ARRAY_BASED_FACTORY = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory");
+            private static final Class<?> ARRAY_BASED_STATIC_SHAPE = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape");
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
-                            GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
+                            GENERATOR_CLASS_LOADERS_CLASS, Class.class, Class.class, String.class);
 
-            private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+            private static final Map<Class<?>, Object> GENERATOR_CLASS_LOADERS_MAP = new ConcurrentHashMap<>();
             private static final int ALIGNMENT_CORRECTION;
             private static BeforeAnalysisAccess beforeAnalysisAccess;
 
             private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
+
+            static volatile ConcurrentHashMap<Object, Object> replacements;
+            private static final Class<?> FACTORY_CLASS_LOADER;
 
             static {
                 // ArrayBasedShapeGenerator$ArrayBasedPropertyLayout makes sure that primitives are
@@ -804,19 +807,30 @@ public final class TruffleBaseFeature implements InternalFeature {
                 int longIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Long);
                 int misalignment = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte) % longIndexScale;
                 ALIGNMENT_CORRECTION = misalignment == 0 ? 0 : longIndexScale - misalignment;
+
+                if (ALIGNMENT_CORRECTION != 0) {
+                    // Can be an equality-based map because factory classes do not override
+                    // `hashCode()` and `equals()`.
+                    replacements = new ConcurrentHashMap<>();
+                    // `ArrayBasedStaticShape.replacements` must be initialized only when there is
+                    // an alignment correction, else some factories will not be replaced and will
+                    // continue to register replacement candidates.
+                    ReflectionUtil.writeStaticField(ARRAY_BASED_STATIC_SHAPE, "replacements", replacements);
+                    FACTORY_CLASS_LOADER = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoaders$FactoryClassLoader");
+                } else {
+                    replacements = null;
+                    FACTORY_CLASS_LOADER = null;
+                }
             }
 
             static void duringSetup(DuringSetupAccess access) {
                 if (ALIGNMENT_CORRECTION != 0) {
-                    ConcurrentHashMap<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
                     access.registerObjectReplacer(obj -> {
                         if (!replacements.isEmpty()) {
                             boolean isByteArray = obj instanceof byte[];
-                            if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
-
+                            if (isByteArray || FACTORY_CLASS_LOADER.isInstance(obj.getClass().getClassLoader())) {
                                 Object replacement = replacements.get(obj);
                                 if (replacement != null) {
-
                                     // The `replacements` map is populated by the generated
                                     // factories. The keys of this map are the primitive byte arrays
                                     // and the factory instances that must be replaced, and the
@@ -890,8 +904,8 @@ public final class TruffleBaseFeature implements InternalFeature {
                      * ArrayBasedShapeGenerator caches generated classes, there won't be code
                      * generation at run time.
                      */
-                    ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-                    getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
+                    Object gcls = getGeneratorClassLoaders(factoryInterface);
+                    getGetShapeGenerator(gcls, storageSuperClass, factoryInterface);
                 } catch (ReflectiveOperationException e) {
                     throw VMError.shouldNotReachHere(e);
                 }
@@ -929,21 +943,21 @@ public final class TruffleBaseFeature implements InternalFeature {
                 }
             }
 
-            private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
-                ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
-                if (cl == null) {
-                    ClassLoader newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
-                    cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
-                    if (cl == null) {
-                        cl = newCL;
+            private static Object getGeneratorClassLoaders(Class<?> factoryInterface) throws ReflectiveOperationException {
+                Object gcls = GENERATOR_CLASS_LOADERS_MAP.get(factoryInterface);
+                if (gcls == null) {
+                    Object newGCLs = GENERATOR_CLASS_LOADERS_CONSTRUCTOR.newInstance(factoryInterface);
+                    gcls = GENERATOR_CLASS_LOADERS_MAP.putIfAbsent(factoryInterface, newGCLs);
+                    if (gcls == null) {
+                        gcls = newGCLs;
                     }
                 }
-                return cl;
+                return gcls;
             }
 
-            private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+            private static void getGetShapeGenerator(Object gcls, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
                 String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
-                GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+                GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, gcls, storageSuperClass, factoryInterface, storageClassName);
             }
 
             private static Class<?> loadClass(String name) {
@@ -1090,10 +1104,34 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
     static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
 }
 
-@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape_ArrayBasedFactory {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
     static ConcurrentHashMap<Object, Object> replacements;
+
+    private static class MapCleaner implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterCompilation;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object transform(Object receiver, Object originalValue) {
+            if (originalValue != null) {
+                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                // Copied so that the object replacer can continue replacing references, even after
+                // compilation.
+                TruffleBaseFeature.StaticObjectSupport.StaticObjectArrayBasedSupport.replacements = new ConcurrentHashMap<>(originalMap);
+                // Cleared so that factory instances that hold a reference to it do not leak
+                // objects.
+                originalMap.clear();
+                // Return null so that new factory instances do not register replacements. See
+                // `ArrayBasedStaticShape.create()`.
+            }
+            return null;
+        }
+    }
 }
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)

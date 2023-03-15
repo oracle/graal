@@ -49,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
@@ -57,46 +56,16 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     private static final Class[] PRIMITIVE_TYPES = new Class[]{long.class, double.class, int.class, float.class, short.class, char.class, byte.class, boolean.class};
     private static final int N_PRIMITIVES = PRIMITIVE_TYPES.length;
 
-    // Marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport to identify
-    // generated factory classes. Since it is defined within a non-public final class, it cannot be
-    // implemented by untrusted code. Since it is a protected inner-class, the verifier considers it
-    // public and does not throw IllegalAccessError when a generated factory class that implements
-    // it is loaded.
-    protected interface ArrayBasedFactory {
-        // Used by TruffleBaseFeature$StaticObjectArrayBasedSupport to patch the offsets and the
-        // indexes used to store primitive values. The keys are factory instances (they store the
-        // length of the primitive byte[]) and the primitive byte[] (they need to be resized).
-        // Initially, values are the same as the corresponding keys. Once a replacement is computed,
-        // it is stored as value. We can use an equality-based map because generated factory
-        // instances to not override `equals()` and `hashCode()`.
-        //
-        // Set to null by TruffleBaseFeature to avoid leaking objects and calls to
-        // `ImageInfo.inImageBuildtimeCode()` in code that might be PE'd.
-        ConcurrentHashMap<Object, Object> replacements = createReplacementsMap();
-
-        @SuppressWarnings("unchecked")
-        private static ConcurrentHashMap<Object, Object> createReplacementsMap() {
-            if (ImageInfo.inImageBuildtimeCode()) {
-                return new ConcurrentHashMap<>();
-            }
-            return null;
-        }
-
-        // Called by generated subtypes
-        static void registerFactoryInstance(ArrayBasedFactory factory) {
-            if (replacements != null) {
-                replacements.put(factory, factory);
-            }
-        }
-
-        // Called by generated subtypes
-        static void registerPrimitiveStorage(byte[] primitive) {
-            // `primitive` is null when the static object does not store primitive values
-            if (replacements != null && primitive != null) {
-                replacements.put(primitive, primitive);
-            }
-        }
-    }
+    // Initialized by TruffleBaseFeature$StaticObjectArrayBasedSupport and used to patch the offsets
+    // and the indexes used to store primitive values. The keys are factory instances (they store
+    // the length of the primitive byte[]) and the primitive byte[] (they need to be resized).
+    // Initially, values are the same as the corresponding keys. Once a replacement is computed, it
+    // is stored as value. We can use an equality-based map because generated factory instances to
+    // not override `equals()` and `hashCode()`.
+    //
+    // Cleared and set to null by TruffleBaseFeature to avoid leaking objects and calls to
+    // `ImageInfo.inImageBuildtimeCode()` in code that might be PE'd.
+    static ConcurrentHashMap<Object, Object> replacements;
 
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
@@ -131,7 +100,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
                                                             shape,
                                                             propertyLayout.getPrimitiveArraySize(),
                                                             propertyLayout.getObjectArraySize(),
-                                                            true));
+                                                            replacements != null));
             shape.setFactory(factory);
             return shape;
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -177,18 +146,6 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             assert storage.getClass() == Object[].class;
             return SomAccessor.RUNTIME.unsafeCast(storage, Object[].class, true, true, true);
         }
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    Class<T> getFactoryInterface() {
-        assert factory.getClass().getInterfaces().length == 2;
-        for (Class<?> factoryInterface : factory.getClass().getInterfaces()) {
-            if (factoryInterface != ArrayBasedStaticShape.ArrayBasedFactory.class) {
-                return (Class<T>) factoryInterface;
-            }
-        }
-        throw new RuntimeException("Should not reach here");
     }
 
     @SuppressWarnings("cast")

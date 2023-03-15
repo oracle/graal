@@ -216,6 +216,7 @@ Usage: java -truffle [-options] class [args...]
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
     stability=_espresso_stability,
+    standalone=False,
 ))
 
 if LLVM_JAVA_HOME:
@@ -245,6 +246,7 @@ if LLVM_JAVA_HOME:
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
         stability=_espresso_stability,
+        standalone=False,
     ))
 
 

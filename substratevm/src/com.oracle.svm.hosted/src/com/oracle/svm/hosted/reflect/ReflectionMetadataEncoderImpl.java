@@ -26,10 +26,13 @@ package com.oracle.svm.hosted.reflect;
 
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.NULL_OBJECT;
 import static com.oracle.svm.hosted.reflect.ReflectionMetadata.AccessibleObjectMetadata;
 import static com.oracle.svm.hosted.reflect.ReflectionMetadata.ClassMetadata;
@@ -60,6 +63,7 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -252,7 +256,12 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         Object enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
         RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
+        Class<?>[] nestMembers = getNestMembers(metaAccess, javaClass);
+        Object[] signers = javaClass.getSigners();
         int classAccessFlags = Reflection.getClassAccessFlags(javaClass);
+        int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
+        VMError.guarantee((classAccessFlags & enabledQueries) == 0);
+        int flags = classAccessFlags | enabledQueries;
 
         /* Register string and class values in annotations */
         encoders.sourceClasses.addObject(javaClass);
@@ -263,11 +272,20 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         }
         HostedType[] innerTypes = registerClassValues(metaAccess, innerClasses);
         HostedType[] permittedSubtypes = (permittedSubclasses != null) ? registerClassValues(metaAccess, permittedSubclasses) : null;
+        HostedType[] nestMemberTypes = (nestMembers != null) ? registerClassValues(metaAccess, nestMembers) : null;
+        JavaConstant[] signerConstants = null;
+        if (signers != null) {
+            signerConstants = new JavaConstant[signers.length];
+            for (int i = 0; i < signers.length; ++i) {
+                signerConstants[i] = SubstrateObjectConstant.forObject(signers[i]);
+                encoders.objectConstants.addObject(signerConstants[i]);
+            }
+        }
         AnalysisType analysisType = type.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisType);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisType);
 
-        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, classAccessFlags, annotations, typeAnnotations));
+        registerClass(type, new ClassMetadata(innerTypes, enclosingMethodInfo, recordComponents, permittedSubtypes, nestMemberTypes, signerConstants, flags, annotations, typeAnnotations));
     }
 
     private void registerError(Throwable error) {
@@ -300,30 +318,39 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
 
-    private static Class<?>[] getPermittedSubclasses(MetaAccessProvider metaAccess, Class<?> clazz) {
-        if (JavaVersionUtil.JAVA_SPEC < 17) {
+    private Class<?>[] getPermittedSubclasses(MetaAccessProvider metaAccess, Class<?> clazz) {
+        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
             return null;
         }
         try {
             Class<?>[] permittedSubclasses = (Class<?>[]) getPermittedSubclasses.invoke(clazz);
-            if (permittedSubclasses == null) {
-                return null;
-            }
-            Set<Class<?>> reachablePermittedSubclasses = new HashSet<>();
-            for (Class<?> permittedSubclass : permittedSubclasses) {
-                try {
-                    HostedType hostedType = ((HostedMetaAccess) metaAccess).optionalLookupJavaType(permittedSubclass).orElse(null);
-                    if (hostedType != null && hostedType.getWrapped().isReachable()) {
-                        reachablePermittedSubclasses.add(permittedSubclass);
-                    }
-                } catch (DeletedElementException dee) {
-                    // permitted subclass has been deleted -> ignore
-                }
-            }
-            return reachablePermittedSubclasses.toArray(new Class<?>[0]);
+            return filterDeletedClasses(metaAccess, permittedSubclasses);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    private Class<?>[] getNestMembers(MetaAccessProvider metaAccess, Class<?> clazz) {
+        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
+            return null;
+        }
+        return filterDeletedClasses(metaAccess, clazz.getNestMembers());
+    }
+
+    private static Class<?>[] filterDeletedClasses(MetaAccessProvider metaAccess, Class<?>[] classes) {
+        if (classes == null) {
+            return null;
+        }
+        Set<Class<?>> reachableClasses = new HashSet<>();
+        for (Class<?> clazz : classes) {
+            try {
+                metaAccess.lookupJavaType(clazz);
+                reachableClasses.add(clazz);
+            } catch (DeletedElementException dee) {
+                // class has been deleted -> ignore
+            }
+        }
+        return reachableClasses.toArray(new Class<?>[0]);
     }
 
     @Override
@@ -545,7 +572,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         /* Fill encoders with the necessary values. */
         encoders.sourceMethodNames.addObject(name);
 
-        registerField(declaringType, field, new FieldMetadata(declaringType, name));
+        registerField(declaringType, field, new FieldMetadata(declaringType, name, false));
     }
 
     @Override
@@ -568,6 +595,29 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         } else {
             registerConstructor(declaringType, executable, new ConstructorMetadata(declaringType, parameterTypeNames));
         }
+    }
+
+    @Override
+    public void addNegativeFieldQueryMetadata(HostedType declaringClass, String fieldName) {
+        encoders.sourceMethodNames.addObject(fieldName);
+        registerField(declaringClass, fieldName, new FieldMetadata(declaringClass, fieldName, true));
+    }
+
+    @Override
+    public void addNegativeMethodQueryMetadata(HostedType declaringClass, String methodName, HostedType[] parameterTypes) {
+        encoders.sourceMethodNames.addObject(methodName);
+        for (HostedType parameterType : parameterTypes) {
+            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+        }
+        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(declaringClass, methodName, parameterTypes));
+    }
+
+    @Override
+    public void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes) {
+        for (HostedType parameterType : parameterTypes) {
+            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+        }
+        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(declaringClass, parameterTypes));
     }
 
     private static HostedType[] getParameterTypes(HostedMethod method) {
@@ -689,17 +739,19 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
             int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, this::encodeType, false);
             int permittedSubclassesIndex = JavaVersionUtil.JAVA_SPEC >= 17 ? encodeAndAddCollection(buf, classMetadata.permittedSubclasses, this::encodeType, true) : NO_DATA;
-            if (anySet(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex)) {
-                hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex);
+            int nestMembersEncodingIndex = encodeAndAddCollection(buf, classMetadata.nestMembers, this::encodeType, true);
+            int signersEncodingIndex = encodeAndAddCollection(buf, classMetadata.signers, this::encodeObject, true);
+            if (anySet(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex)) {
+                hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex);
             }
 
             int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), this::encodeField, false);
             int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), this::encodeExecutable, false);
             int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), this::encodeExecutable, false);
             int recordComponentsIndex = JavaVersionUtil.JAVA_SPEC >= 17 ? encodeAndAddCollection(buf, classMetadata.recordComponents, this::encodeRecordComponent, true) : NO_DATA;
-            int classAccessFlags = classMetadata.classAccessFlags;
-            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classAccessFlags != hub.getModifiers()) {
-                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classAccessFlags);
+            int classFlags = classMetadata.flags;
+            if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classFlags != hub.getModifiers()) {
+                hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classFlags);
             }
         }
         for (AccessibleObjectMetadata metadata : heapData) {
@@ -781,6 +833,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         modifiers |= field.complete ? COMPLETE_FLAG_MASK : 0;
         modifiers |= field.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= field.hiding ? HIDING_FLAG_MASK : 0;
+        modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
         buf.putUV(modifiers);
         if (field.heapObject != null) {
             encodeObject(buf, field.heapObject);
@@ -811,6 +864,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         modifiers |= executable.complete ? COMPLETE_FLAG_MASK : 0;
         modifiers |= executable.heapObject != null ? IN_HEAP_FLAG_MASK : 0;
         modifiers |= isHiding ? HIDING_FLAG_MASK : 0;
+        modifiers |= executable.negative ? NEGATIVE_FLAG_MASK : 0;
         buf.putUV(modifiers);
         if (executable.heapObject != null) {
             encodeObject(buf, executable.heapObject);
@@ -818,7 +872,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             if (isMethod) {
                 encodeName(buf, ((MethodMetadata) executable).name);
             }
-            if (executable.complete || isHiding) {
+            if (executable.complete || isHiding || executable.negative) {
                 encodeArray(buf, (HostedType[]) executable.parameterTypes, parameterType -> encodeType(buf, parameterType));
             } else {
                 encodeArray(buf, (String[]) executable.parameterTypes, parameterTypeName -> encodeName(buf, parameterTypeName));

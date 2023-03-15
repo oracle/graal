@@ -34,7 +34,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.locks.VMMutex;
@@ -150,8 +149,7 @@ public class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private SamplerBuffer tryAllocateBuffer0() {
         UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        UnsignedWord dataSize = WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize());
+        UnsignedWord dataSize = WordFactory.unsigned(SubstrateJVM.getThreadLocal().getThreadLocalBufferSize());
 
         SamplerBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
         if (result.isNonNull()) {

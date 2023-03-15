@@ -25,22 +25,23 @@
  */
 package org.graalvm.compiler.nodes.gc;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -56,42 +57,42 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType readBarrierType(RawLoadNode load) {
-        // For RawLoadNode resulted from Unsafe access, do not bother inserting barriers.
-        // See JDK-8189871.
+    public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
         return BarrierType.NONE;
     }
 
     @Override
-    public BarrierType storeBarrierType(RawStoreNode store) {
-        return store.needsBarrier() ? guessStoreBarrierType(store.object(), store.value()) : BarrierType.NONE;
+    public BarrierType writeBarrierType(RawStoreNode store) {
+        return store.needsBarrier() ? guessReadWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+    public BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
         if (field.getJavaKind() == JavaKind.Object && field.equals(referentField)) {
-            // We should not encounter field load of Reference.referent except compiling
-            // Reference.get(), which won't be executed anyway given the intrinsification.
-            // We cannot distinguish between PhantomReference and other Reference. Yet returning
-            // BarrierType.WEAK_FIELD is fine for G1 since the inserted barriers for both WEAK_FIELD
-            // and PHANTOM_FIELD are identical.
-            return BarrierType.WEAK_FIELD;
+            /*
+             * We should not encounter field load of Reference.referent except compiling
+             * Reference.get(), which won't be executed anyway given the intrinsification. We cannot
+             * distinguish between PhantomReference and other References. Yet returning
+             * BarrierType.REFERENCE_GET is fine for G1 since the inserted barriers for both
+             * REFERENCE_GET and PHANTOM_REFERS_TO are identical.
+             */
+            return BarrierType.REFERENCE_GET;
         }
         return BarrierType.NONE;
     }
 
     @Override
-    public BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+    public BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind) {
         return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType arrayStoreBarrierType(JavaKind storageKind) {
+    public BarrierType arrayWriteBarrierType(JavaKind storageKind) {
         return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     @Override
-    public BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
+    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && type.isArray()) {
@@ -103,6 +104,16 @@ public class G1BarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
+    }
+
+    @Override
+    public boolean hasWriteBarrier() {
+        return true;
+    }
+
+    @Override
+    public boolean hasReadBarrier() {
+        return false;
     }
 
     @Override
@@ -126,7 +137,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     private static void addReadNodeBarriers(ReadNode node) {
-        if (node.getBarrierType() == BarrierType.WEAK_FIELD || node.getBarrierType() == BarrierType.PHANTOM_FIELD) {
+        if (node.getBarrierType() == BarrierType.REFERENCE_GET || node.getBarrierType() == BarrierType.PHANTOM_REFERS_TO) {
             StructuredGraph graph = node.graph();
             G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node));
             graph.addAfterFixed(node, barrier);
@@ -211,6 +222,6 @@ public class G1BarrierSet implements BarrierSet {
 
     @Override
     public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
-        return arrayStoreBarrierType(storageKind) != BarrierType.NONE;
+        return arrayWriteBarrierType(storageKind) != BarrierType.NONE;
     }
 }

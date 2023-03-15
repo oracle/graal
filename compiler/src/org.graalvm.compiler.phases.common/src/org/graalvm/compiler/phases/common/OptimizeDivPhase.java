@@ -161,7 +161,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
             ValueNode div = val.graph().addOrUniqueWithInputs(createDiv(val));
             return div;
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     protected ValueNode createDiv(ValueNode val) {

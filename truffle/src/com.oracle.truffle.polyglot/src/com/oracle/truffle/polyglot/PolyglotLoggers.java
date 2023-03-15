@@ -70,6 +70,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 
@@ -133,9 +134,11 @@ final class PolyglotLoggers {
      *
      * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
+     * @param sandboxPolicy the engine's sandbox policy
      */
-    static LogHandler createDefaultHandler(AbstractPolyglotImpl polyglot, OutputStream out) {
-        return new StreamLogHandler(polyglot, out, false, true, true);
+    static LogHandler createDefaultHandler(AbstractPolyglotImpl polyglot, OutputStream out, SandboxPolicy sandboxPolicy) {
+        return new StreamLogHandler(polyglot, out, false, true, true,
+                        sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? sandboxPolicy : null);
     }
 
     static LogHandler getFileHandler(AbstractPolyglotImpl polyglot, String path) {
@@ -175,7 +178,7 @@ final class PolyglotLoggers {
      * @return the {@link Handler}
      */
     static LogHandler createStreamHandler(AbstractPolyglotImpl polyglot, OutputStream out, boolean closeStream, boolean flushOnPublish) {
-        return new StreamLogHandler(polyglot, out, closeStream, flushOnPublish, false);
+        return new StreamLogHandler(polyglot, out, closeStream, flushOnPublish, false, null);
     }
 
     static LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind) {
@@ -310,17 +313,23 @@ final class PolyglotLoggers {
                         "* '-Dpolyglot.log.file=<path>' if the option is passed using the host Java launcher.%n" +
                         "* Configure logging using the polyglot embedding API.]%n";
 
+        private static final String DISABLED_FORMAT = "[engine] Logging to context error output stream is not enabled for the sandbox policy %s. " +
+                        "To resolve this issue, install a custom logging handler using Builder.logHandler(Handler) " +
+                        "or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%n";
+
         private final OutputStream stream;
         private final OutputStreamWriter writer;
         private final Formatter formatter;
         private final boolean closeStream;
         private final boolean flushOnPublish;
         private final boolean isDefault;
+        private final SandboxPolicy disabledForActiveSandboxPolicy;
 
         private ErrorManager errorManager;
         private boolean notificationPrinted;
 
-        StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish, boolean isDefault) {
+        StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish,
+                        boolean isDefault, SandboxPolicy disabledForActiveSandboxPolicy) {
             super(polyglot);
             Objects.requireNonNull(stream, "Stream must be non null");
             this.stream = stream;
@@ -329,11 +338,21 @@ final class PolyglotLoggers {
             this.closeStream = closeStream;
             this.flushOnPublish = flushOnPublish;
             this.isDefault = isDefault;
+            this.disabledForActiveSandboxPolicy = disabledForActiveSandboxPolicy;
         }
 
         @Override
         public synchronized void publish(LogRecord logRecord) {
             try {
+                if (disabledForActiveSandboxPolicy != null) {
+                    assert isDefault : "Only default handler can be disabled";
+                    if (!notificationPrinted) {
+                        writer.write(String.format(DISABLED_FORMAT, disabledForActiveSandboxPolicy));
+                        writer.flush();
+                        notificationPrinted = true;
+                    }
+                    return;
+                }
                 String msg;
                 try {
                     msg = formatter.format(logRecord);
@@ -472,7 +491,7 @@ final class PolyglotLoggers {
         private int refCount;
 
         SharedFileHandler(AbstractPolyglotImpl polyglot, Path path) throws IOException {
-            super(polyglot, new FileOutputStream(path.toFile(), true), true, true, false);
+            super(polyglot, new FileOutputStream(path.toFile(), true), true, true, false, null);
             this.path = path;
         }
 

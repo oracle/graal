@@ -60,7 +60,7 @@ public final class CVDebugInfo extends DebugInfoBase {
             this.threadRegister = RTHREAD_X86;
         } else {
             /* room for future aach64 port */
-            throw GraalError.shouldNotReachHere("Unsupported architecture on Windows");
+            throw GraalError.shouldNotReachHere("Unsupported architecture on Windows"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

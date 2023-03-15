@@ -47,6 +47,7 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.alloc.OutOfRegistersException;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -78,12 +79,11 @@ public class LIRCompilerBackend {
     private static final TimerKey BackEnd = DebugContext.timer("BackEnd").doc("Time spent in EmitLIR and EmitCode.");
 
     @SuppressWarnings("try")
-    public static <T extends CompilationResult> void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, Backend backend, T compilationResult,
-                    CompilationResultBuilderFactory factory, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    public static void emitBackEnd(StructuredGraph graph, Object stub, ResolvedJavaMethod installedCodeOwner, Backend backend, CompilationResult compilationResult,
+                    CompilationResultBuilderFactory factory, EntryPointDecorator entryPointDecorator, RegisterConfig registerConfig, LIRSuites lirSuites) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("BackEnd", graph, graph.getLastSchedule()); DebugCloseable a = BackEnd.start(debug)) {
-            LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites);
+            LIRGenerationResult lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites, entryPointDecorator);
             try (DebugContext.Scope s2 = debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 int bytecodeSize = graph.method() == null ? 0 : graph.getBytecodeSize();
                 compilationResult.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -96,7 +96,8 @@ public class LIRCompilerBackend {
                                 lirGen,
                                 compilationResult,
                                 installedCodeOwner,
-                                factory);
+                                factory,
+                                entryPointDecorator);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -108,15 +109,16 @@ public class LIRCompilerBackend {
     }
 
     @SuppressWarnings("try")
-    public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites) {
+    public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
+                    EntryPointDecorator entryPointDecorator) {
         String registerPressure = GraalOptions.RegisterPressure.getValue(graph.getOptions());
         String[] allocationRestrictedTo = registerPressure == null ? null : registerPressure.split(",");
         try {
-            return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo);
+            return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo, entryPointDecorator);
         } catch (OutOfRegistersException e) {
             if (allocationRestrictedTo != null) {
                 allocationRestrictedTo = null;
-                return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo);
+                return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo, entryPointDecorator);
             }
             /* If the re-execution fails we convert the exception into a "hard" failure */
             throw new GraalError(e);
@@ -131,7 +133,7 @@ public class LIRCompilerBackend {
                     Object stub,
                     RegisterConfig registerConfig,
                     LIRSuites lirSuites,
-                    String[] allocationRestrictedTo) {
+                    String[] allocationRestrictedTo, EntryPointDecorator entryPointDecorator) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope ds = debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start(debug)) {
             assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL);
@@ -158,6 +160,10 @@ public class LIRCompilerBackend {
             // LIR generation
             LIRGenerationContext context = new LIRGenerationContext(lirGen, nodeLirGen, graph, schedule);
             new LIRGenerationPhase().apply(backend.getTarget(), lirGenRes, context);
+
+            if (entryPointDecorator != null) {
+                entryPointDecorator.initialize(backend.getProviders(), lirGenRes);
+            }
 
             try (DebugContext.Scope s = debug.scope("LIRStages", nodeLirGen, lirGenRes, lir)) {
                 // Dump LIR along with HIR (the LIR is looked up from context)
@@ -206,14 +212,15 @@ public class LIRCompilerBackend {
                     LIRGenerationResult lirGenRes,
                     CompilationResult compilationResult,
                     ResolvedJavaMethod installedCodeOwner,
-                    CompilationResultBuilderFactory factory) {
+                    CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
         try (DebugCloseable a = EmitCode.start(debug); CompilerPhaseScope cps = debug.enterCompilerPhase("Emit code");) {
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
 
             FrameMap frameMap = lirGenRes.getFrameMap();
             CompilationResultBuilder crb = lirBackend.newCompilationResultBuilder(lirGenRes, frameMap, compilationResult, factory);
-            lirBackend.emitCode(crb, lirGenRes.getLIR(), installedCodeOwner);
+            lirBackend.emitCode(crb, installedCodeOwner, entryPointDecorator);
             if (assumptions != null && !assumptions.isEmpty()) {
                 compilationResult.setAssumptions(assumptions.toArray());
             }

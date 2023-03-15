@@ -64,6 +64,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @GenerateUncached
 public abstract class ToEspressoNode extends EspressoNode {
 
+    public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
+
     public static final int LIMIT = 2;
 
     // region Specialization predicates
@@ -137,11 +139,6 @@ public abstract class ToEspressoNode extends EspressoNode {
         return obj instanceof Number || obj instanceof Character || obj instanceof Boolean;
     }
 
-    static boolean isForeignException(Klass klass) {
-        Meta meta = klass.getMeta();
-        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
-    }
-
     static boolean isIntegerCompatible(Klass klass) {
         return klass.isAssignableFrom(klass.getMeta().java_lang_Integer);
     }
@@ -187,8 +184,6 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     // endregion Specialization predicates
-
-    public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
     @Specialization(guards = "!isPrimitiveKlass(klass)")
     Object doEspresso(StaticObject value, Klass klass,
@@ -545,6 +540,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                 }
             } else {
                 if (klass == meta.java_lang_Object) {
+                    // check if foreign exception
+                    if (interop.isException(value)) {
+                        return StaticObject.createForeignException(klass.getContext(), value, interop);
+                    }
                     // see if a generated proxy can be used for interface mapped types
                     ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
                     if (proxyKlass != null) {

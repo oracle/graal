@@ -208,7 +208,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getY();
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -219,7 +219,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getX();
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -370,7 +370,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             // Re-association from "Math.max(x, Math.max(y, C))" to "Math.max(Math.max(x, y), C)"
             return MaxNode.create(matchValue, MaxNode.create(otherValue1, otherValue2, view), view);
         } else {
-            throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node);
+            throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -488,7 +488,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
                             ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
         } else {
-            throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node);
+            throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node); // ExcludeFromJacocoGeneratedReport
         }
     }
 

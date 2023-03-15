@@ -194,7 +194,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                     IntegerEqualsNode equals = (IntegerEqualsNode) condition;
                     if (equals.getY().isConstant() && equals.getX().stamp(view) instanceof IntegerStamp) {
                         IntegerStamp equalsXStamp = (IntegerStamp) equals.getX().stamp(view);
-                        if (equalsXStamp.upMask() == 1) {
+                        if (equalsXStamp.mayBeSet() == 1) {
                             long equalsY = equals.getY().asJavaConstant().asLong();
                             if (equalsY == 0) {
                                 if (constTrueValue == 0 && constFalseValue == 1) {

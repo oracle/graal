@@ -135,7 +135,7 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
             } else if (newX.stamp(view) instanceof IntegerStamp && newY.stamp(view) instanceof IntegerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

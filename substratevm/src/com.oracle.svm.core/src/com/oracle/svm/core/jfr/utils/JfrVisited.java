@@ -25,9 +25,10 @@
 
 package com.oracle.svm.core.jfr.utils;
 
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+
+import com.oracle.svm.core.collections.UninterruptibleEntry;
 
 @RawStructure
 public interface JfrVisited extends UninterruptibleEntry {

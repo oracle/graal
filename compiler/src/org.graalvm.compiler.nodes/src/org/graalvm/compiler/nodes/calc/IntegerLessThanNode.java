@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -110,7 +109,7 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             } else if (newX.stamp(view) instanceof IntegerStamp && newY.stamp(view) instanceof IntegerStamp) {
                 return new IntegerLessThanNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -248,7 +247,7 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         @Override
         protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
             // leading zeros, adjusted to stamp bits
-            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.mayBeSet()) - (Long.SIZE - a.getBits());
             // one extra bit to avoid flipping the sign
             return leadingZeroForBits - 1 < shift;
         }
@@ -305,7 +304,7 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
         @Override
         protected IntegerStamp forInteger(int bits, long min, long max) {
-            return StampFactory.forInteger(bits, cast(min, bits), cast(max, bits));
+            return IntegerStamp.create(bits, cast(min, bits), cast(max, bits));
         }
     }
 

@@ -30,6 +30,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.common.meta.MultiMethod;
 
 /**
  * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
@@ -42,4 +44,6 @@ public interface SVMParsingSupport {
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
     boolean allowAssumptions(AnalysisMethod method);
+
+    HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
 }

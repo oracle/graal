@@ -27,22 +27,19 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public class JfrGCNameSerializer implements JfrConstantPool {
+public class JfrGCNameSerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGCNameSerializer() {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public void write(JfrChunkWriter writer) {
         JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
-        assert gcNames != null && gcNames.length > 0;
-
         writer.writeCompressedLong(JfrType.GCName.getId());
         writer.writeCompressedLong(gcNames.length);
         for (JfrGCName name : gcNames) {
             writer.writeCompressedLong(name.getId());
             writer.writeString(name.getName());
         }
-        return NON_EMPTY;
     }
 }

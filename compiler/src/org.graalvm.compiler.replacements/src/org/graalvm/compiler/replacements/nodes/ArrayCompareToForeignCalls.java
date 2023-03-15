@@ -61,6 +61,6 @@ public final class ArrayCompareToForeignCalls {
                 return STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY;
             }
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 }

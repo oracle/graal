@@ -64,7 +64,7 @@ public class JavaMonitorInflateEvent {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getId(MonitorInflationCause cause) {
         /* First entry needs to have id 0. */
         return cause.ordinal();

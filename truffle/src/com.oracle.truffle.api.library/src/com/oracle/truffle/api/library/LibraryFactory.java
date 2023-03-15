@@ -198,7 +198,7 @@ public abstract class LibraryFactory<T extends Library> {
         for (Message message : getMessages()) {
             assert message.library == null;
             message.library = (LibraryFactory<Library>) this;
-            messagesMap.put(message.getSimpleName(), message);
+            messagesMap.putIfAbsent(message.getSimpleName(), message);
         }
         this.nameToMessages = messagesMap;
         if (libraryClass == DynamicDispatchLibrary.class) {

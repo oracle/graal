@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -167,6 +167,7 @@ import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -293,6 +294,8 @@ import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.hosted.util.CPUTypeAArch64;
+import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -439,17 +442,8 @@ public class NativeImageGenerator {
 
     public static SubstrateTargetDescription createTarget(Platform platform) {
         if (includedIn(platform, Platform.AMD64.class)) {
-            Architecture architecture;
-            EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
-            if (NativeImageOptions.NativeArchitecture.getValue()) {
-                features.addAll(((AMD64) GraalAccess.getOriginalTarget().arch).getFeatures());
-            } else {
-                // SSE and SSE2 are added by default as they are required by Graal
-                features.add(AMD64.CPUFeature.SSE);
-                features.add(AMD64.CPUFeature.SSE2);
-
-                features.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
-            }
+            EnumSet<AMD64.CPUFeature> features = CPUTypeAMD64.getSelectedFeatures();
+            features.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             // GR-33542 RTM is only intermittently detected and is not used by Graal
             features.remove(AMD64.CPUFeature.RTM);
             // set up the runtime checked cpu features
@@ -464,39 +458,21 @@ public class NativeImageGenerator {
                     }
                 }
             }
-            architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
-            assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
+            AMD64 architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
-            Architecture architecture;
-            if (NativeImageOptions.NativeArchitecture.getValue()) {
-                architecture = GraalAccess.getOriginalTarget().arch;
-            } else {
-                EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
-                /*
-                 * FP is added by default, as floating-point operations are required by Graal.
-                 */
-                features.add(AArch64.CPUFeature.FP);
-                /*
-                 * ASIMD is added by default, as it is available in all AArch64 machines with
-                 * floating-port support.
-                 */
-                features.add(AArch64.CPUFeature.ASIMD);
-
-                features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
-
-                architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
-            }
-            assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
+            EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
+            features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
+            AArch64 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
             // runtime checked features are the same as static features on AArch64 for now
-            EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = ((AArch64) architecture).getFeatures().clone();
+            EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             Class<?> riscv64CPUFeature = RISCV64ReflectionUtil.lookupClass(false, RISCV64ReflectionUtil.featureClass);
             Architecture architecture;
-            if (NativeImageOptions.NativeArchitecture.getValue()) {
+            if (NativeImageOptions.MICRO_ARCHITECTURE_NATIVE.equals(NativeImageOptions.MicroArchitecture.getValue())) {
                 architecture = GraalAccess.getOriginalTarget().arch;
             } else {
                 Method noneOf = RISCV64ReflectionUtil.lookupMethod(EnumSet.class, "noneOf", Class.class);
@@ -504,10 +480,9 @@ public class NativeImageGenerator {
                 Method parseCSVtoEnum = RISCV64ReflectionUtil.lookupMethod(NativeImageGenerator.class, "parseCSVtoEnum", Class.class, List.class, Enum[].class);
                 parseCSVtoEnum.setAccessible(true);
                 Method addAll = RISCV64ReflectionUtil.lookupMethod(AbstractCollection.class, "addAll", Collection.class);
-
                 RISCV64ReflectionUtil.invokeMethod(addAll, features,
-                                RISCV64ReflectionUtil.invokeMethod(parseCSVtoEnum, null, riscv64CPUFeature, NativeImageOptions.CPUFeatures.getValue().values(), riscv64CPUFeature.getEnumConstants()));
-
+                                RISCV64ReflectionUtil.invokeMethod(parseCSVtoEnum, null, riscv64CPUFeature, NativeImageOptions.CPUFeatures.getValue().values(),
+                                                riscv64CPUFeature.getEnumConstants()));
                 architecture = (Architecture) ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(RISCV64ReflectionUtil.getArch(false), EnumSet.class, EnumSet.class), features,
                                 RISCV64CPUFeatureAccess.enabledRISCV64Flags());
             }
@@ -626,7 +601,7 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(), classInitializationSupport,
+                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD), classInitializationSupport,
                                 GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
@@ -676,7 +651,7 @@ public class NativeImageGenerator {
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(),
-                                bb.getProviders().getSnippetReflection(), compilationExecutor);
+                                bb.getSnippetReflectionProvider(), compilationExecutor);
                 if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
                     ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(hUniverse, compileQueue);
                 }
@@ -913,7 +888,9 @@ public class NativeImageGenerator {
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 HostedProviders aProviders = createHostedProviders(target, aUniverse,
                                 originalProviders, platformConfig, classInitializationSupport, aMetaAccess);
-                bb = createBigBang(options, aUniverse, aProviders, analysisExecutor, loader.watchdog::recordActivity,
+                aUniverse.hostVM().initializeProviders(aProviders);
+
+                bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, analysisExecutor, loader.watchdog::recordActivity,
                                 annotationSubstitutions);
                 aUniverse.setBigBang(bb);
 
@@ -1041,7 +1018,7 @@ public class NativeImageGenerator {
     public static void initializeBigBang(Inflation bb, OptionValues options, FeatureHandler featureHandler, NativeLibraries nativeLibraries, DebugContext debug,
                     AnalysisMetaAccess aMetaAccess, SubstitutionProcessor substitutions, ImageClassLoader loader, boolean initForeignCalls, ClassInitializationPlugin classInitializationPlugin,
                     boolean supportsStubBasedPlugins, HostedProviders aProviders) {
-        SubstrateReplacements aReplacements = bb.getReplacements();
+        SubstrateReplacements aReplacements = (SubstrateReplacements) bb.getProviders(MultiMethod.ORIGINAL_METHOD).getReplacements();
         AnalysisUniverse aUniverse = bb.getUniverse();
 
         /*
@@ -1155,9 +1132,12 @@ public class NativeImageGenerator {
         return aProviders;
     }
 
-    private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, HostedProviders aProviders, ForkJoinPool analysisExecutor,
+    private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
+        SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
+        ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
+        WordTypes wordTypes = aProviders.getWordTypes();
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
             ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
             if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {
@@ -1167,10 +1147,12 @@ public class NativeImageGenerator {
             } else {
                 reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
             }
-            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
+            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
+                            analysisExecutor, heartbeatCallback,
                             ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
-        return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
+        return new NativeImagePointsToAnalysis(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor, analysisExecutor,
+                        heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
     }
 
@@ -1293,7 +1275,8 @@ public class NativeImageGenerator {
                     TargetDescription target, boolean supportsStubBasedPlugins) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
-        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getWordTypes());
+        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getWordTypes(),
+                        providers.getPlatformConfigurationProvider().getBarrierSet());
 
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);

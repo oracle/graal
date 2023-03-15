@@ -402,7 +402,7 @@ public final class Safepoint {
     }
 
     @AlwaysInline("Always inline into foreign call stub")
-    @Uninterruptible(reason = "Must not contain safepoint checks")
+    @Uninterruptible(reason = "Must not contain safepoint checks", mayBeInlined = true)
     public static void slowPathSafepointCheck() throws Throwable {
         if (SafepointBehavior.ignoresSafepoints()) {
             /* Safepoints are explicitly disabled for this thread. */

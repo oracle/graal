@@ -34,7 +34,7 @@ import org.junit.Assert;
 import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class ClassConstantPoolParser extends ConstantPoolParser {
+public class ClassConstantPoolParser extends AbstractRepositoryParser {
 
     @Override
     public void parse(RecordingInput input) throws IOException {

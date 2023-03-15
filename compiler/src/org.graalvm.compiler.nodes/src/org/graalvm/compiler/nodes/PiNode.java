@@ -154,7 +154,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 pushKind = JavaKind.Long;
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         ValueNode value = canonical(input, piStamp, (GuardingNode) guard, null);
         if (value == null) {

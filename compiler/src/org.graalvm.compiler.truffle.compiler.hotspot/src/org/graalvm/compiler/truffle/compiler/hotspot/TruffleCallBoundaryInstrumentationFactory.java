@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -49,19 +49,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public abstract class TruffleCallBoundaryInstrumentationFactory {
 
-    public abstract static class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
-        protected MetaAccessProvider metaAccess;
-        protected GraalHotSpotVMConfig config;
-        protected HotSpotRegistersProvider registers;
-
-        public TruffleCompilationResultBuilderFactory(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-            this.metaAccess = metaAccess;
-            this.config = config;
-            this.registers = registers;
-        }
-    }
-
-    public abstract CompilationResultBuilderFactory create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
+    public abstract EntryPointDecorator create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
 
     /**
      * Gets the architecture supported by this factory.
