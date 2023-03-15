@@ -237,63 +237,63 @@ public class MultiTypeState extends TypeState {
         return "MType<" + typesCount + ":" + (canBeNull ? "null," : "") + "TODO" + ">";
     }
 
-  class SmallBitSet {
-      public SmallBitSet(BitSet other) {
-          assert other.cardinality() <= MAX_CARDINALITY;
-          for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i+1)) {
-              set[cardinality++] = i;
-          }
-          assert cardinality == other.cardinality();
-      }
-
-      public boolean get(int bit) {
-          assert bit >= 0: "get() bit must be non-negative";
-          for (int i = 0; i < cardinality; i++) {
-              if (set[i] == bit) {
-                  return true;
-              }
-          }
-          return false;
-      }
-
-      public BitSet asBitSet() {
-          BitSet result = new BitSet(set[cardinality-1]+1);
-          for (int i = 0; i < cardinality; i++) {
-              result.set(set[i]);
-          }
-          // Clone will trim to size
-          return (BitSet) result.clone();
-      }
-
-      public int nextSetBit(int fromIndex) {
-          if (fromIndex < 0) {
-              throw new IndexOutOfBoundsException();
-          }
-          for (int i = 0; i < cardinality; i++) {
-            int current = set[i];
-            assert current != UNSET : "found UNSET in valid section";
-            if (current >= fromIndex) {
-              return current;
+    class SmallBitSet {
+        public SmallBitSet(BitSet other) {
+            assert other.cardinality() <= MAX_CARDINALITY;
+            for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i+1)) {
+                set[cardinality++] = i;
             }
-          }
-          return UNSET;
-      }
+            assert cardinality == other.cardinality();
+        }
 
-      public String toString() {
-          String result = "{";
-          String sep = "";
-          for (int i = 0; i < cardinality; i++) {
-              result += sep;
-              result += String.valueOf(set[i]);
-              sep = ", ";
-          }
-          result += "}";
-          return result;
-      }
+        public boolean get(int bit) {
+            assert bit >= 0: "get() bit must be non-negative";
+            for (int i = 0; i < cardinality; i++) {
+                if (set[i] == bit) {
+                    return true;
+                }
+            }
+            return false;
+        }
 
-      public static final int UNSET = -1;
-      public static final int MAX_CARDINALITY = 10;
-      int set[] = new int[MAX_CARDINALITY];
-      int cardinality = 0;
-  }
+        public BitSet asBitSet() {
+            BitSet result = new BitSet(set[cardinality-1]+1);
+            for (int i = 0; i < cardinality; i++) {
+                result.set(set[i]);
+            }
+            // Clone will trim to size
+            return (BitSet) result.clone();
+        }
+
+        public int nextSetBit(int fromIndex) {
+            if (fromIndex < 0) {
+                throw new IndexOutOfBoundsException();
+            }
+            for (int i = 0; i < cardinality; i++) {
+              int current = set[i];
+              assert current != UNSET : "found UNSET in valid section";
+              if (current >= fromIndex) {
+                return current;
+              }
+            }
+            return UNSET;
+        }
+
+        public String toString() {
+            String result = "{";
+            String sep = "";
+            for (int i = 0; i < cardinality; i++) {
+                result += sep;
+                result += String.valueOf(set[i]);
+                sep = ", ";
+            }
+            result += "}";
+            return result;
+        }
+
+        public static final int UNSET = -1;
+        public static final int MAX_CARDINALITY = 10;
+        int set[] = new int[MAX_CARDINALITY];
+        int cardinality = 0;
+    }
 }
