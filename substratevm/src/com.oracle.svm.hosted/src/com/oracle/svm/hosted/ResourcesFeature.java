@@ -30,6 +30,7 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.util.ArrayList;
@@ -431,46 +432,34 @@ public final class ResourcesFeature implements InternalFeature {
                         ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
                         ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
         };
-
-        ResourcePlugins resourcePlugins = new ResourcePlugins(snippetReflection);
+        Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
         for (Method method : resourceMethods) {
-            resourcePlugins.registerResourcePlugin(plugins.getInvocationPlugins(), method);
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName);
         }
     }
 
-    public class ResourcePlugins {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName) {
+        List<Class<?>> parameterTypes = new ArrayList<>();
+        assert !Modifier.isStatic(method.getModifiers());
+        parameterTypes.add(InvocationPlugin.Receiver.class);
+        parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
 
-        private final SnippetReflectionProvider snippetReflectionProvider;
-        private final Method resolveResourceName;
-
-        public ResourcePlugins(SnippetReflectionProvider snippetReflectionProvider) {
-            this.snippetReflectionProvider = snippetReflectionProvider;
-            this.resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
-        }
-
-        public void registerResourcePlugin(InvocationPlugins plugins, Method method) {
-            List<Class<?>> parameterTypes = new ArrayList<>();
-            parameterTypes.add(InvocationPlugin.Receiver.class);
-            parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
-
-            plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                    try {
-                        if (!sealed && receiver.isConstant() && arg.isConstant() && !arg.isNullConstant()) {
-                            String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
-                            Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
-                            String resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                            RuntimeResourceAccess.addResource(clazz.getModule(), resourceName);
-                        }
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw VMError.shouldNotReachHere(e);
+        plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                try {
+                    if (!sealed && receiver.isConstant() && arg.isConstant() && !arg.isNullConstant()) {
+                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
+                        Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
+                        String resourceName = (String) resolveResourceName.invoke(clazz, resource);
+                        RuntimeResourceAccess.addResource(clazz.getModule(), resourceName);
                     }
-                    return false;
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw VMError.shouldNotReachHere(e);
                 }
-            });
-        }
-
+                return false;
+            }
+        });
     }
 }
