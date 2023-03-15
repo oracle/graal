@@ -94,22 +94,22 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     @Override
     protected void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
                     MetaAccessProvider metaAccess) {
-        int scale = ReplacementsUtil.arrayIndexScale(metaAccess, elementKind);
+        long scale = ReplacementsUtil.arrayIndexScale(metaAccess, elementKind);
         int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(metaAccess, elementKind);
-        long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
-        long destOffset = arrayBaseOffset + (long) destPos * scale;
+        long sourceOffset = arrayBaseOffset + srcPos * scale;
+        long destOffset = arrayBaseOffset + destPos * scale;
 
         GuardingNode anchor = SnippetAnchorNode.anchor();
         if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
             for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         } else {
             for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         }
     }

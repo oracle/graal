@@ -67,8 +67,11 @@ public final class ReplacementsUtil {
         }
     }
 
+    /**
+     * The scale as a long to force promotion to long when it's used in computations.
+     */
     @Fold
-    public static int arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+    public static long arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
         return metaAccessProvider.getArrayIndexScale(elementKind);
     }
 
