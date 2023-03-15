@@ -1540,6 +1540,10 @@ public class NativeImage {
         List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
         jvmRequiredEnvironmentVariables.add("SRCHOME"); // FIXME
         if (OS.WINDOWS.isCurrent()) {
+            Map<String, String> normalizedKeysMap = new HashMap<>();
+            environment.forEach((key, value) -> normalizedKeysMap.put(key.toUpperCase(), value));
+            environment.clear();
+            environment.putAll(normalizedKeysMap);
             jvmRequiredEnvironmentVariables.addAll(List.of("TEMP", "INCLUDE", "LIB"));
         }
         for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
