@@ -1470,7 +1470,7 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
-        String sloppySanitationKey = "NATIVE_IMAGE_SLOPPY_BUILDER_SANITATION";
+        String sloppySanitationKey = "NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION";
         String sloppySanitationValue = System.getenv().getOrDefault(sloppySanitationKey, "false");
         if (Boolean.parseBoolean(sloppySanitationValue)) {
             if (useBundle()) {
@@ -1480,7 +1480,7 @@ public class NativeImage {
             if (!imageBuilderEnvironment.isEmpty()) {
                 throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
             }
-            sloppySanitizeJVMEnvironment(environment);
+            deprecatedSanitizeJVMEnvironment(environment);
         } else {
             sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
         }
@@ -1528,7 +1528,7 @@ public class NativeImage {
     }
 
     @Deprecated
-    private static void sloppySanitizeJVMEnvironment(Map<String, String> environment) {
+    private static void deprecatedSanitizeJVMEnvironment(Map<String, String> environment) {
         String[] jvmAffectingEnvironmentVariables = {"JAVA_COMPILER", "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH"};
         for (String affectingEnvironmentVariable : jvmAffectingEnvironmentVariables) {
             environment.remove(affectingEnvironmentVariable);
