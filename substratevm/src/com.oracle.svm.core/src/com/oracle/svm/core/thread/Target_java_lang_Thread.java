@@ -31,7 +31,6 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
-import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -59,11 +58,11 @@ import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
@@ -80,6 +79,10 @@ public final class Target_java_lang_Thread {
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) //
     static int NO_INHERIT_THREAD_LOCALS;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK20OrLater.class) //
+    static Object NEW_THREAD_BINDINGS;
     // Checkstyle: resume
 
     /** This field is initialized when the thread actually starts executing. */
@@ -190,9 +193,12 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = {HasScopedValueCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
+    @Inject @TargetElement(onlyWith = JDK19OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] scopedValueCache;
+
+    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    Object scopedValueBindings;
 
     @Alias
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -370,6 +376,10 @@ public final class Target_java_lang_Thread {
         boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, allowThreadLocals, inheritThreadLocals);
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            this.scopedValueBindings = NEW_THREAD_BINDINGS;
+        }
     }
 
     @Substitute
@@ -394,6 +404,10 @@ public final class Target_java_lang_Thread {
         boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            this.scopedValueBindings = NEW_THREAD_BINDINGS;
+        }
     }
 
     @SuppressWarnings("hiding")
@@ -665,27 +679,42 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasExtentLocalCache.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK19OrEarlier.class})
     static Object[] extentLocalCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasExtentLocalCache.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK19OrEarlier.class})
     static void setExtentLocalCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasScopedValueCache.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static Object[] scopedValueCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasScopedValueCache.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static Object findScopedValueBindings() {
+        /*
+         * We don't have the means to extract the bindings object parameter from runWith frames on
+         * the stack like HotSpot does. However, at this time, we need to support only two cases:
+         * current bindings in a virtual thread, and current bindings in the carrier thread.
+         */
+        Object bindings = JavaThreads.toTarget(Thread.currentThread()).scopedValueBindings;
+        if (bindings != null) {
+            return bindings;
+        }
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueBindings;
     }
 
     @Substitute
@@ -725,22 +754,6 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)
     native long threadId();
-
-    private static class HasExtentLocalCache implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            boolean result = ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
-            assert !result || JavaVersionUtil.JAVA_SPEC == 19 : "extentLocalCache should not exist as of JDK 20";
-            return result;
-        }
-    }
-
-    public static class HasScopedValueCache implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ReflectionUtil.lookupMethod(true, Thread.class, "scopedValueCache") != null;
-        }
-    }
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)
