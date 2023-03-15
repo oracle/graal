@@ -854,7 +854,7 @@ class NativeImageVM(GraalVm):
 
     def _ensureSamplesAreInProfile(self, profile_path):
         # GR-42738 --pgo-sampling does not work with LLVM
-        if self.is_llvm:
+        if not self.is_llvm:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
