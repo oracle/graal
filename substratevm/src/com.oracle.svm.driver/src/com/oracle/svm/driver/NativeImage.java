@@ -1470,15 +1470,15 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
-        String sloppySanitationKey = "NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION";
-        String sloppySanitationValue = System.getenv().getOrDefault(sloppySanitationKey, "false");
-        if (Boolean.parseBoolean(sloppySanitationValue)) {
+        String deprecatedSanitationKey = "NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION";
+        String deprecatedSanitationValue = System.getenv().getOrDefault(deprecatedSanitationKey, "false");
+        if (Boolean.parseBoolean(deprecatedSanitationValue)) {
             if (useBundle()) {
                 bundleSupport = null;
-                throw showError("Bundle support is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+                throw showError("Bundle support is not compatible with environment variable %s=%s.".formatted(deprecatedSanitationKey, deprecatedSanitationValue));
             }
             if (!imageBuilderEnvironment.isEmpty()) {
-                throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+                throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(deprecatedSanitationKey, deprecatedSanitationValue));
             }
             deprecatedSanitizeJVMEnvironment(environment);
         } else {
