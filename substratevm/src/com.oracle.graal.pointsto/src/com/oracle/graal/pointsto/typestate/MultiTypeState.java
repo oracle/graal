@@ -267,7 +267,7 @@ public class MultiTypeState extends TypeState {
 
         MultiTypeState that = (MultiTypeState) o;
         return this.canBeNull == that.canBeNull &&
-                        this.typesCount == that.typesCount && this.bitSetEquals(that);
+               this.typesCount == that.typesCount && this.bitSetEquals(that);
     }
 
     @Override
@@ -285,7 +285,7 @@ public class MultiTypeState extends TypeState {
         }
 
         public boolean get(int bit) {
-            assert bit >= 0: "get() bit must be non-negative";
+            assert bit >= 0 : "get() bit must be non-negative";
             for (int i = 0; i < cardinality; i++) {
                 if (set[i] == bit) {
                     return true;
@@ -314,11 +314,11 @@ public class MultiTypeState extends TypeState {
                 throw new IndexOutOfBoundsException();
             }
             for (int i = 0; i < cardinality; i++) {
-              int current = set[i];
-              assert current != UNSET : "found UNSET in valid section";
-              if (current >= fromIndex) {
-                return current;
-              }
+                int current = set[i];
+                assert current != UNSET : "found UNSET in valid section";
+                if (current >= fromIndex) {
+                    return current;
+                }
             }
             return UNSET;
         }
