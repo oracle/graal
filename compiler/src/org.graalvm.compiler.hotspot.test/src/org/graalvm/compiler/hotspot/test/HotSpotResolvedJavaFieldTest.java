@@ -64,10 +64,9 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
         Field f = null;
         try {
             Class<?> typeImpl = Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl");
-            if(JavaVersionUtil.JAVA_SPEC >= 17) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 m = typeImpl.getDeclaredMethod("createField", JavaType.class, int.class, int.class, int.class);
-            }
-            else {
+            } else {
                 m = typeImpl.getDeclaredMethod("createField", JavaType.class, long.class, int.class, int.class);
             }
             Util.setAccessible(m, true);
