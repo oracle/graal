@@ -217,16 +217,6 @@ public class MultiTypeState extends TypeState {
           return cardinality;
       }
 
-      // // This is O(n^2) where n is MAX_CARDINALITY, so it's actually O(1).
-      // public boolean isSuperSet(SmallBitSet other) {
-      //     for (int i = 0; i < other.cardinality(); i++) {
-      //         if (!get(other.set[i])) {
-      //             return false;
-      //         }
-      //     }
-      //     return true;
-      // }
-
       private int lastSetBit() {
         assert cardinality > 0 : "SmallBitSet should never be empty";
         return nextSetBit(cardinality-1);
