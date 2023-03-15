@@ -374,7 +374,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
@@ -432,7 +432,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is empty set. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
