@@ -39,8 +39,8 @@ public class OutOfMemoryUtil {
         return reportOutOfMemoryError(OUT_OF_MEMORY_ERROR);
     }
 
-    // TEMP (chaeubl):
-    @Uninterruptible(reason = "TEMP (chaeubl)", calleeMustBe = false)
+    // TODO (petermz): may only be executed by the main thread
+    @Uninterruptible(reason = "TODO (petermz)", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate while out of memory.")
     public static OutOfMemoryError reportOutOfMemoryError(OutOfMemoryError error) {
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {

@@ -196,7 +196,7 @@ public final class Space {
     private Pointer allocateMemoryParallel(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the thread local allocation chunk. */
-        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.getAllocationChunk();
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.singleton().getAllocationChunk();
         if (oldChunk.isNonNull()) {
             result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
         }
@@ -214,7 +214,7 @@ public final class Space {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer retractAllocation(UnsignedWord objectSize) {
         assert ParallelGC.isEnabled() && ParallelGC.isInParallelPhase();
-        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.getAllocationChunk();
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.singleton().getAllocationChunk();
         assert oldChunk.isNonNull();
         return AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
     }
@@ -239,7 +239,7 @@ public final class Space {
             ParallelGC.mutex.unlock();
         }
         if (newChunk.isNonNull()) {
-            ParallelGC.setAllocationChunk(newChunk);
+            ParallelGC.singleton().setAllocationChunk(newChunk);
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
         return WordFactory.nullPointer();

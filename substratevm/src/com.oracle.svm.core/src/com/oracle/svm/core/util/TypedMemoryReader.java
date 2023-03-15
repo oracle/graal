@@ -28,7 +28,6 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 
-// TEMP (chaeubl): this class could be removed (e.g., combined with native coder)
 public class TypedMemoryReader {
     public static int getS1(Pointer ptr) {
         return ptr.readByte(0);

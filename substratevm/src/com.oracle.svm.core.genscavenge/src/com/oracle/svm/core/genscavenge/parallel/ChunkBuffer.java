@@ -28,6 +28,8 @@ package com.oracle.svm.core.genscavenge.parallel;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -50,9 +52,15 @@ public class ChunkBuffer {
         return ConfigurationValues.getTarget().wordSize;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     ChunkBuffer() {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void initialize() {
         this.size = INITIAL_SIZE;
-        this.buffer = malloc(this.size);
+        // TODO (petermz): needs proper error handling
+        this.buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(this.size));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -62,7 +70,8 @@ public class ChunkBuffer {
             int oldSize = size;
             size *= 2;
             assert top < size;
-            buffer = realloc(buffer, size);
+            // TODO (petermz): needs proper error handling
+            buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(buffer, WordFactory.unsigned(size));
         }
         buffer.writeWord(top, ptr);
         top += wordSize();
@@ -89,22 +98,8 @@ public class ChunkBuffer {
         return top == 0;
     }
 
-    void release() {
-        free(buffer);
-    }
-
-    private static Pointer malloc(int bytes) {
-        // TEMP (chaeubl): needs proper error handling
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(bytes));
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer realloc(Pointer orig, int newSize) {
-        // TEMP (chaeubl): needs proper error handling
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(orig, WordFactory.unsigned(newSize));
-    }
-
-    private static void free(Pointer ptr) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);
+    void release() {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
     }
 }

@@ -307,14 +307,12 @@ public final class YoungGeneration extends Generation {
         return unalignedChunkFitsInSurvivors((UnalignedHeapChunk.UnalignedHeader) chunk);
     }
 
-    // TEMP (chaeubl): this is problematic but it isn't called or?
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean alignedChunkFitsInSurvivors() {
         UnsignedWord sum = survivorsToSpacesAccounting.getChunkBytes().add(HeapParameters.getAlignedHeapChunkSize());
         return sum.belowOrEqual(GCImpl.getPolicy().getSurvivorSpacesCapacity());
     }
 
-    // TEMP (chaeubl): this is problematic but it isn't called or?
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean unalignedChunkFitsInSurvivors(UnalignedHeapChunk.UnalignedHeader chunk) {
         UnsignedWord size = UnalignedHeapChunk.getCommittedObjectMemory(chunk);

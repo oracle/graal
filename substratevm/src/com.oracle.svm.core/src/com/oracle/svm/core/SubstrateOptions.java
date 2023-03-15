@@ -38,7 +38,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -66,6 +65,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -325,6 +325,9 @@ public class SubstrateOptions {
             }
         }
     };
+
+    @Option(help = "Number of worker threads used by ParallelGC.", type = OptionType.User)//
+    public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
 
     private static void requireMultiThreading(OptionKey<?> optionKey) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {

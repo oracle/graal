@@ -223,7 +223,6 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
-            // TEMP (chaeubl): this counter would break
             unmodifiedReference += 1L;
         }
 

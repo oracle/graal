@@ -411,7 +411,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            // TEMP (chaeubl):
+            // TODO (chaeubl): fix this
             // if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
             if (false) {
                 // References compressed with shift have no bits to spare, so the forwarding
@@ -435,7 +435,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            // TEMP (chaeubl):
+            // TODO (chaeubl): fix this
             // if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
             if (false) {
                 // Compression with a shift uses all bits of a reference, so store the forwarding
@@ -460,7 +460,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         UnsignedWord forwardHeader;
         boolean hasShift = false;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            // TEMP (chaeubl):
+            // TODO (chaeubl): fix this
             // if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
             if (false) {
                 forwardHeader = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);

@@ -146,13 +146,6 @@ public final class GCImpl implements GC {
         collect(cause, false);
     }
 
-    @SuppressWarnings("static-method")
-    public void initialize() {
-        if (ParallelGC.isEnabled()) {
-            ParallelGC.singleton().startWorkerThreads();
-        }
-    }
-
     public void maybeCollectOnAllocation() {
         boolean outOfMemory = false;
         if (hasNeverCollectPolicy()) {
@@ -207,6 +200,10 @@ public final class GCImpl implements GC {
     private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(data.getRequestingEpoch());
+
+        if (SubstrateOptions.UseParallelGC.getValue()) {
+            ParallelGC.singleton().initialize();
+        }
 
         timers.mutator.closeAt(data.getRequestingNanoTime());
         startCollectionOrExit();
