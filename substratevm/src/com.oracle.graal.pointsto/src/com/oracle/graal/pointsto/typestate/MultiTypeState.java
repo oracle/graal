@@ -31,9 +31,9 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestate.FastBitSet;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+// This bitset does not support modification after it has been created.
 public class MultiTypeState extends TypeState {
 
     /**
@@ -193,4 +193,138 @@ public class MultiTypeState extends TypeState {
     public String toString() {
         return "MType<" + typesCount + ":" + (canBeNull ? "null," : "") + "TODO" + ">";
     }
+
+  class SmallBitSet {
+      public SmallBitSet(BitSet other) {
+          assert other.cardinality() <= MAX_CARDINALITY;
+          for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i+1)) {
+              set[cardinality++] = i;
+          }
+          assert cardinality == other.cardinality();
+      }
+
+      public boolean get(int bit) {
+          assert bit >= 0: "get() bit must be non-negative";
+          for (int i = 0; i < cardinality(); i++) {
+              if (set[i] == bit) {
+                  return true;
+              }
+          }
+          return false;
+      }
+
+      public int cardinality() {
+          return cardinality;
+      }
+
+      // // This is O(n^2) where n is MAX_CARDINALITY, so it's actually O(1).
+      // public boolean isSuperSet(SmallBitSet other) {
+      //     for (int i = 0; i < other.cardinality(); i++) {
+      //         if (!get(other.set[i])) {
+      //             return false;
+      //         }
+      //     }
+      //     return true;
+      // }
+
+      private int lastSetBit() {
+        assert cardinality > 0 : "SmallBitSet should never be empty";
+        return nextSetBit(cardinality-1);
+      }
+
+      public BitSet asBitSet() {
+          BitSet result = new BitSet(set[cardinality-1]+1);
+          for (int i = 0; i < cardinality(); i++) {
+              result.set(set[i]);
+          }
+          // Clone will trim to size
+          return (BitSet) result.clone();
+      }
+
+      public int nextSetBit(int fromIndex) {
+          if (fromIndex < 0) {
+              throw new IndexOutOfBoundsException();
+          }
+          for (int i = 0; i < cardinality(); i++) {
+            int current = set[i];
+            assert current != UNSET : "found UNSET in valid section";
+            if (current >= fromIndex) {
+              return current;
+            }
+          }
+          return UNSET;
+      }
+
+      public String toString() {
+          String result = "{";
+          String sep = "";
+          for (int i = 0; i < cardinality(); i++) {
+              result += sep;
+              result += String.valueOf(set[i]);
+              sep = ", ";
+          }
+          result += "}";
+          return result;
+      }
+
+      public String repr() {
+          String result = "{";
+          String sep = "";
+          for (int i = 0; i < MAX_CARDINALITY; i++) {
+              result += sep;
+              result += String.valueOf(set[i]);
+              sep = ", ";
+          }
+          result += "}";
+          return result;
+      }
+
+      public static final int UNSET = -1;
+      public static final int MAX_CARDINALITY = 10;
+      int set[] = new int[MAX_CARDINALITY];
+      int cardinality = 0;
+  }
+
+  protected class FastBitSet {
+      public FastBitSet(BitSet other) {
+          cardinality = other.cardinality();
+          if (isSmall()) {
+              set = new SmallBitSet(other);
+          } else {
+              set = other;
+          }
+      }
+
+      public BitSet asBitSet() {
+          if (isSmall()) {
+              return ((SmallBitSet)this.set).asBitSet();
+          }
+          return (BitSet)set;
+      }
+
+      public boolean get(int idx) {
+          if (isSmall()) {
+              return ((SmallBitSet)this.set).get(idx);
+          }
+          return ((BitSet)set).get(idx);
+      }
+
+      public int nextSetBit() {
+          return nextSetBit(0);
+      }
+
+      public int nextSetBit(int fromIndex) {
+          if (isSmall()) {
+              return ((SmallBitSet)this.set).nextSetBit(fromIndex);
+          }
+          return ((BitSet)set).nextSetBit(fromIndex);
+      }
+
+      private boolean isSmall() {
+          return cardinality <= SmallBitSet.MAX_CARDINALITY;
+      }
+
+      int cardinality;
+      Object set;
+  }
 }
