@@ -38,9 +38,12 @@ public class MultiTypeState extends TypeState {
 
     /**
      * Keep a bit set for types to easily answer queries like contains type or types count, and
-     * quickly iterate over the types.
+     * quickly iterate over the types. This bit set is represented by
+     * SmallBitSet if the cardinality is small (below
+     * SmallBitSet.MAX_CARDINALITY) and typesBitSet otherwise.
      */
-    protected final FastBitSet typesBitSet;
+    protected final SmallBitSet smallTypesBitSet;
+    protected final BitSet typesBitSet;
     /** Cache the number of types since BitSet.cardinality() computes it every time is called. */
     protected final int typesCount;
     /** Can this type state represent the null value? */
@@ -51,8 +54,14 @@ public class MultiTypeState extends TypeState {
     /** Creates a new type state using the provided types bit set and objects. */
     public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
         assert !TypeStateUtils.needsTrim(typesBitSet);
-        this.typesBitSet = new FastBitSet(typesBitSet);
         this.typesCount = typesCount;
+        if (isSmall()) {
+            this.smallTypesBitSet = new SmallBitSet(typesBitSet);
+            this.typesBitSet = null;
+        } else {
+            this.typesBitSet = typesBitSet;
+            this.smallTypesBitSet = null;
+        }
         this.canBeNull = canBeNull;
         this.merged = false;
         assert this.typesCount > 1 : "Multi type state with single type.";
@@ -61,8 +70,14 @@ public class MultiTypeState extends TypeState {
 
     /** Create a type state with the same content and a reversed canBeNull value. */
     protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
-        this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
+        if (isSmall()) {
+            this.smallTypesBitSet = other.smallTypesBitSet;
+            this.typesBitSet = null;
+        } else {
+            this.typesBitSet = other.typesBitSet;
+            this.smallTypesBitSet = null;
+        }
         this.canBeNull = canBeNull;
         this.merged = other.merged;
         PointsToStats.registerTypeState(bb, this);
@@ -84,8 +99,15 @@ public class MultiTypeState extends TypeState {
         return typesCount;
     }
 
+    private boolean isSmall() {
+        return typesCount <= SmallBitSet.MAX_CARDINALITY;
+    }
+
     public BitSet typesBitSet() {
-        return typesBitSet.asBitSet();
+        if (isSmall()) {
+            return smallTypesBitSet.asBitSet();
+        }
+        return typesBitSet;
     }
 
     @Override
@@ -108,9 +130,20 @@ public class MultiTypeState extends TypeState {
         };
     }
 
+    protected int firstSetBit() {
+        return nextSetBitSmall(0);
+    }
+
+    protected int nextSetBitSmall(int fromIndex) {
+        if (isSmall()) {
+            return smallTypesBitSet.nextSetBit(fromIndex);
+        }
+        return typesBitSet.nextSetBit(fromIndex);
+    }
+
     /** Iterates over the types bit set and returns the type IDs in ascending order. */
     private abstract class BitSetIterator<T> implements Iterator<T> {
-        private int current = typesBitSet.nextSetBit(0);
+        private int current = firstSetBit();
 
         @Override
         public boolean hasNext() {
@@ -119,7 +152,7 @@ public class MultiTypeState extends TypeState {
 
         public Integer nextSetBit() {
             int next = current;
-            current = typesBitSet.nextSetBit(current + 1);
+            current = nextSetBitSmall(current + 1);
             return next;
         }
     }
@@ -131,7 +164,17 @@ public class MultiTypeState extends TypeState {
 
     @Override
     public final boolean containsType(AnalysisType exactType) {
+        if (isSmall()) {
+            return smallTypesBitSet.get(exactType.getId());
+        }
         return typesBitSet.get(exactType.getId());
+    }
+
+    protected boolean bitSetEquals(MultiTypeState that) {
+        if (isSmall()) {
+            return this.smallTypesBitSet.equals(that.smallTypesBitSet);
+        }
+        return this.typesBitSet.equals(that.typesBitSet);
     }
 
     @Override
@@ -170,7 +213,7 @@ public class MultiTypeState extends TypeState {
     @Override
     public int hashCode() {
         int result = 1;
-        result = 31 * result + typesBitSet.hashCode();
+        result = 31 * result + (isSmall() ? smallTypesBitSet.hashCode() : typesBitSet.hashCode());
         result = 31 * result + (canBeNull ? 1 : 0);
         return result;
     }
@@ -186,7 +229,7 @@ public class MultiTypeState extends TypeState {
 
         MultiTypeState that = (MultiTypeState) o;
         return this.canBeNull == that.canBeNull &&
-                        this.typesCount == that.typesCount && this.typesBitSet.equals(that.typesBitSet);
+                        this.typesCount == that.typesCount && this.bitSetEquals(that);
     }
 
     @Override
@@ -269,48 +312,5 @@ public class MultiTypeState extends TypeState {
       public static final int MAX_CARDINALITY = 10;
       int set[] = new int[MAX_CARDINALITY];
       int cardinality = 0;
-  }
-
-  protected class FastBitSet {
-      public FastBitSet(BitSet other) {
-          cardinality = other.cardinality();
-          if (isSmall()) {
-              set = new SmallBitSet(other);
-          } else {
-              set = other;
-          }
-      }
-
-      public BitSet asBitSet() {
-          if (isSmall()) {
-              return ((SmallBitSet)this.set).asBitSet();
-          }
-          return (BitSet)set;
-      }
-
-      public boolean get(int idx) {
-          if (isSmall()) {
-              return ((SmallBitSet)this.set).get(idx);
-          }
-          return ((BitSet)set).get(idx);
-      }
-
-      public int nextSetBit() {
-          return nextSetBit(0);
-      }
-
-      public int nextSetBit(int fromIndex) {
-          if (isSmall()) {
-              return ((SmallBitSet)this.set).nextSetBit(fromIndex);
-          }
-          return ((BitSet)set).nextSetBit(fromIndex);
-      }
-
-      private boolean isSmall() {
-          return cardinality <= SmallBitSet.MAX_CARDINALITY;
-      }
-
-      int cardinality;
-      Object set;
   }
 }
