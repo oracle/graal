@@ -256,11 +256,6 @@ public class MultiTypeState extends TypeState {
           return false;
       }
 
-      private int lastSetBit() {
-        assert cardinality > 0 : "SmallBitSet should never be empty";
-        return nextSetBit(cardinality-1);
-      }
-
       public BitSet asBitSet() {
           BitSet result = new BitSet(set[cardinality-1]+1);
           for (int i = 0; i < cardinality; i++) {
@@ -288,18 +283,6 @@ public class MultiTypeState extends TypeState {
           String result = "{";
           String sep = "";
           for (int i = 0; i < cardinality; i++) {
-              result += sep;
-              result += String.valueOf(set[i]);
-              sep = ", ";
-          }
-          result += "}";
-          return result;
-      }
-
-      public String repr() {
-          String result = "{";
-          String sep = "";
-          for (int i = 0; i < MAX_CARDINALITY; i++) {
               result += sep;
               result += String.valueOf(set[i]);
               sep = ", ";
