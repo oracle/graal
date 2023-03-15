@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-// This bitset does not support modification after it has been created.
 public class MultiTypeState extends TypeState {
 
     /**
