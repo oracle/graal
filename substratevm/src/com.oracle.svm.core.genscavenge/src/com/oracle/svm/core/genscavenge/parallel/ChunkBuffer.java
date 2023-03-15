@@ -26,13 +26,14 @@
 
 package com.oracle.svm.core.genscavenge.parallel;
 
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 
 /**
  * Synchronized buffer that stores "grey" heap chunks to be scanned.
@@ -54,21 +55,23 @@ public class ChunkBuffer {
         this.buffer = malloc(this.size);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void push(Pointer ptr) {
-        assert !ParallelGC.isInParallelPhase() || ParallelGC.mutex.isOwner();
+        assert !ParallelGC.isInParallelPhase() || ParallelGC.mutex.hasOwner();
         if (top >= size) {
             int oldSize = size;
             size *= 2;
             assert top < size;
-            buffer = realloc(buffer, oldSize, size);
+            buffer = realloc(buffer, size);
         }
         buffer.writeWord(top, ptr);
         top += wordSize();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pointer pop() {
         assert ParallelGC.isInParallelPhase();
-        ParallelGC.mutex.lock();
+        ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         try {
             if (top > 0) {
                 top -= wordSize();
@@ -87,24 +90,21 @@ public class ChunkBuffer {
     }
 
     void release() {
-        free(buffer, size);
+        free(buffer);
     }
 
-    @AlwaysInline("GC performance")
     private static Pointer malloc(int bytes) {
-        return CommittedMemoryProvider.get().allocateUnalignedChunk(WordFactory.unsigned(bytes));
+        // TEMP (chaeubl): needs proper error handling
+        return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(bytes));
     }
 
-    @AlwaysInline("GC performance")
-    private static Pointer realloc(Pointer orig, int origSize, int newSize) {
-        Pointer ptr = malloc(newSize);
-        UnmanagedMemoryUtil.copyLongsForward(orig, ptr, WordFactory.unsigned(origSize));
-        free(orig, origSize);
-        return ptr;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static Pointer realloc(Pointer orig, int newSize) {
+        // TEMP (chaeubl): needs proper error handling
+        return ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(orig, WordFactory.unsigned(newSize));
     }
 
-    @AlwaysInline("GC performance")
-    private static void free(Pointer ptr, int bytes) {
-        CommittedMemoryProvider.get().freeUnalignedChunk(ptr, WordFactory.unsigned(bytes));
+    private static void free(Pointer ptr) {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);
     }
 }

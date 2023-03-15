@@ -26,6 +26,16 @@
 
 package com.oracle.svm.core.genscavenge.parallel;
 
+import java.util.stream.IntStream;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -33,7 +43,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.jdk.Jvm;
@@ -45,15 +54,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import java.util.stream.IntStream;
 
 public class ParallelGC {
 
@@ -86,20 +86,24 @@ public class ParallelGC {
         return SubstrateOptions.UseParallelGC.getValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInParallelPhase() {
         return singleton().inParallelPhase;
     }
 
+    @Uninterruptible(reason = "Called from a GC worker thread.")
     public static AlignedHeapChunk.AlignedHeader getAllocationChunk() {
         return allocChunkTL.get();
     }
 
+    @Uninterruptible(reason = "Called from a GC worker thread.")
     public static void setAllocationChunk(AlignedHeapChunk.AlignedHeader chunk) {
         assert chunk.isNonNull();
         allocChunkTL.set(chunk);
         allocChunkScanOffsetTL.set(AlignedHeapChunk.getObjectsStartOffset());
     }
 
+    @Uninterruptible(reason = "Called from a GC worker thread.")
     public void push(Pointer ptr) {
         assert ptr.isNonNull();
         if (buffer != null) {
@@ -110,6 +114,7 @@ public class ParallelGC {
         }
     }
 
+    @Uninterruptible(reason = "Called from a GC worker thread.")
     public void pushAllocChunk(AlignedHeapChunk.AlignedHeader chunk) {
         assert isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
         if (chunk.notEqual(scannedChunkTL.get())) {
@@ -142,42 +147,41 @@ public class ParallelGC {
     }
 
     private Thread startWorkerThread(int n) {
-        Thread t = new Thread(() -> {
-            VMThreads.SafepointBehavior.useAsParallelGCThread();
-            debugLog().string("WW start ").unsigned(n).newline();
-
-            while (true) {
-                try {
-                    Pointer ptr;
-                    while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning()) {
-                        mutex.lock();
-                        try {
-                            if (--busyWorkers == 0) {
-                                inParallelPhase = false;
-                                seqPhase.signal();
-                            }
-                            debugLog().string("WW idle ").unsigned(n).newline();
-                            parPhase.block();
-                            ++busyWorkers;
-                            debugLog().string("WW run ").unsigned(n).newline();
-                        } finally {
-                            mutex.unlock();
-                        }
-                    }
-
-                    do {
-                        scanChunk(ptr);
-                    } while ((ptr = buffer.pop()).isNonNull());
-                    scanAllocChunk();
-                } catch (Throwable ex) {
-                    VMError.shouldNotReachHere(ex);
-                }
-            }
-        });
+        Thread t = new Thread(this::work);
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();
         return t;
+    }
+
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    private void work() {
+        VMThreads.SafepointBehavior.useAsParallelGCThread();
+        while (true) {
+            try {
+                Pointer ptr;
+                while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning()) {
+                    mutex.lockNoTransitionUnspecifiedOwner();
+                    try {
+                        if (--busyWorkers == 0) {
+                            inParallelPhase = false;
+                            seqPhase.signal();
+                        }
+                        parPhase.blockNoTransition();
+                        ++busyWorkers;
+                    } finally {
+                        mutex.unlock();
+                    }
+                }
+
+                do {
+                    scanChunk(ptr);
+                } while ((ptr = buffer.pop()).isNonNull());
+                scanAllocChunk();
+            } catch (Throwable ex) {
+                VMError.shouldNotReachHere(ex);
+            }
+        }
     }
 
     /**
@@ -221,33 +225,31 @@ public class ParallelGC {
         return true;
     }
 
-    @SuppressWarnings("static-method")
-    private void scanChunk(Pointer ptr) {
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    private static void scanChunk(Pointer ptr) {
         if (ptr.isNonNull()) {
-            debugLog().string("WW scan chunk=").zhex(ptr).newline();
             if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
-                UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
+                UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
             } else {
                 Pointer start = ptr;
                 AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptr);
                 if (chunk.equal(ptr)) {
                     start = ptr.add(AlignedHeapChunk.getObjectsStartOffset());
                 }
-                HeapChunk.walkObjectsFromInline(chunk, start, getVisitor());
+                HeapChunk.walkObjectsFromInline(chunk, start, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
             }
         }
     }
 
-    @SuppressWarnings("static-method")
-    private void scanAllocChunk() {
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    private static void scanAllocChunk() {
         if (allocChunkNeedsScanning()) {
             AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
             UnsignedWord scanOffset = allocChunkScanOffsetTL.get();
             assert scanOffset.aboveThan(0);
             Pointer scanPointer = HeapChunk.asPointer(allocChunk).add(scanOffset);
-            debugLog().string("WW scan alloc=").zhex(allocChunk).string(" from offset ").unsigned(scanOffset).newline();
             scannedChunkTL.set(allocChunk);
-            HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, getVisitor());
+            HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
             scannedChunkTL.set(WordFactory.nullPointer());
             if (allocChunkTL.get().equal(allocChunk)) {
                 // remember top offset so that we don't scan the same objects again
@@ -256,14 +258,10 @@ public class ParallelGC {
         }
     }
 
-    @SuppressWarnings("static-method")
-    private boolean allocChunkNeedsScanning() {
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    private static boolean allocChunkNeedsScanning() {
         AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
         return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(allocChunkScanOffsetTL.get());
-    }
-
-    private static GreyToBlackObjectVisitor getVisitor() {
-        return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
     }
 
     @SuppressWarnings("static-method")
@@ -283,6 +281,7 @@ public class ParallelGC {
         return SubstrateGCOptions.VerboseGC.getValue() ? Log.log() : Log.noopLog();
     }
 
+    @Uninterruptible(reason = "Called from a GC worker thread.")
     static Log debugLog() {
         return Log.noopLog();
     }

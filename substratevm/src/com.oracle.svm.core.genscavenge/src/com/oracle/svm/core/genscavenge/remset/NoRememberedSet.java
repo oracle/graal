@@ -34,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -85,16 +86,20 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(AlignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(UnalignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
         // Nothing to do.
     }
@@ -105,12 +110,14 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(UnalignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasRememberedSet(UnsignedWord header) {
         return false;
     }
@@ -127,6 +134,7 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardIfNecessary(Object holderObject, Object object) {
         // Nothing to do.
     }

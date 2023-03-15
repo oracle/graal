@@ -41,8 +41,8 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
@@ -177,6 +177,7 @@ public final class HeapChunk {
         void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
         HeapChunk.setEndOffset(chunk, chunkSize);
         HeapChunk.setTopPointer(chunk, objectsStart);
@@ -306,6 +307,7 @@ public final class HeapChunk {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
         Pointer offset = startOffset;
         while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read

@@ -921,6 +921,7 @@ public abstract class VMThreads {
          * Marks the thread as ParallelGC worker thread. The thread won't freeze at safepoints, so
          * it must not keep references to movable heap objects on its stack.
          */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void useAsParallelGCThread() {
             safepointBehaviorTL.setVolatile(PARALLEL_GC_THREAD);
         }

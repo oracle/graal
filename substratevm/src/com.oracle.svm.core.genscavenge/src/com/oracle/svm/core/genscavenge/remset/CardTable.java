@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
@@ -83,10 +84,12 @@ final class CardTable {
     private CardTable() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void cleanTable(Pointer tableStart, UnsignedWord size) {
         UnmanagedMemoryUtil.fill(tableStart, size, CLEAN_ENTRY);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setDirty(Pointer table, UnsignedWord index) {
         byte valueBefore = table.readByte(index, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
         // Using a likely probability should typically avoid placing the write below at a separate
@@ -100,6 +103,7 @@ final class CardTable {
         table.writeByte(index, CLEAN_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDirty(Pointer table, UnsignedWord index) {
         int entry = readEntry(table, index);
         return entry == DIRTY_ENTRY;
@@ -110,10 +114,12 @@ final class CardTable {
         return entry == CLEAN_ENTRY;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readEntry(Pointer table, UnsignedWord index) {
         return table.readByte(index);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
         return offset.unsignedDivide(BYTES_COVERED_BY_ENTRY);
     }

@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
@@ -66,6 +67,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
@@ -107,6 +109,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
         long referenceMapIndex = objHub.getReferenceMapIndex();
@@ -116,6 +119,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkPod(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         if (!Pod.RuntimeSupport.isPresent()) {
             throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
@@ -124,6 +128,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
         if (!Continuation.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
@@ -132,11 +137,13 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkOther() {
         throw VMError.shouldNotReachHere("Unexpected object with hub type 'other' in the heap.");
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkObjectArray(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         int length = ArrayLengthNode.arrayLength(obj);
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();

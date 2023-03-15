@@ -60,6 +60,7 @@ final class ChunksAccounting {
         unalignedChunkBytes = WordFactory.zero();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getChunkBytes() {
         return getAlignedChunkBytes().add(getUnalignedChunkBytes());
     }
@@ -117,10 +118,12 @@ final class ChunksAccounting {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void unnoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         unnoteUnaligned(UnalignedHeapChunk.getCommittedObjectMemory(chunk));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void unnoteUnaligned(UnsignedWord size) {
         unalignedCount--;
         unalignedChunkBytes = unalignedChunkBytes.subtract(size);

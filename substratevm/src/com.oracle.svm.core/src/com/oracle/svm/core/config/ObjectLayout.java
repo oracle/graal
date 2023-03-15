@@ -75,11 +75,13 @@ public final class ObjectLayout {
     }
 
     /** The minimum alignment of objects (instances and arrays). */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getAlignment() {
         return objectAlignment;
     }
 
     /** Tests if the given offset or address is aligned according to {@link #getAlignment()}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAligned(final long value) {
         return (value % getAlignment() == 0L);
     }

@@ -83,6 +83,7 @@ public final class AlignedHeapChunk {
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
     }
@@ -101,6 +102,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer allocateMemory(AlignedHeader that, UnsignedWord size) {
         Pointer result = WordFactory.nullPointer();
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
@@ -113,6 +115,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Retract the latest allocation. Used by parallel collector. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer retractAllocation(AlignedHeader that, UnsignedWord size) {
         Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
         assert newTop.aboveThan(HeapChunk.asPointer(that));
@@ -137,6 +140,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Return the offset of an object within the objects part of a chunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getObjectOffset(AlignedHeader that, Pointer objectPointer) {
         Pointer objectsStart = getObjectsStart(that);
         return objectPointer.subtract(objectsStart);

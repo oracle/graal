@@ -177,6 +177,7 @@ final class SingleThreadedVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         /* Nothing to do. */
     }

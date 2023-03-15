@@ -63,6 +63,7 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub dynamicHubFromObjectHeader(Word header);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
     }

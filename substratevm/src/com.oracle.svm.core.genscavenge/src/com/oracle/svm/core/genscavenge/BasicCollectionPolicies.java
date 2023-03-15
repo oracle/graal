@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -167,6 +168,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public UnsignedWord getSurvivorSpacesCapacity() {
             return WordFactory.zero();
         }
@@ -202,6 +204,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int getTenuringAge() {
             return 1;
         }
