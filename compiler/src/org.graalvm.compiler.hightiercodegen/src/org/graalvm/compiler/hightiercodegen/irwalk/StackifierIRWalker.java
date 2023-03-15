@@ -450,16 +450,29 @@ public class StackifierIRWalker extends IRWalker {
         HIRBlock excpSucc = cfg.blockFor(lastNode.exceptionEdge());
         CatchScopeContainer scopeEntry = (CatchScopeContainer) stackifierData.getScopeEntry(lastNode);
         Scope catchScope = scopeEntry.getCatchScope();
+
+        codeGenTool.genTryBlock();
         /*
          * Since the ExceptionObjectNode is needed inside the catch block already, the
          * ExceptionObjectNode is lowered here together with the InvokeWithExceptionNode and skipped
          * once it is encountered in its own basic block.
          */
-        ExceptionObjectNode excpObj = (ExceptionObjectNode) excpSucc.getBeginNode();
-        codeGenTool.genTryBlock();
         lowerNode(lastNode);
         generateForwardJump(currentBlock, normSucc, stackifierData);
-        codeGenTool.genCatchBlockPrefix(codeGenTool.getExceptionObjectId(excpObj), excpObj.stamp(NodeView.DEFAULT));
+
+        String caughtObjectName = codeGenTool.getExceptionObjectId(excpSucc.getBeginNode());
+        ResolvedJavaType caughtObjectType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(Throwable.class);
+        /*
+         * The exception edge does not necessarily have to be an ExceptionObjectNode. It could also,
+         * for example, be an UnreachableBeginNode. To cover those instances, the default type of
+         * the caught object is set to Throwable, and only changed if the exception edge indeed is
+         * an ExceptionObjectNode
+         */
+        if (excpSucc.getBeginNode()instanceof ExceptionObjectNode excpObj) {
+            caughtObjectType = excpObj.stamp(NodeView.DEFAULT).javaType(codeGenTool.getProviders().getMetaAccess());
+        }
+        codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
+
         if (catchScope != null) {
             lowerBlocks(catchScope.getSortedBlocks());
         } else {
@@ -526,6 +539,11 @@ public class StackifierIRWalker extends IRWalker {
         codeGenTool.genSwitchCase(keys);
     }
 
+    /**
+     * Generates code for the default case of an integer switch.
+     *
+     * @param switchNode the {@link IntegerSwitchNode} that is being lowered.
+     */
     protected void lowerSwitchDefaultCase(IntegerSwitchNode switchNode) {
         codeGenTool.genSwitchDefaultCase();
     }

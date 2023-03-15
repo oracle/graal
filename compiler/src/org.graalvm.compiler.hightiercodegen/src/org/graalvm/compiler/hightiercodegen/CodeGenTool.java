@@ -38,12 +38,11 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 public abstract class CodeGenTool {
 
@@ -372,7 +371,7 @@ public abstract class CodeGenTool {
     public abstract void genThrow(ValueNode exception);
 
     @SuppressWarnings("deprecation")
-    public String getExceptionObjectId(ExceptionObjectNode n) {
+    public String getExceptionObjectId(Node n) {
         return "exception_object_" + n.getId();
     }
 
