@@ -132,6 +132,13 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    public boolean isCurrentPinned() {
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        Target_jdk_internal_vm_ContinuationScope scope = carrier.cont.getScope();
+        return Target_jdk_internal_vm_Continuation.isPinned(scope);
+    }
+
+    @Override
     public Executor getScheduler(Thread thread) {
         return cast(thread).scheduler;
     }
