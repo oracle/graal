@@ -84,7 +84,7 @@ public class MultiTypeState extends TypeState {
         return typesCount;
     }
 
-    protected BitSet typesBitSet() {
+    public BitSet typesBitSet() {
         return typesBitSet.asBitSet();
     }
 
