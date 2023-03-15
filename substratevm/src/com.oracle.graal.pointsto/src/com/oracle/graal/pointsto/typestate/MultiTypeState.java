@@ -165,9 +165,9 @@ public class MultiTypeState extends TypeState {
     @Override
     public final boolean containsType(AnalysisType exactType) {
         if (isSmall()) {
-            return smallTypesBitSet.get(exactType.getId());
+            return this.smallTypesBitSet.get(exactType.getId());
         }
-        return typesBitSet.get(exactType.getId());
+        return this.typesBitSet.get(exactType.getId());
     }
 
     protected boolean bitSetEquals(MultiTypeState that) {
