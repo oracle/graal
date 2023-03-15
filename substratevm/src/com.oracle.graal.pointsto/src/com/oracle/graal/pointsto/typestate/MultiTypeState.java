@@ -188,13 +188,13 @@ public class MultiTypeState extends TypeState {
             // The other TypeState is small. Drive the loop with it.
             SmallBitSet obs = other.smallTypesBitSet;
             if (this.isSmall()) {
-                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i+1)) {
+                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i + 1)) {
                     if (smallTypesBitSet.get(i)) {
                         return true;
                     }
                 }
             } else {
-                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i+1)) {
+                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i + 1)) {
                     if (typesBitSet.get(i)) {
                         return true;
                     }
@@ -203,7 +203,7 @@ public class MultiTypeState extends TypeState {
         } else {
             if (this.isSmall()) {
                 // This TypeState is small. Drive the loop with it.
-                for (int i = smallTypesBitSet.nextSetBit(0); i >= 0; i = smallTypesBitSet.nextSetBit(i+1)) {
+                for (int i = smallTypesBitSet.nextSetBit(0); i >= 0; i = smallTypesBitSet.nextSetBit(i + 1)) {
                     if (other.typesBitSet.get(i)) {
                         return true;
                     }
@@ -278,7 +278,7 @@ public class MultiTypeState extends TypeState {
     class SmallBitSet {
         public SmallBitSet(BitSet other) {
             assert other.cardinality() <= MAX_CARDINALITY;
-            for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i+1)) {
+            for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i + 1)) {
                 set[cardinality++] = i;
             }
             assert cardinality == other.cardinality();
@@ -297,7 +297,7 @@ public class MultiTypeState extends TypeState {
         // Returns the "logical size" of this BitSet: the index of the highest
         // set bit in the BitSet plus one.
         public int length() {
-            return set[cardinality-1]+1;
+            return set[cardinality - 1] + 1;
         }
 
         public BitSet asBitSet() {
