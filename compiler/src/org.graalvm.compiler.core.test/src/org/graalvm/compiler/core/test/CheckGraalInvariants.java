@@ -257,7 +257,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 try {
                     if (path.equals(JRT_CLASS_PATH_ENTRY)) {
                         for (String className : ModuleSupport.getJRTGraalClassNames()) {
-                            if (isGSON(className)) {
+                            if (isGSON(className) || isONNX(className)) {
                                 continue;
                             }
                             classNames.add(className);
@@ -273,7 +273,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                 String name = root.relativize(p).toString();
                                 if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
                                     String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                                    if (!(isInNativeImage(className) || isGSON(className))) {
+                                    if (!(isInNativeImage(className) || isGSON(className) || isONNX(className))) {
                                         classNames.add(className);
                                     }
                                 }
@@ -285,7 +285,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                 String name = zipEntry.getName();
                                 if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
                                     String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                                    if (isInNativeImage(className) || isGSON(className)) {
+                                    if (isInNativeImage(className) || isGSON(className) || isONNX(className)) {
                                         continue;
                                     }
                                     classNames.add(className);
@@ -533,6 +533,13 @@ public class CheckGraalInvariants extends GraalCompilerTest {
      */
     private static boolean isGSON(String className) {
         return className.contains("com.google.gson");
+    }
+
+    /**
+     * ONNXRuntime: do not check for the svm invariants.
+     */
+    private static boolean isONNX(String className) {
+        return className.contains("ai.onnxruntime");
     }
 
     private static List<Class<?>> loadClasses(InvariantsTool tool, List<String> classNames) {
