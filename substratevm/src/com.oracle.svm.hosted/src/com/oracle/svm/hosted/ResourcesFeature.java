@@ -449,7 +449,7 @@ public final class ResourcesFeature implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try {
-                    if (!sealed && receiver.isConstant() && arg.isConstant() && !arg.isNullConstant()) {
+                    if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
                         String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
