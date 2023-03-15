@@ -205,16 +205,12 @@ public class MultiTypeState extends TypeState {
 
       public boolean get(int bit) {
           assert bit >= 0: "get() bit must be non-negative";
-          for (int i = 0; i < cardinality(); i++) {
+          for (int i = 0; i < cardinality; i++) {
               if (set[i] == bit) {
                   return true;
               }
           }
           return false;
-      }
-
-      public int cardinality() {
-          return cardinality;
       }
 
       private int lastSetBit() {
@@ -224,7 +220,7 @@ public class MultiTypeState extends TypeState {
 
       public BitSet asBitSet() {
           BitSet result = new BitSet(set[cardinality-1]+1);
-          for (int i = 0; i < cardinality(); i++) {
+          for (int i = 0; i < cardinality; i++) {
               result.set(set[i]);
           }
           // Clone will trim to size
@@ -235,7 +231,7 @@ public class MultiTypeState extends TypeState {
           if (fromIndex < 0) {
               throw new IndexOutOfBoundsException();
           }
-          for (int i = 0; i < cardinality(); i++) {
+          for (int i = 0; i < cardinality; i++) {
             int current = set[i];
             assert current != UNSET : "found UNSET in valid section";
             if (current >= fromIndex) {
@@ -248,7 +244,7 @@ public class MultiTypeState extends TypeState {
       public String toString() {
           String result = "{";
           String sep = "";
-          for (int i = 0; i < cardinality(); i++) {
+          for (int i = 0; i < cardinality; i++) {
               result += sep;
               result += String.valueOf(set[i]);
               sep = ", ";
