@@ -70,6 +70,8 @@ public interface VirtualThreads {
 
     void unpinCurrent();
 
+    boolean isCurrentPinned();
+
     Executor getScheduler(Thread thread);
 
     void blockedOn(Target_sun_nio_ch_Interruptible b);

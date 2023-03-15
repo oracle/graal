@@ -42,12 +42,14 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.WeakIdentityHashMap;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
@@ -55,6 +57,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -328,15 +331,35 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     protected void doWait(Object obj, long timeoutMillis) throws InterruptedException {
         /*
-         * Ensure that the current thread holds the lock. Required by the specification of
-         * Object.wait, and also required for our implementation.
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned
+         * unless the thread is pinned for other reasons. Also, we get interrupted on the virtual
+         * thread instead of the carrier thread, which clears the carrier thread's interrupt status
+         * too, so we don't have to intercept an InterruptedException from the carrier thread to
+         * clear the virtual thread interrupt.
          */
-        JavaMonitor lock = ensureLocked(obj, MonitorInflationCause.WAIT);
-        JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
-        if (timeoutMillis == 0L) {
-            condition.await(obj);
-        } else {
-            condition.await(obj, timeoutMillis, TimeUnit.MILLISECONDS);
+        long compensation = -1;
+        boolean pinned = JavaVersionUtil.JAVA_SPEC >= 19 && VirtualThreads.isSupported() &&
+                        VirtualThreads.singleton().isVirtual(Thread.currentThread()) && VirtualThreads.singleton().isCurrentPinned();
+        if (pinned) {
+            compensation = Target_jdk_internal_misc_Blocker.begin();
+        }
+        try {
+            /*
+             * Ensure that the current thread holds the lock. Required by the specification of
+             * Object.wait, and also required for our implementation.
+             */
+            JavaMonitor lock = ensureLocked(obj, MonitorInflationCause.WAIT);
+            JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
+            if (timeoutMillis == 0L) {
+                condition.await(obj);
+            } else {
+                condition.await(obj, timeoutMillis, TimeUnit.MILLISECONDS);
+            }
+        } finally {
+            if (pinned) {
+                Target_jdk_internal_misc_Blocker.end(compensation);
+            }
         }
     }
 
@@ -461,4 +484,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock", onlyWith = JDK17OrEarlier.class)
 final class Target_java_lang_ref_ReferenceQueue_Lock {
+}
+
+@TargetClass(className = "jdk.internal.misc.Blocker", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_misc_Blocker {
+    @Alias
+    public static native long begin();
+
+    @Alias
+    public static native void end(long compensateReturn);
 }
