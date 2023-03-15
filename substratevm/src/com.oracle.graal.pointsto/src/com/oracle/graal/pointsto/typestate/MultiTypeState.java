@@ -37,9 +37,8 @@ public class MultiTypeState extends TypeState {
 
     /**
      * Keep a bit set for types to easily answer queries like contains type or types count, and
-     * quickly iterate over the types. This bit set is represented by
-     * SmallBitSet if the cardinality is small (below
-     * SmallBitSet.MAX_CARDINALITY) and typesBitSet otherwise.
+     * quickly iterate over the types. This bit set is represented by SmallBitSet if the cardinality
+     * is small (below SmallBitSet.MAX_CARDINALITY) and typesBitSet otherwise.
      */
     protected final SmallBitSet smallTypesBitSet;
     protected final BitSet typesBitSet;
@@ -267,7 +266,7 @@ public class MultiTypeState extends TypeState {
 
         MultiTypeState that = (MultiTypeState) o;
         return this.canBeNull == that.canBeNull &&
-               this.typesCount == that.typesCount && this.bitSetEquals(that);
+                        this.typesCount == that.typesCount && this.bitSetEquals(that);
     }
 
     @Override
