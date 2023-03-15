@@ -379,7 +379,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!s1.intersects(s2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is empty. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
@@ -437,7 +437,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!s1.intersects(s2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }

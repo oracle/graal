@@ -183,6 +183,38 @@ public class MultiTypeState extends TypeState {
         return this.typesBitSet.length();
     }
 
+    public boolean intersects(MultiTypeState other) {
+        if (other.isSmall()) {
+            // The other TypeState is small. Drive the loop with it.
+            SmallBitSet obs = other.smallTypesBitSet;
+            if (this.isSmall()) {
+                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i+1)) {
+                    if (smallTypesBitSet.get(i)) {
+                        return true;
+                    }
+                }
+            } else {
+                for (int i = obs.nextSetBit(0); i >= 0; i = obs.nextSetBit(i+1)) {
+                    if (typesBitSet.get(i)) {
+                        return true;
+                    }
+                }
+            }
+        } else {
+            if (this.isSmall()) {
+                // This TypeState is small. Drive the loop with it.
+                for (int i = smallTypesBitSet.nextSetBit(0); i >= 0; i = smallTypesBitSet.nextSetBit(i+1)) {
+                    if (other.typesBitSet.get(i)) {
+                        return true;
+                    }
+                }
+            } else {
+                return this.typesBitSet.intersects(other.typesBitSet);
+            }
+        }
+        return false;
+    }
+
     @Override
     public TypeState forCanBeNull(PointsToAnalysis bb, boolean resultCanBeNull) {
         if (resultCanBeNull == this.canBeNull()) {
