@@ -106,6 +106,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(AlignedHeader chunk) {
         AlignedChunkRememberedSet.clearRememberedSet(chunk);
     }

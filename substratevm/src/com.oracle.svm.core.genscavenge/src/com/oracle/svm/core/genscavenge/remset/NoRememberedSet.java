@@ -105,6 +105,7 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(AlignedHeader chunk) {
         // Nothing to do.
     }

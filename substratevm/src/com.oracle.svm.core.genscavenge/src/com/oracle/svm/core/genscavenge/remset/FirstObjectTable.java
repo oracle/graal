@@ -350,16 +350,19 @@ final class FirstObjectTable {
         table.writeByte(indexToTableOffset(index), (byte) value);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isUninitializedIndex(Pointer table, UnsignedWord index) {
         int entry = getEntryAtIndex(table, index);
         return isUninitializedEntry(entry);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isValidEntry(int entry) {
         return ENTRY_MIN <= entry && entry <= ENTRY_MAX;
     }
 
     /** May only be used for assertions. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isUninitializedEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
         return entry == UNINITIALIZED_ENTRY;

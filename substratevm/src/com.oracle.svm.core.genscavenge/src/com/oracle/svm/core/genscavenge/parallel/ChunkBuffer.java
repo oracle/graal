@@ -89,7 +89,7 @@ public class ChunkBuffer {
                 return WordFactory.nullPointer();
             }
         } finally {
-            ParallelGC.mutex.unlock();
+            ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
         }
     }
 

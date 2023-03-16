@@ -97,6 +97,7 @@ final class ChunksAccounting {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void unnoteAlignedHeapChunk() {
         alignedCount--;
         if (parent != null) {

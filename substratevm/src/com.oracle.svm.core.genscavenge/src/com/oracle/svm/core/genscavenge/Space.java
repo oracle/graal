@@ -115,6 +115,7 @@ public final class Space {
         return age <= HeapParameters.getMaxSurvivorSpaces();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isSurvivorSpace() {
         return age > 0 && age <= HeapParameters.getMaxSurvivorSpaces();
     }
@@ -236,7 +237,7 @@ public final class Space {
             ParallelGC.singleton().pushAllocChunk(oldChunk);
             newChunk = requestAlignedHeapChunk();
         } finally {
-            ParallelGC.mutex.unlock();
+            ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
         }
         if (newChunk.isNonNull()) {
             ParallelGC.singleton().setAllocationChunk(newChunk);
@@ -284,6 +285,7 @@ public final class Space {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void extractAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
         assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
         extractAlignedHeapChunkUninterruptibly(aChunk);
@@ -533,11 +535,12 @@ public final class Space {
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
         if (ParallelGC.isEnabled() && ParallelGC.isInParallelPhase()) {
-            ParallelGC.mutex.lock();
+            ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         }
         try {
             originalSpace.extractAlignedHeapChunk(chunk);
@@ -546,7 +549,7 @@ public final class Space {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
                 ParallelGC.singleton().push(HeapChunk.asPointer(chunk));
                 if (ParallelGC.isInParallelPhase()) {
-                    ParallelGC.mutex.unlock();
+                    ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
                 }
             }
         }
@@ -576,7 +579,7 @@ public final class Space {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
                 ParallelGC.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGC.UNALIGNED_BIT));
                 if (ParallelGC.isInParallelPhase()) {
-                    ParallelGC.mutex.unlock();
+                    ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
                 }
             }
         }

@@ -224,10 +224,10 @@ public class ParallelGC {
                         inParallelPhase = false;
                         seqPhase.signal();
                     }
-                    parPhase.blockNoTransition();
+                    parPhase.blockNoTransitionUnspecifiedOwner();
                     ++busyWorkerThreads;
                 } finally {
-                    mutex.unlock();
+                    mutex.unlockNoTransitionUnspecifiedOwner();
                 }
             }
 
@@ -244,7 +244,7 @@ public class ParallelGC {
      * @return false if worker threads have not been started yet. This can happen if GC happens very
      *         early during application startup.
      */
-    public boolean waitForIdle() {
+    public void waitForIdle() {
         GCWorkerThreadState state = getWorkerThreadState();
         assert state.getAllocChunk().isNonNull();
         push(HeapChunk.asPointer(state.getAllocChunk()));
@@ -274,7 +274,6 @@ public class ParallelGC {
         for (int i = 0; i < numWorkerThreads; i++) {
             workerStates.addressOf(i).setAllocChunk(WordFactory.nullPointer());
         }
-        return true;
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
@@ -315,11 +314,6 @@ public class ParallelGC {
     private boolean allocChunkNeedsScanning(GCWorkerThreadState state) {
         AlignedHeapChunk.AlignedHeader allocChunk = state.getAllocChunk();
         return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(state.getAllocChunkScanOffset());
-    }
-
-    @SuppressWarnings("static-method")
-    public void cleanupAfterCollection() {
-        getWorkerThreadState().setAllocChunk(WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")
