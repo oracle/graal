@@ -275,8 +275,9 @@ public class MultiTypeState extends TypeState {
     }
 
     class SmallBitSet {
-        public SmallBitSet(BitSet other) {
+        SmallBitSet(BitSet other) {
             assert other.cardinality() <= MAX_CARDINALITY;
+            set = new int[other.cardinality()];
             for (int i = other.nextSetBit(0); i >= 0; i = other.nextSetBit(i + 1)) {
                 set[cardinality++] = i;
             }
@@ -337,7 +338,7 @@ public class MultiTypeState extends TypeState {
 
         public static final int UNSET = -1;
         public static final int MAX_CARDINALITY = 10;
-        int set[] = new int[MAX_CARDINALITY];
+        int[] set;
         int cardinality = 0;
     }
 }
