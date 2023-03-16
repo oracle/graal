@@ -108,7 +108,7 @@ if __name__ == "__main__":
     if args.dump_heap:
         cmd.append(native_image_arg("-H:DumpHeap=during-analysis"))
     if args.memory:
-        cmd.append(native_image_arg(f"=-J-Xmx{args.memory}"))
+        cmd.append(native_image_arg(f"-J-Xmx{args.memory}"))
     extra_args = [native_image_arg(arg) for arg in ALL_CONFIGS[args.context_sensitive]]
     cmd.extend(extra_args)
     run(cmd, verbose=args.verbose)
