@@ -175,6 +175,13 @@ public class MultiTypeState extends TypeState {
         return this.typesBitSet.equals(that.typesBitSet);
     }
 
+    public boolean bitSetShallowEquals(MultiTypeState that) {
+        if (isSmall()) {
+            return this.smallTypesBitSet == that.smallTypesBitSet;
+        }
+        return this.typesBitSet == that.typesBitSet;
+    }
+
     public int length() {
         if (isSmall()) {
             return this.smallTypesBitSet.length();

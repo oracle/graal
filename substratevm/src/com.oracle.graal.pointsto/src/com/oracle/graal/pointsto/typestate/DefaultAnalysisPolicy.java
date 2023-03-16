@@ -337,7 +337,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * No need for a deep equality check (which would need to iterate the arrays), since the
          * speculation logic below is doing that anyway.
          */
-        if (s1.bitSetEquals(s2)) {
+        if (s1.bitSetShallowEquals(s2)) {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
