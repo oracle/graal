@@ -221,7 +221,15 @@ Java is capable of accessing any resource on the application class path, or the 
 Resource metadata instructs the `native-image` builder to include specified resources and resource bundles in the produced binary.
 A consequence of this approach is that some parts of the application that use resources for configuration (such as logging) are effectively configured at build time.
 
-The code below accesses a text file and requires providing resource metadata: 
+### Resource Metadata In Code
+Native Image will detect calls to `java.lang.Class#getResource` and `java.lang.Class#getResourceAsStream` in which:
+ - The class on which these methods are called is constant
+ - The first parameter, `name`, is a constant
+and automatically register such resources.
+
+The code below will work out of the box, because:
+ - We are using a class literal (`Example.class`)
+ - We are using a string literal as the `name` parameter
 ```java
 class Example {
     public void conquerTheWorld() {
@@ -231,9 +239,6 @@ class Example {
     }
 }
 ```
-
-### Resource Metadata In Code
-It is not possible to specify used resources and resource bundles in code.
 
 ### Resource Metadata in JSON
 Metadata for resources is provided in `resource-config.json` files.
