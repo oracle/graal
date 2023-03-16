@@ -34,7 +34,7 @@ def run(
             replace_whitespace=False,
             subsequent_indent="  ",
         )
-        print("\\\n".join(lines))
+        print(" \\\n".join(lines))
     if timeout != -1:
         cmd = ["timeout", "--signal=KILL", f"{timeout}s", *cmd]
     try:
