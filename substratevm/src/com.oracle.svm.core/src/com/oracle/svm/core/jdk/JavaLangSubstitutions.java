@@ -70,6 +70,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
@@ -289,6 +290,15 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
+        if (!RuntimeCompilation.isEnabled()) {
+            RawStackTraceVisitor visitor = new RawStackTraceVisitor();
+            JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
+            if (visitor.hasTrace()) {
+                backtrace = visitor.getArray();
+                stackTrace = null;
+                return this;
+            }
+        }
         stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
         return this;
     }
@@ -296,6 +306,11 @@ final class Target_java_lang_Throwable {
     @Substitute
     private StackTraceElement[] getOurStackTrace() {
         if (stackTrace != null) {
+            return stackTrace;
+        } else if (backtrace != null) {
+            Object backtraceCopy = backtrace;
+            backtrace = null;
+            stackTrace = RawStackTraceVisitor.decodeBacktrace(backtraceCopy);
             return stackTrace;
         } else {
             return new StackTraceElement[0];

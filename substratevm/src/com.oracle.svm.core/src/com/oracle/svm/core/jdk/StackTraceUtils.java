@@ -30,16 +30,24 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -54,6 +62,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -240,6 +249,87 @@ public class StackTraceUtils {
                 result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
             }
         }
+    }
+
+}
+
+final class RawStackTraceVisitor extends StackFrameVisitor {
+
+    private int index = 0;
+    private final static int MAX_NATIVE_STACK_TRACE_DEPTH = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
+
+    /*
+     * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
+     * the initial size so that these cases do not need to reallocate the array.
+     */
+    private static final int INITIAL_TRACE_SIZE = 128;
+    private long[] trace = new long[INITIAL_TRACE_SIZE];
+
+    static StackTraceElement[] decodeBacktrace(Object backtrace) {
+        final long[] trace = (long[]) backtrace;
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true,
+                        SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        decodeRawBacktrace(trace, visitor);
+        return visitor.trace.toArray(new StackTraceElement[0]);
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    private static void decodeRawBacktrace(long[] trace, BuildStackTraceVisitor visitor) {
+        for (long address : trace) {
+            CodePointer ip = WordFactory.pointer(address);
+            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+            if (untetheredInfo.isNull()) {
+                /* Unknown frame. Must not happen for AOT-compiled code. */
+                VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+            }
+
+            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+            try {
+                if (!visitRawFrame(visitor, ip, tetheredCodeInfo)) {
+                    break;
+                }
+            } finally {
+                CodeInfoAccess.releaseTether(untetheredInfo, tether);
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Allow interruptible calls to visitFrame.", calleeMustBe = false)
+    private static boolean visitRawFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
+        return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
+    }
+
+    @Override
+    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        if (index >= MAX_NATIVE_STACK_TRACE_DEPTH) {
+            // cutoff
+            return false;
+        }
+        if (deoptimizedFrame != null) {
+            // unsupported
+            trace = null;
+            return false;
+        }
+        add(ip.rawValue());
+        return true;
+    }
+
+    private void add(long value) {
+        if (index == trace.length) {
+            trace = Arrays.copyOf(trace, Math.min(trace.length * 2, MAX_NATIVE_STACK_TRACE_DEPTH));
+        }
+        trace[index++] = value;
+    }
+
+    boolean hasTrace() {
+        return trace != null;
+    }
+
+    long[] getArray() {
+        VMError.guarantee(trace != null, "No trace");
+        // trim to size
+        return Arrays.copyOf(trace, index);
     }
 }
 
