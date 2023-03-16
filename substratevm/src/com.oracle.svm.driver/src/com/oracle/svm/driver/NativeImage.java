@@ -1559,7 +1559,7 @@ public class NativeImage {
                 restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
                 environment.forEach((key, val) -> {
-                    if (keyMapper.apply(key).equals(entry.getKey())) {
+                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
                         restrictedEnvironment.put(entry.getKey(), val);
                         /* Capture found value for storing vars in bundle */
                         entry.setValue(val);
