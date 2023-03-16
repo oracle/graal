@@ -78,10 +78,9 @@ To see assembly code for the compiled functions, run:
 
 ## Dump Graphs
 
-To investigate performance issues, we recommend the [Ideal Graph Visualizer (IGV)](../tools/ideal-graph-visualizer.md) -- an essential tool for any language implementer building on
-top of **Oracle GraalVM Enterprise Edition**.
-It is available as a separate download on the [Oracle Technology Network Downloads](https://www.oracle.com/downloads/graalvm-downloads.html) page.
+To investigate performance issues, we recommend the [Ideal Graph Visualizer (IGV)](../tools/ideal-graph-visualizer.md) -- an essential tool for any language implementer building on top of GraalVM.
 
+It is available as a separate download on the [Oracle Technology Network Downloads](https://www.oracle.com/downloads/graalvm-downloads.html) page.
 
 1. Unzip the downloaded package, enter the `bin` directory and start IGV:
 ```shell
@@ -99,6 +98,7 @@ To start debugging the SimpleLanguage implementation with a Java debugger, pass 
 ```shell
 ./sl -debug language/tests/HelloWorld.sl
 ```
+
 Then attach a Java remote debugger (like Eclipse) on port 8000.
 
 ## SimpleLanguage Component for GraalVM

@@ -1,14 +1,14 @@
 ---
 layout: docs
 toc_group: embedding
-link_title: Enterprise Sandbox Resource Limits
+link_title: Sandbox Resource Limits
 permalink: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
 
-## Enterprise Sandbox Resource Limits
+## Oracle GraalVM Sandbox Resource Limits
 
-GraalVM Enterprise provides the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
-These resource limits are not available in the Community Edition of GraalVM.
+Oracle GraalVM provides the Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
+These resource limits are not available in GraalVM Community Edition.
 The following document describes how to configure sandbox resource limits using options in GraalVM Polyglot API.
 
 In general all resource limit options are prefixed with `sandbox` option group and they can be listed using the help of any language launcher provided in GraalVM, e.g., `js --help:tools`.

@@ -103,7 +103,7 @@ The C compiler executable, vendor, target architecture, and version info used by
 #### <a name="glossary-gc"></a>Garbage Collector
 The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
-- The *G1 GC* (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
+- The *G1 GC* (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
 For more information see the [docs on Memory Management](MemoryManagement.md).
