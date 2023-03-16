@@ -1538,7 +1538,6 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Map<String, String> restrictedEnvironment = new HashMap<>();
         Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
         requiredKeys.add("SRCHOME"); /* Remove once GR-44676 is fixed */
         Function<String, String> keyMapper;
@@ -1548,6 +1547,7 @@ public class NativeImage {
         } else {
             keyMapper = Function.identity();
         }
+        Map<String, String> restrictedEnvironment = new HashMap<>();
         environment.forEach((key, val) -> {
             if (requiredKeys.contains(keyMapper.apply(key))) {
                 restrictedEnvironment.put(key, val);
@@ -1555,18 +1555,18 @@ public class NativeImage {
         });
         for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
             Map.Entry<String, String> entry = iterator.next();
-            String requiredKey = entry.getKey();
-            String requiredValue = entry.getValue();
-            if (requiredValue != null) {
-                restrictedEnvironment.put(requiredKey, requiredValue);
+            if (entry.getValue() != null) {
+                restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
-                String existingValue = environment.get(requiredKey);
-                if (existingValue != null) {
-                    restrictedEnvironment.put(requiredKey, existingValue);
-                    /* Capture found existingValue for storing vars in bundle */
-                    entry.setValue(existingValue);
-                } else {
-                    NativeImage.showWarning("Environment variable '" + requiredKey + "' is undefined and therefore not available during image build-time.");
+                environment.forEach((key, val) -> {
+                    if (keyMapper.apply(key).equals(entry.getKey())) {
+                        restrictedEnvironment.put(entry.getKey(), val);
+                        /* Capture found value for storing vars in bundle */
+                        entry.setValue(val);
+                    }
+                });
+                if (entry.getValue() == null) {
+                    NativeImage.showWarning("Environment variable '" + entry.getKey() + "' is undefined and therefore not available during image build-time.");
                     /* Remove undefined environment for storing vars in bundle */
                     iterator.remove();
                 }
