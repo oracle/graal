@@ -58,6 +58,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
 
+    @CompilationFinal private String debugCompDirectory;
     private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
@@ -79,6 +80,7 @@ public class WasmContextOptions {
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
+        this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
     }
 
     private void checkOptionDependencies() {
@@ -88,6 +90,10 @@ public class WasmContextOptions {
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
+        return key.getValue(optionValues);
+    }
+
+    private String readStringOption(OptionKey<String> key) {
         return key.getValue(optionValues);
     }
 
@@ -127,6 +133,10 @@ public class WasmContextOptions {
         return constantRandomGet;
     }
 
+    public String debugCompDirectory() {
+        return debugCompDirectory;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -138,6 +148,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
+        hash = 53 * hash + (this.debugCompDirectory.hashCode());
         return hash;
     }
 
@@ -175,6 +186,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.constantRandomGet != other.constantRandomGet) {
+            return false;
+        }
+        if (!this.debugCompDirectory.equals(other.debugCompDirectory)) {
             return false;
         }
         return true;

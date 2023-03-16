@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
  * Representation of a wasm block during module validation.
@@ -63,12 +63,12 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, BytecodeGen bytecode) {
+    void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
     }
 
     @Override
-    void exit(BytecodeGen bytecode) {
+    void exit(RuntimeBytecodeGen bytecode) {
         if (branches.size() == 0) {
             return;
         }
@@ -79,17 +79,17 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(BytecodeGen bytecode) {
+    void addBranch(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchLocation());
     }
 
     @Override
-    void addBranchIf(BytecodeGen bytecode) {
+    void addBranchIf(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchIfLocation());
     }
 
     @Override
-    void addBranchTableItem(BytecodeGen bytecode) {
+    void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branches.add(bytecode.addBranchTableItemLocation());
     }
 }
