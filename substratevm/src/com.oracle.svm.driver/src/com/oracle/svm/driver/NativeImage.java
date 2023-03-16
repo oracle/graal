@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -1537,21 +1539,20 @@ public class NativeImage {
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
         Map<String, String> restrictedEnvironment = new HashMap<>();
-        List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
-        jvmRequiredEnvironmentVariables.add("SRCHOME"); // FIXME
+        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
+        requiredKeys.add("SRCHOME"); /* Remove once GR-44676 is fixed */
+        Function<String, String> keyMapper;
         if (OS.WINDOWS.isCurrent()) {
-            Map<String, String> normalizedKeysMap = new HashMap<>();
-            environment.forEach((key, value) -> normalizedKeysMap.put(key.toUpperCase(), value));
-            environment.clear();
-            environment.putAll(normalizedKeysMap);
-            jvmRequiredEnvironmentVariables.addAll(List.of("TEMP", "INCLUDE", "LIB"));
+            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
+            keyMapper = String::toUpperCase;
+        } else {
+            keyMapper = Function.identity();
         }
-        for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
-            String val = environment.get(requiredEnvironmentVariable);
-            if (val != null) {
-                restrictedEnvironment.put(requiredEnvironmentVariable, val);
+        environment.forEach((key, val) -> {
+            if (requiredKeys.contains(keyMapper.apply(key))) {
+                restrictedEnvironment.put(key, val);
             }
-        }
+        });
         for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
             Map.Entry<String, String> entry = iterator.next();
             String requiredKey = entry.getKey();
