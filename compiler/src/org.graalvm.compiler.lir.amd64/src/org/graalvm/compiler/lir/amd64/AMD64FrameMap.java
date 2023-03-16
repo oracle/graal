@@ -51,7 +51,7 @@ import jdk.vm.ci.code.StackSlot;
  *   current  | return address                 |    |            ^
  *   frame    +--------------------------------+    |            |
  *            | preserved rbp                  |    |            |
- *            | (iff {@link #useStandardFrameProlog})   |    |            |
+ *            | (iff {@link #reserveRBP})   |    |            |
  *            +--------------------------------+    |            |    -----
  *            |                                |    |            |      ^
  *            : callee save area               :    |            |      |
@@ -81,15 +81,28 @@ import jdk.vm.ci.code.StackSlot;
  */
 public class AMD64FrameMap extends FrameMap {
 
-    private final boolean useStandardFrameProlog;
+    /**
+     * Always allocate space for rbp.
+     */
+    private final boolean reserveRBP;
+
     private StackSlot rbpSpillSlot;
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog) {
+    private StackSlot deoptRescueSlot;
+
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog, boolean reserveRBP) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        this.useStandardFrameProlog = useStandardFrameProlog;
         this.initialSpillSize = returnAddressSize() + (useStandardFrameProlog ? getTarget().arch.getWordSize() : 0);
         this.spillSize = initialSpillSize;
+        this.reserveRBP = reserveRBP && !useStandardFrameProlog;
+        if (this.reserveRBP) {
+            allocateRBPSpillSlot();
+        }
+    }
+
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog) {
+        this(codeCache, registerConfig, referenceMapFactory, useStandardFrameProlog, false);
     }
 
     @Override
@@ -117,7 +130,10 @@ public class AMD64FrameMap extends FrameMap {
                (slot.getRawAddFrameSize() && slot.getRawOffset()  >= 0) :
                    String.format("RawAddFrameSize: %b RawOffset: 0x%x spillSize: 0x%x outgoingSize: 0x%x", slot.getRawAddFrameSize(), slot.getRawOffset(), spillSize, outgoingSize);
         // @formatter:on
-        return super.offsetForStackSlot(slot);
+        int offset = super.offsetForStackSlot(slot);
+        // rbp is always saved in the standard location if it is saved
+        assert !slot.equals(rbpSpillSlot) || offset - totalFrameSize() == -16;
+        return offset;
     }
 
     /**
@@ -125,25 +141,28 @@ public class AMD64FrameMap extends FrameMap {
      * runtime for walking/inspecting frames of such methods.
      */
     StackSlot allocateRBPSpillSlot() {
-        assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
-        rbpSpillSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
+        if (rbpSpillSlot == null) {
+            assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
+            rbpSpillSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+            assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
+        }
         return rbpSpillSlot;
     }
 
     void freeRBPSpillSlot() {
-        int size = spillSlotSize(LIRKind.value(AMD64Kind.QWORD));
-        assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
-        spillSize = initialSpillSize;
+        if (!reserveRBP) {
+            int size = spillSlotSize(LIRKind.value(AMD64Kind.QWORD));
+            assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
+            spillSize = initialSpillSize;
+        }
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        assert spillSize == initialSpillSize || spillSize == initialSpillSize +
-                        spillSlotSize(LIRKind.value(AMD64Kind.QWORD)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
-        return allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-    }
-
-    public boolean useStandardFrameProlog() {
-        return useStandardFrameProlog;
+        if (deoptRescueSlot == null) {
+            assert spillSize == initialSpillSize || spillSize == initialSpillSize +
+                            spillSlotSize(LIRKind.value(AMD64Kind.QWORD)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
+            deoptRescueSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+        }
+        return deoptRescueSlot;
     }
 }

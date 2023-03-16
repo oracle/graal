@@ -37,19 +37,24 @@ public class AMD64FrameMapBuilder extends FrameMapBuilderImpl {
         super(frameMap, codeCache, registerConfig);
     }
 
+    @Override
+    public AMD64FrameMap getFrameMap() {
+        return (AMD64FrameMap) super.getFrameMap();
+    }
+
     /**
      * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
      * runtime for walking/inspecting frames of such methods.
      */
     public StackSlot allocateRBPSpillSlot() {
-        return ((AMD64FrameMap) getFrameMap()).allocateRBPSpillSlot();
+        return getFrameMap().allocateRBPSpillSlot();
     }
 
     public void freeRBPSpillSlot() {
-        ((AMD64FrameMap) getFrameMap()).freeRBPSpillSlot();
+        getFrameMap().freeRBPSpillSlot();
     }
 
     public StackSlot allocateDeoptimizationRescueSlot() {
-        return ((AMD64FrameMap) getFrameMap()).allocateDeoptimizationRescueSlot();
+        return getFrameMap().allocateDeoptimizationRescueSlot();
     }
 }

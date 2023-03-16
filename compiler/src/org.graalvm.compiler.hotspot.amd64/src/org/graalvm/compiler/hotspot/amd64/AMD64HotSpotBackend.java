@@ -96,7 +96,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        FrameMap frameMap = new AMD64FrameMap(getCodeCache(), registerConfigNonNull, this, config.preserveFramePointer);
+        AMD64FrameMap frameMap = new AMD64FrameMap(getCodeCache(), registerConfigNonNull, this, config.preserveFramePointer, config.nmethodEntryBarrier != 0);
+        if (config.nmethodEntryBarrier != 0) {
+            // Deoptimization by the nmethod entry barrier is picky about the actual frame layout so
+            // we must always allocate the deopt rescue slot.
+            frameMap.allocateDeoptimizationRescueSlot();
+        }
         return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
     }
 
@@ -129,16 +134,16 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     /**
      * Emits code at the verified entry point and return point(s) of a method.
      */
-    class HotSpotFrameContext implements FrameContext {
+    public class HotSpotFrameContext implements FrameContext {
 
         final boolean isStub;
         final boolean omitFrame;
-        final boolean useStandardFrameProlog;
+        final boolean preserveFramePointer;
 
-        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean useStandardFrameProlog) {
+        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean preserveFramePointer) {
             this.isStub = isStub;
             this.omitFrame = omitFrame;
-            this.useStandardFrameProlog = useStandardFrameProlog;
+            this.preserveFramePointer = preserveFramePointer;
         }
 
         @Override
@@ -163,7 +168,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     // assert asm.position() - verifiedEntryPointOffset >=
                     // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
-                if (useStandardFrameProlog) {
+                if (preserveFramePointer) {
                     // Stack-walking friendly instructions
                     asm.push(rbp);
                     asm.movq(rbp, rsp);
@@ -211,6 +216,18 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             asm.jcc(ConditionFlag.NotEqual, entryPoint);
             crb.getLIR().addSlowPath(null, () -> {
                 asm.bind(entryPoint);
+                /*
+                 * The nmethod entry barrier can deoptimize by manually removing this frame. It
+                 * makes some assumptions about the frame layout that aren't always true for Graal.
+                 * In particular it assumes the callers rbp has always been saved in the standard
+                 * location. With -XX:+PreserveFramePointer it's always saved by the frame setup but
+                 * it's only lazily saved normally. The space for rbp is always reserved in the
+                 * frame so make sure it's been properly stored before calling the nmethod entry
+                 * barrier.
+                 */
+                if (!config.preserveFramePointer) {
+                    asm.movq(new AMD64Address(rsp, crb.frameMap.totalFrameSize() - 16), rbp);
+                }
                 // This is always a near call
                 int beforeCall = asm.position();
                 asm.call();
@@ -229,7 +246,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 assert crb.frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
                 int frameSize = crb.frameMap.frameSize();
-                if (useStandardFrameProlog) {
+                if (preserveFramePointer) {
                     asm.movq(rsp, rbp);
                     asm.pop(rbp);
                 } else {
@@ -241,6 +258,21 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         @Override
         public void returned(CompilationResultBuilder crb) {
             // nothing to do
+        }
+
+        public void rawEnter(CompilationResultBuilder crb) {
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+            if (preserveFramePointer) {
+                // Stack-walking friendly instructions
+                asm.push(rbp);
+                asm.movq(rbp, rsp);
+            }
+            int frameSize = crb.frameMap.frameSize();
+            asm.decrementq(rsp, frameSize);
+        }
+
+        public void rawLeave(CompilationResultBuilder crb) {
+            leave(crb);
         }
     }
 
@@ -258,7 +290,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
         boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall() &&
-                        !((AMD64FrameMap) frameMap).useStandardFrameProlog() && config.nmethodEntryBarrier == 0;
+                        !config.preserveFramePointer && config.nmethodEntryBarrier == 0;
 
         Stub stub = gen.getStub();
         AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
