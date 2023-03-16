@@ -27,15 +27,14 @@ def run(
         info += " ".join(shlex.quote(c) for c in cmd)
         if capture_output:
             info += " >& ..."
-        for line in textwrap.wrap(
+        lines = textwrap.wrap(
             info,
             break_on_hyphens=False,
             break_long_words=False,
             replace_whitespace=False,
             subsequent_indent="  ",
-        ):
-            # TODO(max): Don't put a continuation on the last line
-            print(line, end=" \\\n")
+        )
+        print("\\\n".join(lines))
     if timeout != -1:
         cmd = ["timeout", "--signal=KILL", f"{timeout}s", *cmd]
     try:
