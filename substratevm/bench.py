@@ -89,7 +89,8 @@ if __name__ == "__main__":
     parser.add_argument("--memory", help="For example, '10g'")
     parser.add_argument("--verbose", action="store_true", default=False)
     parser.add_argument(
-        "benchmark", help="For example, 'renaissance-native-image:dec-tree'"
+        "benchmark",
+        help="For example, 'renaissance-native-image:dec-tree' or 'console-native-image:helloworld'",
     )
     args = parser.parse_args()
     mx = os.path.expanduser("~/Documents/dev/mx/mx")
