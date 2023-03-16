@@ -528,7 +528,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private static void registerForSerialization(Class<?> serializationTargetClass) {
 
-        if (Serializable.class.isAssignableFrom(serializationTargetClass) || !Proxy.isProxyClass(serializationTargetClass)) {
+        /* Proxy classes have special treatment so no registration needed */
+        if (Serializable.class.isAssignableFrom(serializationTargetClass) && !Proxy.isProxyClass(serializationTargetClass)) {
             /*
              * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify
              * serialization class consistency, so need to register all constructors, methods and

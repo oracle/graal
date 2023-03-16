@@ -252,8 +252,8 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static boolean nonNullJavaConstants(ValueNode... clazz) {
-        for (ValueNode valueNode : clazz) {
+    private static boolean nonNullJavaConstants(ValueNode... valueNodes) {
+        for (ValueNode valueNode : valueNodes) {
             if (!valueNode.isJavaConstant() || valueNode.isNullConstant()) {
                 return false;
             }
@@ -261,12 +261,23 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
-    private static boolean isParseLimit(String pattern) {
+    private static boolean isLimitPattern(String pattern) {
         int eqNdx = pattern.indexOf('=');
         // not a limit pattern
         return eqNdx >= 0;
     }
 
+    /**
+     * Extract the target class name from the <code>pattern</code>. We support two formats:
+     * <ul>
+     * <li>A concrete class name (pattern doesn't end with .* or .**), e.g.:
+     * <code>com.foo.Bar</code>. In this case we register the concrete class for
+     * serialization/deserialization.</li>
+     * <li>A concrete class name that ends with a <code>$$Lambda$*</code>. In this case, we register
+     * all lambdas that originate in the methods of the target class for
+     * serialization/deserialization.</li>
+     * </ul>
+     */
     private static void parsePatternAndRegister(String pattern) {
         String[] patterns = pattern.split(";");
         for (String p : patterns) {
@@ -274,7 +285,7 @@ public class SubstrateGraphBuilderPlugins {
             if (nameLen == 0) {
                 continue;
             }
-            if (isParseLimit(p)) {
+            if (isLimitPattern(p)) {
                 continue;
             }
             boolean negate = p.charAt(0) == '!';
@@ -293,7 +304,7 @@ public class SubstrateGraphBuilderPlugins {
                     // Pattern is a classname (possibly empty) with a trailing wildcard
                     final String className = p.substring(poffset, nameLen - 1);
                     if (!negate) {
-                        if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                        if (className.endsWith(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                             try {
                                 String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));

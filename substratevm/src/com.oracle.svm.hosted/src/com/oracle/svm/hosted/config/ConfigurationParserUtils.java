@@ -60,15 +60,6 @@ public final class ConfigurationParserUtils {
                         ConfigurationFiles.Options.StrictConfiguration.getValue());
     }
 
-    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
-                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
-
-        List<Path> paths = configFilesOption.getValue().values();
-        List<String> resourceValues = configResourcesOption.getValue().values();
-        var configFilesOptionName = configFilesOption.getName();
-        return parseAndRegisterConfigurations(parser, classLoader, featureName, configFilesOptionName, configResourcesOption.getName(), directoryFileName, paths, resourceValues);
-    }
-
     /**
      * Parses configurations in files specified by {@code configFilesOption} and resources specified
      * by {@code configResourcesOption} and registers the parsed elements using
@@ -78,6 +69,15 @@ public final class ConfigurationParserUtils {
      * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
      * @return the total number of successfully parsed configuration files and resources.
      */
+    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
+                    HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
+
+        List<Path> paths = configFilesOption.getValue().values();
+        List<String> resourceValues = configResourcesOption.getValue().values();
+        var configFilesOptionName = configFilesOption.getName();
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, configFilesOptionName, configResourcesOption.getName(), directoryFileName, paths, resourceValues);
+    }
+
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
                     String featureName, String configFilesOptionName, String configResourcesOptionName,
                     String directoryFileName, List<Path> paths,
