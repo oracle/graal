@@ -44,6 +44,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.c.NativeLibraries;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -51,7 +52,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -119,6 +119,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final NativeImageCodeCache codeCache;
     private final NativeImageHeap heap;
+    private final NativeLibraries nativeLibs;
     boolean useHeapBase;
     int compressShift;
     int tagsMask;
@@ -128,15 +129,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     int primitiveStartOffset;
     int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
-    HostedType wordBaseType;
     HostedType hubType;
     HashMap<JavaKind, HostedType> javaKindToHostedType;
 
-    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, HostedMetaAccess metaAccess) {
+    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
         super();
         this.debugContext = debugContext;
         this.codeCache = codeCache;
         this.heap = heap;
+        this.nativeLibs = nativeLibs;
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
@@ -161,7 +162,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
-        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         hubType = metaAccess.lookupJavaType(Class.class);
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
@@ -910,8 +910,19 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
     }
-
+    @SuppressWarnings("try")
     private NativeImageDebugTypeInfo createDebugTypeInfo(HostedType hostedType) {
+        try (DebugContext.Scope s = debugContext.scope("DebugTypeInfo", hostedType.toJavaName())) {
+            if (isForeignWordType(hostedType)) {
+                if (nativeLibs.findElementInfo(hostedType) != null) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "Found pseudo type %s with element info", hostedType.toJavaName());
+                } else {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "Found pseudo type %s with no element info", hostedType.toJavaName());
+                }
+            }
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        }
         if (hostedType.isEnum()) {
             return new NativeImageDebugEnumTypeInfo((HostedInstanceClass) hostedType);
         } else if (hostedType.isInstanceClass()) {
@@ -1136,7 +1147,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaType ownerType = method.getDeclaringClass();
         if (!method.isStatic()) {
             JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
             paramInfos.add(new NativeImageDebugLocalInfo("this", storageKind, ownerType, slot, line));
             slot += kind.getSlotCount();
@@ -1146,7 +1157,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             String name = (local != null ? local.getName() : "__" + i);
             ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
             paramInfos.add(new NativeImageDebugLocalInfo(name, storageKind, paramType, slot, line));
             slot += kind.getSlotCount();
         }
@@ -1154,18 +1165,56 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     /**
-     * Identify a pseudo-object Java type which is used only to model a memory word, pointer or
-     * foreign opaque type.
-     * 
+     * Identify a Java type which is being used to model a foreign memory word or
+     * pointer type.
+     *
      * @param type the type to be tested
      * @param accessingType another type relative to which the first type may need to be resolved
-     * @return true if the type is a pseudo object type
+     * @return true if the type models a foreign memory word or pointer type
      */
-    private boolean isPseudoObjectType(JavaType type, ResolvedJavaType accessingType) {
+    private boolean isForeignWordType(JavaType type, ResolvedJavaType accessingType) {
+        assert accessingType instanceof HostedType : "must be!";
         ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
-        return (wordBaseType.isAssignableFrom(resolvedJavaType));
+        return isForeignWordType(resolvedJavaType);
     }
 
+    /**
+     * Identify a hosted type which is being used to model a foreign memory word or
+     * pointer type.
+     *
+     * @param resolvedJavaType the type to be tested which must be an instance of HostedType
+     * @return true if the type models a foreign memory word or pointer type
+     */
+    private boolean isForeignWordType(ResolvedJavaType resolvedJavaType) {
+        assert resolvedJavaType instanceof HostedType : "must be!";
+        // unwrap because native libs operates on the analysis type universe
+        return nativeLibs.isWordBase(((HostedType) resolvedJavaType).getWrapped());
+    }
+
+    /**
+     * Identify a Java type which is being used to model a foreign pointer type.
+     *
+     * @param type the type to be tested
+     * @param accessingType another type relative to which the first type may need to be resolved
+     * @return true if the type models a foreign pointer type
+     */
+    private boolean isForeignPointerType(JavaType type, ResolvedJavaType accessingType) {
+        assert accessingType instanceof HostedType : "must be!";
+        ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
+        return isForeignPointerType(resolvedJavaType);
+    }
+
+    /**
+     * Identify a hosted type which is being used to model a foreign pointer type.
+     *
+     * @param resolvedJavaType the type to be tested which must be an instance of HostedType
+     * @return true if the type models a foreign pointer type
+     */
+    private boolean isForeignPointerType(ResolvedJavaType resolvedJavaType) {
+        assert resolvedJavaType instanceof HostedType : "must be!";
+        // unwrap because native libs operates on the analysis type universe
+        return nativeLibs.isPointerBase(((HostedType) resolvedJavaType).getWrapped());
+    }
     private static boolean isIntegralKindPromotion(JavaKind promoted, JavaKind original) {
         return (promoted == JavaKind.Int &&
                         (original == JavaKind.Boolean || original == JavaKind.Byte || original == JavaKind.Short || original == JavaKind.Char));
@@ -1813,7 +1862,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     // only add the local if the kinds match
                     if ((storageKind == kind) ||
                                     isIntegralKindPromotion(storageKind, kind) ||
-                                    (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
+                                    (isForeignWordType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
                         localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, firstLine));
                     } else if (storageKind != JavaKind.Illegal) {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind());
@@ -1836,7 +1885,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (!method.isStatic()) {
                 String name = "this";
                 JavaKind kind = ownerType.getJavaKind();
-                JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
+                JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
                 assert kind == JavaKind.Object : "must be an object";
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
@@ -1850,7 +1899,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 String name = (local != null ? local.getName() : "__" + i);
                 ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, ownerType);
                 JavaKind kind = paramType.getJavaKind();
-                JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+                JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
