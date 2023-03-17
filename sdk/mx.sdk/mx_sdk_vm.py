@@ -1057,6 +1057,27 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
+def extra_installable_qualifiers(jdk_home=base_jdk().home, ce_edition=['ce'], oracle_edition=None):
+    """
+    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    :type jdk_home: str
+    :type ce_edition: list[str] | None
+    :type oracle_edition: list[str] | None
+    :rtype: list[str] | None
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            return oracle_edition
+        else:
+            return ce_edition
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return ce_edition
+
+
 @mx.command(_suite, 'verify-graalvm-configs')
 def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
