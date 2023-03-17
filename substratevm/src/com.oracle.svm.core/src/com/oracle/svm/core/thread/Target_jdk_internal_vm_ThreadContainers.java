@@ -41,8 +41,10 @@ import com.oracle.svm.core.jdk.JDK19OrLater;
 @TargetClass(className = "jdk.internal.vm.ThreadContainers", onlyWith = JDK19OrLater.class)
 @SuppressWarnings("unused")
 final class Target_jdk_internal_vm_ThreadContainers {
+    // Checkstyle: stop
     @Delete static Set<WeakReference<Target_jdk_internal_vm_ThreadContainer>> CONTAINER_REGISTRY;
     @Delete static ReferenceQueue<Object> QUEUE;
+    // Checkstyle: resume
 
     @Substitute
     public static Object registerContainer(Target_jdk_internal_vm_ThreadContainer container) {

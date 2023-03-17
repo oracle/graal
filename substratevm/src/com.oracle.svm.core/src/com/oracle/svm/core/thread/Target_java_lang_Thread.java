@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -702,19 +703,45 @@ public final class Target_java_lang_Thread {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
+    /**
+     * This method is used to set and revert {@code ScopedValue} bindings as follows:
+     *
+     * {@code setScopedValueBindings(b); try { work(); } finally { setScopedValueBindings(previous);
+     * }}
+     *
+     * If the second call fails due to a stack overflow, ScopedValue bindings leak out of their
+     * scope. Therefore, we force-inline this method into its callers. This requires both calls to
+     * happen in the same caller, which is the case in the usages in the JDK, and those are expected
+     * to remain the only direct usages. {@code ScopedValue.Carrier} calls this method through the
+     * implementation of {@code JavaLangAccess}, which is an anonymous class that we cannot
+     * substitute to force inlining, so we substitute the calling class to invoke this method
+     * directly in {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
+     */
+    @Substitute
+    @AlwaysInline("Must ensure that this can never become a call that can trigger a stack overflow and leak bindings outside the scope.")
+    @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", mayBeInlined = true)
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static void setScopedValueBindings(Object bindings) {
+        Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
+        if (LoomSupport.isEnabled() && thread.vthread != null) {
+            thread = SubstrateUtil.cast(thread.vthread, Target_java_lang_Thread.class);
+        }
+        thread.scopedValueBindings = bindings;
+    }
+
+    /**
+     * On HotSpot, this method determines the correct ScopedValue bindings for the current context
+     * by finding the top {@code runWith} invocation on the stack and extracting the bindings object
+     * parameter from the frame. It is used following stack overflows and other situations that
+     * could result in bindings leaking to another scope, during which {@link #scopedValueBindings}
+     * is cleared as a precaution. We don't have the means to extract the bindings object from the
+     * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows,
+     * so this method should never be needed.
+     */
     @Substitute
     @TargetElement(onlyWith = JDK20OrLater.class)
     static Object findScopedValueBindings() {
-        /*
-         * We don't have the means to extract the bindings object parameter from runWith frames on
-         * the stack like HotSpot does. However, at this time, we need to support only two cases:
-         * current bindings in a virtual thread, and current bindings in the carrier thread.
-         */
-        Object bindings = JavaThreads.toTarget(Thread.currentThread()).scopedValueBindings;
-        if (bindings != null) {
-            return bindings;
-        }
-        return JavaThreads.toTarget(currentCarrierThread()).scopedValueBindings;
+        throw VMError.shouldNotReachHere("ScopedValue bindings are never cleared.");
     }
 
     @Substitute
