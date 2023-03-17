@@ -644,7 +644,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     if _launcher_config.default_symlinks:
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
-                _add_native_image_macro(_launcher_config, _component)
+                if _launcher_config.rebuildable or stage1:
+                    _add_native_image_macro(_launcher_config, _component)
                 if isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
@@ -675,7 +676,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         _add(layout, join(_component_base, _executable), 'dependency:{}'.format(NativeLibraryLauncherProject.library_launcher_project_name(_library_config)), _component)
                         _link_path = _add_link(_jdk_jre_bin, _component_base + _executable)
                         _jre_bin_names.append(basename(_link_path))
-                _add_native_image_macro(_library_config, _component)
+                if _library_config.rebuildable or stage1:
+                    _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
             if _libpolyglot_macro_dir is not None and GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(_component):
@@ -1027,10 +1029,17 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                     if dep.is_stripped():
                         root_contents += ['dependency:{}:{}/*.map'.format(dep.suite.name, dep.name)]
                 elif isinstance(dep, GraalVmNativeImage):
+                    image_config = dep.native_image_config
                     if dep.debug_file():
-                        source_type = 'skip' if isinstance(dep.native_image_config, mx_sdk.LibraryConfig) and _skip_libraries(dep.native_image_config) else 'dependency'
+                        source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
                         root_contents += [source_type + ':{}:{}/*{}'.format(dep.suite.name, dep.name, _get_svm_support().separate_debuginfo_ext())]
                         layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
+                    if not image_config.rebuildable:
+                        macro_dir = GraalVmNativeProperties.macro_name(image_config) + '/'
+                        layout.setdefault(macro_dir, []).append('dependency:{}'.format(GraalVmNativeProperties.project_name(image_config)))
+                        for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
+                            layout[macro_dir].append('file:{}'.format(abspath(profile)))
+
                 elif isinstance(dep, GraalVmJImage):
                     _add(dep.deps, layout)
 
@@ -1214,21 +1223,20 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         super(NativePropertiesBuildTask, self).__init__(args, 1, subject)
         self._contents = None
         self._location_classpath = None
+        graalvm_dist = get_final_graalvm_distribution() if self.subject.image_config.rebuildable else get_stage1_graalvm_distribution()
+        self._graalvm_location = graalvm_dist.find_single_source_location('dependency:' + self.subject.name)
 
     def newestOutput(self):
         return mx.TimeStampFile(self.subject.properties_output_file())
 
     def __str__(self):
-        graalvm_dist = get_final_graalvm_distribution()
-        gralvm_location = graalvm_dist.find_single_source_location('dependency:' + self.subject.name)
-        return "Creating native-image.properties for " + basename(dirname(gralvm_location))
+        return "Creating native-image.properties for " + basename(dirname(self._graalvm_location))
 
     def _get_location_classpath(self):
         if self._location_classpath is None:
-            graalvm_dist = get_final_graalvm_distribution()
             image_config = self.subject.image_config
-            graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))
-            self._location_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component, exclude_implicit=True)
+            graalvm_dist = get_final_graalvm_distribution() if image_config.rebuildable else get_stage1_graalvm_distribution()
+            self._location_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, dirname(self._graalvm_location), image_config, self.subject.component, exclude_implicit=True)
         return self._location_classpath
 
     @staticmethod
@@ -1268,7 +1276,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += ['--link-at-build-time']
 
             graalvm_dist = get_final_graalvm_distribution()
-            graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))
             location_classpath = self._get_location_classpath()
             graalvm_home = _get_graalvm_archive_path("")
 
@@ -1360,7 +1367,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 myself = myself[:-1]
             _write_ln(u"# Generated with \u2764 by " + myself)
             _write_ln(u'ImageName=' + java_properties_escape(name))
-            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
+            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), dirname(self._graalvm_location)).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
@@ -2957,6 +2964,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
     with_debuginfo = []
+    with_non_rebuildable_configs = False
     _final_graalvm_distribution = get_final_graalvm_distribution()
     register_distribution(_final_graalvm_distribution)
     with_debuginfo.append(_final_graalvm_distribution)
@@ -2993,11 +3001,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True
                 if with_svm:
                     register_project(GraalVmNativeProperties(component, launcher_config))
+                    if not launcher_config.rebuildable:
+                        with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
                     register_project(GraalVmNativeProperties(component, library_config))
+                    if not library_config.rebuildable:
+                        with_non_rebuildable_configs = True
                     if library_config.add_to_module:
                         jmod_file = library_config.add_to_module + ('' if library_config.add_to_module.endswith('.jmod') else '.jmod')
                         modified_jmods.setdefault(jmod_file, []).append(library_project)
@@ -3090,7 +3102,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         ))
 
     if _debuginfo_dists():
-        if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
+        if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars or with_non_rebuildable_configs:
             for d in with_debuginfo:
                 register_distribution(DebuginfoDistribution(d))
 
