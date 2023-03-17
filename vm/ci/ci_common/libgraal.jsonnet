@@ -67,7 +67,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {} + graal_common.mach5_target,
     "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
