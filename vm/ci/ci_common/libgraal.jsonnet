@@ -97,6 +97,14 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     local obj = c["svm_common_" + underscore(os_arch)];
     if std.type(obj) == "function" then obj(jdk) else obj,
 
+  local all_os_arches = [
+    "linux-amd64",
+    "linux-aarch64",
+    "darwin-amd64",
+    "darwin-aarch64",
+    "windows-amd64"
+  ],
+
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
     c["gate_vm_" + underscore(os_arch)] +
@@ -104,6 +112,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
+                 jdk_name = if jdk == "21" then "oraclejdk" else "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
@@ -111,15 +120,13 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["vm_java_" + jdk]
     for jdk in [
       "17",
-      "20"
+      "20",
+      "21"
     ]
-    for os_arch in [
-      "linux-amd64",
-      "linux-aarch64",
-      "darwin-amd64",
-      "darwin-aarch64"
-    ]
-    for task in [
+    for os_arch in all_os_arches
+    for task in if jdk == "21" then [
+      "libgraal_compiler",
+    ] else [
       "libgraal_compiler",
       "libgraal_truffle",
       "libgraal_compiler_zgc",
