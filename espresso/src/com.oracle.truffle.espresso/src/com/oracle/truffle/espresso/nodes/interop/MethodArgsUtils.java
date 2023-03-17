@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public class MethodArgsUtils {
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode toEspressoNode) {
+    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.Dynamic toEspressoNode) {
         boolean canConvert = true;
         int paramLength = parameterKlasses.length;
         Object[] convertedArgs = new Object[arguments.length];
@@ -95,7 +95,7 @@ public class MethodArgsUtils {
     }
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode toEspressoNode) {
+    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.Dynamic toEspressoNode) {
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -120,10 +120,10 @@ public class MethodArgsUtils {
                 Object convertedArg = toEspressoNode.execute(inputArg, varArgsType);
 
                 if (!isPrimitive) {
-                    Object[] array = varArgsArray.unwrap(toEspressoNode.getLanguage());
+                    Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
                     array[index++] = convertedArg;
                 } else {
-                    putPrimitiveArg(varArgsArray, inputArg, index, toEspressoNode.getLanguage());
+                    putPrimitiveArg(varArgsArray, inputArg, index, matched.getMethod().getLanguage());
                     index++;
                 }
             } catch (UnsupportedTypeException e) {

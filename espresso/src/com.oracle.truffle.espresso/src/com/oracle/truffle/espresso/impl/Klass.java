@@ -30,6 +30,8 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -199,12 +201,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     final void writeMember(String member, Object value,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
-                    @Shared("error") @Cached BranchProfile error,
-                    @Exclusive @Cached ToEspressoNode toEspressoNode) throws UnknownIdentifierException, UnsupportedTypeException {
+                    @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
         Field field = lookupFieldNode.execute(this, member, true);
         // Can only write to non-final fields.
         if (field != null && !field.isFinalFlagSet()) {
-            Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
+            Klass klass = field.resolveTypeKlass();
+            Object espressoValue = ToEspressoNode.create(klass, klass.getMeta()).execute(value);
             field.set(tryInitializeAndGetStatics(), espressoValue);
         } else {
             error.enter();
@@ -224,7 +226,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Exclusive @Cached ToEspressoNode toEspressoNode)
+                    @Cached ToEspressoNode.Dynamic toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
         try {
@@ -338,10 +340,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             throw UnsupportedMessageException.create();
         }
 
-        private static int convertLength(Object argument, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException {
+        private static int convertLength(Object argument, ToPrimitive.ToInt toInt) throws UnsupportedTypeException {
             int length = 0;
             try {
-                length = (int) toEspressoNode.execute(argument, meta._int);
+                length = (int) toInt.execute(argument);
             } catch (UnsupportedTypeException e) {
                 throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
             }
@@ -351,11 +353,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return length;
         }
 
-        private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
+        private static int getLength(Object[] arguments, ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             if (arguments.length != 1) {
                 throw ArityException.create(1, 1, arguments.length);
             }
-            return convertLength(arguments[0], toEspressoNode, meta);
+            return convertLength(arguments[0], toInt);
         }
 
         protected static boolean isPrimitiveArray(Klass receiver) {
@@ -371,39 +373,70 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isArray();
         }
 
+        protected static ToPrimitive.ToInt getLengthToEspressoNode() {
+            return ToPrimitiveFactory.ToIntNodeGen.create();
+        }
+
         @Specialization(guards = "isPrimitiveArray(receiver)")
         static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
+                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+            return doPrimitive(receiver, arguments, toInt);
+        }
+
+        @Specialization(guards = "isPrimitiveArray(receiver)", replaces = "doPrimitiveArray")
+        static StaticObject doPrimitiveArrayUncached(Klass receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
+            return doPrimitive(receiver, arguments, getLengthToEspressoNode());
+        }
+
+        private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException  {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            EspressoContext context = EspressoContext.get(toInt);
+            int length = getLength(arguments, toInt);
             GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
             return context.getAllocator().createNewPrimitiveArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException, ArityException {
+                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
+            return doReference(receiver, arguments, toInt);
+        }
+
+        @Specialization(guards = "isReferenceArray(receiver)", replaces = "doReferenceArray")
+        static StaticObject doReferenceArrayUncached(Klass receiver, Object[] arguments) throws UnsupportedTypeException, ArityException {
+            return doReference(receiver, arguments, getLengthToEspressoNode());
+        }
+
+        private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt)  throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            EspressoContext context = EspressoContext.get(toInt);
+            int length = getLength(arguments, toInt);
             GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
             return context.getAllocator().createNewReferenceArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
+                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+            return doMulti(receiver, arguments, toInt);
+        }
+
+        @Specialization(guards = "isMultidimensionalArray(receiver)", replaces = "doMultidimensionalArray")
+        static StaticObject doMultidimensionalArrayUncached(Klass receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
+            return doMulti(receiver, arguments, getLengthToEspressoNode());
+        }
+
+        private static StaticObject doMulti(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
                 throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
-            EspressoContext context = EspressoContext.get(toEspressoNode);
+            EspressoContext context = EspressoContext.get(toInt);
             int[] dimensions = new int[arguments.length];
             for (int i = 0; i < dimensions.length; ++i) {
-                dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
+                dimensions[i] = convertLength(arguments[i], toInt);
             }
             GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(context.getMeta(), arrayKlass.getComponentType(), dimensions);
             return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);

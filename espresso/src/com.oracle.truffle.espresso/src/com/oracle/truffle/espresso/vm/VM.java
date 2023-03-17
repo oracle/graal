@@ -59,6 +59,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -128,8 +130,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
@@ -634,8 +634,8 @@ public final class VM extends NativeEnv {
         }
     }
 
-    private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToEspressoNode toEspressoNode, SubstitutionProfiler profiler,
-                    char exceptionBranch) {
+    private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToPrimitive.Dynamic toPrimitive, SubstitutionProfiler profiler,
+                                                  char exceptionBranch) {
         assert array.isForeignObject();
         assert array.isArray();
         int length;
@@ -664,56 +664,56 @@ public final class VM extends NativeEnv {
                         boolean[] booleanArray = new boolean[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            booleanArray[i] = (boolean) toEspressoNode.execute(foreignElement, componentType);
+                            booleanArray[i] = (boolean) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, booleanArray, meta.getContext());
                     case Byte:
                         byte[] byteArray = new byte[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            byteArray[i] = (byte) toEspressoNode.execute(foreignElement, componentType);
+                            byteArray[i] = (byte) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, byteArray, meta.getContext());
                     case Short:
                         short[] shortArray = new short[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            shortArray[i] = (short) toEspressoNode.execute(foreignElement, componentType);
+                            shortArray[i] = (short) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, shortArray, meta.getContext());
                     case Char:
                         char[] charArray = new char[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            charArray[i] = (char) toEspressoNode.execute(foreignElement, componentType);
+                            charArray[i] = (char) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, charArray, meta.getContext());
                     case Int:
                         int[] intArray = new int[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            intArray[i] = (int) toEspressoNode.execute(foreignElement, componentType);
+                            intArray[i] = (int) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, intArray, meta.getContext());
                     case Float:
                         float[] floatArray = new float[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            floatArray[i] = (float) toEspressoNode.execute(foreignElement, componentType);
+                            floatArray[i] = (float) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, floatArray, meta.getContext());
                     case Long:
                         long[] longArray = new long[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            longArray[i] = (long) toEspressoNode.execute(foreignElement, componentType);
+                            longArray[i] = (long) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, longArray, meta.getContext());
                     case Double:
                         double[] doubleArray = new double[length];
                         for (int i = 0; i < length; ++i) {
                             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
-                            doubleArray[i] = (double) toEspressoNode.execute(foreignElement, componentType);
+                            doubleArray[i] = (double) toPrimitive.execute(foreignElement, componentType);
                         }
                         return StaticObject.createArray(arrayKlass, doubleArray, meta.getContext());
                     case Object:
@@ -734,7 +734,7 @@ public final class VM extends NativeEnv {
             Object foreignElement = readForeignArrayElement(array, i, interop, language, meta, profiler, exceptionBranch);
 
             try {
-                newArray[i] = (StaticObject) toEspressoNode.execute(foreignElement, componentType);
+                newArray[i] = (StaticObject) toPrimitive.execute(foreignElement, componentType);
             } catch (UnsupportedTypeException e) {
                 profiler.profile(exceptionBranch);
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast an element of a foreign array to the declared component type");
@@ -751,7 +751,7 @@ public final class VM extends NativeEnv {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
+                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToPrimitiveFactory.DynamicNodeGen.create(), profiler, exceptionBranch);
             }
             return self.copy(meta.getContext());
         }

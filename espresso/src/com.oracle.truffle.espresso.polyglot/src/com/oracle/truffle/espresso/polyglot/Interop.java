@@ -1134,6 +1134,9 @@ public final class Interop {
     public static native Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
+    public static native <T> T invokeMemberWithCast(Class<T> targetType, Object receiver, String member, Object... arguments)
+            throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
+
     /**
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
      * {@link #isMemberInsertable(Object, String) insertable}.

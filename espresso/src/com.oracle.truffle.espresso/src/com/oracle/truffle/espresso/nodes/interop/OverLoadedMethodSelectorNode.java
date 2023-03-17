@@ -49,17 +49,17 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
                     Object[] arguments,
                     @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
-                    @Cached ToEspressoNode toEspressoNode) {
+                    @Cached ToEspressoNode.Dynamic toEspressoNode) {
         return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode);
     }
 
     @Specialization(replaces = "doCached")
-    CandidateMethodWithArgs doGeneric(Method[] candidates, Object[] arguments, @Cached ToEspressoNode toEspressoNode) {
-        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), toEspressoNode);
+    CandidateMethodWithArgs doGeneric(Method[] candidates, Object[] arguments) {
+        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), ToEspressoNodeFactory.DynamicNodeGen.create());
     }
 
     @TruffleBoundary
-    private static CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode toEspressoNode) {
+    private static CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode.Dynamic toEspressoNode) {
         ArrayList<CandidateMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
         for (int i = 0; i < candidates.length; i++) {
             CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(candidates[i], arguments, parameterKlasses[i], toEspressoNode);

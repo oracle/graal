@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
@@ -65,10 +67,10 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         return execute(method, receiver, arguments, false);
     }
 
-    public static ToEspressoNode[] createToEspresso(long argsLength) {
-        ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
-        for (int i = 0; i < argsLength; i++) {
-            toEspresso[i] = ToEspressoNodeGen.create();
+    public static ToEspressoNode[] createToEspresso(Klass[] parameterKlasses, Meta meta) {
+        ToEspressoNode[] toEspresso = new ToEspressoNode[parameterKlasses.length];
+        for (int i = 0; i < parameterKlasses.length; i++) {
+            toEspresso[i] = ToEspressoNode.create(parameterKlasses[i], meta);
         }
         return toEspresso;
     }
@@ -83,8 +85,9 @@ public abstract class InvokeEspressoNode extends EspressoNode {
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
                     @Cached("method") Method.MethodVersion cachedMethod,
-                    @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
+                    @Bind("getMeta()") Meta meta,
                     @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
+                    @Cached("createToEspresso(parameterKlasses, meta)") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getMethod().getCallTarget())") DirectCallNode directCallNode,
                     @Cached InitCheck initCheck,
                     @Cached BranchProfile badArityProfile)
@@ -101,7 +104,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         Object[] convertedArguments = argsConverted ? arguments : new Object[expectedArity];
         if (!argsConverted) {
             for (int i = 0; i < expectedArity; i++) {
-                convertedArguments[i] = toEspressoNodes[i].execute(arguments[i], parameterKlasses[i]);
+                convertedArguments[i] = toEspressoNodes[i].execute(arguments[i]);
             }
         }
 
@@ -117,7 +120,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
 
     @Specialization(replaces = "doCached")
     Object doGeneric(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedTypeException {
 

@@ -664,6 +664,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_Double = StaticSymbols.putType("Ljava/lang/Double;");
         public static final Symbol<Type> java_lang_Long = StaticSymbols.putType("Ljava/lang/Long;");
         public static final Symbol<Type> java_lang_Void = StaticSymbols.putType("Ljava/lang/Void;");
+        public static final Symbol<Type> java_lang_Number = StaticSymbols.putType("Ljava/lang/Number;");
 
         public static final Symbol<Type> java_lang_Cloneable = StaticSymbols.putType("Ljava/lang/Cloneable;");
 

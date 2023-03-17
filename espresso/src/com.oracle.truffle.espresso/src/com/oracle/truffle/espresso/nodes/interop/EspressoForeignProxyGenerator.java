@@ -39,6 +39,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.GETSTATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
@@ -66,6 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -477,6 +479,17 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
             mv.visitLabel(startBlock);
 
+            if (returnType.isPrimitive()) {
+                JavaKind kind = returnType.getJavaKind();
+                mv.visitFieldInsn(
+                                GETSTATIC,
+                                kind.toBoxedJavaClass().getName().replace('.', '/'),
+                                "TYPE",
+                                "Ljava/lang/Class;");
+            } else {
+                mv.visitLdcInsn(Type.getType(returnType.getTypeAsString()));
+            }
+
             mv.visitVarInsn(ALOAD, 0);
             mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
@@ -494,10 +507,9 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 mv.visitInsn(ICONST_0);
                 mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
             }
-
             mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                            "invokeMember",
-                            "(Ljava/lang/Object;Ljava/lang/String;" +
+                            "invokeMemberWithCast",
+                            "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
                                             "[Ljava/lang/Object;)Ljava/lang/Object;",
                             false);
 
