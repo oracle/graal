@@ -99,9 +99,6 @@ import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
-    static final String OPTION_GROUP_ENGINE = "engine";
-    static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
-
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
@@ -233,9 +230,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions,
-                    boolean useSystemProperties,
-                    final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly,
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
@@ -248,15 +244,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             InputStream resolvedIn = in == null ? System.in : in;
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
-            boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
-
-            Map<String, String> options = originalOptions;
-            if (useSystemProperties) {
-                options = PolyglotEngineImpl.readOptionsFromSystemProperties(options);
-            }
 
             LogConfig logConfig = new LogConfig();
-            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, sandboxPolicy, useAllowExperimentalOptions);
+            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, sandboxPolicy, allowExperimentalOptions);
 
             LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr, sandboxPolicy);
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(useHandler, logConfig.logLevels);
@@ -282,7 +272,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logConfig,
                                 loggerProvider,
                                 options,
-                                useAllowExperimentalOptions,
+                                allowExperimentalOptions,
                                 boundEngine,
                                 useHandler,
                                 (TruffleLanguage<?>) hostLanguage,
@@ -299,7 +289,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logConfig.logLevels,
                                 loggerProvider,
                                 options,
-                                useAllowExperimentalOptions,
+                                allowExperimentalOptions,
                                 boundEngine, false,
                                 messageInterceptor,
                                 useHandler,
@@ -369,7 +359,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
-        Map<String, String> options = PolyglotEngineImpl.readOptionsFromSystemProperties(new HashMap<>());
+        Map<String, String> options = getAPIAccess().readOptionsFromSystemProperties();
         LogConfig logConfig = new LogConfig();
         SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
         OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, sandboxPolicy, true);

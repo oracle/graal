@@ -262,6 +262,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract MutableTargetMapping[] getMutableTargetMappings(HostAccess access);
 
+        public abstract Map<String, String> readOptionsFromSystemProperties();
+
     }
 
     // shared SPI
@@ -331,11 +333,10 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
-                    boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
-                    AbstractPolyglotHostService polyglotHostService) {
-        return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage,
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
+        return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 

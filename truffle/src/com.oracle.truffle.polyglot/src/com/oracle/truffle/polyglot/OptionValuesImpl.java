@@ -60,9 +60,6 @@ final class OptionValuesImpl implements OptionValues {
 
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
-    // prefix used for -D java system properties
-    static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
-
     private final OptionDescriptors descriptors;
     private final SandboxPolicy sandboxPolicy;
     private final Map<OptionKey<?>, Object> values;

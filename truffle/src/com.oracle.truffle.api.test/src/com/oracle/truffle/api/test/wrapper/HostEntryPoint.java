@@ -86,7 +86,7 @@ final class HostEntryPoint {
     public long remoteCreateEngine(SandboxPolicy sandboxPolicy) {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false, false, null);
+        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), false, false, null, null, hostLanguage, false, false, null);
         return guestToHost(engine);
     }
 
