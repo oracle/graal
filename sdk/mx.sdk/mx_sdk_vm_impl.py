@@ -2655,6 +2655,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'dependency': dependency,
                         'exclude': [],
                         'path': 'jdk_libraries/*',
+                        'optional': True,
                     })
                     for link in launcher_config.links:
                         if link not in excluded_paths:
@@ -2681,6 +2682,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'dependency': dependency,
                         'exclude': [],
                         'path': 'jdk_libraries/*',
+                        'optional': True,
                     })
                     if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
                         for executable in library_config.launchers:
