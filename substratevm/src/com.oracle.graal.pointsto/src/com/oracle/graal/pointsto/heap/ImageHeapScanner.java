@@ -76,8 +76,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public abstract class ImageHeapScanner {
 
-    private static final JavaConstant[] emptyConstantArray = new JavaConstant[0];
-
     protected final BigBang bb;
     protected final ImageHeap imageHeap;
     protected final AnalysisMetaAccess metaAccess;
@@ -239,9 +237,9 @@ public abstract class ImageHeapScanner {
         AnalysisType type = (AnalysisType) object.getType(metaAccess);
 
         if (type.isArray()) {
+            ScanReason arrayReason = new ArrayScan(type, object, reason);
             if (!type.getComponentType().isPrimitive()) {
-                ImageHeapArray array = (ImageHeapArray) object;
-                ScanReason arrayReason = new ArrayScan(type, object, reason);
+                ImageHeapObjectArray array = (ImageHeapObjectArray) object;
                 for (int idx = 0; idx < array.getLength(); idx++) {
                     final JavaConstant elementValue = (JavaConstant) array.getElement(idx);
                     int finalIdx = idx;
@@ -335,17 +333,14 @@ public abstract class ImageHeapScanner {
 
         ImageHeapConstant newImageHeapConstant;
         if (type.isArray()) {
+            Integer length = constantReflection.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                /*
-                 * The shadow heap is only used for points-to analysis currently, we don't need to
-                 * track individual elements for primitive arrays.
-                 */
-                newImageHeapConstant = new ImageHeapArray(type, constant, emptyConstantArray);
+                newImageHeapConstant = new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
             } else {
-                newImageHeapConstant = createImageHeapArray(constant, reason, type);
+                newImageHeapConstant = createImageHeapObjectArray(constant, type, length, reason);
             }
         } else {
-            newImageHeapConstant = createImageHeapInstance(constant, reason, type);
+            newImageHeapConstant = createImageHeapInstance(constant, type, reason);
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
             if (typeFromClassConstant != null) {
                 typeFromClassConstant.registerAsReachable(reason);
@@ -354,9 +349,8 @@ public abstract class ImageHeapScanner {
         return newImageHeapConstant;
     }
 
-    private ImageHeapArray createImageHeapArray(JavaConstant constant, ScanReason reason, AnalysisType type) {
-        int length = constantReflection.readArrayLength(constant);
-        ImageHeapArray array = new ImageHeapArray(type, constant, length);
+    private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
+        ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
         ScanReason arrayReason = new ArrayScan(type, constant, reason);
         for (int idx = 0; idx < length; idx++) {
             final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
@@ -370,7 +364,7 @@ public abstract class ImageHeapScanner {
         return array;
     }
 
-    private ImageHeapInstance createImageHeapInstance(JavaConstant constant, ScanReason reason, AnalysisType type) {
+    private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
         type.registerAsReachable(reason);
         ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
@@ -557,7 +551,7 @@ public abstract class ImageHeapScanner {
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
         markTypeInstantiated(objectType, reason);
-        if (imageHeapConstant instanceof ImageHeapArray imageHeapArray) {
+        if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
                 JavaConstant elementValue = imageHeapArray.readElementValue(idx);
                 markReachable(elementValue, reason, onAnalysisModified);
@@ -706,7 +700,7 @@ public abstract class ImageHeapScanner {
         return task;
     }
 
-    protected AnalysisFuture<JavaConstant> patchArrayElement(ImageHeapArray arrayObject, int index, JavaConstant elementValue, ScanReason reason,
+    protected AnalysisFuture<JavaConstant> patchArrayElement(ImageHeapObjectArray arrayObject, int index, JavaConstant elementValue, ScanReason reason,
                     Consumer<ScanReason> onAnalysisModified) {
         AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
             JavaConstant value = onArrayElementReachable(arrayObject, (AnalysisType) arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);

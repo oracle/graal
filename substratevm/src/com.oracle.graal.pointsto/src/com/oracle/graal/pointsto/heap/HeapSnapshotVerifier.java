@@ -206,7 +206,7 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
-            ImageHeapArray arrayObject = (ImageHeapArray) getReceiverObject(array, reason);
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getReceiverObject(array, reason);
             Object elementValueTask = arrayObject.getElement(index);
             if (elementValueTask instanceof JavaConstant elementSnapshot) {
                 verifyArrayElementValue(elementValue, index, reason, arrayObject, elementSnapshot);
@@ -226,7 +226,7 @@ public class HeapSnapshotVerifier {
             return false;
         }
 
-        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, ImageHeapArray arrayObject, JavaConstant elementSnapshot) {
+        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, ImageHeapObjectArray arrayObject, JavaConstant elementSnapshot) {
             if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
                 Consumer<ScanReason> onAnalysisModified = (deepReason) -> onArrayElementMismatch(elementSnapshot, elementValue, deepReason);
                 scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
