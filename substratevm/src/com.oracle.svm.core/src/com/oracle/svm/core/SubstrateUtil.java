@@ -212,6 +212,7 @@ public class SubstrateUtil {
      * are actually the same class.
      */
     @SuppressWarnings({"unused", "unchecked"})
+    @AlwaysInline("Some callers rely on this never becoming an actual method call.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T cast(Object obj, Class<T> toType) {
         return (T) obj;
