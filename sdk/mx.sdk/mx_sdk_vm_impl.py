@@ -644,13 +644,16 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     if _launcher_config.default_symlinks:
                         _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_path))
-                if _launcher_config.rebuildable or stage1:
+                if stage1 or _launcher_config.rebuildable:
                     _add_native_image_macro(_launcher_config, _component)
                 if isinstance(_launcher_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
-                graalvm_dists.update(_library_config.jar_distributions)
-                self.jimage_ignore_jars.update(_library_config.jar_distributions)
+                if stage1 or _library_config.rebuildable or isinstance(_library_config, mx_sdk_vm.LanguageLibraryConfig):
+                    # language libraries can run in `--jvm` mode
+                    graalvm_dists.update(_library_config.jar_distributions)
+                    self.jimage_ignore_jars.update(_library_config.jar_distributions)
+
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
                     _svm_library_home = _jvm_library_dest
@@ -676,7 +679,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         _add(layout, join(_component_base, _executable), 'dependency:{}'.format(NativeLibraryLauncherProject.library_launcher_project_name(_library_config)), _component)
                         _link_path = _add_link(_jdk_jre_bin, _component_base + _executable)
                         _jre_bin_names.append(basename(_link_path))
-                if _library_config.rebuildable or stage1:
+                if stage1 or _library_config.rebuildable:
                     _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
