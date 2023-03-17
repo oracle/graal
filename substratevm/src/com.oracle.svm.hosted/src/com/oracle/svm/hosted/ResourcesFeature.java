@@ -364,12 +364,7 @@ public final class ResourcesFeature implements InternalFeature {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
             String moduleName = moduleNameWithPattern[0];
-            boolean acceptModuleName = MODULE_NAME_ALL_UNNAMED.equals(moduleName) ? true : imageClassLoader.findModule(moduleName).isPresent();
-            if (acceptModuleName) {
-                return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
-            } else {
-                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleName);
-            }
+            return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
         }
     }
 
