@@ -74,6 +74,25 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        if (!source.getJavaKind().isPrimitive()) {
+            return null;
+        }
+        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        if (!source.getJavaKind().isObject()) {
+            return null;
+        }
+        if (source instanceof ImageHeapConstant heapConstant) {
+            return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(heapConstant.getHostedObject()));
+        }
+        return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
+    }
+
+    @Override
     public Integer readArrayLength(JavaConstant array) {
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;

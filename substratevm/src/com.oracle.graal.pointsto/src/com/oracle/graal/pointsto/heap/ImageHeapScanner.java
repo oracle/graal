@@ -512,7 +512,7 @@ public abstract class ImageHeapScanner {
      * triggered the re-scanning.
      *
      * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
-     * schedule new tasks, because that would be treated as "the analysis has not finsihed yet". So
+     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
      * in that case we execute the task directly.
      */
     private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {

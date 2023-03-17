@@ -64,6 +64,10 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
         };
     }
 
+    public Object getArray() {
+        return array;
+    }
+
     /**
      * Return the value of the element at the specified index as computed by
      * {@link ImageHeapScanner#onArrayElementReachable(ImageHeapArray, AnalysisType, JavaConstant, int, ObjectScanner.ScanReason, Consumer)}.
