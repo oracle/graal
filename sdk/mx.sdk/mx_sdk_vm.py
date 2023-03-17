@@ -1057,7 +1057,7 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
-def extra_installable_qualifiers(jdk_home=base_jdk().home, ce_edition=['ce'], oracle_edition=None):
+def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
     """
     Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
     :type jdk_home: str
