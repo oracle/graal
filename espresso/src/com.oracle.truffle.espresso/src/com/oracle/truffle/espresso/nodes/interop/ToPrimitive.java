@@ -103,6 +103,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
 
     @NodeInfo(shortName = "To boolean")
+    @GenerateUncached
     public abstract static class ToBoolean extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -149,6 +150,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To int")
+    @GenerateUncached
     public abstract static class ToInt extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -195,6 +197,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To byte")
+    @GenerateUncached
     public abstract static class ToByte extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -241,6 +244,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To short")
+    @GenerateUncached
     public abstract static class ToShort extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -287,6 +291,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To char")
+    @GenerateUncached
     public abstract static class ToChar extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -339,6 +344,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To long")
+    @GenerateUncached
     public abstract static class ToLong extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -385,6 +391,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To float")
+    @GenerateUncached
     public abstract static class ToFloat extends ToPrimitive {
 
         protected static final int LIMIT = 2;
@@ -431,6 +438,7 @@ public abstract class ToPrimitive extends EspressoNode {
     }
 
     @NodeInfo(shortName = "To double")
+    @GenerateUncached
     public abstract static class ToDouble extends ToPrimitive {
 
         protected static final int LIMIT = 2;

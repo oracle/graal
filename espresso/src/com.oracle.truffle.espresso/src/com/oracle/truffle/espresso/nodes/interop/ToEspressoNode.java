@@ -167,6 +167,109 @@ public abstract class ToEspressoNode extends EspressoNode {
         return ToEspressoNodeFactory.ToUnknownNodeGen.create(targetType);
     }
 
+    public static ToEspressoNode createUncached(Klass targetType, Meta meta) {
+        if (targetType.isPrimitive()) {
+            switch (targetType.getJavaKind()) {
+                case Boolean:
+                    return ToEspressoNodeFactory.ToBooleanNodeGen.create(ToPrimitiveFactory.ToBooleanNodeGen.getUncached());
+                case Byte:
+                    return ToEspressoNodeFactory.ToByteNodeGen.create(ToPrimitiveFactory.ToByteNodeGen.getUncached());
+                case Short:
+                    return ToEspressoNodeFactory.ToShortNodeGen.create(ToPrimitiveFactory.ToShortNodeGen.getUncached());
+                case Int:
+                    return ToEspressoNodeFactory.ToIntegerNodeGen.create(ToPrimitiveFactory.ToIntNodeGen.getUncached());
+                case Float:
+                    return ToEspressoNodeFactory.ToFloatNodeGen.create(ToPrimitiveFactory.ToFloatNodeGen.getUncached());
+                case Long:
+                    return ToEspressoNodeFactory.ToLongNodeGen.create(ToPrimitiveFactory.ToLongNodeGen.getUncached());
+                case Double:
+                    return ToEspressoNodeFactory.ToDoubleNodeGen.create(ToPrimitiveFactory.ToDoubleNodeGen.getUncached());
+                case Char:
+                    return ToEspressoNodeFactory.ToCharNodeGen.create(ToPrimitiveFactory.ToCharNodeGen.getUncached());
+                case Void:
+                    return new ToVoid();
+            }
+        }
+        if (targetType.getMeta().isBoxed(targetType)) {
+            if (targetType == meta.java_lang_Boolean) {
+                return ToEspressoNodeFactory.ToBooleanNodeGen.create(ToPrimitiveFactory.ToBooleanNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Character) {
+                return ToEspressoNodeFactory.ToCharNodeGen.create(ToPrimitiveFactory.ToCharNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Integer) {
+                return ToEspressoNodeFactory.ToIntegerNodeGen.create(ToPrimitiveFactory.ToIntNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Byte) {
+                return ToEspressoNodeFactory.ToByteNodeGen.create(ToPrimitiveFactory.ToByteNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Short) {
+                return ToEspressoNodeFactory.ToShortNodeGen.create(ToPrimitiveFactory.ToShortNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Long) {
+                return ToEspressoNodeFactory.ToLongNodeGen.create(ToPrimitiveFactory.ToLongNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Float) {
+                return ToEspressoNodeFactory.ToFloatNodeGen.create(ToPrimitiveFactory.ToFloatNodeGen.getUncached());
+            }
+            if (targetType == meta.java_lang_Double) {
+                return ToEspressoNodeFactory.ToDoubleNodeGen.create(ToPrimitiveFactory.ToDoubleNodeGen.getUncached());
+            }
+        }
+        if (targetType == meta._byte_array) {
+            return ToEspressoNodeFactory.ToByteArrayNodeGen.getUncached();
+        }
+        if (targetType.isArray()) {
+            return ToEspressoNodeFactory.ToArrayNodeGen.create((ArrayKlass) targetType);
+        }
+        if (targetType.isJavaLangObject()) {
+            return ToEspressoNodeFactory.ToJavaLangObjectNodeGen.getUncached();
+        }
+        if (targetType == meta.java_lang_String) {
+            return ToEspressoNodeFactory.ToStringNodeGen.getUncached();
+        }
+        if (targetType.isInterface()) {
+            if (isTypeMappingEnabled(targetType)) {
+                return ToEspressoNodeFactory.ToMappedInterfaceNodeGen.create((ObjectKlass) targetType);
+            } else {
+                return ToEspressoNodeFactory.ToUnknownNodeGen.create(targetType);
+            }
+        }
+        if (isForeignException(targetType, meta)) {
+            return ToEspressoNodeFactory.ToForeignExceptionNodeGen.getUncached();
+        }
+        if (targetType == meta.java_util_List) {
+            return ToEspressoNodeFactory.ToListNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_LocalDate) {
+            return ToEspressoNodeFactory.ToLocalDateNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_LocalTime) {
+            return ToEspressoNodeFactory.ToLocalTimeNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_LocalDateTime) {
+            return ToEspressoNodeFactory.ToLocalDateTimeNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_ZonedDateTime) {
+            return ToEspressoNodeFactory.ToZonedDateTimeNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_Instant) {
+            return ToEspressoNodeFactory.ToInstantNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_Duration) {
+            return ToEspressoNodeFactory.ToDurationNodeGen.getUncached();
+        }
+        if (targetType == meta.java_time_ZoneId) {
+            return ToEspressoNodeFactory.ToZoneIdNodeGen.getUncached();
+        }
+        if (targetType == meta.java_util_Date) {
+            return ToEspressoNodeFactory.ToDateNodeGen.getUncached();
+        }
+        // TODO - add mapped type converters
+
+        return ToEspressoNodeFactory.ToUnknownNodeGen.create(targetType);
+    }
+
     static boolean isForeignException(Klass klass, Meta meta) {
         return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
     }
@@ -178,21 +281,24 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         public abstract StaticObject execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
-        protected static ToEspressoNode createToEspressoNode(Klass targetType) {
+        protected static ToEspressoNode createToEspressoNodes(Klass targetType) {
             return ToEspressoNode.create(targetType, targetType.getMeta());
+        }
+
+        protected static ToEspressoNode createUncachedToEspressoNodes(Klass targetType) {
+            return ToEspressoNode.createUncached(targetType, targetType.getMeta());
         }
 
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
         public StaticObject doCached(Object value, Klass targetType,
                         @Cached("targetType") Klass cachedTargetType,
-                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
+                        @Cached("createToEspressoNodes(cachedTargetType)") ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
             return toEspressoNode.execute(value);
         }
 
         @Specialization(replaces = "doCached")
         public StaticObject doGeneric(Object value, Klass targetType) throws UnsupportedTypeException {
-            // TODO - use uncached versions
-            return createToEspressoNode(targetType).execute(value);
+            return createUncachedToEspressoNodes(targetType).execute(value);
         }
     }
 
@@ -420,7 +526,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isBoxedPrimitive(value)"
         })
         StaticObject doJavaLangObjectForeignWrapper(Object value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @Bind("getMeta()") Meta meta) {
             return StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop);
@@ -435,7 +541,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isBoxedPrimitive(value)",
         })
         StaticObject doForeignTypeMapping(Object value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile errorProfile,
