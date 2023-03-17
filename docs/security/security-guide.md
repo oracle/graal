@@ -141,9 +141,9 @@ The Truffle framework needs to be invoked with all permissions to make full use 
 
 ## Oracle GraalVM to GraalVM Community Edition Downgrade
 
-> Note: Managed execution of native code is available with Oracle GraalVM.
+> Note: Managed execution of native code is not available in GraalVM Community Edition.
 
-When downgrading to GraalVM Community Edition, native code execution is only available with the `allowNativeAccess` privilege.
+When downgrading to GraalVM Community Edition, native code execution is only possible with the `allowNativeAccess` privilege.
 This also applies to languages implemented with Truffle that allow for native code extensions, such as Python and Ruby.
 
 Computational resource limit options are not recognized by GraalVM Community Edition.
