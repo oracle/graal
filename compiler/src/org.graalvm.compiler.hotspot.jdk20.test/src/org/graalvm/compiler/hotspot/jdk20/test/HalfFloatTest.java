@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.jdk20.test;
 
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
+import static org.junit.Assume.assumeTrue;
+
 import org.graalvm.compiler.jtt.JTTTest;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -47,6 +49,7 @@ public class HalfFloatTest extends JTTTest {
      */
     @Test
     public void binary16RoundTrip() {
+        assumeTrue("Interpreter returns different result for silent NaNs prior to JDK-8302976", JAVA_SPEC >= 21);
         for (int i = Short.MIN_VALUE; i < Short.MAX_VALUE; i++) {
             short s = (short) i;
             Result result = test("float16ToFloat", s);
@@ -243,10 +246,9 @@ public class HalfFloatTest extends JTTTest {
      * Put all 16-bit NaN values through a conversion loop and make sure the significand, sign, and
      * exponent are all preserved.
      */
-    @Ignore("JDK-8302976")
     @Test
     public void binary16NaNRoundTrip() {
-
+        assumeTrue("Interpreter returns different result for silent NaNs prior to JDK-8302976", JAVA_SPEC >= 21);
         // A NaN has a nonzero significand
         for (int i = 1; i <= 0x3ff; i++) {
             short binary16NaN = (short) (NAN_EXPONENT | i);
