@@ -44,7 +44,9 @@ public class WindowsDirectives implements CContext.Directives {
                     "<stdio.h>",
                     "<stdlib.h>",
                     "<string.h>",
-                    "<io.h>"
+                    "<sys\\stat.h>",
+                    "<fcntl.h>",
+                    "<io.h>",
     };
 
     @Override

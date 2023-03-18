@@ -67,8 +67,12 @@ public abstract class AbstractJfrTest {
     @After
     public void deleteTemporaryFiles() throws Throwable {
         if (!isDebuggingEnabled()) {
-            for (Path f : jfrFiles) {
-                Files.deleteIfExists(f);
+                try {
+                    for (Path f : jfrFiles) {
+                        Files.deleteIfExists(f);
+                } catch (IOException e) {
+                    /* Swallow the exception if the cleanup fails. */
+                }
             }
         }
     }

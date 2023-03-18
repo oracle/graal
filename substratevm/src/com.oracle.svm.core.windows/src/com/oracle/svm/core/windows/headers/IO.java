@@ -29,59 +29,68 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 import org.graalvm.word.PointerBase;
-
-import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
 
 /**
- * Definitions for Windows fileapi.h
+ * Definitions for io.h
  */
 @CContext(WindowsDirectives.class)
-public class FileAPI {
-
-    /* Generic Access Rights */
+public class IO {
+    /* Constants from <sys\stat.h> */
     @CConstant
-    public static native int GENERIC_READ();
-
-    /* CreateFile - dwShareMode Constants */
-    @CConstant
-    public static native int FILE_SHARE_READ();
+    public static native int _S_IREAD();
 
     @CConstant
-    public static native int FILE_SHARE_DELETE();
+    public static native int _S_IWRITE();
 
-    /* CreateFile - dwCreationDisposition Constants */
+    /* Constants from <fcntl.h> */
     @CConstant
-    public static native int OPEN_EXISTING();
-
-    /** Creates or opens a file or I/O device. */
-    @CFunction(transition = NO_TRANSITION)
-    public static native HANDLE CreateFileW(WCharPointer lpFileName, int dwDesiredAccess, int dwShareMode, PointerBase lpSecurityAttributes, int dwCreationDisposition,
-                    int dwFlagsAndAttributes, HANDLE hTemplateFile);
-
-    @CFunction
-    public static native int WriteFile(HANDLE hFile, PointerBase lpBuffer, @CUnsigned int nNumberOfBytesToWrite, CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
-
-    @CFunction
-    public static native int FlushFileBuffers(HANDLE hFile);
+    public static native int _O_CREAT();
 
     @CConstant
-    public static native int STD_INPUT_HANDLE();
+    public static native int _O_EXCL();
 
     @CConstant
-    public static native int STD_OUTPUT_HANDLE();
+    public static native int _O_TRUNC();
 
     @CConstant
-    public static native int STD_ERROR_HANDLE();
+    public static native int _O_BINARY();
 
-    @CFunction
-    public static native HANDLE GetStdHandle(int stdHandle);
+    @CConstant
+    public static native int _O_RDONLY();
 
-    @CFunction(transition = NO_TRANSITION)
-    public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
+    @CConstant
+    public static native int _O_RDWR();
+
+    @CConstant
+    public static native int _O_WRONLY();
+
+    /* Constant from <stdio.h> */
+    @CConstant
+    public static native int SEEK_SET();
+
+    @CConstant
+    public static native int SEEK_CUR();
+
+    public static class NoTransitions {
+        /* Functions from <io.h> */
+        @CFunction(transition = NO_TRANSITION)
+        public static native int _close(int fd);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int _write(int fd, @CConst PointerBase buffer, @CUnsigned int count);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native @CUnsigned int _read(int fd, PointerBase buffer, @CUnsigned int bufferSize);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native long _lseeki64(int fd, long offset, int origin);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native long _filelengthi64(int fd);
+    }
 }

@@ -27,7 +27,6 @@ package com.oracle.svm.core.windows;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 
 import java.io.FileDescriptor;
-import java.io.IOException;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -51,9 +50,11 @@ import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 
 public class WindowsUtils {
+    private static final long MAX_DWORD = (1L << 32) - 1;
 
     @TargetClass(className = "java.lang.ProcessImpl")
     private static final class Target_java_lang_ProcessImpl {
@@ -79,12 +80,8 @@ public class WindowsUtils {
         long handle;
     }
 
-    static void setHandle(FileDescriptor descriptor, long handle) {
-        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
-    }
-
-    static boolean outOfBounds(int off, int len, byte[] array) {
-        return off < 0 || len < 0 || array.length - off < len;
+    static void setHandle(FileDescriptor descriptor, HANDLE handle) {
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle.rawValue();
     }
 
     /** Return the error string for the last error, or a default message. */
@@ -97,71 +94,34 @@ public class WindowsUtils {
      * Low-level output of bytes already in native memory. This method is allocation free, so that
      * it can be used, e.g., in low-level logging routines.
      */
-    public static boolean writeBytes(int handle, CCharPointer bytes, UnsignedWord length) {
+    public static boolean writeBytes(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
-            if (handle == -1) {
-                return false;
-            }
+            CIntPointer pDwBytesWritten = UnsafeStackValue.get(CIntPointer.class);
 
-            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
-
+            int ret = FileAPI.WriteFile(handle, curBuf, toDwordOrMaxValue(curLen), pDwBytesWritten, WordFactory.nullPointer());
             if (ret == 0) {
                 return false;
             }
 
-            int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
-                return false;
-            }
-
-            curBuf = curBuf.addressOf(writtenCount);
-            curLen = curLen.subtract(writtenCount);
+            long written = WindowsUtils.dwordToLong(pDwBytesWritten.read());
+            curBuf = curBuf.addressOf(WordFactory.signed(written));
+            curLen = curLen.subtract(WordFactory.signed(written));
         }
         return true;
     }
 
-    static boolean flush(int handle) {
-        if (handle == -1) {
+    static boolean flush(HANDLE handle) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
             return false;
         }
         int result = FileAPI.FlushFileBuffers(handle);
         return (result != 0);
-    }
-
-    @SuppressWarnings("unused")
-    static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
-        if (bytes == null) {
-            throw new NullPointerException();
-        } else if (WindowsUtils.outOfBounds(off, len, bytes)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len == 0) {
-            return;
-        }
-
-        try (PrimitiveArrayView bytesPin = PrimitiveArrayView.createForReading(bytes)) {
-            CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
-            UnsignedWord curLen = WordFactory.unsigned(len);
-            /** Temp fix until we complete FileDescriptor substitutions. */
-            int handle = FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
-
-            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, WordFactory.nullPointer());
-
-            if (ret == 0) {
-                throw new IOException(lastErrorString("Write error"));
-            }
-
-            int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
-                throw new IOException(lastErrorString("Write error"));
-            }
-        }
     }
 
     private static long performanceFrequency = 0L;
@@ -231,5 +191,50 @@ public class WindowsUtils {
             CEntryPointActions.failFatally(WinBase.GetLastError(), dllName);
         }
         return dllHandle;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int toUnsignedIntOrMaxValue(UnsignedWord value) {
+        return toUnsignedIntOrMaxValue(value.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int toUnsignedIntOrMaxValue(long value) {
+        assert value >= 0;
+        if (value > MAX_DWORD) {
+            return (int) MAX_DWORD;
+        }
+        return (int) value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long unsignedIntToLong(int value) {
+        return value & 0xFFFFFFFFL;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord unsignedIntToUnsignedWord(int value) {
+        return WordFactory.unsigned(unsignedIntToLong(value));
+    }
+
+    /* DWORD is an unsigned 32-bit value. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int toDwordOrMaxValue(UnsignedWord value) {
+        return toUnsignedIntOrMaxValue(value.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int toDwordOrMaxValue(long value) {
+        return toUnsignedIntOrMaxValue(value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long dwordToLong(int value) {
+        return unsignedIntToLong(value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord dwordToUnsignedWord(int value) {
+        return unsignedIntToUnsignedWord(value);
     }
 }

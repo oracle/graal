@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.windows;
 
 import java.io.File;
 import java.nio.ByteOrder;
@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -40,98 +39,93 @@ import com.oracle.svm.core.IOHelper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
-import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.IO;
 
-public class PosixRawFileOperationSupport extends AbstractRawFileOperationSupport {
+public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public PosixRawFileOperationSupport(boolean useNativeByteOrder) {
+    public WindowsRawFileOperationSupport(boolean useNativeByteOrder) {
         super(useNativeByteOrder);
     }
 
     @Override
     public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
         String path = file.getPath();
-        int flags = parseMode(creationMode) | parseMode(accessMode);
+        int flags = parseMode(creationMode) | parseMode(accessMode) | IO._O_BINARY();
         return open0(path, flags);
     }
 
     @Override
     public RawFileDescriptor open(File file, FileAccessMode mode) {
         String path = file.getPath();
-        int flags = parseMode(mode);
+        int flags = parseMode(mode) | IO._O_BINARY();
         return open0(path, flags);
     }
 
     private static RawFileDescriptor open0(String path, int flags) {
-        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
         try (CTypeConversion.CCharPointerHolder cPath = CTypeConversion.toCString(path)) {
-            return WordFactory.signed(IOHelper.openFile(cPath.get(), flags, permissions));
+            return WordFactory.signed(IOHelper.openFile(cPath.get(), flags, IO._S_IREAD() | IO._S_IWRITE()));
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean isValid(RawFileDescriptor fd) {
-        int posixFd = getPosixFileDescriptor(fd);
-        // > 0 to ensure the default value 0 is invalid on all platforms
-        return posixFd > 0;
+        int windowsFd = getWindowsFileDescriptor(fd);
+        /* > 0 to ensure the default value 0 is invalid on all platforms */
+        return windowsFd > 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean close(RawFileDescriptor fd) {
-        int posixFd = getPosixFileDescriptor(fd);
-        int result = Unistd.NoTransitions.close(posixFd);
+        int windowsFd = getWindowsFileDescriptor(fd);
+        int result = IO.NoTransitions._close(windowsFd);
         return result == 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long size(RawFileDescriptor fd) {
-        int posixFd = getPosixFileDescriptor(fd);
-        return PosixStat.getSize(posixFd);
+        int windowsFd = getWindowsFileDescriptor(fd);
+        return IO.NoTransitions._filelengthi64(windowsFd);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long position(RawFileDescriptor fd) {
-        int posixFd = getPosixFileDescriptor(fd);
-        return Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(0), Unistd.SEEK_CUR()).rawValue();
+        int windowsFd = getWindowsFileDescriptor(fd);
+        return IO.NoTransitions._lseeki64(windowsFd, 0L, IO.SEEK_CUR());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean seek(RawFileDescriptor fd, long position) {
         assert position >= 0;
-        int posixFd = getPosixFileDescriptor(fd);
-        SignedWord actualPosition = Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(position), Unistd.SEEK_SET());
-        return position == actualPosition.rawValue();
+        int windowsFd = getWindowsFileDescriptor(fd);
+        long actualPosition = IO.NoTransitions._lseeki64(windowsFd, position, IO.SEEK_SET());
+        return position == actualPosition;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean write(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
-        int posixFd = getPosixFileDescriptor(fd);
+        int windowsFd = getWindowsFileDescriptor(fd);
 
-        Pointer position = data;
+        Pointer pos = data;
         UnsignedWord remaining = size;
-        while (remaining.aboveThan(0)) {
-            SignedWord writtenBytes = Unistd.NoTransitions.write(posixFd, position, remaining);
-            if (writtenBytes.equal(-1)) {
-                if (LibC.errno() == Errno.EINTR()) {
-                    // Retry the write if it was interrupted before any bytes were written.
-                    continue;
-                }
+        while (remaining.notEqual(0)) {
+            int uBytesToWrite = WindowsUtils.toUnsignedIntOrMaxValue(remaining);
+            int ret = IO.NoTransitions._write(windowsFd, pos, uBytesToWrite);
+            if (ret == -1) {
                 return false;
             }
-            position = position.add((UnsignedWord) writtenBytes);
-            remaining = remaining.subtract((UnsignedWord) writtenBytes);
+
+            UnsignedWord writtenBytes = WindowsUtils.unsignedIntToUnsignedWord(ret);
+            pos = pos.add(writtenBytes);
+            remaining = remaining.subtract(writtenBytes);
         }
         return true;
     }
@@ -139,58 +133,50 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize) {
-        int posixFd = getPosixFileDescriptor(fd);
-
-        SignedWord readBytes;
-        do {
-            readBytes = Unistd.NoTransitions.read(posixFd, buffer, bufferSize);
-        } while (readBytes.equal(-1) && LibC.errno() == Errno.EINTR());
-
-        return readBytes.rawValue();
+        int windowsFd = getWindowsFileDescriptor(fd);
+        int uMaxBytes = WindowsUtils.toUnsignedIntOrMaxValue(bufferSize);
+        int readBytes = IO.NoTransitions._read(windowsFd, buffer, uMaxBytes);
+        if (readBytes == -1) {
+            return -1L;
+        }
+        return WindowsUtils.unsignedIntToLong(readBytes);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static int getPosixFileDescriptor(RawFileDescriptor fd) {
+    private static int getWindowsFileDescriptor(RawFileDescriptor fd) {
         int result = (int) fd.rawValue();
         assert result == fd.rawValue();
         return result;
     }
 
     private static int parseMode(FileCreationMode mode) {
-        switch (mode) {
-            case CREATE:
-                return Fcntl.O_CREAT() | Fcntl.O_EXCL();
-            case CREATE_OR_REPLACE:
-                return Fcntl.O_CREAT() | Fcntl.O_TRUNC();
-            default:
-                throw VMError.shouldNotReachHere();
-        }
+        return switch (mode) {
+            case CREATE -> IO._O_CREAT() | IO._O_EXCL();
+            case CREATE_OR_REPLACE -> IO._O_CREAT() | IO._O_TRUNC();
+            default -> throw VMError.shouldNotReachHere();
+        };
     }
 
     private static int parseMode(FileAccessMode mode) {
-        switch (mode) {
-            case READ:
-                return Fcntl.O_RDONLY();
-            case READ_WRITE:
-                return Fcntl.O_RDWR();
-            case WRITE:
-                return Fcntl.O_WRONLY();
-            default:
-                throw VMError.shouldNotReachHere();
-        }
+        return switch (mode) {
+            case READ -> IO._O_RDONLY();
+            case READ_WRITE -> IO._O_RDWR();
+            case WRITE -> IO._O_WRONLY();
+            default -> throw VMError.shouldNotReachHere();
+        };
     }
 }
 
 @AutomaticallyRegisteredFeature
-class PosixRawFileOperationFeature implements InternalFeature {
+class WindowsRawFileOperationFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ByteOrder nativeByteOrder = ByteOrder.nativeOrder();
         assert nativeByteOrder == ByteOrder.LITTLE_ENDIAN || nativeByteOrder == ByteOrder.BIG_ENDIAN;
 
-        PosixRawFileOperationSupport littleEndian = new PosixRawFileOperationSupport(ByteOrder.LITTLE_ENDIAN == nativeByteOrder);
-        PosixRawFileOperationSupport bigEndian = new PosixRawFileOperationSupport(ByteOrder.BIG_ENDIAN == nativeByteOrder);
-        PosixRawFileOperationSupport nativeOrder = nativeByteOrder == ByteOrder.LITTLE_ENDIAN ? littleEndian : bigEndian;
+        WindowsRawFileOperationSupport littleEndian = new WindowsRawFileOperationSupport(ByteOrder.LITTLE_ENDIAN == nativeByteOrder);
+        WindowsRawFileOperationSupport bigEndian = new WindowsRawFileOperationSupport(ByteOrder.BIG_ENDIAN == nativeByteOrder);
+        WindowsRawFileOperationSupport nativeOrder = nativeByteOrder == ByteOrder.LITTLE_ENDIAN ? littleEndian : bigEndian;
 
         ImageSingletons.add(RawFileOperationSupportHolder.class, new RawFileOperationSupportHolder(littleEndian, bigEndian, nativeOrder));
     }

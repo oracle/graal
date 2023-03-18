@@ -195,8 +195,6 @@ public final class WindowsPlatformThreads extends PlatformThreads {
  */
 @Platforms(Platform.WINDOWS.class)
 class WindowsParker extends Parker {
-    private static final long MAX_DWORD = (1L << 32) - 1;
-
     /**
      * An opaque handle for an event object from the operating system. Event objects have explicit
      * set and reset operations. They can be waited on until they become set or a timeout occurs,
@@ -249,22 +247,13 @@ class WindowsParker extends Parker {
                 /* There was already a notification pending. */
                 SynchAPI.ResetEvent(eventHandle);
             } else {
-                status = SynchAPI.WaitForSingleObject(eventHandle, toDword(millis));
+                status = SynchAPI.WaitForSingleObject(eventHandle, WindowsUtils.toDwordOrMaxValue(millis));
                 SynchAPI.ResetEvent(eventHandle);
             }
             assert status == SynchAPI.WAIT_OBJECT_0() || status == SynchAPI.WAIT_TIMEOUT();
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
-    }
-
-    /* DWORD is an unsigned 32-bit value. */
-    private static int toDword(long value) {
-        assert value >= 0;
-        if (value > MAX_DWORD) {
-            return (int) MAX_DWORD;
-        }
-        return (int) value;
     }
 
     @Override

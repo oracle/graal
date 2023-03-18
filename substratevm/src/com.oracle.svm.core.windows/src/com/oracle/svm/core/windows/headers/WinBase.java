@@ -68,9 +68,9 @@ public class WinBase {
 
     @CPointerTo(nameOfCType = "HMODULE")
     public interface HMODULEPointer extends PointerBase {
-        public HMODULE read();
+        HMODULE read();
 
-        public void write(HMODULE value);
+        void write(HMODULE value);
     }
 
     /**
@@ -91,6 +91,9 @@ public class WinBase {
      */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetLastError();
+
+    @CConstant
+    public static native int NO_ERROR();
 
     @CConstant
     public static native int ERROR_TIMEOUT();

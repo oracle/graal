@@ -34,7 +34,6 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
@@ -67,11 +66,11 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
-         * Include the feature unconditionally on Linux and macOS. The code and all its data are
-         * only present in the final image if the heap dumping infrastructure is actually called by
-         * any code (e.g., VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
+         * Include the feature unconditionally. The code and all its data are only present in the
+         * final image if the heap dumping infrastructure is actually called by any code (e.g.,
+         * VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
          */
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return true;
     }
 
     @Override
