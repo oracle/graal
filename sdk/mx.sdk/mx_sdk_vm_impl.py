@@ -1042,6 +1042,9 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                         layout.setdefault(macro_dir, []).append('dependency:{}'.format(GraalVmNativeProperties.project_name(image_config)))
                         for profile in _image_profiles(GraalVmNativeProperties.canonical_image_name(image_config)):
                             layout[macro_dir].append('file:{}'.format(abspath(profile)))
+                        if isinstance(image_config, mx_sdk_vm.LibraryConfig) and not isinstance(image_config, mx_sdk_vm.LanguageLibraryConfig):
+                            for jar_distribution in image_config.jar_distributions:
+                                layout[macro_dir].append('dependency:{}'.format(jar_distribution))
 
                 elif isinstance(dep, GraalVmJImage):
                     _add(dep.deps, layout)
