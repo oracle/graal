@@ -619,6 +619,7 @@ suite = {
                 "java.xml.crypto",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -653,6 +654,9 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
                 ],
+                "jdk.unsupported": [
+                    "sun.reflect",
+                ]
             },
             "javaCompliance" : "17+",
             "checkstyleVersion": "10.7.0",
