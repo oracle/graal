@@ -252,6 +252,7 @@ suite = {
                 "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.management.jfr",
                 "jdk.unsupported",
             ],
             "requiresConcealed" : {
@@ -292,9 +293,6 @@ suite = {
                 ],
                 "jdk.management.agent": [
                     "jdk.internal.agent",
-                ],
-                "jdk.management.jfr": [
-                    "jdk.management.jfr"
                 ],
                 "jdk.httpserver@19+": [
                     "sun.net.httpserver.simpleserver",

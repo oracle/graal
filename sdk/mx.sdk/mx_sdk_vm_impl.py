@@ -1685,10 +1685,24 @@ class GraalVmNativeImage(GraalVmProject, metaclass=ABCMeta):
     def getArchivableResults(self, use_relpath=True, single=False):
         yield self.output_file(), self.native_image_name
         if not single:
+            build_directory = self.build_directory()
+            build_artifacts_file = join(build_directory, 'build-artifacts.json')
+            if exists(build_artifacts_file):
+                # include any additional JDK libraries
+                with open(build_artifacts_file, 'r') as f:
+                    build_artifacts = json.load(f)
+                if 'jdk_libraries' in build_artifacts:
+                    for build_artifact in build_artifacts['jdk_libraries']:
+                        build_artifact_path = join(build_directory, build_artifact)
+                        if not exists(build_artifact_path):
+                            mx.abort("Could not find build artifact '{}', referred by '{}' and produced while building '{}'".format(build_artifact_path, build_artifacts_file, self.native_image_name))
+                        yield build_artifact_path, join('jdk_libraries', build_artifact)
+            # include debug file if it exists
             debug = self.debug_file()
             if debug:
                 yield debug, basename(debug)
-            src_dir = self.image_sources_dir()
+            # include sources/ directory if it exists
+            src_dir = join(build_directory, 'sources')
             if exists(src_dir):
                 logical_root = dirname(src_dir)
                 for root, _, files in os.walk(src_dir):
@@ -1710,11 +1724,11 @@ class GraalVmNativeImage(GraalVmProject, metaclass=ABCMeta):
     def native_image_name(self):
         return basename(self.native_image_config.destination)
 
-    def output_file(self):
-        return join(self.get_output_base(), self.name, self.native_image_name)
+    def build_directory(self):
+        return join(self.get_output_base(), self.name)
 
-    def image_sources_dir(self):
-        return join(self.get_output_base(), self.name, "sources")
+    def output_file(self):
+        return join(self.build_directory(), self.native_image_name)
 
     def isPlatformDependent(self):
         return True
@@ -2244,6 +2258,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config),
             '-H:NumberOfThreads=' + str(self.parallelism),
             '-H:+BuildOutputPrefix',
+            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]
         if self.subject.native_image_config.is_polyglot:
             build_args += ["--macro:truffle", "--language:all"]
@@ -2629,11 +2644,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
                 if launcher_config.destination not in excluded_paths:
+                    dependency = GraalVmLauncher.launcher_project_name(launcher_config, stage1=False)
                     layout.setdefault(launcher_dest, []).append({
                         'source_type': 'dependency',
-                        'dependency': GraalVmLauncher.launcher_project_name(launcher_config, stage1=False),
+                        'dependency': dependency,
                         'exclude': excluded_paths,
                         'path': None,
+                    })
+                    # additional JDK libraries need to be in the launcher's directory
+                    layout.setdefault(dirname(launcher_dest) + '/', []).append({
+                        'source_type': 'dependency',
+                        'dependency': dependency,
+                        'exclude': [],
+                        'path': 'jdk_libraries/*',
+                        'optional': True,
                     })
                     for link in launcher_config.links:
                         if link not in excluded_paths:
@@ -2645,12 +2669,22 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                             })
 
             for library_config in library_configs:
+                library_dest = path_prefix + library_config.destination
                 if library_config.destination not in excluded_paths:
-                    layout.setdefault(path_prefix + library_config.destination, []).append({
+                    dependency = GraalVmLibrary.project_name(library_config)
+                    layout.setdefault(library_dest, []).append({
                         'source_type': 'dependency',
-                        'dependency': GraalVmLibrary.project_name(library_config),
+                        'dependency': dependency,
                         'exclude': excluded_paths,
                         'path': None,
+                    })
+                    # additional JDK libraries need to be in the library's directory
+                    layout.setdefault(dirname(library_dest) + '/', []).append({
+                        'source_type': 'dependency',
+                        'dependency': dependency,
+                        'exclude': [],
+                        'path': 'jdk_libraries/*',
+                        'optional': True,
                     })
                     if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
                         for executable in library_config.launchers:
