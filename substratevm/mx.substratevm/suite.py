@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.15.3",
+    "mxversion": "6.17.0",
     "name": "substratevm",
     "version" : "23.0.0",
     "release" : False,
