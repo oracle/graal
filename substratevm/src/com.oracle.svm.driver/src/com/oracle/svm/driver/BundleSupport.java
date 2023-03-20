@@ -280,10 +280,12 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
         Path environmentFile = stageDir.resolve("environment.json");
-        try (Reader reader = Files.newBufferedReader(environmentFile)) {
-            new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+        if (Files.isReadable(environmentFile)) {
+            try (Reader reader = Files.newBufferedReader(environmentFile)) {
+                new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+            }
         }
 
         Path buildArgsFile = stageDir.resolve("build.json");
