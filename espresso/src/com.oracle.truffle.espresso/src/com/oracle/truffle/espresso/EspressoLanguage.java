@@ -499,4 +499,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
         EspressoError.guarantee(version.equals(ref), "incompatible Java versions");
     }
+
+    public StaticObject getCurrentVirtualThread() {
+        return getThreadLocalState().getCurrentVirtualThread();
+    }
+
+    public void setCurrentVirtualThread(StaticObject thread) {
+        getThreadLocalState().setCurrentVirtualThread(thread);
+    }
 }

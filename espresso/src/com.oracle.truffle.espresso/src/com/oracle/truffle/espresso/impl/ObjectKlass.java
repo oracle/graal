@@ -469,7 +469,7 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getCurrentThread();
+                        prepareThread = getContext().getCurrentPlatformThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }

@@ -2826,5 +2826,14 @@ public final class JniEnv extends NativeEnv {
         return clazz.getMirrorKlass(getMeta()).module().module();
     }
 
+    @JniImpl
+    public boolean IsVirtualThread(@JavaType(Thread.class) StaticObject thread) {
+        Meta meta = getMeta();
+        if (StaticObject.isNull(thread)) {
+            return false;
+        }
+        return meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass());
+    }
+
     // Checkstyle: resume method name check
 }

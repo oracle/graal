@@ -404,7 +404,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     @TruffleBoundary /*- Throwable.addSuppressed blocklisted by SVM (from try-with-resources) */
     @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
-        StaticObject thread = context.getCurrentThread();
+        StaticObject thread = context.getCurrentPlatformThread();
         try (Transition transition = Transition.transition(context, State.BLOCKED)) {
             if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.

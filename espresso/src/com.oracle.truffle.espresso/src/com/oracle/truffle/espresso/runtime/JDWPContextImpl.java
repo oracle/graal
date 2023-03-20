@@ -258,6 +258,11 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean isVirtualThread(Object thread) {
+        return context.getThreadAccess().isVirtualThread((StaticObject) thread);
+    }
+
+    @Override
     public Object[] getAllGuestThreads() {
         StaticObject[] activeThreads = context.getActiveThreads();
         ArrayList<StaticObject> result = new ArrayList<>(activeThreads.length);

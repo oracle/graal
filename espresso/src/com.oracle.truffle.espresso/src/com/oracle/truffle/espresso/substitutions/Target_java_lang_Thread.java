@@ -95,8 +95,15 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(isTrivial = true)
-    public static @JavaType(Thread.class) StaticObject currentThread(@Inject EspressoContext context) {
-        return context.getCurrentThread();
+    public static @JavaType(Thread.class) StaticObject currentThread(@Inject EspressoLanguage language) {
+        return language.getCurrentVirtualThread();
+    }
+
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java19OrLater.class)
+    public static void setCurrentThread(@JavaType(Thread.class) StaticObject self, @JavaType(Thread.class) StaticObject thread, @Inject EspressoLanguage language) {
+        assert self == EspressoContext.get(null).getCurrentPlatformThread();
+        assert self == thread; // real virtual threads are not supported yet.
+        language.setCurrentVirtualThread(thread);
     }
 
     @Substitution
@@ -230,7 +237,7 @@ public final class Target_java_lang_Thread {
         if (millis < 0) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "timeout value is negative");
         }
-        StaticObject thread = meta.getContext().getCurrentThread();
+        StaticObject thread = meta.getContext().getCurrentPlatformThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
             meta.getContext().getBlockingSupport().sleep(millis, location);
         } catch (GuestInterruptedException e) {
@@ -251,8 +258,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static @JavaType(Thread.class) StaticObject currentCarrierThread(@Inject EspressoContext context) {
-        // FIXME: this is wrong for virtual threads
-        return context.getCurrentThread();
+        return context.getCurrentPlatformThread();
     }
 
     @TruffleBoundary

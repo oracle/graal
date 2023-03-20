@@ -841,7 +841,7 @@ public final class VM extends NativeEnv {
                     @Inject SubstitutionProfiler profiler) {
 
         EspressoContext context = getContext();
-        StaticObject currentThread = context.getCurrentThread();
+        StaticObject currentThread = context.getCurrentPlatformThread();
         State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
             if (context.getEspressoEnv().EnableManagement) {
@@ -1510,7 +1510,7 @@ public final class VM extends NativeEnv {
     // region JNI Invocation Interface
     @VmImpl
     public static int DestroyJavaVM(@Inject EspressoContext context) {
-        assert context.getCurrentThread() != null;
+        assert context.getCurrentPlatformThread() != null;
         try {
             context.destroyVM();
         } catch (AbstractTruffleException exit) {
@@ -1563,7 +1563,7 @@ public final class VM extends NativeEnv {
     @VmImpl
     @TruffleBoundary
     public int DetachCurrentThread(@Inject EspressoContext context) {
-        StaticObject currentThread = context.getCurrentThread();
+        StaticObject currentThread = context.getCurrentPlatformThread();
         if (currentThread == null) {
             return JNI_OK;
         }
@@ -1660,7 +1660,7 @@ public final class VM extends NativeEnv {
             }
         }
         if (JVM_IsSupportedJNIVersion(version)) {
-            StaticObject currentThread = getContext().getCurrentThread();
+            StaticObject currentThread = getContext().getCurrentPlatformThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
             }
@@ -3025,7 +3025,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
     public @JavaType(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@JavaType(Class.class) StaticObject cls) {
-        return getMeta().java_lang_Thread_inheritedAccessControlContext.getObject(getContext().getCurrentThread());
+        return getMeta().java_lang_Thread_inheritedAccessControlContext.getObject(getContext().getCurrentPlatformThread());
     }
 
     // endregion privileged

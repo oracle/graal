@@ -513,6 +513,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
                                     result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
+                                case JDWP.ThreadReference.IS_VIRTUAL.ID:
+                                    result = JDWP.ThreadReference.IS_VIRTUAL.createReply(packet, controller);
+                                    break;
                                 default:
                                     result = unknownCommand(packet);
                                     break;

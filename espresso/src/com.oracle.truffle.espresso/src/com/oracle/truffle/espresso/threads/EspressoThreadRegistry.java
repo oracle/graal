@@ -31,6 +31,7 @@ import java.util.function.LongUnaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -91,7 +92,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     @CompilationFinal private long referenceHandlerThreadId = -1;
     @CompilationFinal private StaticObject guestReferenceHandlerThread = null;
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public StaticObject[] activeThreads() {
         /*
          * Note that this might return threads that have been seen as terminated through Thread.join

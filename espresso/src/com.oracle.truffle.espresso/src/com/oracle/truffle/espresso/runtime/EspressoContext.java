@@ -851,11 +851,11 @@ public final class EspressoContext {
     }
 
     public void registerCurrentThread(StaticObject guestThread) {
-        getLanguage().getThreadLocalState().setCurrentThread(guestThread);
+        getLanguage().getThreadLocalState().initializeCurrentThread(guestThread);
     }
 
-    public StaticObject getCurrentThread() {
-        return getLanguage().getThreadLocalState().getCurrentThread(this);
+    public StaticObject getCurrentPlatformThread() {
+        return getLanguage().getThreadLocalState().getCurrentPlatformThread(this);
     }
 
     /**

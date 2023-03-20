@@ -70,7 +70,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
 
     @Override
     public StaticObject getCurrentGuestThread() {
-        return getContext().getCurrentThread();
+        return getContext().getCurrentPlatformThread();
     }
 
     public ThreadsAccess(Meta meta) {
@@ -193,7 +193,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             if (state == State.TERMINATED.value) {
                 return StaticObject.NULL;
             }
-            if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+            if (isVirtualThread(thread)) {
                 return meta.java_lang_Thread$Constants_VTHREAD_GROUP.getObject(meta.java_lang_Thread$Constants.getStatics());
             }
             StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
@@ -201,6 +201,11 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         } else {
             return meta.java_lang_Thread_threadGroup.getObject(thread);
         }
+    }
+
+    public boolean isVirtualThread(StaticObject thread) {
+        assert !StaticObject.isNull(thread);
+        return meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass());
     }
 
     @SuppressWarnings("unused")
@@ -227,7 +232,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * we do not require a node.
      */
     public void fullSafePoint(StaticObject thread) {
-        assert thread == getContext().getCurrentThread();
+        assert thread == getContext().getCurrentPlatformThread();
         handleStop(thread);
         handleSuspend(thread);
     }

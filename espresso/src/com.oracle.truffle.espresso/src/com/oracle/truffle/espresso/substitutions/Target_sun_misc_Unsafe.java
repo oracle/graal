@@ -555,7 +555,7 @@ public final class Target_sun_misc_Unsafe {
         }
 
         EspressoContext context = meta.getContext();
-        StaticObject thread = context.getCurrentThread();
+        StaticObject thread = context.getCurrentPlatformThread();
 
         // Check return condition beforehand
         if (parkReturnCondition(thread, meta)) {
