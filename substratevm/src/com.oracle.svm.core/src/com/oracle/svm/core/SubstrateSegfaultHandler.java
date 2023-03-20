@@ -178,7 +178,7 @@ public abstract class SubstrateSegfaultHandler {
             PointerBase ip = RegisterDumper.singleton().getIP(context);
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
-                log.string("Segfault detected, aborting process.").newline()
+                log.string("Segfault detected, aborting process. ")
                                 .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
                                 .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
                                 .newline().newline();
