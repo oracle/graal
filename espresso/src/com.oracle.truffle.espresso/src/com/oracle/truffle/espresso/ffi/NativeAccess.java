@@ -27,8 +27,11 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
@@ -107,6 +110,12 @@ public interface NativeAccess {
      */
     @Pointer
     TruffleObject bindSymbol(@Pointer TruffleObject symbol, NativeSignature nativeSignature);
+
+    Object getCallableSignature(NativeSignature nativeSignature, boolean fromJava);
+
+    Object callSignature(Object signature, @Pointer TruffleObject symbol, Object... args) throws UnsupportedMessageException, UnsupportedTypeException, ArityException;
+
+    SignatureCallNode createSignatureCall(NativeSignature nativeSignature, boolean fromJava);
 
     default @Pointer TruffleObject lookupAndBindSymbol(@Pointer TruffleObject library, String symbolName, NativeSignature nativeSignature) {
         @Pointer

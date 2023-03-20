@@ -45,6 +45,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.runtime.panama.Platform;
+import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -187,6 +189,7 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoBindings topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
+    @CompilationFinal private DowncallStubs downcallStubs;
 
     public TruffleLogger getLogger() {
         return logger;
@@ -362,6 +365,7 @@ public final class EspressoContext {
             long initStartTimeNanos = System.nanoTime();
 
             this.nativeAccess = spawnNativeAccess();
+            this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
             initVmProperties();
 
             // Spawn JNI first, then the VM.
@@ -1131,5 +1135,9 @@ public final class EspressoContext {
 
     public long nextThreadId() {
         return espressoEnv.getThreadRegistry().nextThreadId();
+    }
+
+    public DowncallStubs getDowncallStubs() {
+        return downcallStubs;
     }
 }
