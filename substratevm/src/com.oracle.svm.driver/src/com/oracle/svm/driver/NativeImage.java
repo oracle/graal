@@ -1079,7 +1079,7 @@ public class NativeImage {
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
         boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(oHEnableSharedLibraryFlag));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
-        printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.contains("-march=list"));
+        printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.contains("-H:MicroArchitecture=list"));
 
         if (printFlags) {
             /* Ensure name for bundle support */
