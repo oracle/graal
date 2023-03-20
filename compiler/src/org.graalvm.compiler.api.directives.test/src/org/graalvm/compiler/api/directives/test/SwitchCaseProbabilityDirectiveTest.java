@@ -90,6 +90,60 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
         test("keyHoleSwitchSnippet", 4);
     }
 
+    public static int missingProbability(int x) {
+        switch (x) {
+            case 1:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 10;
+            case 2:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 20;
+            case 3:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 3;
+            case 4:
+                GraalDirectives.injectSwitchCaseProbability(0.25);
+                return 15;
+            default:
+                /*
+                 * No probability usage here, which is an error, even though the other branches'
+                 * probability adds up to 1
+                 */
+                return 42;
+        }
+    }
+
+    public static int incorrectTotalProbability(int x) {
+        /*
+         * Total probability across branches should add up to 1, and if it doesn't an error should
+         * be thrown.
+         */
+        switch (x) {
+            case 1:
+                GraalDirectives.injectSwitchCaseProbability(0.20);
+                return 10;
+            case 2:
+                GraalDirectives.injectSwitchCaseProbability(0.20);
+                return 20;
+            case 3:
+                GraalDirectives.injectSwitchCaseProbability(0.20);
+                return 3;
+            default:
+                GraalDirectives.injectSwitchCaseProbability(0.20);
+                return 42;
+        }
+    }
+
+    @Test(expected = GraalError.class)
+    public void testMissingProbability() {
+        test("missingProbability", 1);
+    }
+
+    @Test(expected = GraalError.class)
+    public void testIncorrectTotalProbability() {
+        test("incorrectTotalProbability", 3);
+    }
+
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
         NodeIterable<SwitchCaseProbabilityNode> switchProbabilityInjectionNodes = graph.getNodes().filter(SwitchCaseProbabilityNode.class);
