@@ -623,7 +623,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
 
     // Recursion depth = 4
     public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
-        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter());
+        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter(), EspressoContext.DEFAULT_STACK_SIZE);
         meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
@@ -632,16 +632,20 @@ public final class InterpreterToVM extends ContextAccessImpl {
         return throwable;
     }
 
-    public static VM.StackTrace getStackTrace(FrameFilter filter) {
-        // MaxJavaStackTraceDepth is 1024 by default
-        int size = EspressoContext.DEFAULT_STACK_SIZE;
+    public static final int MAX_STACK_DEPTH = Integer.MAX_VALUE;
+
+    public static VM.StackTrace getStackTrace(FrameFilter filter, int maxDepth) {
+        assert maxDepth >= 0;
         VM.StackTrace frames = new VM.StackTrace();
+        if (maxDepth == 0) {
+            return frames;
+        }
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             int count;
 
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
-                if (count >= size) {
+                if (count >= maxDepth) {
                     return this; // stop iteration
                 }
                 CallTarget callTarget = frameInstance.getCallTarget();

@@ -436,4 +436,11 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     public long nextThreadId() {
         return nextThreadId.getAndIncrement();
     }
+
+    @TruffleBoundary
+    public void resetPeakThreadCount() {
+        synchronized (activeThreadLock) {
+            peakThreadCount.set(activeThreads.size());
+        }
+    }
 }

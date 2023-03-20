@@ -112,6 +112,7 @@ import sun.misc.SignalHandler;
 
 public final class EspressoContext {
 
+    // MaxJavaStackTraceDepth is 1024 by default
     public static final int DEFAULT_STACK_SIZE = 32;
     public static final StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
@@ -863,6 +864,10 @@ public final class EspressoContext {
      */
     public long getPeakThreadCount() {
         return espressoEnv.getThreadRegistry().peakThreadCount.get();
+    }
+
+    public void resetPeakThreadCount() {
+        espressoEnv.getThreadRegistry().resetPeakThreadCount();
     }
 
     /**

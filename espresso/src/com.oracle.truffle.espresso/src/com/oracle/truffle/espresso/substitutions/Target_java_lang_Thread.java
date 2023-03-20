@@ -38,6 +38,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
@@ -322,53 +323,60 @@ public final class Target_java_lang_Thread {
         public @JavaType(Object.class) StaticObject doGetStackTrace(@JavaType(Thread.class) StaticObject self) {
             // JVM_GetStackTrace
             EspressoContext context = EspressoContext.get(this);
-            Thread hostThread = context.getThreadAccess().getHost(self);
-            if (hostThread == null) {
-                return StaticObject.NULL;
-            }
-            VM.StackTrace stackTrace;
-            if (hostThread == Thread.currentThread()) {
-                stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
-            } else {
-                stackTrace = asyncGetStackTrace(hostThread, context);
-                if (stackTrace == null) {
-                    return StaticObject.NULL;
-                }
-            }
-
-            return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
-                StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
-                VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
-                return ste;
-            });
-        }
-
-        @TruffleBoundary
-        private VM.StackTrace asyncGetStackTrace(Thread thread, EspressoContext context) {
-            CollectStackTraceAction action = new CollectStackTraceAction();
-            Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{thread}, action);
-            TruffleSafepoint.setBlockedThreadInterruptible(this, f -> {
-                try {
-                    future.get();
-                } catch (ExecutionException e) {
-                    throw EspressoError.shouldNotReachHere(e);
-                }
-            }, future);
-            return action.result;
+            return getStackTrace(self, InterpreterToVM.MAX_STACK_DEPTH, context, this);
         }
     }
 
+    public static StaticObject getStackTrace(StaticObject thread, int maxDepth, EspressoContext context, Node node) {
+        Thread hostThread = context.getThreadAccess().getHost(thread);
+        if (hostThread == null) {
+            return StaticObject.NULL;
+        }
+        VM.StackTrace stackTrace;
+        if (hostThread == Thread.currentThread()) {
+            stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE, maxDepth);
+        } else {
+            stackTrace = asyncGetStackTrace(hostThread, maxDepth, context, node);
+            if (stackTrace == null) {
+                return StaticObject.NULL;
+            }
+        }
+
+        return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
+            StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
+            VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
+            return ste;
+        });
+    }
+
+    @TruffleBoundary
+    private static VM.StackTrace asyncGetStackTrace(Thread thread, int maxDepth, EspressoContext context, Node node) {
+        assert maxDepth >= 0;
+        CollectStackTraceAction action = new CollectStackTraceAction(maxDepth);
+        Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{thread}, action);
+        TruffleSafepoint.setBlockedThreadInterruptible(node, f -> {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }, future);
+        return action.result;
+    }
+
     private static final class CollectStackTraceAction extends ThreadLocalAction {
+        private final int maxDepth;
         VM.StackTrace result;
 
-        protected CollectStackTraceAction() {
+        protected CollectStackTraceAction(int maxDepth) {
             super(false, false);
+            this.maxDepth = maxDepth;
         }
 
         @Override
         protected void perform(Access access) {
             assert access.getThread() == Thread.currentThread();
-            result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+            result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE, maxDepth);
         }
     }
 
