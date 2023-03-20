@@ -50,6 +50,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -194,7 +195,7 @@ final class BundleSupport {
         loadBundle = false;
         writeBundle = true;
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             Path inputDir = rootDir.resolve("input");
@@ -223,7 +224,7 @@ final class BundleSupport {
         updateBundleLocation(Path.of(bundleFilenameArg), false);
 
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             outputDir = rootDir.resolve("output");
@@ -231,7 +232,7 @@ final class BundleSupport {
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
-                archive.stream().forEach(jarEntry -> {
+                archive.stream().filter(unused -> !deleteBundleRoot.get()).forEach(jarEntry -> {
                     Path bundleEntry = rootDir.resolve(jarEntry.getName());
                     if (bundleEntry.startsWith(outputDir)) {
                         /* Extract original output to different path */
@@ -250,6 +251,11 @@ final class BundleSupport {
             }
         } catch (IOException e) {
             throw NativeImage.showError("Unable to expand bundle directory layout from bundle file " + bundleName + BUNDLE_FILE_EXTENSION, e);
+        }
+
+        if (deleteBundleRoot.get()) {
+            /* Abort image build request without error message and exit with 0 */
+            throw NativeImage.showError(null, null, 0);
         }
 
         bundleProperties.loadAndVerify();
@@ -296,6 +302,17 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
         }
+    }
+
+    private final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
+
+    private Path createBundleRootDir() throws IOException {
+        Path bundleRoot = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            deleteBundleRoot.set(true);
+            nativeImage.deleteAllFiles(bundleRoot);
+        }));
+        return bundleRoot;
     }
 
     public List<String> getNativeImageArgs() {
@@ -488,9 +505,9 @@ final class BundleSupport {
     void complete() {
         boolean writeOutput;
         try (Stream<Path> pathOutputFiles = Files.list(imagePathOutputDir); Stream<Path> auxiliaryOutputFiles = Files.list(auxiliaryOutputDir)) {
-            writeOutput = pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent();
+            writeOutput = (pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent()) && !deleteBundleRoot.get();
         } catch (IOException e) {
-            throw NativeImage.showError("Unable to determine if bundle output should be written.");
+            writeOutput = false;
         }
 
         /*
@@ -519,7 +536,6 @@ final class BundleSupport {
             }
         } finally {
             nativeImage.showNewline();
-            nativeImage.deleteAllFiles(rootDir);
         }
     }
 
