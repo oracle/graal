@@ -70,8 +70,7 @@ import java.util.concurrent.CyclicBarrier;
 @State(Scope.Benchmark)
 public class SpectralNorm {
 
-    @Param("1000")
-    static int spectralNormN;
+    @Param("1000") static int spectralNormN;
 
     @Benchmark
     public static double bench() {

@@ -8,7 +8,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEng
 
 The following document describes how the auxiliary engine cache of GraalVM works.
 
-This feature is only available in GraalVM Enterprise Edition. In the community edition, these options are not available.
+This feature is only available in Oracle GraalVM. In GraalVM Community Edition, these options are not available.
 
 ## Introduction
 
@@ -31,7 +31,7 @@ This reduces the warmup time of an application significantly.
 
 ## Getting Started
 
-Starting from a GraalVM EE installation, you first need to (re)build an image with auxiliary engine caching capabilities.
+Starting from Oracle GraalVM installation, you first need to (re)build an image with auxiliary engine caching capabilities.
 For example, one can rebuild the JavaScript image by adding the auxiliary engine cache feature:
 
 ```
@@ -161,7 +161,7 @@ There are several options useful for debugging auxiliary engines caching when ru
 ## Development and Debugging on HotSpot
 
 It can be useful to debug language implementation issues related to auxiliary image on HotSpot.
-On GraalVM EE in JVM mode, we have additional options that can be used to help debug issues with this feature:
+On Oracle GraalVM in JVM mode, we have additional options that can be used to help debug issues with this feature:
 Since storing partial heaps on HotSpot is not supported, these debug features do not work on HotSpot.
 
 * `--engine.DebugCacheStore=<boolean>` Prepares the engine for caching and stores it to a static field instead of writing it to disk.

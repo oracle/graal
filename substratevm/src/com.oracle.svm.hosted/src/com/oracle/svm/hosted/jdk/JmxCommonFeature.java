@@ -47,7 +47,7 @@ public class JmxCommonFeature implements InternalFeature {
     }
 
     /**
-     * This methods adds JMX-specific initialization policies when JMX support is enabled.
+     * This method adds JMX-specific initialization policies when JMX support is enabled.
      * <p>
      * Note that
      * {@link com.oracle.svm.core.jdk.management.ManagementFeature#duringSetup(org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess)
@@ -124,24 +124,22 @@ public class JmxCommonFeature implements InternalFeature {
 
     private static void configureProxy(BeforeAnalysisAccess access) {
         DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
-
-        dynamicProxySupport.addProxyClass(access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
-                        access.findClassByName("javax.management.NotificationEmitter"));
-
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.RuntimeMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.ClassLoadingMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.ThreadMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.ThreadMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.OperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.OperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.ThreadMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.BufferPoolMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.ClassLoadingMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.CompilationMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryManagerMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryPoolMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
         dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.MemoryMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.UnixOperatingSystemMXBean"));
-        dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.java.lang.management.CompilationMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.OperatingSystemMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.RuntimeMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("java.lang.management.ThreadMXBean"));
+        dynamicProxySupport.addProxyClass(access.findClassByName("jdk.management.jfr.FlightRecorderMXBean"),
+                        access.findClassByName("javax.management.NotificationEmitter"));
     }
 
     private static void configureJNI() {
@@ -205,56 +203,30 @@ public class JmxCommonFeature implements InternalFeature {
     }
 
     private static void configureReflection(BeforeAnalysisAccess access) {
-        // Only JmxServerFeature, not JmxClientFeature, has registrations for platform MBeans
         String[] classes = {
-                        "com.sun.crypto.provider.AESCipher$General", "com.sun.crypto.provider.ARCFOURCipher",
-                        "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305", "com.sun.crypto.provider.DESCipher",
-                        "com.sun.crypto.provider.DESedeCipher", "com.sun.crypto.provider.DHParameters",
-                        "com.sun.crypto.provider.HmacCore$HmacSHA256",
-                        "com.sun.management.GcInfo",
                         "com.sun.management.internal.OperatingSystemImpl",
-                        "javax.management.remote.rmi.RMIConnection", "com.sun.management.VMOption",
-                        "javax.management.remote.rmi.RMIConnectionImpl_Stub", "javax.management.remote.rmi.RMIServer",
+                        "javax.management.remote.rmi.RMIConnectionImpl_Stub",
                         "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.registry.RegistryImpl_Stub",
-                        "java.rmi.MarshalledObject", "java.rmi.Remote", "java.rmi.dgc.Lease", "java.rmi.dgc.VMID",
-                        "java.rmi.registry.Registry", "java.rmi.server.ObjID", "java.rmi.server.RemoteObject",
-                        "java.rmi.server.RemoteStub", "java.rmi.server.UID", "javax.management.openmbean.OpenType",
-                        "java.lang.management.LockInfo", "java.lang.management.ManagementPermission",
-                        "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
-                        "java.lang.management.ThreadInfo", "java.security.SecureRandomParameters",
-                        "javax.management.MBeanServerBuilder", "javax.management.NotificationBroadcaster",
-                        "javax.management.NotificationEmitter", "javax.management.NotificationFilterSupport",
-                        "javax.management.ObjectName", "jdk.management.jfr.ConfigurationInfo",
-                        "jdk.management.jfr.EventTypeInfo",
-                        "jdk.management.jfr.RecordingInfo", "jdk.management.jfr.SettingDescriptorInfo",
+                        "java.rmi.server.RemoteStub",
                         "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.transport.DGCImpl_Skel",
                         "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl", "sun.rmi.transport.DGCImpl_Skel",
                         "sun.rmi.transport.DGCImpl_Stub"
         };
 
         String[] methods = {
-                        "com.sun.management.GcInfo",
-                        "com.sun.management.VMOption",
-                        "java.lang.management.MemoryUsage", "java.rmi.registry.Registry",
-                        "javax.management.remote.rmi.RMIConnection", "javax.management.remote.rmi.RMIConnectionImpl_Stub",
-                        "javax.management.remote.rmi.RMIServer", "javax.management.remote.rmi.RMIServerImpl_Stub",
-                        "java.lang.management.MonitorInfo",
+                        "com.sun.management.GcInfo", "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
+                        "javax.management.remote.rmi.RMIConnection",
+                        "javax.management.remote.rmi.RMIServer",
                         "java.lang.management.ThreadInfo", "jdk.management.jfr.ConfigurationInfo",
                         "jdk.management.jfr.EventTypeInfo", "jdk.management.jfr.RecordingInfo",
-                        "jdk.management.jfr.SettingDescriptorInfo", "sun.rmi.registry.RegistryImpl_Stub",
-                        "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl", "sun.rmi.transport.DGCImpl_Skel",
-                        "sun.rmi.transport.DGCImpl_Stub"
+                        "jdk.management.jfr.SettingDescriptorInfo"
         };
 
-        String[] fields = {"com.sun.management.GcInfo"};
-
         String[] constructors = {
-                        "com.sun.management.internal.GarbageCollectorExtImpl",
-                        "com.sun.management.internal.OperatingSystemImpl", "java.lang.management.ManagementPermission",
-                        "javax.management.MBeanServerBuilder", "javax.management.remote.rmi.RMIConnectionImpl_Stub",
+                        "javax.management.remote.rmi.RMIConnectionImpl_Stub",
                         "javax.management.remote.rmi.RMIServerImpl_Stub", "sun.rmi.transport.DGCImpl_Stub",
                         "sun.rmi.registry.RegistryImpl_Skel", "sun.rmi.registry.RegistryImpl_Stub",
-                        "sun.rmi.server.UnicastRef2", "sun.rmi.transport.DGCImpl_Skel"
+                        "sun.rmi.transport.DGCImpl_Skel"
         };
 
         for (String clazz : classes) {
@@ -265,9 +237,6 @@ public class JmxCommonFeature implements InternalFeature {
         }
         for (String clazz : constructors) {
             RuntimeReflection.register(access.findClassByName(clazz).getConstructors());
-        }
-        for (String clazz : fields) {
-            RuntimeReflection.register(access.findClassByName(clazz).getFields());
         }
     }
 }

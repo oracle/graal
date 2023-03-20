@@ -18,7 +18,6 @@ The support is not available by default, but you can add it to GraalVM using the
 gu install wasm
 ```
 The above command will install a community version of a component from the GitHub catalog.
-For GraalVM Enterprise users, the [manual component installation](../graalvm-updater.md#component-installation) is required.
 
 Then `wasm` launcher, which can run compiled WebAssembly binary code, becomes available.
 

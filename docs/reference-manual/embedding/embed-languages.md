@@ -29,6 +29,7 @@ You can use the tabs beneath each code example to choose between JavaScript, R, 
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
+
 GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
 These languages are henceforth referenced as **guest languages**.
 
@@ -89,8 +90,7 @@ tab4type="java" tab4id="Function_Python" tab4name="Python" tab4path="embed/funct
 &nbsp;In this code:
 - `Value function` is a Java value that refers to a function.
 - The `eval` call parses the script and returns the guest language function.
-- The first assertion checks that the value returned by the code snippet can be
-executed.
+- The first assertion checks that the value returned by the code snippet can be executed.
 - The `execute` call executes the function with the argument `41`.
 - The `asInt` call converts the result to a Java `int`.
 - The second assertion verifies that the result was incremented by one as expected.
@@ -120,7 +120,7 @@ the resulting object. The result is then converted to a Java `int`
 using `asInt()`.
 - The next assert verifies that result has a value of `42`.
 - The `text` variable is initialized using the value of the member `text`,
- which is also converted to a Java `String` using `asString()`.
+which is also converted to a Java `String` using `asString()`.
 - The following assertion verifies the result value is equal to the
 Java `String` `"42"`.
 - Next the `arr` member that holds an array is read.
@@ -637,7 +637,7 @@ In this code:
 
 ## Polyglot Isolates
 
-On GraalVM Enterprise, a Polyglot engine can be configured to run in a dedicated `native-image` isolate.
+On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated `native-image` isolate.
 This experimental feature is enabled with the `--engine.SpawnIsolate` option.
 An engine running in this mode executes within a VM-level fault domain with its own garbage collector and JIT compiler.
 The fact that an engine runs within an isolate is completely transparent with respect to the Polyglot API and interoperability:

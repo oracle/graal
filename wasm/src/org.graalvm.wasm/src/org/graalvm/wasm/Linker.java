@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -324,11 +324,11 @@ public class Linker {
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveCallsite(WasmInstance instance, WasmFunctionNode block, int controlTableOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> block.resolveCallNode(controlTableOffset);
+    void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, WasmFunction function) {
+        final Runnable resolveAction = () -> functionNode.resolveCallNode(controlTableOffset);
         final Sym[] dependencies = new Sym[]{
                         function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()) : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOffset(), controlTableOffset), dependencies, resolveAction);
+        resolutionDag.resolveLater(new CallsiteSym(instance.name(), functionNode.startOffset(), controlTableOffset), dependencies, resolveAction);
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {

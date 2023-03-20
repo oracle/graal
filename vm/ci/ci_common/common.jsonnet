@@ -360,7 +360,6 @@ local devkits = graal_common.devkits;
   mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
-  mx_vm_all_standalones: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete', '--disable-installables=false'] + self.mx_vm_cmd_suffix,
 
   svm_common_linux_amd64:        graal_common.deps.svm,
   svm_common_linux_aarch64:      graal_common.deps.svm,
@@ -476,11 +475,9 @@ local devkits = graal_common.devkits;
     else error "os not found: " + os,
 
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
-    # Build without disabled installables so that we can run structure checks on all of them.
-    # The deploy command composes `self.mx_vm_installables`, which points to the same base GraalVM and has fewer installables.
     run: $.patch_env('linux', 'amd64', java_version) + [
-      $.mx_vm_all_standalones + ['graalvm-show'],
-      $.mx_vm_all_standalones + ['build'],
+      $.mx_vm_installables + ['graalvm-show'],
+      $.mx_vm_installables + ['build'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -490,18 +487,16 @@ local devkits = graal_common.devkits;
     ] + $.deploy_sdk_base(self.os) + [
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_all_standalones + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_all_standalones, "linux", "amd64", java_version),
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
 
   deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
-    # Build without disabled installables so that we can run structure checks on all of them.
-    # The deploy command composes `self.mx_vm_installables`, which points to the same base GraalVM and has fewer installables.
     run: $.patch_env('linux', 'aarch64', java_version) + [
-      $.mx_vm_all_standalones + ['graalvm-show'],
-      $.mx_vm_all_standalones + ['build'],
+      $.mx_vm_installables + ['graalvm-show'],
+      $.mx_vm_installables + ['build'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -509,8 +504,8 @@ local devkits = graal_common.devkits;
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_all_standalones + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_all_standalones, "linux", "aarch64", java_version),
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
     capabilities+: ["!xgene3"]
@@ -526,16 +521,14 @@ local devkits = graal_common.devkits;
   },
 
   deploy_graalvm_installables_darwin_amd64(java_version): vm.check_structure + {
-    # Build without disabled installables so that we can run structure checks on all of them.
-    # The deploy command composes `self.mx_vm_installables`, which points to the same base GraalVM and has fewer installables.
     run: $.patch_env('darwin', 'amd64', java_version) + [
-      $.mx_vm_all_standalones + ['graalvm-show'],
-      $.mx_vm_all_standalones + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_all_standalones + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_installables + ['graalvm-show'],
+      $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_all_standalones, "darwin", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "darwin", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '3:00:00',
   },
@@ -550,16 +543,14 @@ local devkits = graal_common.devkits;
   },
 
   deploy_graalvm_installables_darwin_aarch64(java_version): vm.check_structure + {
-    # Build without disabled installables so that we can run structure checks on all of them.
-    # The deploy command composes `self.mx_vm_installables`, which points to the same base GraalVM and has fewer installables.
     run: $.patch_env('darwin', 'aarch64', java_version) + [
-      $.mx_vm_all_standalones + ['graalvm-show'],
-      $.mx_vm_all_standalones + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_all_standalones + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_installables + ['graalvm-show'],
+      $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] +  $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_all_standalones, "darwin", "aarch64", java_version),
+    ] +  $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "darwin", "aarch64", java_version),
     notify_emails: ['gilles.m.duboscq@oracle.com', 'bernhard.urban-forster@oracle.com'],
     timelimit: '3:00:00',
   },
@@ -574,16 +565,14 @@ local devkits = graal_common.devkits;
   },
 
   deploy_graalvm_installables_windows_amd64(java_version): vm.check_structure + {
-    # Build without disabled installables so that we can run structure checks on all of them.
-    # The deploy command composes `self.mx_vm_installables`, which points to the same base GraalVM and has fewer installables.
     run: $.patch_env('windows', 'amd64', java_version) + [
-      $.mx_vm_all_standalones + ['graalvm-show'],
-      $.mx_vm_all_standalones + ['build'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_all_standalones + ['--quiet', '--no-warning', 'graalvm-home']],
+      $.mx_vm_installables + ['graalvm-show'],
+      $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_all_standalones, "windows", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
   },

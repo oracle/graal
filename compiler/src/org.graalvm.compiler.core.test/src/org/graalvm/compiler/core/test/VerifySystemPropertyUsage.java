@@ -101,6 +101,9 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             // * its JDK substitutions to mimic required JDK semantics
             // * native-image for config info
             return;
+        } else if (packageName.startsWith("ai.onnxruntime")) {
+            // Do not verify the ONNX Java Inference Runtime.
+            return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
