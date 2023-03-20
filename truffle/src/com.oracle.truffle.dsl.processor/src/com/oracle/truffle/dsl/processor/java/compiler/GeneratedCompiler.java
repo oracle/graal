@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,6 +87,11 @@ public class GeneratedCompiler extends AbstractCompiler {
     @Override
     protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
         return false;
+    }
+
+    @Override
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
+        throw new UnsupportedOperationException("generated element");
     }
 
 }

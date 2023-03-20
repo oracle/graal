@@ -66,6 +66,8 @@ import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryGenerator;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
+import com.oracle.truffle.dsl.processor.operations.generator.OperationsCodeGenerator;
+import com.oracle.truffle.dsl.processor.operations.parser.OperationsParser;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
@@ -179,6 +181,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         annotations.add(TruffleTypes.ExportLibrary_Name);
         annotations.add(TruffleTypes.ExportMessage_Name);
         annotations.add(TruffleTypes.ExportLibrary_Repeat_Name);
+        annotations.add(TruffleTypes.GenerateOperations_Name);
         return annotations;
     }
 
@@ -188,6 +191,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
         generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new StaticConstants())));
+        generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         return generators;
     }
 

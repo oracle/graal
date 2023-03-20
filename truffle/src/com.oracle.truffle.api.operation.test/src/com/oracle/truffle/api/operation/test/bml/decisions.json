@@ -1,0 +1,12 @@
+[
+	{
+		"type": "Quicken",
+		"operation": "AddQuickened",
+		"specializations": ["Ints"]
+	},
+	{
+		"type": "Quicken",
+		"operation": "ModQuickened",
+		"specializations": ["Ints"]
+	}
+]

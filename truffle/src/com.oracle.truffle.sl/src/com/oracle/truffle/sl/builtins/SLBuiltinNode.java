@@ -67,7 +67,7 @@ public abstract class SLBuiltinNode extends SLExpressionNode {
         try {
             return execute(frame);
         } catch (UnsupportedSpecializationException e) {
-            throw SLException.typeError(e.getNode(), e.getSuppliedValues());
+            throw SLException.typeError(e.getNode(), -1, e.getSuppliedValues());
         }
     }
 

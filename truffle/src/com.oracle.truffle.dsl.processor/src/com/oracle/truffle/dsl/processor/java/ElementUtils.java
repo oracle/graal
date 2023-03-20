@@ -100,7 +100,10 @@ public class ElementUtils {
 
     public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
-        TypeElement typeElement = context.getTypeElement(type);
+        return findMethod(context.getTypeElement(type), methodName);
+    }
+
+    public static ExecutableElement findMethod(TypeElement typeElement, String methodName) {
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(methodName)) {
                 return method;
@@ -185,8 +188,16 @@ public class ElementUtils {
         return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
+    public static TypeElement getTypeElement(DeclaredType type) {
+        return (TypeElement) type.asElement();
+    }
+
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
+        return findExecutableElement(type.asElement(), name);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name) {
+        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(element.getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
             if (executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
@@ -196,8 +207,11 @@ public class ElementUtils {
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name, int argumentCount) {
-        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
-        for (ExecutableElement executableElement : elements) {
+        return findExecutableElement(type.asElement(), name, argumentCount);
+    }
+
+    public static ExecutableElement findExecutableElement(Element element, String name, int argumentCount) {
+        for (ExecutableElement executableElement : ElementFilter.methodsIn(element.getEnclosedElements())) {
             if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
@@ -235,6 +249,11 @@ public class ElementUtils {
     public static String createReferenceName(ExecutableElement method) {
         StringBuilder b = new StringBuilder();
 
+        // if (method.getEnclosingElement() != null) {
+        // b.append(method.getEnclosingElement().getSimpleName());
+        // b.append('#');
+        // }
+
         b.append(method.getSimpleName().toString());
         b.append("(");
 
@@ -247,6 +266,10 @@ public class ElementUtils {
 
         b.append(")");
         return b.toString();
+    }
+
+    public static TypeMirror boxType(TypeMirror type) {
+        return boxType(ProcessorContext.getInstance(), type);
     }
 
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
@@ -641,11 +664,11 @@ public class ElementUtils {
     }
 
     private static String getWildcardName(WildcardType type) {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b = new StringBuilder("?");
         if (type.getExtendsBound() != null) {
-            b.append("? extends ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" extends ").append(getSimpleName(type.getExtendsBound()));
         } else if (type.getSuperBound() != null) {
-            b.append("? super ").append(getSimpleName(type.getExtendsBound()));
+            b.append(" super ").append(getSimpleName(type.getSuperBound()));
         }
         return b.toString();
     }
@@ -985,7 +1008,18 @@ public class ElementUtils {
 
     public static String createConstantName(String simpleName) {
         StringBuilder b = new StringBuilder(simpleName);
+
         int i = 0;
+        while (i < b.length()) {
+            char c = b.charAt(i);
+            if (Character.isUpperCase(c) && i != 0 &&
+                            Character.isUpperCase(b.charAt(i - 1))) {
+                b.setCharAt(i, Character.toLowerCase(c));
+            }
+            i++;
+        }
+
+        i = 0;
         while (i < b.length()) {
             char c = b.charAt(i);
             if (Character.isUpperCase(c) && i != 0) {

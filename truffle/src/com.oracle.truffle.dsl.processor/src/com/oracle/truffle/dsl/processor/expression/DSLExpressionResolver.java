@@ -295,6 +295,15 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return parent.resolveVariable(variable);
                 }
 
+                // should have more specific type
+                if (name.equals("this") || name.equals("$root")) {
+                    return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
+                }
+
+                if (name.equals("$bci")) {
+                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
+                }
+
                 return null;
         }
     }

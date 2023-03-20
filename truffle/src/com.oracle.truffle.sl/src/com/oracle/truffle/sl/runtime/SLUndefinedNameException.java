@@ -49,16 +49,16 @@ public final class SLUndefinedNameException extends SLException {
     private static final long serialVersionUID = 1L;
 
     @TruffleBoundary
-    public static SLUndefinedNameException undefinedFunction(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined function: " + name, location);
+    public static SLUndefinedNameException undefinedFunction(Node location, int bci, Object name) {
+        throw new SLUndefinedNameException("Undefined function: " + name, location, bci);
     }
 
     @TruffleBoundary
-    public static SLUndefinedNameException undefinedProperty(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined property: " + name, location);
+    public static SLUndefinedNameException undefinedProperty(Node location, int bci, Object name) {
+        throw new SLUndefinedNameException("Undefined property: " + name, location, bci);
     }
 
-    private SLUndefinedNameException(String message, Node node) {
-        super(message, node);
+    private SLUndefinedNameException(String message, Node node, int bci) {
+        super(message, node, bci);
     }
 }

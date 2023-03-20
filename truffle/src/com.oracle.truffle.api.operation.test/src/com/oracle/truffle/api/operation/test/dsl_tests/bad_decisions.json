@@ -1,0 +1,5 @@
+[
+	{ "type": "MadeUpType" },
+	{ "type": "SuperInstruction", "instructions": [ "made.up.instruction" ]},
+	{ "type": "Quicken", "operation": "MadeUpOperation", "specializations": [ "NonExistant" ]}
+]
