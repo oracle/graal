@@ -84,9 +84,10 @@ public class ParallelGC {
     private OSThreadHandlePointer workerThreads;
     private GCWorkerThreadState workerStates;
     private int numWorkerThreads;
-    private volatile int busyWorkerThreads;
+    private int busyWorkerThreads;
     private ThreadLocalKey workerStateTL;
     private volatile boolean inParallelPhase;
+    private volatile boolean shutdown;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ParallelGC() {
@@ -225,6 +226,9 @@ public class ParallelGC {
                         seqPhase.signal();
                     }
                     parPhase.blockNoTransitionUnspecifiedOwner();
+                    if (shutdown) {
+                        return;
+                    }
                     ++busyWorkerThreads;
                 } finally {
                     mutex.unlockNoTransitionUnspecifiedOwner();
@@ -323,8 +327,13 @@ public class ParallelGC {
 
             buffer.release();
 
-            // TODO (petermz): signal the worker threads so that they can shut down.
-            // TODO (petermz): use PlatformThreads.singleton().joinThreadUnmanaged(...)
+            // signal the worker threads so that they can shut down
+            shutdown = true;
+            parPhase.broadcast();
+            for (int i = 0; i < numWorkerThreads; i++) {
+                OSThreadHandle thread = workerThreads.read(i);
+                PlatformThreads.singleton().joinThreadUnmanaged(thread, WordFactory.nullPointer());
+            }
 
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(workerThreads);
             workerThreads = WordFactory.nullPointer();
