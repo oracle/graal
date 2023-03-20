@@ -64,7 +64,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final List<NodeData> enclosingNodes = new ArrayList<>();
     private NodeData declaringNode;
 
-    private final TypeSystemData typeSystem;
+    private TypeSystemData typeSystem;
     private final List<NodeChildData> children;
     private final List<NodeExecutionData> childExecutions;
     private final List<NodeFieldData> fields;
@@ -558,6 +558,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public TypeSystemData getTypeSystem() {
         return typeSystem;
+    }
+
+    public void setTypeSystem(TypeSystemData typeSystem) {
+        this.typeSystem = typeSystem;
     }
 
     @Override

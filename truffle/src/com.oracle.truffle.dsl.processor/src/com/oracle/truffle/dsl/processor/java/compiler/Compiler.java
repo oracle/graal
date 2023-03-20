@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.io.File;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -53,4 +54,5 @@ public interface Compiler {
 
     void emitDeprecationWarning(ProcessingEnvironment environment, Element element);
 
+    File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element);
 }

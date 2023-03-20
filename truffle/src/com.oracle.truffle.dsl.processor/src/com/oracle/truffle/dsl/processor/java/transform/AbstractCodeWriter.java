@@ -73,6 +73,7 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeImport;
@@ -238,11 +239,23 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         writeEmptyLn();
         indent(1);
 
-        List<VariableElement> staticFields = getStaticFields(e);
-        List<VariableElement> instanceFields = getInstanceFields(e);
+        writeClassImplElements(e, true);
+        writeClassImplElements(e, false);
 
+        dedent(1);
+        write("}");
+        writeEmptyLn();
+    }
+
+    private void writeClassImplElements(CodeTypeElement e, boolean highPriority) {
+        List<VariableElement> staticFields = getStaticFields(e);
+
+        boolean hasStaticFields = false;
         for (int i = 0; i < staticFields.size(); i++) {
             VariableElement field = staticFields.get(i);
+            if (highPriority != isHighPriority(field)) {
+                continue;
+            }
             field.accept(this, null);
             if (e.getKind() == ElementKind.ENUM && i < staticFields.size() - 1) {
                 write(",");
@@ -251,40 +264,59 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 write(";");
                 writeLn();
             }
+            hasStaticFields = true;
         }
 
-        if (staticFields.size() > 0) {
+        if (hasStaticFields) {
             writeEmptyLn();
         }
 
-        for (VariableElement field : instanceFields) {
+        boolean hasInstanceFields = false;
+        for (VariableElement field : getInstanceFields(e)) {
+            if (highPriority != isHighPriority(field)) {
+                continue;
+            }
             field.accept(this, null);
             write(";");
             writeLn();
+            hasInstanceFields = true;
         }
-        if (instanceFields.size() > 0) {
+
+        if (hasInstanceFields) {
             writeEmptyLn();
         }
 
         for (ExecutableElement method : ElementFilter.constructorsIn(e.getEnclosedElements())) {
+            if (highPriority != isHighPriority(method)) {
+                continue;
+            }
             method.accept(this, null);
         }
 
         for (ExecutableElement method : getInstanceMethods(e)) {
+            if (highPriority != isHighPriority(method)) {
+                continue;
+            }
             method.accept(this, null);
         }
 
         for (ExecutableElement method : getStaticMethods(e)) {
+            if (highPriority != isHighPriority(method)) {
+                continue;
+            }
             method.accept(this, null);
         }
 
         for (TypeElement clazz : e.getInnerClasses()) {
+            if (highPriority != isHighPriority(clazz)) {
+                continue;
+            }
             clazz.accept(this, null);
         }
+    }
 
-        dedent(1);
-        write("}");
-        writeEmptyLn();
+    private static boolean isHighPriority(Element e) {
+        return e instanceof CodeElement<?> && ((CodeElement<?>) e).isHighPriority();
     }
 
     private void writeTypeParameters(Element enclosedType, List<? extends TypeParameterElement> parameters) {

@@ -79,7 +79,7 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
             return values.instantiate(obj);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedFunction(this, obj);
+            throw SLUndefinedNameException.undefinedFunction(this, -1, obj);
         }
     }
 }

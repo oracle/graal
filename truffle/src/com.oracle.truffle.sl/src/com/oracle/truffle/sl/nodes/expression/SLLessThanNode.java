@@ -43,11 +43,13 @@ package com.oracle.truffle.sl.nodes.expression;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -61,19 +63,19 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
 public abstract class SLLessThanNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean doLong(long left, long right) {
+    public static boolean doLong(long left, long right) {
         return left < right;
     }
 
     @Specialization
     @TruffleBoundary
-    protected boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+    public static boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
         return left.compareTo(right) < 0;
     }
 
     @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
     @TruffleBoundary
-    protected boolean doInteropBigInteger(Object left, Object right,
+    public static boolean doInteropBigInteger(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftLibrary,
                     @CachedLibrary("right") InteropLibrary rightLibrary) {
         try {
@@ -84,8 +86,8 @@ public abstract class SLLessThanNode extends SLBinaryNode {
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    public static Object typeError(Object left, Object right, @Bind("$root") Node node, @Bind("$bci") int bci) {
+        throw SLException.typeError(node, "<", bci, left, right);
     }
 
 }

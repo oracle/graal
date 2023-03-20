@@ -10,7 +10,7 @@ function add(a, b) {
 function loop(n) {
   i = 0;
   while (i < n) {  
-    i = add(i, 1);  
+    i = add(i, 1);
   }
   return i;
 }

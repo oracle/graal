@@ -62,6 +62,7 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
@@ -75,6 +76,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
@@ -97,10 +99,40 @@ public class GeneratorUtils {
         builder.startStatement().string("encapsulating_.set(prev_)").end();
     }
 
+    private static ThreadLocal<Boolean> hookTransferToInterpreter = ThreadLocal.withInitial(() -> false);
+
+    public static void setHookTransferToInterpreter(boolean value) {
+        hookTransferToInterpreter.set(value);
+    }
+
     public static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
+        builder.startStatement();
+        if (hookTransferToInterpreter.get()) {
+            builder.startCall("hook_transferToInterpreterAndInvalidate").string("$this").end();
+        } else {
+            builder.startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end();
+        }
+        builder.end();
+        return builder.build();
+    }
+
+    public static CodeTree createPartialEvaluationConstant(VariableElement variable) {
+        return createPartialEvaluationConstant(variable.getSimpleName().toString());
+    }
+
+    public static CodeTree createPartialEvaluationConstant(String variable) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "partialEvaluationConstant").string(variable).end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createNeverPartOfCompilation() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "neverPartOfCompilation").end(2);
         return builder.build();
     }
 
@@ -126,9 +158,12 @@ public class GeneratorUtils {
     }
 
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
-        TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
-        ExecutableElement constructor = findConstructor(superClass);
-        return createConstructorUsingFields(modifiers, clazz, constructor);
+        ExecutableElement superConstructor = null;
+        if (clazz.getSuperclass() != null) {
+            TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
+            superConstructor = findConstructor(superClass);
+        }
+        return createConstructorUsingFields(modifiers, clazz, superConstructor);
     }
 
     public static void addBoundaryOrTransferToInterpreter(CodeExecutableElement method, CodeTreeBuilder builder) {
@@ -196,6 +231,18 @@ public class GeneratorUtils {
         if (!mergedWarnings.isEmpty()) {
             ((CodeElement<?>) element).getAnnotationMirrors().add(mirror);
         }
+    }
+
+    public static CodeExecutableElement createSuperConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
+        CodeExecutableElement method = new CodeExecutableElement(superConstructor.getModifiers(), null, clazz.getSimpleName().toString());
+
+        for (VariableElement parameter : superConstructor.getParameters()) {
+            method.addParameter(CodeVariableElement.clone(parameter));
+        }
+
+        method.createBuilder().startStatement().startCall("super").variables(method.getParameters()).end(2);
+
+        return method;
     }
 
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor) {
@@ -290,7 +337,10 @@ public class GeneratorUtils {
 
     public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         TypeElement templateType = sourceModel.getTemplateType();
+        return createClass(templateType, sourceMethod, modifiers, simpleName, superType);
+    }
 
+    public static CodeTypeElement createClass(TypeElement templateType, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         ProcessorContext context = ProcessorContext.getInstance();
 
         PackageElement pack = ElementUtils.findPackageElement(templateType);
@@ -324,6 +374,14 @@ public class GeneratorUtils {
             generatedByAnnotation.setElementValue(generatedByAnnotation.findExecutableElement("value"), new CodeAnnotationValue(generatedByType.asType()));
             generatedType.addAnnotationMirror(generatedByAnnotation);
         }
+    }
+
+    public static void addSuppressWarnings(ProcessorContext context, CodeElement<? extends Element> element, String... value) {
+        CodeAnnotationMirror annSuppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
+        element.addAnnotationMirror(annSuppressWarnings);
+
+        annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(
+                        Arrays.stream(value).map(CodeAnnotationValue::new).collect(Collectors.toList())));
     }
 
     static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
@@ -376,6 +434,42 @@ public class GeneratorUtils {
         return CodeExecutableElement.clone(method);
     }
 
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
+        return overrideImplement((TypeElement) type.asElement(), methodName);
+    }
+
+    public static CodeExecutableElement createGetter(Set<Modifier> modifiers, VariableElement field) {
+        CodeExecutableElement setter = new CodeExecutableElement(modifiers, field.asType(), "get" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
+
+        CodeTreeBuilder b = setter.createBuilder();
+
+        b.startReturn().string(field.getSimpleName().toString()).end();
+
+        return setter;
+    }
+
+    public static CodeExecutableElement createSetter(Set<Modifier> modifiers, VariableElement field) {
+        CodeExecutableElement setter = new CodeExecutableElement(modifiers, new CodeTypeMirror(TypeKind.VOID), "set" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
+        setter.addParameter(new CodeVariableElement(field.asType(), field.getSimpleName().toString()));
+
+        CodeTreeBuilder b = setter.createBuilder();
+
+        b.startAssign("this", field).string(field.getSimpleName().toString()).end();
+
+        return setter;
+    }
+
+    public static CodeExecutableElement overrideImplement(TypeElement typeElement, String methodName) {
+        ExecutableElement method = ElementUtils.findMethod(typeElement, methodName);
+        if (method == null) {
+            return null;
+        }
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.getModifiers().remove(Modifier.ABSTRACT);
+        result.getModifiers().remove(Modifier.DEFAULT);
+        return result;
+    }
+
     public static void addThrownExceptions(CodeExecutableElement executable, List<? extends TypeMirror> thrownTypes) {
         outer: for (TypeMirror thrownType : thrownTypes) {
             for (TypeMirror type : executable.getThrownTypes()) {
@@ -386,5 +480,4 @@ public class GeneratorUtils {
             executable.addThrownType(thrownType);
         }
     }
-
 }

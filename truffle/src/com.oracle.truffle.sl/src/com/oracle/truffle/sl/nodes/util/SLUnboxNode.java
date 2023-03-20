@@ -65,41 +65,41 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeChild
 public abstract class SLUnboxNode extends SLExpressionNode {
 
-    static final int LIMIT = 5;
+    public static final int LIMIT = 5;
 
     @Specialization
-    protected static TruffleString fromString(String value,
+    public static TruffleString fromString(String value,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    protected static TruffleString fromTruffleString(TruffleString value) {
+    public static TruffleString fromTruffleString(TruffleString value) {
         return value;
     }
 
     @Specialization
-    protected static boolean fromBoolean(boolean value) {
+    public static boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    protected static long fromLong(long value) {
+    public static long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    protected static SLBigInteger fromBigNumber(SLBigInteger value) {
+    public static SLBigInteger fromBigNumber(SLBigInteger value) {
         return value;
     }
 
     @Specialization
-    protected static SLFunction fromFunction(SLFunction value) {
+    public static SLFunction fromFunction(SLFunction value) {
         return value;
     }
 
     @Specialization
-    protected static SLNull fromFunction(SLNull value) {
+    public static SLNull fromFunction(SLNull value) {
         return value;
     }
 

@@ -210,6 +210,7 @@ public final class FrameDescriptor implements Cloneable {
                 if (getSlotName(slot) != null) {
                     sb.append(":").append(getSlotName(slot));
                 }
+                sb.append('[').append(getSlotKind(slot)).append(']');
             }
             EconomicMap<Object, Integer> map = auxiliarySlotMap;
             if (map != null) {

@@ -46,8 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -61,7 +68,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -73,6 +79,7 @@ import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
+import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -103,10 +110,9 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.parser.SLNodeFactory;
-import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
-import com.oracle.truffle.sl.parser.SimpleLanguageParser;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
+import com.oracle.truffle.sl.parser.SLNodeVisitor;
+import com.oracle.truffle.sl.parser.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
@@ -216,6 +222,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     private final Shape rootShape;
 
+    @Option(help = "Use the SL interpreter implemented using the Truffle Operations DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseOperations = new OptionKey<>(false);
+
+    private boolean useOperations;
+
     public SLLanguage() {
         counter++;
         this.rootShape = Shape.newBuilder().layout(SLObject.class).build();
@@ -223,6 +234,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
+        useOperations = UseOperations.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -230,6 +242,20 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     protected boolean patchContext(SLContext context, Env newEnv) {
         context.patchContext(newEnv);
         return true;
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new SLLanguageOptionDescriptors();
+    }
+
+    public boolean isUseOperations() {
+        return useOperations;
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return UseOperations.getValue(firstOptions).equals(UseOperations.getValue(newOptions));
     }
 
     public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
@@ -274,7 +300,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
+        SLRootNode rootNode = new SLAstRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
 
         /*
          * Register the builtin function in the builtin registry. Call targets for builtins may be
@@ -302,15 +328,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
+
         Source source = request.getSource();
-        Map<TruffleString, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
-        if (request.getArgumentNames().isEmpty()) {
-            functions = SimpleLanguageParser.parseSL(this, source);
-        } else {
+        if (!request.getArgumentNames().isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
             String sep = "";
@@ -323,28 +347,18 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(source.getCharacters());
             sb.append(";}");
             String language = source.getLanguage() == null ? ID : source.getLanguage();
-            Source decoratedSource = Source.newBuilder(language, sb.toString(), source.getName()).build();
-            functions = SimpleLanguageParser.parseSL(this, decoratedSource);
+            source = Source.newBuilder(language, sb.toString(), source.getName()).build();
         }
 
-        RootCallTarget main = functions.get(SLStrings.MAIN);
-        RootNode evalMain;
-        if (main != null) {
-            /*
-             * We have a main function, so "evaluating" the parsed source means invoking that main
-             * function. However, we need to lazily register functions into the SLContext first, so
-             * we cannot use the original SLRootNode for the main function. Instead, we create a new
-             * SLEvalRootNode that does everything we need.
-             */
-            evalMain = new SLEvalRootNode(this, main, functions);
+        Map<TruffleString, RootCallTarget> targets;
+        if (useOperations) {
+            targets = SLOperationsVisitor.parseSL(this, source);
         } else {
-            /*
-             * Even without a main function, "evaluating" the parsed source needs to register the
-             * functions into the SLContext.
-             */
-            evalMain = new SLEvalRootNode(this, null, functions);
+            targets = SLNodeVisitor.parseSL(this, source);
         }
-        return evalMain.getCallTarget();
+
+        RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
+        return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
     }
 
     /**

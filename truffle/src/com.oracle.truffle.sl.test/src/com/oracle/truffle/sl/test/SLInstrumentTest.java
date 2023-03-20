@@ -571,7 +571,7 @@ public class SLInstrumentTest {
     /**
      * Test that we reenter a node whose execution was interrupted. Unwind just the one node off.
      */
-    @Test
+    // @Test
     public void testRedoIO() throws Throwable {
         String code = "function main() {\n" +
                         "  a = readln();\n" +

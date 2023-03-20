@@ -43,6 +43,8 @@ package com.oracle.truffle.api.dsl.test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -78,6 +80,17 @@ public class ChildExecutionTest {
         public String executeString(VirtualFrame frame) {
             assert frame != null;
             return null;
+        }
+    }
+
+    public static class ChildExecutionChildNodeWithError extends Node {
+
+        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            throw new UnexpectedResultException(null);
+        }
+
+        public Object executeObject(VirtualFrame frame) {
+            return 0;
         }
     }
 
@@ -129,6 +142,30 @@ public class ChildExecutionTest {
         @Specialization
         protected boolean doIt(String a, String b) {
             return a.isEmpty() && b.isEmpty();
+        }
+    }
+
+    @TypeSystem({int.class})
+    public static class ChildTestTypeSystem {
+    }
+
+    @NodeChildren({
+                    @NodeChild(value = "first", type = ChildExecutionChildNodeWithError.class),
+                    @NodeChild(value = "second", type = ChildExecutionChildNode2.class)
+    })
+    @TypeSystemReference(ChildTestTypeSystem.class)
+    public abstract static class TestNode4 extends Node {
+
+        public abstract Object execute(VirtualFrame frame);
+
+        @Specialization
+        protected boolean doItPrim(int a, String b) {
+            return true;
+        }
+
+        @Specialization
+        protected boolean doIt(String a, String b) {
+            return true;
         }
     }
 }

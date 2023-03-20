@@ -44,8 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -60,7 +60,6 @@ import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -69,49 +68,28 @@ import com.oracle.truffle.sl.runtime.SLContext;
  * functions, the {@link #bodyNode} is a {@link SLFunctionBodyNode}.
  */
 @NodeInfo(language = "SL", description = "The root of all SL execution trees")
-public class SLRootNode extends RootNode {
-    /** The function body that is executed, and specialized during execution. */
-    @Child private SLExpressionNode bodyNode;
+public abstract class SLRootNode extends RootNode {
 
-    /** The name of the function, for printing purposes only. */
-    private final TruffleString name;
+    protected boolean isCloningAllowed;
 
-    private boolean isCloningAllowed;
+    @CompilationFinal(dimensions = 1) private transient SLWriteLocalVariableNode[] argumentNodesCache;
 
-    private final SourceSection sourceSection;
-
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private volatile SLWriteLocalVariableNode[] argumentNodesCache;
-
-    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, TruffleString name) {
+    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-        this.bodyNode = bodyNode;
-        this.name = name;
-        this.sourceSection = sourceSection;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
+    public abstract SourceSection getSourceSection();
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        assert SLContext.get(this) != null;
-        return bodyNode.executeGeneric(frame);
-    }
-
-    public SLExpressionNode getBodyNode() {
-        return bodyNode;
-    }
+    public abstract SLExpressionNode getBodyNode();
 
     @Override
     public String getName() {
-        return name.toJavaStringUncached();
+        TruffleString name = getTSName();
+        return name == null ? null : name.toJavaStringUncached();
     }
 
-    public TruffleString getTSName() {
-        return name;
-    }
+    public abstract TruffleString getTSName();
 
     public void setCloningAllowed(boolean isCloningAllowed) {
         this.isCloningAllowed = isCloningAllowed;
@@ -124,7 +102,7 @@ public class SLRootNode extends RootNode {
 
     @Override
     public String toString() {
-        return "root " + name;
+        return "root " + getTSName();
     }
 
     public final SLWriteLocalVariableNode[] getDeclaredArguments() {

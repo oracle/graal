@@ -80,6 +80,14 @@ public abstract class AbstractCompiler implements Compiler {
         return lookupField(o.getClass(), fieldName).get(o);
     }
 
+    protected static Object construct(Class<?> clazz, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
+        return clazz.getConstructor(paramTypes).newInstance(values);
+    }
+
+    protected static Object construct(Class<?> clazz) throws ReflectiveOperationException {
+        return clazz.getConstructor().newInstance();
+    }
+
     protected static Field lookupField(Class<?> clazz, String fieldName) {
         // finding the right field can be expensive -> cache it.
         Map<Class<?>, Map<String, Field>> fieldsCache = ProcessorContext.getInstance().getCacheMap(AbstractCompiler.class);

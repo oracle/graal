@@ -274,6 +274,30 @@ public interface Frame {
     }
 
     /**
+     * Copies, including the type, from one slot to another. The type must be Object.
+     *
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since XXX
+     */
+    default void copyObject(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Copies, including the type, from one slot to another. The type must be primitive.
+     *
+     * @param srcSlot the slot of the source local variable
+     * @param destSlot the slot of the target local variable
+     * @since XXX
+     */
+    default void copyPrimitive(int srcSlot, int destSlot) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Swaps, including the type, the contents of two slots.
      *
      * @param first the slot of the first local variable
@@ -674,7 +698,7 @@ public interface Frame {
      * Copies from one slot to another. Requires both slots to use {@link FrameSlotKind#Static}. In
      * cases where the underlying slot type is known, {@link Frame#copyPrimitiveStatic} and
      * {@link Frame#copyObjectStatic} should be used for performance reasons.
-     * 
+     *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
      * @since 22.3
@@ -688,7 +712,7 @@ public interface Frame {
      * Swaps the primitive values of two slots. Requires both slots to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
      * implementations have to guarantee that the variables in both slots are primitive values.
-     * 
+     *
      * @param first the slot of the first local variable
      * @param second the slot of the second local variable
      * @since 22.3
@@ -702,7 +726,7 @@ public interface Frame {
      * Swaps the object values of two slots. Requires both slots to use
      * {@link FrameSlotKind#Static}. Since this method does not perform any type checks, language
      * implementations have to guarantee that the variables in both slots are {@link Object}s.
-     * 
+     *
      * @param first the slot of the first local variable
      * @param second the slot of the second local variable
      * @since 22.3
@@ -716,7 +740,7 @@ public interface Frame {
      * Swaps the contents of two slots. Requires both slots to use {@link FrameSlotKind#Static}. In
      * cases where the underlying slot type is known, {@link Frame#swapPrimitiveStatic} and
      * {@link Frame#swapObjectStatic} should be used for performance reasons.
-     * 
+     *
      * @param first the slot of the first local variable
      * @param second the slot of the second local variable
      * @since 22.3
@@ -775,13 +799,25 @@ public interface Frame {
     }
 
     /**
+     * Copies values from this frame to the given frame. The frames are required to have the same
+     * {@link Frame#getFrameDescriptor() frame descriptors}.
+     *
+     * @param slot the slot of the local variable
+     * @since 22.2
+     */
+    default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Clears the value at the given slot in the frame. Requires the given slot to use
      * {@link FrameSlotKind#Static}. Writing over a previously cleared slot is still allowed.
      * Subsequent reads to the slot, unless re-written to, are not allowed and will fail with an
      * {@link AssertionError} if assertions are enabled. In cases where the underlying slot type is
      * known, {@link Frame#clearPrimitiveStatic} and {@link Frame#clearObjectStatic} should be used
      * for performance reasons.
-     * 
+     *
      * @param slot The slot of the local variable
      * @since 22.3
      */

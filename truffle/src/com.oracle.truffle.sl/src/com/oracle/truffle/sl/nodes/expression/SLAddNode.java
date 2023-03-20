@@ -90,7 +90,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      * operand are {@code long} values.
      */
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long doLong(long left, long right) {
+    public static long doLong(long left, long right) {
         return Math.addExact(left, right);
     }
 
@@ -106,9 +106,9 @@ public abstract class SLAddNode extends SLBinaryNode {
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
      * both input values are {@code long} values but the primitive addition overflows.
      */
-    @Specialization
+    @Specialization(replaces = "doLong")
     @TruffleBoundary
-    protected SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+    public static SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
         return new SLBigInteger(left.getValue().add(right.getValue()));
     }
 
@@ -127,7 +127,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
     @TruffleBoundary
-    protected SLBigInteger doInteropBigInteger(Object left, Object right,
+    public static SLBigInteger doInteropBigInteger(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftLibrary,
                     @CachedLibrary("right") InteropLibrary rightLibrary) {
         try {
@@ -147,7 +147,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected static TruffleString doString(Object left, Object right,
+    public static TruffleString doString(Object left, Object right,
                     @Bind("this") Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
@@ -159,12 +159,12 @@ public abstract class SLAddNode extends SLBinaryNode {
      * Guard for TruffleString concatenation: returns true if either the left or the right operand
      * is a {@link TruffleString}.
      */
-    protected boolean isString(Object a, Object b) {
+    public static boolean isString(Object a, Object b) {
         return a instanceof TruffleString || b instanceof TruffleString;
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    public static Object typeError(Object left, Object right, @Bind("this") Node node, @Bind("$bci") int bci) {
+        throw SLException.typeError(node, "+", bci, left, right);
     }
 }
