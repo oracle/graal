@@ -38,6 +38,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
@@ -840,6 +841,8 @@ public final class ClassfileParser {
                         } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
                                         Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
                             methodFlags |= ACC_FORCE_INLINE;
+                        } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
+                            methodFlags |= ACC_SCOPED;
                         }
                     }
                     methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
