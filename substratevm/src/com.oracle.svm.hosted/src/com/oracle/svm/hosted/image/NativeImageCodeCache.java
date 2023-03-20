@@ -85,6 +85,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport.DeoptSourceFrameInfo;
+import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -616,38 +617,7 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint) {
-            BytecodeFrame topFrame = infopoint.debugInfo.frame();
-            BytecodeFrame rootFrame = topFrame;
-            while (rootFrame.caller() != null) {
-                rootFrame = rootFrame.caller();
-            }
-            assert rootFrame.getMethod().equals(method);
-
-            boolean isBciDeoptEntry = ((HostedMethod) method).compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
-            if (isBciDeoptEntry) {
-                /*
-                 * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
-                 * necessarily mean that the infopoint itself is for a deoptimization entrypoint.
-                 * This is because the infopoint can also be for present debugging purposes and
-                 * happen to have the same bci. Further checks are needed to determine actual
-                 * deoptimization entrypoints.
-                 */
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
-                if (topFrame.duringCall) {
-                    /*
-                     * During call entrypoints must always be linked to a call.
-                     */
-                    VMError.guarantee(infopoint instanceof Call, String.format("Unexpected infopoint type: %s\nFrame: %s", infopoint, topFrame));
-                    return compilation.isValidCallDeoptimizationState((Call) infopoint);
-                } else {
-                    /*
-                     * Other deoptimization entrypoints correspond to an DeoptEntryOp.
-                     */
-                    return infopoint instanceof DeoptEntryInfopoint;
-                }
-            }
-
-            return false;
+            return CompileQueue.isDeoptEntry((HostedMethod) method, compilation, infopoint);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,11 +101,20 @@ public class JfrRecorderThread extends Thread {
             if (isFullEnough(buffer)) {
                 boolean shouldNotify = persistBuffer(chunkWriter, buffer);
                 if (shouldNotify) {
-                    synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
-                        Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
+                    Object chunkRotationMonitor = getChunkRotationMonitor();
+                    synchronized (chunkRotationMonitor) {
+                        chunkRotationMonitor.notifyAll();
                     }
                 }
             }
+        }
+    }
+
+    private static Object getChunkRotationMonitor() {
+        if (HasChunkRotationMonitorField.get()) {
+            return Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR;
+        } else {
+            return Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
         }
     }
 
