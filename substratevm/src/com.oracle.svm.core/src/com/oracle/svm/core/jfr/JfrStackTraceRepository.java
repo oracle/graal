@@ -228,7 +228,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
-        if (flushpoint) {
+        if (flushpoint) {  // *** I think this comment is referencing the recorder thread serializing the full buffers ("while its being written").
             /*
              * Flushing is not support for stack traces at the moment. When a stack trace is
              * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are

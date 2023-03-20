@@ -54,6 +54,7 @@ public final class SamplerSampleWriterDataAccess {
                 return false;
             }
             JfrThreadLocal.setSamplerBuffer(buffer);
+            JfrThreadLocal.getSamplerBufferList().addNode(buffer);
         }
         initialize0(data, buffer, skipCount, SubstrateJVM.getStackTraceRepo().getStackTraceDepth(), allowBufferAllocation);
         return true;
@@ -64,7 +65,7 @@ public final class SamplerSampleWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
     private static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
-        assert SamplerBufferAccess.verify(buffer);
+        com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(buffer));
 
         data.setSamplerBuffer(buffer);
         data.setStartPos(buffer.getPos());

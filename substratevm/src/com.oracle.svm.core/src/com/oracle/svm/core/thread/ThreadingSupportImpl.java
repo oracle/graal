@@ -346,7 +346,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
          * Even if no callback is registered at the moment, we still need to execute the code below
          * because a callback could be registered while recurring callbacks are paused.
          */
-        assert currentPauseDepth.get() >= 0;
+        VMError.guarantee( currentPauseDepth.get() >= 0);
         currentPauseDepth.set(currentPauseDepth.get() + 1);
     }
 
@@ -368,6 +368,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * Like {@link #resumeRecurringCallbackAtNextSafepoint()} but with the difference that this
      * method may trigger the execution of the recurring callback right away.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void resumeRecurringCallback() {
         if (resumeCallbackExecution()) {
             try {
@@ -384,7 +385,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             return false;
         }
 
-        assert currentPauseDepth.get() > 0;
+        VMError.guarantee(  currentPauseDepth.get() > 0);
         currentPauseDepth.set(currentPauseDepth.get() - 1);
         return !isRecurringCallbackPaused() && isRecurringCallbackRegistered(CurrentIsolate.getCurrentThread());
     }

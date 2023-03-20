@@ -54,6 +54,8 @@ import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.sampler.SamplerBufferNode;
+import com.oracle.svm.core.sampler.SamplerBufferList;
 
 public final class SamplerBuffersAccess {
     /** This value is used by multiple threads but only by a single thread at a time. */
@@ -64,15 +66,32 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording.")
-    public static void processActiveBuffers() {
-        assert VMOperation.isInProgressAtSafepoint();
+    public static void processActiveBuffers(boolean flushpoint) {
+//        assert VMOperation.isInProgressAtSafepoint();
+        SamplerBufferList samplerBufferList =  JfrThreadLocal.getSamplerBufferList();
+        SamplerBufferNode node = samplerBufferList.getHead();
+        SamplerBufferNode prev = WordFactory.nullPointer();
 
-        for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            SamplerBuffer buffer = JfrThreadLocal.getSamplerBuffer(thread);
-            if (buffer.isNonNull()) {
-                serializeStackTraces(buffer);
-                assert JfrThreadLocal.getSamplerBuffer(thread) == buffer;
+        while (node.isNonNull()) {
+            SamplerBufferNode next = node.getNext();
+            if (SamplerBufferNodeAccess.tryLock(node)) {
+                SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
+                // Try to remove old nodes
+                if (buffer.isNull()) {
+                    samplerBufferList.removeNode(node, prev);
+                    SamplerBufferNodeAccess.free(node);
+                    node = next;
+                    continue;
+                }
+                // serialize active buffers
+                try {
+                    serializeStackTraces(buffer, flushpoint);
+                } finally {
+                    SamplerBufferNodeAccess.unlock(node);
+                }
             }
+            prev = node;
+            node = next;
         }
     }
 
@@ -94,7 +113,7 @@ public final class SamplerBuffersAccess {
                 break;
             }
 
-            serializeStackTraces(buffer);
+            serializeStackTraces(buffer, useSafepointChecks);
             SubstrateJVM.getSamplerBufferPool().releaseBuffer(buffer);
 
             /* Do a safepoint check if the caller requested one. */
@@ -115,14 +134,15 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static void serializeStackTraces(SamplerBuffer rawStackTraceBuffer) {
-        assert rawStackTraceBuffer.isNonNull();
+    private static void serializeStackTraces(SamplerBuffer rawStackTraceBuffer, boolean flushpoint) {
+        com.oracle.svm.core.util.VMError.guarantee( rawStackTraceBuffer.isNonNull());
 
         Pointer end = rawStackTraceBuffer.getPos();
-        Pointer current = SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
+        // *** start at the flush pos, so you don't double flush
+        Pointer current = rawStackTraceBuffer.getFlushedPos();//SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
         while (current.belowThan(end)) {
             Pointer entryStart = current;
-            assert entryStart.unsignedRemainder(Long.BYTES).equal(0);
+            com.oracle.svm.core.util.VMError.guarantee( entryStart.unsignedRemainder(Long.BYTES).equal(0));
 
             /* Sample hash. */
             int sampleHash = current.readInt(0);
@@ -151,23 +171,23 @@ public final class SamplerBuffersAccess {
             long threadState = current.readLong(0);
             current = current.add(Long.BYTES);
 
-            assert current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize());
+            com.oracle.svm.core.util.VMError.guarantee( current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize()));
 
             CIntPointer statusPtr = StackValue.get(CIntPointer.class);
-            JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr);
+            JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr); // TODO  ***
             long stackTraceId = entry.isNull() ? 0 : entry.getId();
 
             int status = statusPtr.read();
             if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) {
                 /* Walk the IPs and serialize the stacktrace. */
-                assert current.add(sampleSize).belowThan(end);
-                boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
+                com.oracle.svm.core.util.VMError.guarantee( current.add(sampleSize).belowThan(end));
+                boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId); // TODO *** This is also in the critical section.
                 if (serialized) {
-                    SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);
+                    SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);  // TODO  ***
                 }
             } else {
                 /* Processing is not needed: skip the rest of the data. */
-                assert status == JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceTableEntryStatus.INSERT_FAILED;
+                com.oracle.svm.core.util.VMError.guarantee( status == JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceTableEntryStatus.INSERT_FAILED);
             }
             current = current.add(sampleSize);
 
@@ -183,17 +203,20 @@ public final class SamplerBuffersAccess {
                     JfrThreadLocal.increaseMissedSamples();
                 }
             } else {
-                assert endMarker == SamplerSampleWriter.JFR_STACK_TRACE_END;
+                com.oracle.svm.core.util.VMError.guarantee( endMarker == SamplerSampleWriter.JFR_STACK_TRACE_END);
             }
             current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
         }
+//        if (!flushpoint) { // *** TODO:  Remove this later
+//            SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
+//        }
+        rawStackTraceBuffer.setFlushedPos(end);
 
-        SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     private static boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
-        assert sampleSize % Long.BYTES == 0;
+        com.oracle.svm.core.util.VMError.guarantee( sampleSize % Long.BYTES == 0);
 
         JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
         if (targetBuffer.isNull()) {

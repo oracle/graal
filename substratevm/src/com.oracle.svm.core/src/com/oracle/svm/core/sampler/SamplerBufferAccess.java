@@ -53,6 +53,7 @@ public final class SamplerBufferAccess {
         assert buffer.isNonNull();
         Pointer dataStart = getDataStart(buffer);
         buffer.setPos(dataStart);
+        buffer.setFlushedPos(dataStart);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

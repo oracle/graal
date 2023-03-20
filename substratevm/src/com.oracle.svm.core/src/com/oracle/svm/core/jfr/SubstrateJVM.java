@@ -674,20 +674,14 @@ public class SubstrateJVM {
         getThreadLocal().setExcluded(thread, excluded);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isExcluded(Thread thread) {
-        /*
-         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
-         * will need to implement that in a more general way though, see GR-44616.
-         */
-        if (!thread.equals(Thread.currentThread())) {
-            return false;
-        }
-        return isCurrentThreadExcluded();
+        return getThreadLocal().isThreadExcluded(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
-        return getThreadLocal().isCurrentThreadExcluded();
+        return isExcluded(Thread.currentThread());
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

@@ -40,6 +40,9 @@ import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
+import com.oracle.svm.core.sampler.SamplerBufferList;
+import  com.oracle.svm.core.sampler.SamplerBufferNode;
+import  com.oracle.svm.core.sampler.SamplerBufferNodeAccess;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -90,6 +93,7 @@ public class JfrThreadLocal implements ThreadListener {
     /* Non-thread-local fields. */
     private static final JfrBufferList javaBufferList = new JfrBufferList();
     private static final JfrBufferList nativeBufferList = new JfrBufferList();
+    private static final SamplerBufferList samplerBufferList = new SamplerBufferList();
     private long threadLocalBufferSize;
 
     @Fold
@@ -100,6 +104,10 @@ public class JfrThreadLocal implements ThreadListener {
     @Fold
     public static JfrBufferList getJavaBufferList() {
         return javaBufferList;
+    }
+    @Fold
+    public static SamplerBufferList getSamplerBufferList() {
+        return samplerBufferList;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -118,6 +126,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void teardown() {
         getNativeBufferList().teardown();
         getJavaBufferList().teardown();
+        getSamplerBufferList().teardown();
     }
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
@@ -168,9 +177,22 @@ public class JfrThreadLocal implements ThreadListener {
         assert samplerWriterData.get(isolateThread).isNull();
 
         SamplerBuffer buffer = samplerBuffer.get(isolateThread);
+//        if (buffer.isNonNull()) {
+//            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
+//            samplerBuffer.set(isolateThread, WordFactory.nullPointer());
+//        }
         if (buffer.isNonNull()) {
-            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
-            samplerBuffer.set(isolateThread, WordFactory.nullPointer());
+            SamplerBufferNode node = buffer.getNode();
+            // *** must lock in case flushing thread is in the middle of processing the buffer
+            SamplerBufferNodeAccess.lockNoTransition(node);
+            try {
+                // Signal to thread iterating list that this node can be removed
+                node.setBuffer(WordFactory.nullPointer());
+                SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
+                samplerBuffer.set(isolateThread, WordFactory.nullPointer());
+            } finally {
+                SamplerBufferNodeAccess.unlock(node);
+            }
         }
     }
 
@@ -234,8 +256,8 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+    public boolean isThreadExcluded(Thread thread) {
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }
 
@@ -256,7 +278,7 @@ public class JfrThreadLocal implements ThreadListener {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
 
-        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isCurrentThreadExcluded());
+        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isThreadExcluded(Thread.currentThread()));
         javaEventWriter.set(result);
         return result;
     }
@@ -412,7 +434,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static SamplerBuffer getSamplerBuffer(IsolateThread thread) {
-        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
+        com.oracle.svm.core.util.VMError.guarantee( CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint());
         return samplerBuffer.get(thread);
     }
 
@@ -443,7 +465,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setSamplerWriterData(SamplerSampleWriterData data) {
-        assert samplerWriterData.get().isNull() || data.isNull();
+        com.oracle.svm.core.util.VMError.guarantee( samplerWriterData.get().isNull() || data.isNull());
         samplerWriterData.set(data);
     }
 

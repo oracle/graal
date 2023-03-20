@@ -95,7 +95,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrStackTraceRepository stackTraceRepo, JfrMethodRepository methodRepo, JfrTypeRepository typeRepo, JfrSymbolRepository symbolRepo,
-                    JfrThreadRepository threadRepo) {
+                          JfrThreadRepository threadRepo) {
         this.lock = new VMMutex("jfrChunkWriter");
         this.globalMemory = globalMemory;
         this.metadata = new JfrMetadata(null);
@@ -504,8 +504,43 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    /**
+     * The VM is at a safepoint, so all other threads have a native state. However, execution
+     * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
+     * it is sufficient to mark this method as uninterruptible to prevent execution of the
+     * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
+     * be executed at any time for any thread (including the current thread). To prevent races,
+     * we need to ensure that there are no threads that execute the SIGPROF handler while we are
+     * accessing the currently active buffers of other threads.
+     */
+    @Uninterruptible(reason = "Prevent JFR recording.")
+    private static void processSamplerBuffers(boolean flushpoint) {
+//        assert VMOperation.isInProgressAtSafepoint();
+        if (flushpoint) { // *** Expects recurring callbacks to be paused at a safepoint
+            ThreadingSupportImpl.pauseRecurringCallback("processing sampler buffers outside safepoint potentially.");
+        }
+        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode(); // *** waits for threads to leave sampler code
+        try {
+            processSamplerBuffers0(flushpoint);
+        } finally {
+            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
+        }
+        if (flushpoint) {
+            ThreadingSupportImpl.resumeRecurringCallback();
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording.")
+    private static void processSamplerBuffers0(boolean flushpoint) {
+//        if (!flushpoint) {
+            SamplerBuffersAccess.processActiveBuffers(flushpoint);
+//        }
+        SamplerBuffersAccess.processFullBuffers(flushpoint);
+    }
+
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage(boolean flushpoint) {
+        processSamplerBuffers(flushpoint);
         traverseThreadLocalBuffers(getJavaBufferList(), flushpoint);
         traverseThreadLocalBuffers(getNativeBufferList(), flushpoint);
 
@@ -619,7 +654,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
-            processSamplerBuffers();
             flushStorage(false);
 
             /* Notify all event writers that the epoch changed. */
@@ -631,34 +665,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
-        }
-
-        /**
-         * The VM is at a safepoint, so all other threads have a native state. However, execution
-         * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
-         * it is sufficient to mark this method as uninterruptible to prevent execution of the
-         * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
-         * be executed at any time for any thread (including the current thread). To prevent races,
-         * we need to ensure that there are no threads that execute the SIGPROF handler while we are
-         * accessing the currently active buffers of other threads.
-         */
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers() {
-            assert VMOperation.isInProgressAtSafepoint();
-            assert ThreadingSupportImpl.isRecurringCallbackPaused();
-
-            JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
-            try {
-                processSamplerBuffers0();
-            } finally {
-                JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
-            }
-        }
-
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers0() {
-            SamplerBuffersAccess.processActiveBuffers();
-            SamplerBuffersAccess.processFullBuffers(false);
         }
     }
 }

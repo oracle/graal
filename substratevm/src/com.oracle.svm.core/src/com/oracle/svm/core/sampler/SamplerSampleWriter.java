@@ -155,17 +155,17 @@ public final class SamplerSampleWriter {
 
         int totalRequested = requested + END_MARKER_SIZE;
         if (getAvailableSize(data).belowThan(totalRequested)) {
-            if (!accommodate(data, getUncommittedSize(data))) {
+            if (!accommodate(data)) {
                 assert !isValid(data);
                 return false;
             }
         }
-        assert getAvailableSize(data).aboveOrEqual(totalRequested);
+        com.oracle.svm.core.util.VMError.guarantee( getAvailableSize(data).aboveOrEqual(totalRequested));
         return true;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
-    private static boolean accommodate(SamplerSampleWriterData data, UnsignedWord uncommitted) {
+    private static boolean accommodate(SamplerSampleWriterData data) {
         if (SamplerBufferAccess.isEmpty(data.getSamplerBuffer())) {
             /*
              * Sample is too big to fit into the size of one buffer i.e. we want to do
@@ -181,21 +181,33 @@ public final class SamplerSampleWriter {
             cancel(data);
             return false;
         }
-        JfrThreadLocal.setSamplerBuffer(newBuffer);
-
-        /* Copy the uncommitted content of old buffer into new one. */
-        UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
-
-        /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
-        SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
-        SubstrateJVM.getRecorderThread().signal();
+        SamplerBufferNode oldNode = oldBuffer.getNode();
+        SamplerBufferNodeAccess.lockNoTransition(oldNode);
+        try {
+            // Signal to thread iterating list that this node can be removed
+            oldNode.setBuffer(WordFactory.nullPointer());
 
-        /* Reinitialize data structure. */
-        data.setSamplerBuffer(newBuffer);
-        reset(data);
-        increaseCurrentPos(data, uncommitted);
-        return true;
+            JfrThreadLocal.setSamplerBuffer(newBuffer);
+            UnsignedWord uncommitted = getUncommittedSize(data);
+
+            /* Copy the uncommitted content of old buffer into new one. */
+            UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
+
+            /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
+            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
+            SubstrateJVM.getRecorderThread().signal();
+
+            /* Reinitialize data structure. */
+            data.setSamplerBuffer(newBuffer);
+            reset(data);
+            increaseCurrentPos(data, uncommitted);
+            // *** do this lastly
+            JfrThreadLocal.getSamplerBufferList().addNode(newBuffer);
+            return true;
+        } finally {
+            SamplerBufferNodeAccess.unlock(oldNode);
+        }
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)

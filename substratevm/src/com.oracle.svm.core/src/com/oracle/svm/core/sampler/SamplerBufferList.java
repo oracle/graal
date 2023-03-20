@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.sampler;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -39,51 +39,39 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
-/**
- * Singly linked list that stores {@link JfrBuffer}s. Multiple instances of this data structure are
- * used to keep track of the global and the various thread-local buffers. When entering a safepoint,
- * it is guaranteed that none of the blocked Java threads holds the list's lock.
- *
- * The following invariants are crucial if the list is used for thread-local buffers:
- * <ul>
- * <li>Each thread shall only add one node to the list at a time (multiple sequential recordings result in successive additions).</li>
- * <li>Only threads executing at a safepoint or that hold the {@link JfrChunkWriter#lock()} may iterate or remove nodes from the
- * list.</li>
- * </ul>
- */
-public class JfrBufferList {
+/** Nodes should only be removed from this list by {@link com.oracle.svm.core.sampler.SamplerBuffersAccess#processSamplerBuffers()}
+ * Nodes are marked for removal if their buffer field is null. This means that the buffer has been put on the full
+ * buffer queue because it is full or the owning thread has exited.*/
+public class SamplerBufferList {
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long LOCK_OFFSET = U.objectFieldOffset(JfrBufferList.class, "lock");
+    private static final long LOCK_OFFSET = U.objectFieldOffset(SamplerBufferList.class, "lock");
 
     @SuppressWarnings("unused") private volatile int lock;
-    private JfrBufferNode head;
+    private SamplerBufferNode head;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrBufferList() {
+    public SamplerBufferList() {
     }
-
-    /** This is called when a recording is stopped. We cannot safely destroy Java buffers here because their corresponding
-     * interruptible EventWriters may still be using them.*/
     public void teardown() {
-        assert VMOperation.isInProgressAtSafepoint();
+        com.oracle.svm.core.util.VMError.guarantee( VMOperation.isInProgressAtSafepoint());
 
-        JfrBufferNode node = head;
+        SamplerBufferNode node = head;
         while (node.isNonNull()) {
             /* If the buffer is still alive, then mark it as removed from the list. */
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
             if (buffer.isNonNull()) {
                 buffer.setNode(WordFactory.nullPointer());
             }
 
-            JfrBufferNode next = node.getNext();
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+            SamplerBufferNode next = node.getNext();
+            SamplerBufferNodeAccess.free(node);
             node = next;
         }
         head = WordFactory.nullPointer();
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public JfrBufferNode getHead() {
+    public SamplerBufferNode getHead() {
         lockNoTransition();
         try {
             return head;
@@ -93,18 +81,17 @@ public class JfrBufferList {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public JfrBufferNode addNode(JfrBuffer buffer) {
-        assert buffer.isNonNull();
-        assert buffer.getBufferType() != null && buffer.getBufferType() != JfrBufferType.C_HEAP;
+    public SamplerBufferNode addNode(SamplerBuffer buffer) {
+        VMError.guarantee( buffer.isNonNull());
 
-        JfrBufferNode node = JfrBufferNodeAccess.allocate(buffer);
+        SamplerBufferNode node = SamplerBufferNodeAccess.allocate(buffer);
         if (node.isNull()) {
             return WordFactory.nullPointer();
         }
 
         lockNoTransition();
         try {
-            assert buffer.getNode().isNull();
+            VMError.guarantee(buffer.getNode().isNull());  // TODO: add this back later. Only passes if nodes are dissassociated properly
             buffer.setNode(node);
 
             node.setNext(head);
@@ -120,24 +107,24 @@ public class JfrBufferList {
      * been freed by the caller.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
-        assert head.isNonNull();
+    public void removeNode(SamplerBufferNode node, SamplerBufferNode prev) {
+        com.oracle.svm.core.util.VMError.guarantee( head.isNonNull());
 
         lockNoTransition();
         try {
-            assert JfrBufferNodeAccess.getBuffer(node).isNull();
+            VMError.guarantee(SamplerBufferNodeAccess.getBuffer(node).isNull());
 
-            JfrBufferNode next = node.getNext();
+            SamplerBufferNode next = node.getNext();
             if (node == head) {
-                assert prev.isNull();
+                VMError.guarantee( prev.isNull());
                 head = next;
             } else if (prev.isNonNull()) {
-                assert prev.getNext() == node;
+                VMError.guarantee( prev.getNext() == node);
                 prev.setNext(next);
             } else {
                 /* We are removing an old head (other threads added nodes in the meanwhile). */
-                JfrBufferNode p = findPrev(node);
-                assert p.isNonNull() && p.getNext() == node;
+                SamplerBufferNode p = findPrev(node);
+                VMError.guarantee( p.isNonNull() && p.getNext() == node);
                 p.setNext(next);
             }
         } finally {
@@ -146,9 +133,9 @@ public class JfrBufferList {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private JfrBufferNode findPrev(JfrBufferNode node) {
-        JfrBufferNode cur = head;
-        JfrBufferNode prev = WordFactory.nullPointer();
+    private SamplerBufferNode findPrev(SamplerBufferNode node) {
+        SamplerBufferNode cur = head;
+        SamplerBufferNode prev = WordFactory.nullPointer();
         while (cur.isNonNull()) {
             if (cur == node) {
                 return prev;
@@ -156,7 +143,7 @@ public class JfrBufferList {
             prev = cur;
             cur = cur.getNext();
         }
-        throw VMError.shouldNotReachHere("JfrBufferNode not found in JfrBufferList.");
+        throw VMError.shouldNotReachHere("SamplerBufferNode not found in SamplerBufferList.");
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)

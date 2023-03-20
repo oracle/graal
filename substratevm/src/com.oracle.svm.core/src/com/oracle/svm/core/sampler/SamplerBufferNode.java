@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,71 +26,39 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
-/**
- * A {@link SamplerBuffer} is a block of native memory into which the results of stack walks are
- * written.
- */
+import com.oracle.svm.core.util.VMError;
+
 @RawStructure
-public interface SamplerBuffer extends PointerBase {
-
-    /**
-     * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
-     */
+public interface SamplerBufferNode extends PointerBase {
     @RawField
-    SamplerBuffer getNext();
-
-    /**
-     * Sets the successor to this buffer in the {@link SamplerBufferStack}.
-     */
-    @RawField
-    void setNext(SamplerBuffer buffer);
-
-    /**
-     * Returns the current position. Any data before this position is valid sample data.
-     */
-    @RawField
-    Pointer getPos();
-
-    /**
-     * Sets the current position.
-     */
-    @RawField
-    void setPos(Pointer pos);
-
-    /**
-     * Returns the position up to which data has been flushed.
-     */
-    @RawField
-    Pointer getFlushedPos();
-
-    /**
-     * Sets the position up to which data has been flushed.
-     */
-    @RawField
-    void setFlushedPos(Pointer pos);
-
-    /**
-     * Returns the size of the buffer. This excludes the header of the buffer.
-     */
-    @RawField
-    UnsignedWord getSize();
-
-    /**
-     * Sets the size of the buffer.
-     */
-    @RawField
-    void setSize(UnsignedWord value);
+    SamplerBufferNode getNext();
 
     @RawField
-    SamplerBufferNode getNode();
+    void setNext(SamplerBufferNode value);
 
     @RawField
-    void setNode(SamplerBufferNode value);
+    SamplerBuffer getBuffer();
 
+    @RawField
+    void setBuffer(SamplerBuffer value);
+
+    @RawField
+    int getLock();
+
+    @RawFieldOffset
+    static int offsetOfLock() {
+        throw VMError.unimplemented(); // replaced
+    }
+
+    @RawField
+    IsolateThread getLockOwner();
+
+    @RawField
+    void setLockOwner(IsolateThread value);
 }
