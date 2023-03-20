@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.14.18",
+  "mxversion": "6.17.0",
   "name": "java-benchmarks",
 
   "ignore_suite_commit_info": True,
@@ -14,14 +14,14 @@ suite = {
     },
 
     "MICRONAUT_MUSHOP_0.0.1" : {
-      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/mu-shop-0.0.1.zip"],
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/mu-shop-0.0.1.zip"],
       "digest": "sha512:41f91679c2077a9c252cfc29b8cbf7884f2e9f3c411cfe6c88d807d346178b76299bc5c3f446290b84139ca3a9f6f18c91511fc8ee90b47549b4a8c19cdb337d" ,
       "packedResource": True
     },
 
     "QUARKUS_REGISTRY_0.0.1" : {
-      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/quarkus-registry-0.0.1.zip"],
-      "digest": "sha512:fb798881ea406f05dd01523479b323a8e5ed6a59a545a70c06ec153ccfdb0a45be9b98d544d9fc5360007aae519a1221a7b2a794316dfc9cb9a38126ae13a9b3" ,
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-registry-0.0.1.zip"],
+      "digest": "sha512:3a48ce0c3c3dd66dd24fb82abfa52e666a32e73979ececd8cc30d28c653b1583218f46a162456318c8c5462d6a3f1ed87504ca961ef9400cd50953de922a7314" ,
       "packedResource": True
     },
 
@@ -32,7 +32,7 @@ suite = {
     },
 
     "PETCLINIC_0.1.7": {
-      "urls": ["https://graalvm.oraclecorp.com/ci-legacy/slavefiles2/substratevm/native-benchmarks-experimental/petclinic-jpa-0.1.7.zip"],
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.7.zip"],
       "digest": "sha512:fe8f34a6cbb24099e3cc68051c857e82536c6d81498c604157e6312c04e675745d6f77dd292adde006307d5319b77917bbc9e5f301501ab1e9c072870be113a5",
       "packedResource": True,
     },

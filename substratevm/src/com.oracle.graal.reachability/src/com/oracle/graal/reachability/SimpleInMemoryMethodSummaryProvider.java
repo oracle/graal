@@ -83,7 +83,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         EconomicSet<AnalysisType> instantiatedTypes = EconomicSet.create();
         EconomicSet<AnalysisField> readFields = EconomicSet.create();
         EconomicSet<AnalysisField> writtenFields = EconomicSet.create();
-        EconomicSet<AnalysisMethod> invokedMethods = EconomicSet.create();
+        EconomicSet<AnalysisMethod> virtualInvokedMethods = EconomicSet.create();
+        EconomicSet<AnalysisMethod> specialInvokedMethods = EconomicSet.create();
         EconomicSet<AnalysisMethod> implementationInvokedMethods = EconomicSet.create();
         EconomicSet<JavaConstant> embeddedConstants = EconomicSet.create();
         EconomicSet<AnalysisMethod> foreignCallTargets = EconomicSet.create();
@@ -150,10 +151,12 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 if (method != null) {
                     method.addInvoke(new ReachabilityInvokeInfo(targetMethod, AbstractAnalysisEngine.sourcePosition(node.asNode()), kind.isDirect()));
                 }
-                if (kind.isDirect()) {
+                if (kind == CallTargetNode.InvokeKind.Static) {
                     implementationInvokedMethods.add(targetMethod);
+                } else if (kind == CallTargetNode.InvokeKind.Special) {
+                    specialInvokedMethods.add(targetMethod);
                 } else {
-                    invokedMethods.add(targetMethod);
+                    virtualInvokedMethods.add(targetMethod);
                 }
             } else if (n instanceof FrameState) {
                 FrameState node = (FrameState) n;
@@ -171,10 +174,13 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
             } else if (n instanceof MacroInvokable) {
                 MacroInvokable node = (MacroInvokable) n;
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
-                if (node.getInvokeKind().isDirect()) {
+                CallTargetNode.InvokeKind kind = node.getInvokeKind();
+                if (kind == CallTargetNode.InvokeKind.Static) {
                     implementationInvokedMethods.add(targetMethod);
+                } else if (kind == CallTargetNode.InvokeKind.Special) {
+                    specialInvokedMethods.add(targetMethod);
                 } else {
-                    invokedMethods.add(targetMethod);
+                    virtualInvokedMethods.add(targetMethod);
                 }
             } else if (n instanceof ForeignCall) {
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
@@ -194,7 +200,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
             }
         }
 
-        return new MethodSummary(invokedMethods, implementationInvokedMethods, accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants, foreignCallTargets);
+        return new MethodSummary(virtualInvokedMethods, specialInvokedMethods, implementationInvokedMethods, accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants,
+                        foreignCallTargets);
+
     }
 
     private static void handleForeignCall(ReachabilityAnalysisEngine bb, EconomicSet<AnalysisMethod> foreignCallTargets, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider) {

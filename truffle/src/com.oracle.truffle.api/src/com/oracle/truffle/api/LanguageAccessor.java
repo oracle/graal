@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,7 @@ final class LanguageAccessor extends Accessor {
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final ExceptionSupport EXCEPTIONS = ACCESSOR.exceptionSupport();
+    static final HostSupport HOST = ACCESSOR.hostSupport();
 
     private LanguageAccessor() {
     }
@@ -108,6 +109,10 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.ioSupport();
     }
 
+    static HostSupport hostAccess() {
+        return ACCESSOR.hostSupport();
+    }
+
     static final class LanguageImpl extends LanguageSupport {
 
         @Override
@@ -126,8 +131,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void materializeHostFrames(Throwable original) {
-            TruffleStackTrace.materializeHostFrames(original);
+        public Throwable getOrCreateLazyStackTrace(Throwable t) {
+            return TruffleStackTrace.getOrCreateLazyStackTrace(t);
         }
 
         @Override

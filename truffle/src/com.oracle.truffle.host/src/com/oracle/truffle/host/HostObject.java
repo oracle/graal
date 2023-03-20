@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -165,7 +165,7 @@ final class HostObject implements TruffleObject {
             HostObject hostObject = (HostObject) obj;
             return new HostObject(hostObject.obj, context, hostObject.extraInfo);
         } else if (obj instanceof HostException) {
-            return new HostException(((HostException) obj).getOriginal(), context);
+            return ((HostException) obj).withContext(context);
         } else {
             throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
         }
@@ -2423,7 +2423,13 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasExceptionCause() {
-        return isException() && ((Throwable) obj).getCause() instanceof AbstractTruffleException;
+        if (isException()) {
+            Throwable cause = ((Throwable) obj).getCause();
+            if (cause != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @ExportMessage
@@ -2431,8 +2437,12 @@ final class HostObject implements TruffleObject {
     Object getExceptionCause() throws UnsupportedMessageException {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (cause instanceof AbstractTruffleException) {
-                return cause;
+            if (cause != null) {
+                if (cause instanceof AbstractTruffleException) {
+                    return cause;
+                } else {
+                    return HostException.wrap(cause, context);
+                }
             }
         }
         throw UnsupportedMessageException.create();
@@ -2441,14 +2451,20 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasExceptionStackTrace() {
-        return isException() && TruffleStackTrace.fillIn((Throwable) obj) != null;
+        if (isException()) {
+            Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
+            return TruffleStackTrace.fillIn((Throwable) hostExceptionOrOriginal) != null;
+        }
+        return false;
     }
 
     @ExportMessage
     @TruffleBoundary
     Object getExceptionStackTrace() throws UnsupportedMessageException {
         if (isException()) {
-            return HostAccessor.EXCEPTION.getExceptionStackTrace(obj);
+            // Using HostException here allows us to make use of its getLocation(), if available.
+            Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
+            return HostAccessor.EXCEPTION.getExceptionStackTrace(hostExceptionOrOriginal, context.internalContext);
         }
         throw UnsupportedMessageException.create();
     }
@@ -2458,9 +2474,9 @@ final class HostObject implements TruffleObject {
                     @Bind("$node") Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
-            HostException ex = (HostException) extraInfo;
+            RuntimeException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = new HostException((Throwable) obj, context);
+                ex = context.hostToGuestException((Throwable) obj, node);
             }
             throw ex;
         }

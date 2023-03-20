@@ -117,6 +117,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
+    public final boolean useHeavyMonitors = getFlag("UseHeavyMonitors", Boolean.class);
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);

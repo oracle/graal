@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -280,7 +282,7 @@ public class NativeImage {
 
     private int verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS")) ? 1 : 0;
     private boolean diagnostics = false;
-    String diagnosticsDir;
+    Path diagnosticsDir;
     private boolean jarOptionMode = false;
     private boolean moduleOptionMode = false;
     private boolean dryRun = false;
@@ -776,7 +778,7 @@ public class NativeImage {
 
     void addMacroOptionRoot(Path configDir) {
         Path origRootDir = canonicalize(configDir);
-        Path rootDir = bundleSupport != null ? bundleSupport.substituteClassPath(origRootDir) : origRootDir;
+        Path rootDir = useBundle() ? bundleSupport.substituteClassPath(origRootDir) : origRootDir;
         optionRegistry.addMacroOptionRoot(rootDir);
     }
 
@@ -1470,17 +1472,17 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
-        String sloppySanitationKey = "NATIVE_IMAGE_SLOPPY_BUILDER_SANITATION";
-        String sloppySanitationValue = System.getenv().getOrDefault(sloppySanitationKey, "false");
-        if (Boolean.parseBoolean(sloppySanitationValue)) {
+        String deprecatedSanitationKey = "NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION";
+        String deprecatedSanitationValue = System.getenv().getOrDefault(deprecatedSanitationKey, "false");
+        if (Boolean.parseBoolean(deprecatedSanitationValue)) {
             if (useBundle()) {
                 bundleSupport = null;
-                throw showError("Bundle support is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+                throw showError("Bundle support is not compatible with environment variable %s=%s.".formatted(deprecatedSanitationKey, deprecatedSanitationValue));
             }
             if (!imageBuilderEnvironment.isEmpty()) {
-                throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(sloppySanitationKey, sloppySanitationValue));
+                throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(deprecatedSanitationKey, deprecatedSanitationValue));
             }
-            sloppySanitizeJVMEnvironment(environment);
+            deprecatedSanitizeJVMEnvironment(environment);
         } else {
             sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
         }
@@ -1497,7 +1499,8 @@ public class NativeImage {
         final String commandLine = SubstrateUtil.getShellCommandString(completeCommandList, true);
         if (isDiagnostics()) {
             // write to the diagnostics dir
-            ReportUtils.report("command line arguments", diagnosticsDir, "command-line", "txt", printWriter -> printWriter.write(commandLine));
+            Path finalDiagnosticsDir = useBundle() ? bundleSupport.substituteAuxiliaryPath(diagnosticsDir, BundleMember.Role.Output) : diagnosticsDir.toAbsolutePath();
+            ReportUtils.report("command line arguments", finalDiagnosticsDir.toString(), "command-line", "txt", printWriter -> printWriter.write(commandLine));
         } else {
             showVerboseMessage(isVerbose(), "Executing [");
             showVerboseMessage(isVerbose(), commandLine);
@@ -1527,7 +1530,7 @@ public class NativeImage {
     }
 
     @Deprecated
-    private static void sloppySanitizeJVMEnvironment(Map<String, String> environment) {
+    private static void deprecatedSanitizeJVMEnvironment(Map<String, String> environment) {
         String[] jvmAffectingEnvironmentVariables = {"JAVA_COMPILER", "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH"};
         for (String affectingEnvironmentVariable : jvmAffectingEnvironmentVariables) {
             environment.remove(affectingEnvironmentVariable);
@@ -1535,32 +1538,35 @@ public class NativeImage {
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment, Map<String, String> imageBuilderEnvironment) {
-        Map<String, String> restrictedEnvironment = new HashMap<>();
-        List<String> jvmRequiredEnvironmentVariables = new ArrayList<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
-        jvmRequiredEnvironmentVariables.add("SRCHOME"); // FIXME
+        Set<String> requiredKeys = new HashSet<>(List.of("PATH", "PWD", "HOME", "LANG", "LC_ALL"));
+        requiredKeys.add("SRCHOME"); /* Remove once GR-44676 is fixed */
+        Function<String, String> keyMapper;
         if (OS.WINDOWS.isCurrent()) {
-            jvmRequiredEnvironmentVariables.addAll(List.of("TEMP", "INCLUDE", "LIB"));
+            requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
+            keyMapper = String::toUpperCase;
+        } else {
+            keyMapper = Function.identity();
         }
-        for (String requiredEnvironmentVariable : jvmRequiredEnvironmentVariables) {
-            String val = environment.get(requiredEnvironmentVariable);
-            if (val != null) {
-                restrictedEnvironment.put(requiredEnvironmentVariable, val);
+        Map<String, String> restrictedEnvironment = new HashMap<>();
+        environment.forEach((key, val) -> {
+            if (requiredKeys.contains(keyMapper.apply(key))) {
+                restrictedEnvironment.put(key, val);
             }
-        }
+        });
         for (Iterator<Map.Entry<String, String>> iterator = imageBuilderEnvironment.entrySet().iterator(); iterator.hasNext();) {
             Map.Entry<String, String> entry = iterator.next();
-            String requiredKey = entry.getKey();
-            String requiredValue = entry.getValue();
-            if (requiredValue != null) {
-                restrictedEnvironment.put(requiredKey, requiredValue);
+            if (entry.getValue() != null) {
+                restrictedEnvironment.put(entry.getKey(), entry.getValue());
             } else {
-                String existingValue = environment.get(requiredKey);
-                if (existingValue != null) {
-                    restrictedEnvironment.put(requiredKey, existingValue);
-                    /* Capture found existingValue for storing vars in bundle */
-                    entry.setValue(existingValue);
-                } else {
-                    NativeImage.showWarning("Environment variable '" + requiredKey + "' is undefined and therefore not available during image build-time.");
+                environment.forEach((key, val) -> {
+                    if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                        restrictedEnvironment.put(entry.getKey(), val);
+                        /* Capture found value for storing vars in bundle */
+                        entry.setValue(val);
+                    }
+                });
+                if (entry.getValue() == null) {
+                    NativeImage.showWarning("Environment variable '" + entry.getKey() + "' is undefined and therefore not available during image build-time.");
                     /* Remove undefined environment for storing vars in bundle */
                     iterator.remove();
                 }
@@ -1670,7 +1676,7 @@ public class NativeImage {
     }
 
     Path canonicalize(Path path, boolean strict) {
-        if (bundleSupport != null) {
+        if (useBundle()) {
             Path prev = bundleSupport.restoreCanonicalization(path);
             if (prev != null) {
                 return prev;
@@ -1678,14 +1684,14 @@ public class NativeImage {
         }
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
         if (!strict) {
-            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
+            return useBundle() ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
         }
         try {
             Path realPath = absolutePath.toRealPath();
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path + " is not readable");
             }
-            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
+            return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
         }
@@ -1805,7 +1811,7 @@ public class NativeImage {
             return;
         }
 
-        Path mpEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
+        Path mpEntryFinal = useBundle() ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
         imageModulePath.add(mpEntryFinal);
         processClasspathNativeImageMetaInf(mpEntryFinal);
     }
@@ -1869,7 +1875,7 @@ public class NativeImage {
             return;
         }
 
-        Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
+        Path classpathEntryFinal = useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
             destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
@@ -1887,13 +1893,15 @@ public class NativeImage {
         verbose += 1;
     }
 
-    void setDiagnostics(boolean val) {
-        diagnostics = val;
-        diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString();
-        if (val) {
-            addVerbose();
-            addVerbose();
+    void enableDiagnostics() {
+        if (diagnostics) {
+            /* Already enabled */
+            return;
         }
+        diagnostics = true;
+        diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""));
+        addVerbose();
+        addVerbose();
     }
 
     void setJarOptionMode(boolean val) {

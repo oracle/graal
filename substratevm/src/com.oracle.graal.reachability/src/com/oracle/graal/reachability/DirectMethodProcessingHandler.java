@@ -142,8 +142,10 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 if (method != null) {
                     method.addInvoke(new ReachabilityInvokeInfo(targetMethod, reason, kind.isDirect()));
                 }
-                if (kind.isDirect()) {
+                if (kind == CallTargetNode.InvokeKind.Static) {
                     bb.markMethodImplementationInvoked(targetMethod, reason);
+                } else if (kind == CallTargetNode.InvokeKind.Special) {
+                    bb.markMethodSpecialInvoked(targetMethod, reason);
                 } else {
                     bb.markMethodInvoked(targetMethod, reason);
                 }
@@ -164,8 +166,11 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 MacroInvokable node = (MacroInvokable) n;
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
                 BytecodePosition reason = AbstractAnalysisEngine.syntheticSourcePosition(node.asNode(), method);
-                if (node.getInvokeKind().isDirect()) {
+                CallTargetNode.InvokeKind kind = node.getInvokeKind();
+                if (kind == CallTargetNode.InvokeKind.Static) {
                     bb.markMethodImplementationInvoked(targetMethod, reason);
+                } else if (kind == CallTargetNode.InvokeKind.Special) {
+                    bb.markMethodSpecialInvoked(targetMethod, reason);
                 } else {
                     bb.markMethodInvoked(targetMethod, reason);
                 }

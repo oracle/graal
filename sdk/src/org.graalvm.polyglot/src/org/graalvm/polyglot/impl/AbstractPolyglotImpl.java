@@ -838,6 +838,12 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void hostExit(int exitCode);
 
+        public abstract boolean allowsPublicAccess();
+
+        public final boolean isHostStackTraceVisibleToGuest() {
+            return allowsPublicAccess();
+        }
+
     }
 
     public abstract static class AbstractValueDispatch extends AbstractDispatchClass {

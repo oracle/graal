@@ -559,7 +559,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
                 if (lastInstr != null) {
+                    FixedNode oldNext = lastInstr.next();
                     lastInstr.setNext(fixedNode);
+                    if (oldNext != null) {
+                        /*
+                         * For now, we only need to handle the case where the new instruction ends
+                         * the control flow, in which case we can just delete oldNext after it is
+                         * unliked from the graph. If we need more complete support in the future,
+                         * we would need to append oldNext again after determining the value of
+                         * lastInstr below.
+                         */
+                        GraalError.guarantee(fixedNode instanceof ControlSinkNode, "deleting the old next instruction is only implemented when the new instruction ends the control flow.");
+                        oldNext.safeDelete();
+                    }
                 }
 
                 if (fixedNode instanceof FixedWithNextNode) {

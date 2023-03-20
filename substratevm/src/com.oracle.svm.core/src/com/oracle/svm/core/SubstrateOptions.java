@@ -851,14 +851,18 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
 
     public static String reportsPath() {
-        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+        Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
+        if (reportsPath.isAbsolute()) {
+            return reportsPath.toString();
+        }
+        return Paths.get(Path.getValue()).resolve(reportsPath).toString();
     }
 
     public static class ReportingSupport {
-        String reportsPath;
+        Path reportsPath;
 
         public ReportingSupport(Path reportingPath) {
-            this.reportsPath = reportingPath.toString();
+            this.reportsPath = reportingPath;
         }
     }
 

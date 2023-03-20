@@ -24,7 +24,7 @@ GraalVM includes a version of the HotSpot JVM that supports JVMCI.
 
 The Graal compiler provides optimized performance for programs running on the JVM through unique approaches to code analysis and optimization.
 It includes multiple optimization algorithms (called “Phases”), like aggressive inlining, polymorphic inlining, and others.
-For example, the compiler in GraalVM Enterprise includes 62 optimization phases, of which 27 are patented.
+For example, the compiler in Oracle GraalVM includes 62 optimization phases, of which 27 are patented.
 
 The Graal compiler assures performance advantages for highly-abstracted programs due to its ability to remove costly object allocations.
 Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.

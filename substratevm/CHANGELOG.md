@@ -27,7 +27,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-40463) Red Hat added experimental support for JMX, which can be enabled with the `--enable-monitoring` option (e.g. `--enable-monitoring=jmxclient,jmxserver`).
 * (GR-42740) Together with Red Hat, we added experimental support for JFR event streaming.
 * (GR-44110) Native Image now targets `x86-64-v3` by default on AMD64 and supports a new `-march` option. Use `-march=compatibility` for best compatibility (previous default) or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
-* (GR-43971) Add native-image option `-E<env-var-key>[=<env-var-value>]` and support environment variable capturing in bundles. Previously almost all environment variables were available in the builder. To temporarily revert back to the old behaviour, env setting `NATIVE_IMAGE_SLOPPY_BUILDER_SANITATION=true` can be used. The old behaviour will be removed in a future release.
+* (GR-43971) Add native-image option `-E<env-var-key>[=<env-var-value>]` and support environment variable capturing in bundles. Previously almost all environment variables were available in the builder. To temporarily revert back to the old behaviour, env setting `NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION=true` can be used. The old behaviour will be removed in a future release.
 * (GR-43382) The build output now includes a section with recommendations that help you get the best out of Native Image.
 
 ## Version 22.3.0

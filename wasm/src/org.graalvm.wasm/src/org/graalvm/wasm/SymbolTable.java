@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -269,6 +269,8 @@ public abstract class SymbolTable {
      */
     private final List<WasmFunction> importedFunctions;
 
+    @CompilationFinal private int numImportedFunctions;
+
     /**
      * Map from exported function names to respective functions.
      */
@@ -401,6 +403,7 @@ public abstract class SymbolTable {
         this.functions = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
+        this.numImportedFunctions = 0;
         this.exportedFunctions = EconomicMap.create();
         this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
@@ -690,12 +693,17 @@ public abstract class SymbolTable {
         importSymbol(descriptor);
         WasmFunction function = allocateFunction(typeIndex, descriptor);
         importedFunctions.add(function);
+        numImportedFunctions++;
         module().addLinkAction((context, instance) -> context.linker().resolveFunctionImport(context, instance, function));
         return function;
     }
 
     public List<WasmFunction> importedFunctions() {
         return importedFunctions;
+    }
+
+    public int numImportedFunctions() {
+        return numImportedFunctions;
     }
 
     public WasmFunction importedFunction(String name) {
@@ -1081,8 +1089,8 @@ public abstract class SymbolTable {
         return exportedMemoryNames;
     }
 
-    void allocateCustomSection(String name, byte[] sectionData) {
-        customSections.add(new WasmCustomSection(name, sectionData));
+    void allocateCustomSection(String name, int offset, int length) {
+        customSections.add(new WasmCustomSection(name, offset, length));
     }
 
     public List<WasmCustomSection> customSections() {

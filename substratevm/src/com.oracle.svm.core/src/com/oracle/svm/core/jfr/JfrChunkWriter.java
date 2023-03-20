@@ -170,7 +170,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isOwner();
         assert buffer.isNonNull();
         assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
-        assert buffer.getNode().isNull() || !JfrBufferNodeAccess.isRetired(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -531,24 +530,21 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 }
 
                 try {
-                    /* Skip retired nodes as they may contain invalid data. */
-                    if (!JfrBufferNodeAccess.isRetired(node)) {
-                        if (flushpoint) {
-                            /*
-                             * I/O operations may be slow, so this flushes to the global buffers
-                             * instead of writing to disk directly. This mitigates the risk of
-                             * acquiring the thread-local buffers for too long.
-                             */
-                            SubstrateJVM.getGlobalMemory().write(buffer, true);
-                        } else {
-                            write(buffer);
-                        }
+                    if (flushpoint) {
                         /*
-                         * The flushed position is modified in the calls above. We do *not*
-                         * reinitialize the thread-local buffers as the individual threads will
-                         * handle space reclamation on their own time.
+                         * I/O operations may be slow, so this flushes to the global buffers instead
+                         * of writing to disk directly. This mitigates the risk of acquiring the
+                         * thread-local buffers for too long.
                          */
+                        SubstrateJVM.getGlobalMemory().write(buffer, true);
+                    } else {
+                        write(buffer);
                     }
+                    /*
+                     * The flushed position is modified in the calls above. We do *not* reinitialize
+                     * the thread-local buffers as the individual threads will handle space
+                     * reclamation on their own time.
+                     */
                 } finally {
                     JfrBufferNodeAccess.unlock(node);
                 }
