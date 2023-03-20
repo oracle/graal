@@ -76,6 +76,7 @@ import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
 
@@ -280,6 +281,9 @@ public final class JNIInvocationInterface {
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
+        if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
+            return JNIErrors.JNI_ERR();
+        }
         PlatformThreads.singleton().joinAllNonDaemons();
         return JNIErrors.JNI_OK();
     }
