@@ -441,9 +441,18 @@ public final class Space {
 
         // We need forwarding pointer to point somewhere, so we speculatively allocate memory here.
         // If another thread copies the object first, we retract the allocation later.
-        UnsignedWord size = getSizeFromHeader(original, originalHeader);
-        assert size.aboveThan(0);
-        Pointer copyMemory = allocateMemory(size);
+        UnsignedWord originalSize = LayoutEncoding.getSizeFromHeader(original, originalHeader, false);
+        UnsignedWord copySize = originalSize;
+        boolean addIdentityHashField = false;
+        if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
+            if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(originalHeader))) {
+                addIdentityHashField = true;
+                copySize = LayoutEncoding.getSizeFromHeader(original, originalHeader, true);
+            }
+        }
+
+        assert copySize.aboveThan(0);
+        Pointer copyMemory = allocateMemoryParallel(copySize);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
             return null;
         }
@@ -452,15 +461,21 @@ public final class Space {
         Object copy = copyMemory.toObject();
         Object forward = ohi.installForwardingPointerParallel(original, originalHeader, copy);
         if (forward == copy) {
-            // We have won the race, now we must copy the object bits. First install the original
-            // header
+            // We have won the race, now we must copy the object bits. First install the original header
             copyMemory.writeWord(hubOffset, originalHeader);
             // Copy the rest of original object
             if (hubOffset > 0) {
                 UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, WordFactory.unsigned(hubOffset));
             }
             int offset = hubOffset + ConfigurationValues.getObjectLayout().getReferenceSize();
-            UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(offset), copyMemory.add(offset), size.subtract(offset));
+            UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(offset), copyMemory.add(offset), originalSize.subtract(offset));
+
+            if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
+                int value = IdentityHashCodeSupport.computeHashCodeFromAddress(original);
+                offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
+                ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+                ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
+            }
 
             if (isOldSpace()) {
                 // If the object was promoted to the old gen, we need to take care of the remembered
@@ -471,17 +486,9 @@ public final class Space {
             return copy;
         } else {
             // Retract speculatively allocated memory
-            retractAllocation(size);
+            retractAllocation(originalSize);
             return forward;
         }
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromHeader(Object obj, Word header) {
-        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(header);
-        int encoding = hub.getLayoutEncoding();
-        return LayoutEncoding.getSizeFromEncoding(obj, hub, encoding, false);
     }
 
     @AlwaysInline("GC performance")

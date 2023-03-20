@@ -348,6 +348,17 @@ public class LayoutEncoding {
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeFromHeader(Object obj, Word header, boolean addOptionalIdHashField) {
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        DynamicHub hub = oh.dynamicHubFromObjectHeader(header);
+        int encoding = hub.getLayoutEncoding();
+        boolean withOptionalIdHashField = addOptionalIdHashField ||
+                (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && oh.hasOptionalIdentityHashField(header));
+        return getSizeFromEncoding(obj, hub, encoding, withOptionalIdHashField);
+    }
+
     @AlwaysInline("Actual inlining decided by callers.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {
@@ -358,7 +369,7 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromEncoding(Object obj, DynamicHub hub, int encoding, boolean withOptionalIdHashField) {
+    private static UnsignedWord getSizeFromEncoding(Object obj, DynamicHub hub, int encoding, boolean withOptionalIdHashField) {
         if (isArrayLike(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj), withOptionalIdHashField);
         } else {
