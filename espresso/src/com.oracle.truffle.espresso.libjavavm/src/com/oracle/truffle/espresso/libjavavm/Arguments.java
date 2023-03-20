@@ -162,6 +162,8 @@ public final class Arguments {
                         builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                     } else if (optionString.startsWith("--limit-modules=")) {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
+                    } else if (optionString.equals("--enable-preview")) {
+                        builder.option("java.EnablePreview", "true");
                     } else if (isXOption(optionString)) {
                         RuntimeOptions.set(optionString.substring("-X".length()), null);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {

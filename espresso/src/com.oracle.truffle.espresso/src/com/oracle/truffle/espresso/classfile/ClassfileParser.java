@@ -266,7 +266,7 @@ public final class ClassfileParser {
         } else if (env.getJavaVersion().java11OrEarlier()) {
             versionCheck11OrEarlier(env.getJavaVersion().classFileVersion(), major, minor);
         } else {
-            versionCheck12OrLater(env.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck12OrLater(env.getJavaVersion().classFileVersion(), major, minor, env.isPreviewEnabled());
         }
     }
 
@@ -317,14 +317,14 @@ public final class ClassfileParser {
      * --enable-preview is present.
      *
      */
-    private static void versionCheck12OrLater(int maxMajor, int major, int minor) {
+    private static void versionCheck12OrLater(int maxMajor, int major, int minor, boolean previewEnabled) {
         if (major >= JAVA_12_VERSION && major <= maxMajor && minor == 0) {
             return;
         }
         if (major >= JAVA_MIN_SUPPORTED_VERSION && major < JAVA_12_VERSION) {
             return;
         }
-        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION) {
+        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION && previewEnabled) {
             return;
         }
         throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);

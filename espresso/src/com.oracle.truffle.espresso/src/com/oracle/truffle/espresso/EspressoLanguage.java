@@ -124,6 +124,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private EspressoOptions.SpecComplianceMode specComplianceMode;
     @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
     @CompilationFinal private int livenessAnalysisMinimumLocals;
+    @CompilationFinal private boolean previewEnabled;
 
     private boolean optionsInitialized;
     // endregion Options
@@ -192,6 +193,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
             livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
             livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
+            previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
             optionsInitialized = true;
         }
     }
@@ -265,7 +267,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -464,6 +467,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public void invalidateAllocationTrackingDisabled() {
         noAllocationTracking.invalidate();
+    }
+
+    public boolean isPreviewEnabled() {
+        return previewEnabled;
     }
 
     public EspressoLanguageCache getLanguageCache() {

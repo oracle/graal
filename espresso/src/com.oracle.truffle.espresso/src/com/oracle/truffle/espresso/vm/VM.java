@@ -619,6 +619,11 @@ public final class VM extends NativeEnv {
 
     // endregion system
 
+    @VmImpl
+    public static boolean JVM_IsPreviewEnabled(@Inject EspressoLanguage language) {
+        return language.isPreviewEnabled();
+    }
+
     // region objects
 
     private static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,

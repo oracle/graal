@@ -1451,9 +1451,8 @@ JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
-  // TODO: proper arg handling of --enable-previw
   IMPLEMENTED(JVM_IsPreviewEnabled);
-  return JNI_FALSE;
+  return (*getEnv())->JVM_IsPreviewEnabled();
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {

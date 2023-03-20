@@ -244,6 +244,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     unrecognized.add(args.getArg());
                     break;
 
+                case "--enable-preview":
+                    espressoOptions.put("java.EnablePreview", "true");
+                    break;
+
                 default:
                     if (arg.startsWith("-Xbootclasspath:")) {
                         espressoOptions.remove("java.BootClasspathPrepend");
