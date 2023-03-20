@@ -113,4 +113,13 @@ public final class FactoryMethod extends NonBytecodeMethod {
         }
         return metaAccess.getUniverse().lookup(universeMethod);
     }
+
+    public ResolvedJavaMethod getTargetConstructor() {
+        return targetConstructor;
+    }
+
+    @Override
+    public ResolvedJavaType getDeclaringClass() {
+        return super.getDeclaringClass();
+    }
 }
