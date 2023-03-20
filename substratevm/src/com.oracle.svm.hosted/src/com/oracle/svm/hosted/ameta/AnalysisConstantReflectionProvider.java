@@ -92,12 +92,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
         if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray) {
-                ImageHeapArray heapArray = (ImageHeapArray) array;
+            if (array instanceof ImageHeapArray heapArray) {
                 if (index < 0 || index >= heapArray.getLength()) {
                     return null;
                 }
-                return replaceObject(heapArray.getElement(index));
+                return replaceObject(heapArray.readElementValue(index));
             }
             return null;
         }
@@ -108,10 +107,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray) {
-                ImageHeapArray heapArray = (ImageHeapArray) array;
+            if (array instanceof ImageHeapArray heapArray) {
                 for (int index = 0; index < heapArray.getLength(); index++) {
-                    JavaConstant element = heapArray.getElement(index);
+                    JavaConstant element = heapArray.readElementValue(index);
                     consumer.accept(replaceObject(element), index);
                 }
             }
