@@ -288,7 +288,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.ALL_MODULES.createReply(packet, context);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -351,6 +351,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ReferenceType.MODULE.ID:
                                     result = JDWP.ReferenceType.MODULE.createReply(packet, context);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -368,6 +370,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ClassType.NEW_INSTANCE.ID:
                                     result = JDWP.ClassType.NEW_INSTANCE.createReply(packet, controller);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -376,6 +380,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ArrayType.NEW_INSTANCE.ID:
                                     result = JDWP.ArrayType.NEW_INSTANCE.createReply(packet, context);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -384,6 +390,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.InterfaceType.INVOKE_METHOD.ID:
                                     result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller, DebuggerConnection.this);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -404,6 +412,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.ID:
                                     result = JDWP.Methods.VARIABLE_TABLE_WITH_GENERIC.createReply(packet, context);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -436,6 +446,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ObjectReference.REFERRING_OBJECTS.ID:
                                     result = JDWP.ObjectReference.REFERRING_OBJECTS.createReply(packet);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -444,6 +456,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.StringReference.VALUE.ID:
                                     result = JDWP.StringReference.VALUE.createReply(packet, context);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -491,6 +505,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadReference.FORCE_EARLY_RETURN.ID:
                                     result = JDWP.ThreadReference.FORCE_EARLY_RETURN.createReply(packet, controller);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         case JDWP.ThreadGroupReference.ID:
@@ -504,6 +520,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ThreadGroupReference.CHILDREN.ID:
                                     result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context, controller);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         case JDWP.ArrayReference.ID: {
@@ -518,7 +536,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ArrayReference.SET_VALUES.createReply(packet, context);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -527,6 +545,8 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.ClassLoaderReference.VISIBLE_CLASSES.ID:
                                     result = JDWP.ClassLoaderReference.VISIBLE_CLASSES.createReply(packet, context);
                                     break;
+                                default:
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -542,7 +562,7 @@ public final class DebuggerConnection implements Commands {
                                     result = requestedJDWPEvents.clearAllRequests(packet);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -561,7 +581,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.StackFrame.POP_FRAMES.createReply(packet, controller);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -571,7 +591,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -584,7 +604,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ModuleReference.CLASSLOADER.createReply(packet, context);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
@@ -594,12 +614,12 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.Event.COMPOSITE.createReply(packet);
                                     break;
                                 default:
-                                    break;
+                                    throw new RuntimeException("Unknown command " + packet.cmd + " in command set " + packet.cmdSet);
                             }
                             break;
                         }
                         default:
-                            break;
+                            throw new RuntimeException("Unknown command set: " + packet.cmdSet);
                     }
                 }
                 handleReply(packet, result);
