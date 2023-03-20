@@ -170,14 +170,14 @@ public class ParallelGC {
 
         /* Allocate one struct per worker thread and one struct for the main GC thread. */
         int numWorkerStates = numWorkerThreads + 1;
-        // TODO (petermz): add error handling for allocation
         workerStates = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(SizeOf.unsigned(GCWorkerThreadState.class).multiply(numWorkerStates));
+        VMError.guarantee(workerStates.isNonNull());
         for (int i = 0; i < numWorkerStates; i++) {
             workerStates.addressOf(i).setIsolate(CurrentIsolate.getIsolate());
         }
 
-        // TODO (petermz): add error handling for allocation
         workerThreads = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(OSThreadHandlePointer.class).multiply(numWorkerThreads));
+        VMError.guarantee(workerThreads.isNonNull());
         for (int i = 0; i < numWorkerThreads; i++) {
             OSThreadHandle thread = PlatformThreads.singleton().startThreadUnmanaged(gcWorkerRunFunc.getFunctionPointer(), workerStates.addressOf(i), 0);
             workerThreads.write(i, thread);

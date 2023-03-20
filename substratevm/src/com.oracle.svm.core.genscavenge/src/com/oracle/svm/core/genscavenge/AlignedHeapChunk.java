@@ -118,7 +118,7 @@ public final class AlignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer retractAllocation(AlignedHeader that, UnsignedWord size) {
         Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
-        assert newTop.aboveThan(HeapChunk.asPointer(that));
+        assert newTop.aboveOrEqual(getObjectsStart(that));
         HeapChunk.setTopPointer(that, newTop);
         return newTop;
     }

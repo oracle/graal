@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Synchronized buffer that stores "grey" heap chunks to be scanned.
@@ -44,7 +45,7 @@ public class ChunkBuffer {
     private static final int INITIAL_SIZE = 1024 * wordSize();
 
     private Pointer buffer;
-    private int size;
+    private int size = INITIAL_SIZE;
     private int top;
 
     @Fold
@@ -58,20 +59,18 @@ public class ChunkBuffer {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void initialize() {
-        this.size = INITIAL_SIZE;
-        // TODO (petermz): needs proper error handling
-        this.buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(this.size));
+        buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(size));
+        VMError.guarantee(buffer.isNonNull());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void push(Pointer ptr) {
         assert !ParallelGC.isInParallelPhase() || ParallelGC.mutex.hasOwner();
         if (top >= size) {
-            int oldSize = size;
             size *= 2;
             assert top < size;
-            // TODO (petermz): needs proper error handling
             buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(buffer, WordFactory.unsigned(size));
+            VMError.guarantee(buffer.isNonNull());
         }
         buffer.writeWord(top, ptr);
         top += wordSize();

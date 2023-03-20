@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -155,13 +156,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     public static class RealCounters implements Counters {
-        private long objRef;
-        private long nullObjRef;
-        private long nullReferent;
-        private long forwardedReferent;
-        private long nonHeapReferent;
-        private long copiedReferent;
-        private long unmodifiedReference;
+        private UninterruptibleUtils.AtomicLong objRef;
+        private UninterruptibleUtils.AtomicLong nullObjRef;
+        private UninterruptibleUtils.AtomicLong nullReferent;
+        private UninterruptibleUtils.AtomicLong forwardedReferent;
+        private UninterruptibleUtils.AtomicLong nonHeapReferent;
+        private UninterruptibleUtils.AtomicLong copiedReferent;
+        private UninterruptibleUtils.AtomicLong unmodifiedReference;
 
         RealCounters() {
             reset();
@@ -169,13 +170,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         @Override
         public void reset() {
-            objRef = 0L;
-            nullObjRef = 0L;
-            nullReferent = 0L;
-            forwardedReferent = 0L;
-            nonHeapReferent = 0L;
-            copiedReferent = 0L;
-            unmodifiedReference = 0L;
+            objRef.set(0L);
+            nullObjRef.set(0L);
+            nullReferent.set(0L);
+            forwardedReferent.set(0L);
+            nonHeapReferent.set(0L);
+            copiedReferent.set(0L);
+            unmodifiedReference.set(0L);
         }
 
         @Override
@@ -193,50 +194,50 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteObjRef() {
-            objRef += 1L;
+            objRef.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNullReferent() {
-            nullReferent += 1L;
+            nullReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteForwardedReferent() {
-            forwardedReferent += 1L;
+            forwardedReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNonHeapReferent() {
-            nonHeapReferent += 1L;
+            nonHeapReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteCopiedReferent() {
-            copiedReferent += 1L;
+            copiedReferent.incrementAndGet();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
-            unmodifiedReference += 1L;
+            unmodifiedReference.incrementAndGet();
         }
 
         @Override
         public void toLog() {
             Log log = Log.log();
             log.string("[GreyToBlackObjRefVisitor.counters:");
-            log.string("  objRef: ").signed(objRef);
-            log.string("  nullObjRef: ").signed(nullObjRef);
-            log.string("  nullReferent: ").signed(nullReferent);
-            log.string("  forwardedReferent: ").signed(forwardedReferent);
-            log.string("  nonHeapReferent: ").signed(nonHeapReferent);
-            log.string("  copiedReferent: ").signed(copiedReferent);
-            log.string("  unmodifiedReference: ").signed(unmodifiedReference);
+            log.string("  objRef: ").signed(objRef.get());
+            log.string("  nullObjRef: ").signed(nullObjRef.get());
+            log.string("  nullReferent: ").signed(nullReferent.get());
+            log.string("  forwardedReferent: ").signed(forwardedReferent.get());
+            log.string("  nonHeapReferent: ").signed(nonHeapReferent.get());
+            log.string("  copiedReferent: ").signed(copiedReferent.get());
+            log.string("  unmodifiedReference: ").signed(unmodifiedReference.get());
             log.string("]").newline();
         }
     }

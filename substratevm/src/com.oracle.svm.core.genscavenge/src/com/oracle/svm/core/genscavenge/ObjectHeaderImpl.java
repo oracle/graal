@@ -66,6 +66,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     private static final UnsignedWord UNALIGNED_BIT = WordFactory.unsigned(0b00001);
     private static final UnsignedWord REMEMBERED_SET_BIT = WordFactory.unsigned(0b00010);
     private static final UnsignedWord FORWARDED_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord SHIFT_FORWARD_HEADER = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);
 
     /**
      * Optional: per-object identity hash code state to avoid a fixed field, initially implicitly
@@ -440,7 +441,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             if (false) {
                 // Compression with a shift uses all bits of a reference, so store the forwarding
                 // pointer in the location following the hub pointer.
-                forwardHeader = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);
+                forwardHeader = SHIFT_FORWARD_HEADER;
                 ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy);
             } else {
                 forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
@@ -463,7 +464,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             // TODO (chaeubl): fix this
             // if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
             if (false) {
-                forwardHeader = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);
+                forwardHeader = SHIFT_FORWARD_HEADER;
                 hasShift = true;
             } else {
                 forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);

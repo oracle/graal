@@ -447,12 +447,9 @@ public final class Space {
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
             return null;
         }
-        Object copy = copyMemory.toObject();
-        if (copy == null) {
-            return null;
-        }
 
         // Install forwarding pointer into the original header
+        Object copy = copyMemory.toObject();
         Object forward = ohi.installForwardingPointerParallel(original, originalHeader, copy);
         if (forward == copy) {
             // We have won the race, now we must copy the object bits. First install the original
@@ -462,7 +459,7 @@ public final class Space {
             if (hubOffset > 0) {
                 UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, WordFactory.unsigned(hubOffset));
             }
-            int offset = hubOffset + ConfigurationValues.getTarget().wordSize;
+            int offset = hubOffset + ConfigurationValues.getObjectLayout().getReferenceSize();
             UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(offset), copyMemory.add(offset), size.subtract(offset));
 
             if (isOldSpace()) {
