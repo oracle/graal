@@ -47,6 +47,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 /**
  * Tests {@link HotSpotResolvedJavaField} functionality.
  */
@@ -62,7 +64,11 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
         Field f = null;
         try {
             Class<?> typeImpl = Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl");
-            m = typeImpl.getDeclaredMethod("createField", JavaType.class, long.class, int.class, int.class);
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                m = typeImpl.getDeclaredMethod("createField", JavaType.class, int.class, int.class, int.class);
+            } else {
+                m = typeImpl.getDeclaredMethod("createField", JavaType.class, long.class, int.class, int.class);
+            }
             Util.setAccessible(m, true);
             Class<?> fieldImpl = Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedJavaFieldImpl");
             f = fieldImpl.getDeclaredField("index");

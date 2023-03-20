@@ -409,7 +409,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
                             // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
-
+                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I",
                             // JDK-8255150: Add utility methods to check long indexes and ranges
                             "jdk/internal/util/Preconditions.checkIndex(JJLjava/util/function/BiFunction;)J",
 
@@ -457,7 +457,6 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
