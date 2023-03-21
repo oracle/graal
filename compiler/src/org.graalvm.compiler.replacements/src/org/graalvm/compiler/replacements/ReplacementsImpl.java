@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -118,9 +119,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     private final DebugHandlersFactory debugHandlersFactory;
 
     /**
-     * The preprocessed replacement graphs.
+     * The preprocessed replacement graphs. This is keyed by a pair of a method and options because
+     * options influence both parsing and later lowering of the replacement graph. We must not
+     * inline a snippet graph built with some set of options into a graph that is being compiled
+     * with a different set of options.
      */
-    protected final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
+    protected final ConcurrentMap<Pair<ResolvedJavaMethod, OptionValues>, StructuredGraph> graphs;
 
     /**
      * The default {@link BytecodeProvider} to use for accessing the bytecode of a replacement if
@@ -286,7 +290,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(method) : null;
+        Pair<ResolvedJavaMethod, OptionValues> cacheKey = Pair.create(method, options);
+        StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(cacheKey) : null;
         if (graph == null || (trackNodeSourcePosition && !graph.trackNodeSourcePosition())) {
             try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options);
                             DebugCloseable a = SnippetPreparationTime.start(debug)) {
@@ -297,11 +302,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 }
                 newGraph.freeze();
                 if (graph != null) {
-                    graphs.replace(method, graph, newGraph);
+                    graphs.replace(cacheKey, graph, newGraph);
                 } else {
-                    graphs.putIfAbsent(method, newGraph);
+                    graphs.putIfAbsent(cacheKey, newGraph);
                 }
-                graph = graphs.get(method);
+                graph = graphs.get(cacheKey);
             }
         }
         assert !trackNodeSourcePosition || graph.trackNodeSourcePosition();
