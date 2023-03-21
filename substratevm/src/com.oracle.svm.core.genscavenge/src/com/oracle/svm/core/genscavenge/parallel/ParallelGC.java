@@ -70,6 +70,22 @@ import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandlePointer;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * A garbage collector that tries to shorten GC pause by executing work on multiple "worker threads".
+ * Currently the only phase supported is scanning grey objects. Number of worker threads can be set with
+ * a runtime option.
+ *
+ * Worker threads use heap chunks as the unit of work. Chunks to be scanned are stored in the synchronized
+ * {@link ChunkBuffer}. Worker threads pop chunks from the buffer and scan them for references to live
+ * objects to be promoted. For each object being promoted, they speculatively allocate memory for its copy
+ * in the to-space, then compete to install forwarding pointer in the original object. The winning thread
+ * proceeds to copy object data, losing threads retract the speculatively allocated memory.
+ *
+ * Each worker thread allocates memory in its own thread local "allocation chunk" for speed. As allocation
+ * chunks become filled up, they are pushed to {@link ChunkBuffer}. This pop-scan-push cycle continues until
+ * the chunk buffer becomes empty. At this point, worker threads are parked and the GC routine continues on
+ * the main GC thread.
+ */
 public class ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
