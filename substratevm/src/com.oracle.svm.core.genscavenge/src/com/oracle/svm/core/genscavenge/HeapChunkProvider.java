@@ -95,6 +95,11 @@ final class HeapChunkProvider {
     /** Acquire a new AlignedHeapChunk, either from the free list or from the operating system. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeader produceAlignedChunk() {
+        return produceAlignedChunk(true);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    AlignedHeader produceAlignedChunk(boolean reportOutOfMemory) {
         UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkSize();
         AlignedHeader result = popUnusedAlignedChunk();
         if (result.isNull()) {
@@ -102,7 +107,11 @@ final class HeapChunkProvider {
             noteFirstAllocationTime();
             result = (AlignedHeader) CommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
             if (result.isNull()) {
-                throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
+                if (reportOutOfMemory) {
+                    throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
+                } else {
+                    throw ALIGNED_OUT_OF_MEMORY_ERROR;
+                }
             }
 
             AlignedHeapChunk.initialize(result, chunkSize);

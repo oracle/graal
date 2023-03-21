@@ -59,6 +59,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -88,6 +89,7 @@ public class ParallelGC {
     private ThreadLocalKey workerStateTL;
     private volatile boolean inParallelPhase;
     private volatile boolean shutdown;
+    private volatile Throwable error;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ParallelGC() {
@@ -218,7 +220,7 @@ public class ParallelGC {
 
         while (true) {
             Pointer ptr;
-            while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning(state)) {
+            while (!inParallelPhase || error != null || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning(state)) {
                 mutex.lockNoTransitionUnspecifiedOwner();
                 try {
                     if (--busyWorkerThreads == 0) {
@@ -235,18 +237,20 @@ public class ParallelGC {
                 }
             }
 
-            do {
-                scanChunk(ptr);
-            } while ((ptr = buffer.pop()).isNonNull());
-            scanAllocChunk();
+            try {
+                do {
+                    scanChunk(ptr);
+                } while ((ptr = buffer.pop()).isNonNull());
+                scanAllocChunk();
+            } catch (Throwable e) {
+                error = e;
+                shutdown = true;
+            }
         }
     }
 
     /**
      * Start parallel phase and wait until all chunks have been processed.
-     *
-     * @return false if worker threads have not been started yet. This can happen if GC happens very
-     *         early during application startup.
      */
     public void waitForIdle() {
         GCWorkerThreadState state = getWorkerThreadState();
@@ -271,6 +275,8 @@ public class ParallelGC {
         } finally {
             mutex.unlock();
         }
+
+        haltOnError();
 
         assert buffer.isEmpty();
         // Reset thread local allocation chunks.
@@ -318,6 +324,17 @@ public class ParallelGC {
     private boolean allocChunkNeedsScanning(GCWorkerThreadState state) {
         AlignedHeapChunk.AlignedHeader allocChunk = state.getAllocChunk();
         return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(state.getAllocChunkScanOffset());
+    }
+
+    /**
+     * Make sure errors are thrown on main GC thread.
+     */
+    private void haltOnError() {
+        if (error instanceof OutOfMemoryError oome) {
+            throw OutOfMemoryUtil.reportOutOfMemoryError(oome);
+        } else if (error instanceof Error) {
+            throw VMError.shouldNotReachHere(error);
+        }
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")

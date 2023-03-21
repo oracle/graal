@@ -222,7 +222,7 @@ public final class Space {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
-        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
+        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk(true);
         if (newChunk.isNonNull()) {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
@@ -235,7 +235,7 @@ public final class Space {
         ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         try {
             ParallelGC.singleton().pushAllocChunk(oldChunk);
-            newChunk = requestAlignedHeapChunk();
+            newChunk = requestAlignedHeapChunk(false);
         } finally {
             ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
         }
@@ -599,13 +599,13 @@ public final class Space {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
+    private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk(boolean reportOutOfMemory) {
         AlignedHeapChunk.AlignedHeader chunk;
         if (isYoungSpace()) {
             assert isSurvivorSpace();
             chunk = HeapImpl.getHeapImpl().getYoungGeneration().requestAlignedSurvivorChunk();
         } else {
-            chunk = HeapImpl.getHeapImpl().getOldGeneration().requestAlignedChunk();
+            chunk = HeapImpl.getHeapImpl().getOldGeneration().requestAlignedChunk(reportOutOfMemory);
         }
         if (chunk.isNonNull()) {
             appendAlignedHeapChunk(chunk);
