@@ -1982,7 +1982,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             if (operation.isVariadic && operation.numChildren > 1) {
                 b.startIf().string("operationChildCount[operationSp] < " + (operation.numChildren - 1)).end().startBlock();
-                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + operation.numChildren +
+                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + (operation.numChildren - 1) +
                                 " children, but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
