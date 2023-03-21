@@ -123,17 +123,21 @@ public class OperationsNodeFactory implements ElementHelpers {
     // All of the definitions that follow are nested inside of this class.
     private final CodeTypeElement operationNodeGen;
 
-    // The builder class invoked by the language parser to generate the bytecode.
-    private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
-    private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
-    private final TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
-    private BuilderElements builderElements;
-
     // The interpreter classes that execute the bytecode.
     private final CodeTypeElement baseInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "BaseInterpreter");
     private final CodeTypeElement uncachedInterpreter;
     private final CodeTypeElement cachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "CachedInterpreter");
     private final CodeTypeElement instrumentableInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "InstrumentableInterpreter");
+
+    // The builder class invoked by the language parser to generate the bytecode.
+    private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
+    private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
+    private final TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
+
+    // Implementations of public classes that Truffle interpreters interact with.
+    private final CodeTypeElement operationNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationNodesImpl");
+    private final CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
+    private final CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
 
     // Helper classes that map instructions/operations to constant integral values.
     private final CodeTypeElement instructionsElement = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Instructions");
@@ -145,22 +149,17 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     // Interface representing data objects that can have a specified boxing state.
     private final CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
-    private final CodeTypeElement loadLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "LoadLocalData");
-    private final CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
     // Class that allows us to store and overwrite integer constants without performing additional
     // boxing.
     private final CodeTypeElement intRef = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "IntRef");
+    private final CodeTypeElement loadLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "LoadLocalData");
+    private final CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
 
-    // Implementations of public classes that Truffle interpreters interact with.
-    private final CodeTypeElement operationNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationNodesImpl");
-    private final CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
-    private final CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
-
-    // Root node and ContinuationLocal classes to support yield
+    // Root node and ContinuationLocal classes to support yield.
     private final CodeTypeElement continuationRoot;
     private final CodeTypeElement continuationLocationImpl;
 
-    // Singleton field for an empty array
+    // Singleton field for an empty array.
     private final CodeVariableElement emptyObjectArray;
 
     public OperationsNodeFactory(OperationsModel model) {
@@ -189,11 +188,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Print a summary of the model in a docstring at the start.
         operationNodeGen.createDocBuilder().startDoc().lines(model.infodump()).end();
 
-        operationNodeGen.add(new InstructionConstantsFactory(model.getInstructions()).create());
-        operationNodeGen.add(new OperationsConstantsFactory(model.getOperations()).create());
-
+        // Define the interpreter implementations. The root node defines fields for the current
+        // interpreter and for each variant.
         operationNodeGen.add(new BaseInterpreterFactory().create());
-
         if (model.generateUncached) {
             operationNodeGen.add(new InterpreterFactory(uncachedInterpreter, true, false).create());
             operationNodeGen.add(createInterpreterVariantField(uncachedInterpreter, "UNCACHED"));
@@ -202,38 +199,62 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createInterpreterVariantField(cachedInterpreter, "CACHED"));
         operationNodeGen.add(new InterpreterFactory(instrumentableInterpreter, false, true).create());
         operationNodeGen.add(createInterpreterVariantField(instrumentableInterpreter, "INSTRUMENTABLE"));
+        operationNodeGen.add(createInterpreterField());
 
-        this.builderElements = new BuilderElements();
-        operationNodeGen.add(builderElements.getElement());
+        // Define the builder class.
+        operationNodeGen.add(new BuilderFactory().create());
 
+        // Define implementations for the public classes that Truffle interpreters interact with.
         operationNodeGen.add(new OperationNodesImplFactory().create());
-        operationNodeGen.add(new IntRefFactory().create());
         operationNodeGen.add(new OperationLocalImplFactory().create());
         operationNodeGen.add(new OperationLabelImplFactory().create());
-        operationNodeGen.add(new BoxableInterfaceFactory().create());
 
+        // Define helper classes containing the constants for instructions and operations.
+        operationNodeGen.add(new InstructionConstantsFactory(model.getInstructions()).create());
+        operationNodeGen.add(new OperationsConstantsFactory(model.getOperations()).create());
+
+        // Define the classes that model instruction data (e.g., branches, inline caches).
+        operationNodeGen.add(new BoxableInterfaceFactory().create());
+        operationNodeGen.add(new IntRefFactory().create());
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(new LoadLocalDataFactory().create());
             operationNodeGen.add(new StoreLocalDataFactory().create());
         }
+        // Define a static singleton object for instructions that don't have any data.
+        operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
 
+        // Define the classes that implement continuations (yield).
         if (model.enableYield) {
             operationNodeGen.add(new ContinuationRootFactory().create());
             operationNodeGen.add(new ContinuationLocationImplFactory().create());
         }
 
+        // Define a static block with any necessary initialization code.
         operationNodeGen.add(createStaticConstructor());
+
+        // Define the root node's constructors.
         operationNodeGen.add(createFrameDescriptorConstructor());
         operationNodeGen.add(createFrameDescriptorBuliderConstructor());
 
+        // Define the execute method.
+        operationNodeGen.add(createExecute());
+
+        // Define a continueAt method.
+        // This method delegates to the current interpreter's continueAt, handling the case where
+        // the interpreter changes itself to another one (e.g., Uncached becomes Cached because the
+        // method is hot).
+        operationNodeGen.add(createContinueAt());
+
+        // Define the static method to create a root node.
         operationNodeGen.add(createCreate());
 
-        operationNodeGen.add(createExecute());
-        operationNodeGen.add(createContinueAt());
-        operationNodeGen.add(createSneakyThrow());
-
+        // Define serialization methods and helper fields.
         if (model.enableSerialization) {
+            operationNodeGen.add(createSerialize());
+            operationNodeGen.add(createDeserialize());
 
+            // Our serialized representation encodes Tags as shorts.
+            // Construct mappings to/from these shorts for serialization/deserialization.
             if (!model.getProvidedTags().isEmpty()) {
                 CodeExecutableElement initializeClassToTagIndex = operationNodeGen.add(createInitializeClassToTagIndex());
                 CodeVariableElement classToTag = compFinal(1,
@@ -247,20 +268,24 @@ public class OperationsNodeFactory implements ElementHelpers {
                 tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
                 operationNodeGen.add(tagToClass);
             }
-
-            operationNodeGen.add(createSerialize());
-            operationNodeGen.add(createDeserialize());
         }
 
-        operationNodeGen.add(createGetIntrospectionData());
-
+        // Define the method to change between interpreters.
         operationNodeGen.add(createChangeInterpreters());
 
+        // Define a helper method for throwing exceptions silently.
+        operationNodeGen.add(createSneakyThrow());
+
+        // Define methods for introspecting the bytecode and source.
+        operationNodeGen.add(createGetIntrospectionData());
         operationNodeGen.add(createGetSourceSection());
         operationNodeGen.add(createGetSourceSectionAtBci());
+
+        // Define methods for cloning the root node.
         operationNodeGen.add(createCloneUninitializedSupported());
         operationNodeGen.add(createCloneUninitialized());
 
+        // Define internal state of the root node.
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), operationNodesImpl.asType(), "nodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
@@ -277,12 +302,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         if (model.enableTracing) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
         }
-        operationNodeGen.add(createInterpreterField());
 
-        operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
-
+        // Define helpers for variadic accesses.
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
+
+        // Define helpers for boxing-eliminated accesses.
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(createDoPopObject());
             for (TypeMirror type : model.boxingEliminatedTypes) {
@@ -290,6 +315,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
+        // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
             if (instr.nodeData == null) {
@@ -1172,7 +1198,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     }
 
-    class BuilderElements {
+    class BuilderFactory {
 
         private CodeTypeElement deserializerContextImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializerContextImpl");
 
@@ -1291,7 +1317,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private SerializationStateElements serializationElements;
         private CodeVariableElement serialization;
 
-        BuilderElements() {
+        private CodeTypeElement create() {
             builder.setSuperClass(types.OperationBuilder);
             builder.setEnclosingElement(operationNodeGen);
 
@@ -1348,9 +1374,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
             }
-        }
 
-        private CodeTypeElement getElement() {
             return builder;
         }
 
